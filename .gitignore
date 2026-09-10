@@ -41,3 +41,4 @@ yarn-error.*
 /
 .history
 .idea
+.env
