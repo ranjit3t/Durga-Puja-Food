@@ -1,0 +1,21 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "subscriptions": {
+      ".read": "auth != null",
+      "$flatId": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+    "menu": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "config": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    }
+  }
+}

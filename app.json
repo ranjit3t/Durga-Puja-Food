@@ -1,0 +1,36 @@
+{
+  "expo": {
+    "name": "Food Desk",
+    "slug": "durga-puja-food",
+    "scheme": "durgafood",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#c35b3b",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "com.ranjit3t.durgapujafood"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-font"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "32b26668-5f90-4044-8f48-c73c215a6ff6"
+      }
+    },
+    "owner": "keyarishita"
+  }
+}
