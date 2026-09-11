@@ -7,6 +7,7 @@ import { UI_TEXT } from "../strings";
 import { qrValueFor } from "../constants";
 import { Subscription } from "../types";
 import { BackButton } from "../components/common/BackButton";
+import { LogoutButton } from "../components/common/LogoutButton";
 import { ActionLabel } from "../components/common/ActionLabel";
 
 export function QrScreen({
@@ -14,11 +15,13 @@ export function QrScreen({
   onBack,
   onShare,
   onPrint,
+  onLogout,
 }: {
   subscription: Subscription;
   onBack: () => void;
   onShare: (uri: string) => void;
   onPrint: () => void;
+  onLogout: () => void;
 }) {
   const qrRef = useRef<View>(null);
   const shareImage = async () => {
@@ -31,7 +34,16 @@ export function QrScreen({
     <View style={styles.root}>
       <StatusBar style="light" />
       <View style={styles.header}>
-        <BackButton onPress={onBack} />
+        <View
+          style={{
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <BackButton onPress={onBack} />
+          <LogoutButton onLogout={onLogout} />
+        </View>
         <Text style={styles.eyebrow}>{UI_TEXT.flatIdPrefix}{subscription.id}</Text>
         <Text style={styles.title}>{UI_TEXT.foodPass}</Text>
         <Text style={styles.subtitle}>{UI_TEXT.qrIdentityStay}</Text>

@@ -24,6 +24,7 @@ export type ConfigDay = {
   label: string;
   abbr: string;
   enabled: boolean;
+  vegOnly?: boolean;
   breakfast: MealConfig;
   lunch: MealConfig;
   dinner: MealConfig;

@@ -8,6 +8,7 @@ import {
 } from "../constants";
 import { FoodMenu, UserRole, ConfigDay } from "../types";
 import { BackButton } from "../components/common/BackButton";
+import { LogoutButton } from "../components/common/LogoutButton";
 import { ActionLabel } from "../components/common/ActionLabel";
 import { MealDisplay } from "../components/menu/MealDisplay";
 
@@ -17,12 +18,14 @@ export function ViewMenuScreen({
   config,
   onEdit,
   onBack,
+  onLogout,
 }: {
   menu: FoodMenu;
   userRole: UserRole;
   config: ConfigDay[];
   onEdit: () => void;
   onBack: () => void;
+  onLogout: () => void;
 }) {
   const emptyMeal = {
     veg: [],
@@ -40,7 +43,16 @@ export function ViewMenuScreen({
     <View style={styles.root}>
       <StatusBar style="light" />
       <View style={styles.header}>
-        <BackButton onPress={onBack} />
+        <View
+          style={{
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <BackButton onPress={onBack} />
+          <LogoutButton onLogout={onLogout} />
+        </View>
         <Text style={styles.eyebrow}>{UI_TEXT.festivalFeast}</Text>
         <Text style={styles.title}>{UI_TEXT.foodMenu}</Text>
         <Text style={styles.subtitle}>{UI_TEXT.menuSubtitle}</Text>

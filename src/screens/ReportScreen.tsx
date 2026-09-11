@@ -19,9 +19,10 @@ import {
 } from "../constants";
 import { Subscription, FoodMenu, Day, ConfigDay } from "../types";
 import { BackButton } from "../components/common/BackButton";
+import { LogoutButton } from "../components/common/LogoutButton";
 import { ActionLabel } from "../components/common/ActionLabel";
 
-type ReportType = "day" | "meal" | "flat" | "payment" | "single";
+type ReportType = "day" | "meal" | "flat" | "payment" | "single" | "notTaken";
 
 export function ReportScreen({
   subscriptions,
@@ -29,12 +30,14 @@ export function ReportScreen({
   config,
   onBack,
   onShare,
+  onLogout,
 }: {
   subscriptions: Subscription[];
   menu: FoodMenu;
   config: ConfigDay[];
   onBack: () => void;
   onShare: (uri: string) => void;
+  onLogout: () => void;
 }) {
   const activeDays = getActiveDays(config);
   const [reportType, setReportType] = useState<ReportType>("day");
@@ -86,7 +89,8 @@ export function ReportScreen({
         nonVeg: 0,
         vegTaken: 0,
         nonVegTaken: 0,
-        parcel: 0,
+        vegParcel: 0,
+        nonVegParcel: 0,
         guestVeg: 0,
         guestNonVeg: 0,
         guestVegTaken: 0,
@@ -125,7 +129,8 @@ export function ReportScreen({
             }
 
             if (isParcelEnabled(day, type, config) && s[`${type}Parcel` as keyof typeof s]) {
-              totals.parcel += 1;
+              if (isVeg) totals.vegParcel += 1;
+              else totals.nonVegParcel += 1;
             }
           });
         });
@@ -157,7 +162,8 @@ export function ReportScreen({
           nonVeg: 0,
           vegTaken: 0,
           nonVegTaken: 0,
-          parcel: 0,
+          vegParcel: 0,
+          nonVegParcel: 0,
           guestVeg: 0,
           guestNonVeg: 0,
           guestVegTaken: 0,
@@ -168,7 +174,8 @@ export function ReportScreen({
           nonVeg: 0,
           vegTaken: 0,
           nonVegTaken: 0,
-          parcel: 0,
+          vegParcel: 0,
+          nonVegParcel: 0,
           guestVeg: 0,
           guestNonVeg: 0,
           guestVegTaken: 0,
@@ -179,7 +186,8 @@ export function ReportScreen({
           nonVeg: 0,
           vegTaken: 0,
           nonVegTaken: 0,
-          parcel: 0,
+          vegParcel: 0,
+          nonVegParcel: 0,
           guestVeg: 0,
           guestNonVeg: 0,
           guestVegTaken: 0,
@@ -214,8 +222,10 @@ export function ReportScreen({
             if (
               isParcelEnabled(day, mKey, config) &&
               s[`${mKey}Parcel` as keyof typeof s]
-            )
-              meals[mKey].parcel += 1;
+            ) {
+              if (isVeg) meals[mKey].vegParcel += 1;
+              else meals[mKey].nonVegParcel += 1;
+            }
           });
         });
       });
@@ -253,6 +263,8 @@ export function ReportScreen({
                 let nonVeg = 0;
                 let vegTaken = 0;
                 let nonVegTaken = 0;
+                let vegParcel = 0;
+                let nonVegParcel = 0;
 
                 slots.forEach((s, idx) => {
                   const choice = s[m];
@@ -264,17 +276,20 @@ export function ReportScreen({
 
                   const t = taken[idx];
                   const isTaken = !!t?.[m];
+                  const isParcel = isParcelEnabled(day, m, config) && !!s[`${m}Parcel` as keyof typeof s];
 
                   if (choice === "Veg") {
                     veg++;
                     if (isTaken) vegTaken++;
+                    if (isParcel) vegParcel++;
                   } else {
                     nonVeg++;
                     if (isTaken) nonVegTaken++;
+                    if (isParcel) nonVegParcel++;
                   }
                 });
 
-                return { type: m, veg, nonVeg, vegTaken, nonVegTaken };
+                return { type: m, veg, nonVeg, vegTaken, nonVegTaken, vegParcel, nonVegParcel };
               })
               .filter((m) => m.veg + m.nonVeg > 0);
 
@@ -317,6 +332,43 @@ export function ReportScreen({
     ];
   }, [subscriptions]);
 
+  const notTakenData = useMemo(() => {
+    if (reportType !== "notTaken") return [];
+
+    return subscriptions
+      .map((sub) => {
+        const slots = sub.mealSlots[selectedDayId] || [];
+        const taken = sub.takenByPerson[selectedDayId] || [];
+
+        let vegNotTaken = 0;
+        let nonVegNotTaken = 0;
+
+        slots.forEach((s, idx) => {
+          const choice = s[selectedMealType];
+          if (choice !== "None" && isMealEnabled(selectedDayId, selectedMealType, config)) {
+            const diet = choice === "Veg" ? "veg" : "nonVeg";
+            if (isDietaryEnabled(selectedDayId, selectedMealType, diet, config)) {
+              if (!taken[idx]?.[selectedMealType]) {
+                if (choice === "Veg") vegNotTaken++;
+                else nonVegNotTaken++;
+              }
+            }
+          }
+        });
+
+        return {
+          id: sub.id,
+          block: sub.block,
+          flat: sub.flat,
+          veg: vegNotTaken,
+          nonVeg: nonVegNotTaken,
+          count: vegNotTaken + nonVegNotTaken,
+        };
+      })
+      .filter((item) => item.count > 0)
+      .sort((a, b) => a.block.localeCompare(b.block, undefined, { numeric: true }) || a.flat.localeCompare(b.flat, undefined, { numeric: true }));
+  }, [subscriptions, reportType, selectedDayId, selectedMealType, config]);
+
   if (activeDays.length === 0) {
     return (
       <View style={styles.root}>
@@ -336,13 +388,22 @@ export function ReportScreen({
     <View style={styles.root}>
       <StatusBar style="light" />
       <View style={styles.header}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <View
+          style={{
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
           <BackButton onPress={onBack} />
+          <LogoutButton onLogout={onLogout} />
+        </View>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Text style={styles.eyebrow}>{UI_TEXT.operations}</Text>
           <Pressable onPress={handleShare} style={{ padding: 8 }}>
             <Ionicons name="share-social-outline" size={24} color="#f0c977" />
           </Pressable>
         </View>
-        <Text style={styles.eyebrow}>{UI_TEXT.operations}</Text>
         <Text style={styles.title}>{UI_TEXT.reportTitle}</Text>
         <Text style={styles.subtitle}>{UI_TEXT.reportSubtitle}</Text>
       </View>
@@ -388,6 +449,19 @@ export function ReportScreen({
           </Text>
         </Pressable>
         <Pressable
+          onPress={() => setReportType("notTaken")}
+          style={[styles.selector, reportType === "notTaken" && styles.selectorOn]}
+        >
+          <Text
+            style={[
+              styles.selectorText,
+              reportType === "notTaken" && styles.selectorTextOn,
+            ]}
+          >
+            {UI_TEXT.notTakenReport}
+          </Text>
+        </Pressable>
+        <Pressable
           onPress={() => setReportType("flat")}
           style={[styles.selector, reportType === "flat" && styles.selectorOn]}
         >
@@ -425,7 +499,7 @@ export function ReportScreen({
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        {reportType === "single" && (
+        {(reportType === "single" || reportType === "notTaken") && (
           <View style={[styles.peoplePanel, { marginBottom: 16, padding: 12 }]}>
             <Text style={[styles.selectorLabel, { marginTop: 0 }]}>Select Day:</Text>
             <View style={[styles.selectorRow, { marginBottom: 12 }]}>
@@ -474,11 +548,45 @@ export function ReportScreen({
               {reportType === "day" && UI_TEXT.dayWiseReport}
               {reportType === "meal" && UI_TEXT.mealWiseReport}
               {reportType === "single" && `${getDayLabel(selectedDayId, config)} - ${selectedMealType.charAt(0).toUpperCase() + selectedMealType.slice(1)}`}
+              {reportType === "notTaken" && `${UI_TEXT.notTakenReport} (${getDayLabel(selectedDayId, config)} - ${selectedMealType.charAt(0).toUpperCase() + selectedMealType.slice(1)})`}
               {reportType === "flat" && UI_TEXT.flatWiseReport}
               {reportType === "payment" && UI_TEXT.paymentReport}
             </Text>
             <Text style={[styles.subtitle, { color: '#675f55' }]}>{new Date().toLocaleDateString()} Summary</Text>
           </View>
+
+          {reportType === "notTaken" && (
+            <View style={{ gap: 12 }}>
+              {notTakenData.length === 0 ? (
+                <Text style={styles.emptyState}>All members have taken this meal or no meals selected.</Text>
+              ) : (
+                notTakenData.map((item) => {
+                  const parts = [];
+                  const vegEnabled = isDietaryEnabled(selectedDayId, selectedMealType, "veg", config);
+                  const nonVegEnabled = isDietaryEnabled(selectedDayId, selectedMealType, "nonVeg", config);
+
+                  if (vegEnabled && item.veg > 0) parts.push(`${item.veg} Veg`);
+                  if (nonVegEnabled && item.nonVeg > 0) parts.push(`${item.nonVeg} Non-Veg`);
+
+                  return (
+                    <View key={item.id} style={styles.dashboardCard}>
+                      <View style={styles.dashboardCardTop}>
+                        <Text style={styles.dashboardDay}>{item.block}-{item.flat}</Text>
+                        <View style={{ alignItems: 'flex-end' }}>
+                          <Text style={[styles.amount, { color: "#c35b3b" }]}>
+                            {item.count} {item.count === 1 ? UI_TEXT.personSuffix : UI_TEXT.personsSuffix} Not Taken
+                          </Text>
+                          <Text style={[styles.helper, { color: "#c35b3b", fontSize: 11 }]}>
+                            ({parts.join(", ")})
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  );
+                })
+              )}
+            </View>
+          )}
 
           {reportType === "single" && (
             <View style={{ gap: 12 }}>
@@ -566,10 +674,20 @@ export function ReportScreen({
                         </View>
                       </View>
 
-                      {parcelEnabled && (
+                      {parcelEnabled && (m.vegParcel + m.nonVegParcel) > 0 && (
                         <View style={styles.dayRow}>
                           <Text style={styles.dayName}>Parcels Needed</Text>
-                          <Text style={styles.amount}>{m.parcel} P</Text>
+                          <View style={{ alignItems: 'flex-end' }}>
+                            <Text style={styles.amount}>{m.vegParcel + m.nonVegParcel} P</Text>
+                            {(() => {
+                              const p = [];
+                              if (vegEnabled && m.vegParcel > 0) p.push(`${m.vegParcel} Veg`);
+                              if (nonVegEnabled && m.nonVegParcel > 0) p.push(`${m.nonVegParcel} Non-Veg`);
+                              return p.length > 0 ? (
+                                <Text style={[styles.helper, { fontSize: 11 }]}>({p.join(", ")})</Text>
+                              ) : null;
+                            })()}
+                          </View>
                         </View>
                       )}
                     </View>
@@ -691,10 +809,20 @@ export function ReportScreen({
                         </View>
                       </View>
 
-                      {hasParcelSupport && (
+                      {hasParcelSupport && (item.vegParcel + item.nonVegParcel) > 0 && (
                         <View style={styles.dayRow}>
                           <Text style={styles.dayName}>Total Parcels</Text>
-                          <Text style={styles.amount}>{item.parcel} P</Text>
+                          <View style={{ alignItems: 'flex-end' }}>
+                            <Text style={styles.amount}>{item.vegParcel + item.nonVegParcel} P</Text>
+                            {(() => {
+                              const p = [];
+                              if (vegEnabled && item.vegParcel > 0) p.push(`${item.vegParcel} Veg`);
+                              if (nonVegEnabled && item.nonVegParcel > 0) p.push(`${item.nonVegParcel} Non-Veg`);
+                              return p.length > 0 ? (
+                                <Text style={[styles.helper, { fontSize: 11 }]}>({p.join(", ")})</Text>
+                              ) : null;
+                            })()}
+                          </View>
                         </View>
                       )}
                     </View>
@@ -777,9 +905,15 @@ export function ReportScreen({
                                 <Text style={[styles.helper, { color: '#c35b3b', paddingLeft: 8 }]}>└ Not Taken: {tNonVeg - tTakenNonVeg} (Res:{m.nonVeg - m.nonVegTaken}, Guest:{m.guestNonVeg - m.guestNonVegTaken})</Text>
                               </View>
                             )}
-                            {parcelEnabled && (
+                            {parcelEnabled && (m.vegParcel + m.nonVegParcel) > 0 && (
                               <Text style={[styles.helper, { fontWeight: '700' }]}>
-                                Parcels: {m.parcel} P
+                                {(() => {
+                                   const p = [];
+                                   if (vegEnabled && m.vegParcel > 0) p.push(`${m.vegParcel} Veg`);
+                                   if (nonVegEnabled && m.nonVegParcel > 0) p.push(`${m.nonVegParcel} Non-Veg`);
+                                   const split = p.length > 0 ? ` (${p.join(", ")})` : "";
+                                   return `Parcels: ${m.vegParcel + m.nonVegParcel} P${split}`;
+                                })()}
                               </Text>
                             )}
                             <View style={{ borderTopWidth: 1, borderTopColor: '#eee', paddingTop: 4 }}>
@@ -832,7 +966,8 @@ export function ReportScreen({
                       </Text>
                       <View style={{ gap: 6, marginTop: 4 }}>
                         {ds.meals.map((m) => {
-                          const parts = [];
+                          const mealParts = [];
+                          const parcelParts = [];
                           const vegEnabled = isDietaryEnabled(ds.day, m.type, "veg", config);
                           const nonVegEnabled = isDietaryEnabled(
                             ds.day,
@@ -840,20 +975,27 @@ export function ReportScreen({
                             "nonVeg",
                             config
                           );
+                          const parcelEnabled = isParcelEnabled(ds.day, m.type, config);
 
                           if (vegEnabled && m.veg > 0) {
-                            parts.push(
+                            mealParts.push(
                               `Veg: ${m.vegTaken} Taken, ${
                                 m.veg - m.vegTaken
                               } Not Taken`
                             );
+                            if (parcelEnabled && m.vegParcel > 0) {
+                              parcelParts.push(`${m.vegParcel} Veg`);
+                            }
                           }
                           if (nonVegEnabled && m.nonVeg > 0) {
-                            parts.push(
+                            mealParts.push(
                               `Non-Veg: ${m.nonVegTaken} Taken, ${
                                 m.nonVeg - m.nonVegTaken
                               } Not Taken`
                             );
+                            if (parcelEnabled && m.nonVegParcel > 0) {
+                              parcelParts.push(`${m.nonVegParcel} Non-Veg`);
+                            }
                           }
 
                           return (
@@ -875,8 +1017,21 @@ export function ReportScreen({
                                   paddingLeft: 4,
                                 }}
                               >
-                                {parts.join(" | ")}
+                                {mealParts.join(" | ")}
                               </Text>
+                              {parcelParts.length > 0 && (
+                                <Text
+                                  style={{
+                                    fontSize: 11,
+                                    color: "#a65b3e",
+                                    fontWeight: '700',
+                                    paddingLeft: 4,
+                                    marginTop: 2
+                                  }}
+                                >
+                                  Parcels: {m.vegParcel + m.nonVegParcel} P ({parcelParts.join(", ")})
+                                </Text>
+                              )}
                             </View>
                           );
                         })}

@@ -27,6 +27,7 @@ import {
   isMealEnabled,
   isDietaryEnabled,
   isParcelEnabled,
+  isVegOnlyDay,
 } from "../constants";
 import {
   Subscription,
@@ -39,6 +40,7 @@ import {
 import { ActionLabel } from "../components/common/ActionLabel";
 import { Dropdown } from "../components/common/Dropdown";
 import { BackButton } from "../components/common/BackButton";
+import { LogoutButton } from "../components/common/LogoutButton";
 import { AlertButton } from "../components/common/CustomAlert";
 
 export function SubscriptionForm({
@@ -49,6 +51,7 @@ export function SubscriptionForm({
   onSave,
   onSaveQr,
   onDelete,
+  onLogout,
   lockIdentity = false,
   showAlert,
 }: {
@@ -59,6 +62,7 @@ export function SubscriptionForm({
   onSave: (value: Subscription) => void;
   onSaveQr?: (value: Subscription) => void;
   onDelete?: () => void;
+  onLogout: () => void;
   lockIdentity?: boolean;
   showAlert: (title: string, message: string, buttons?: AlertButton[]) => void;
 }) {
@@ -110,11 +114,14 @@ export function SubscriptionForm({
    */
   const setMealParcel = (slot: "breakfast" | "lunch" | "dinner", enabled: boolean) => {
     const parcelKey = `${slot}Parcel` as keyof MealSlot;
-    set("mealSlots", {
-      ...form.mealSlots,
-      [selectedDay]: form.mealSlots[selectedDay].map((item, index) =>
-        index === selectedPerson ? { ...item, [parcelKey]: enabled } : item
-      ),
+    setForm({
+      ...form,
+      mealSlots: {
+        ...form.mealSlots,
+        [selectedDay]: form.mealSlots[selectedDay].map((item, index) =>
+          index === selectedPerson ? { ...item, [parcelKey]: enabled } : item
+        ),
+      },
     });
   };
 
@@ -136,7 +143,16 @@ export function SubscriptionForm({
     >
       <StatusBar style="light" />
       <View style={styles.header}>
-        <BackButton onPress={onCancel} />
+        <View
+          style={{
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <BackButton onPress={onCancel} />
+          <LogoutButton onLogout={onLogout} />
+        </View>
         <Text style={styles.eyebrow}>
           {lockIdentity ? UI_TEXT.editSubscription : UI_TEXT.newSubscription}
         </Text>
@@ -247,7 +263,7 @@ export function SubscriptionForm({
           style={[styles.input, !isAdmin && { backgroundColor: "#eee" }]}
         />
 
-        {/* Dynamic Matrix Selectors */}
+        {/* Selection Matrix Selectors */}
         <Text style={styles.label}>{UI_TEXT.foodChoice}</Text>
         <Text style={styles.helper}>{UI_TEXT.foodChoiceInstruction}</Text>
 
@@ -297,154 +313,187 @@ export function SubscriptionForm({
           ))}
         </View>
 
-        {(["breakfast", "lunch", "dinner"] as const)
-          .filter((slot) => isMealEnabled(selectedDay, slot, config))
-          .map((slot) => {
-            const label =
-              slot === "breakfast"
-                ? UI_TEXT.breakfastTitle
-                : slot === "lunch"
-                ? UI_TEXT.lunchTitle
-                : UI_TEXT.dinnerTitle;
-            const currentSlotChoice =
-              form.mealSlots[selectedDay]?.[selectedPerson]?.[slot] || "None";
-            const isParcel =
-              form.mealSlots[selectedDay]?.[selectedPerson]?.[
-                `${slot}Parcel` as keyof MealSlot
-              ];
+        {/* SECTION 1: Meal Plan */}
+        <View style={{ marginTop: 12 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <Text style={[styles.currentChoice, { marginTop: 0 }]}>{UI_TEXT.foodPlan}</Text>
+            <Text style={[styles.helper, { marginBottom: 0, fontSize: 11 }]}>V=Veg, N=Non-Veg, -=None</Text>
+          </View>
 
-            return (
-              <View key={slot} style={{ marginBottom: 16 }}>
-                <Text style={styles.currentChoice}>{label}</Text>
-                <View style={styles.choiceRow}>
-                  {(["None", "Veg", "Non-veg"] as MealChoice[])
-                    .filter((c) => {
-                      if (c === "None") return true;
-                      return isDietaryEnabled(
-                        selectedDay,
-                        slot,
-                        c === "Veg" ? "veg" : "nonVeg",
-                        config
-                      );
-                    })
-                    .map((choice) => {
-                      const isSelected = currentSlotChoice === choice;
-                      return (
-                        <Pressable
-                          key={choice}
-                          onPress={() =>
-                            isAdmin && setMealSlotChoice(slot, choice)
-                          }
-                          style={[
-                            styles.choice,
-                            choice === "None"
-                              ? styles.noneChoice
-                              : choice === "Veg"
-                              ? styles.vegChoice
-                              : styles.nonVegChoice,
-                            !isSelected &&
-                              choice !== "None" &&
-                              styles.choiceUnselected,
-                            !isAdmin && { opacity: isSelected ? 1 : 0.3 },
-                          ]}
-                        >
-                          <Text
-                            style={[
-                              styles.choiceText,
-                              isSelected &&
-                                choice !== "None" &&
-                                styles.choiceTextOn,
-                            ]}
-                          >
-                            {choice === "Veg"
-                              ? UI_TEXT.vegLabel
-                              : choice === "Non-veg"
-                              ? UI_TEXT.nonVegLabel
-                              : UI_TEXT.none}
-                          </Text>
-                        </Pressable>
-                      );
-                    })}
-                </View>
-
-                {isParcelEnabled(selectedDay, slot, config) &&
-                  currentSlotChoice !== "None" && (
-                    <View style={[styles.choiceRow, { marginTop: 8 }]}>
-                      <Pressable
-                        onPress={() => isAdmin && setMealParcel(slot, !isParcel)}
-                        style={[
-                          styles.choice,
-                          isParcel
-                            ? currentSlotChoice === "Veg"
-                              ? styles.vegChoice
-                              : styles.nonVegChoice
-                            : styles.noneChoice,
-                          !isAdmin && { opacity: isParcel ? 1 : 0.3 },
-                          { flex: 0, paddingHorizontal: 20 },
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.choiceText,
-                            isParcel && styles.choiceTextOn,
-                          ]}
-                        >
-                          {UI_TEXT.parcelLabel}
-                        </Text>
-                      </Pressable>
-                    </View>
-                  )}
-              </View>
-            );
-          })}
-
-        <Text style={styles.currentChoice}>{UI_TEXT.foodTakenPerMeal}</Text>
-        <View style={styles.choiceRow}>
           {(["breakfast", "lunch", "dinner"] as const)
             .filter((slot) => isMealEnabled(selectedDay, slot, config))
             .map((slot) => {
-              const choice =
-                form.mealSlots[selectedDay]?.[selectedPerson]?.[slot];
-              if (!choice || choice === "None") return null;
-
-              const dietKey = choice === "Veg" ? "veg" : "nonVeg";
-              if (!isDietaryEnabled(selectedDay, slot, dietKey, config))
-                return null;
-
-              const isTaken =
-                form.takenByPerson[selectedDay]?.[selectedPerson]?.[slot];
-              const slotColorStyle =
-                choice === "Veg"
-                  ? styles.vegChoice
-                  : choice === "Non-veg"
-                  ? styles.nonVegChoice
-                  : styles.slotSelected;
-
-              const abbr =
+              const label =
                 slot === "breakfast"
-                  ? UI_TEXT.breakfastAbbr
+                  ? UI_TEXT.breakfastTitle
                   : slot === "lunch"
-                  ? UI_TEXT.lunchAbbr
-                  : UI_TEXT.dinnerAbbr;
+                  ? UI_TEXT.lunchTitle
+                  : UI_TEXT.dinnerTitle;
+              const currentSlotChoice =
+                form.mealSlots[selectedDay]?.[selectedPerson]?.[slot] || "None";
+              const isVegOnly = isVegOnlyDay(selectedDay, config);
+
               return (
-                <Pressable
-                  key={slot}
-                  onPress={() => setTakenChoice(slot, !isTaken)}
-                  style={[
-                    styles.choice,
-                    isTaken ? slotColorStyle : styles.noneChoice,
-                  ]}
-                >
-                  <Text
-                    style={[styles.choiceText, isTaken && styles.choiceTextOn]}
-                  >
-                    {abbr}
-                    {UI_TEXT.takenLabel}
-                  </Text>
-                </Pressable>
+                <View key={slot} style={{ marginBottom: 12 }}>
+                  <Text style={[styles.label, { marginTop: 0, marginBottom: 6, fontSize: 12, color: '#666' }]}>{label}</Text>
+                  <View style={styles.choiceRow}>
+                    {/* Option: None */}
+                    <Pressable
+                      onPress={() => isAdmin && setMealSlotChoice(slot, "None")}
+                      style={[
+                        styles.choice,
+                        currentSlotChoice === "None" ? styles.slotSelected : styles.noneChoice,
+                        !isAdmin && { opacity: currentSlotChoice === "None" ? 1 : 0.3 },
+                      ]}
+                    >
+                      <Text style={[styles.choiceText, currentSlotChoice === "None" && styles.choiceTextOn]}>
+                        {UI_TEXT.emptyAbbr}
+                      </Text>
+                    </Pressable>
+
+                    {/* Option: Veg (Always shown if enabled in settings) */}
+                    {isDietaryEnabled(selectedDay, slot, "veg", config) && (
+                      <Pressable
+                        onPress={() => isAdmin && setMealSlotChoice(slot, "Veg")}
+                        style={[
+                          styles.choice,
+                          currentSlotChoice === "Veg" ? styles.vegChoice : styles.noneChoice,
+                          !isAdmin && { opacity: currentSlotChoice === "Veg" ? 1 : 0.3 },
+                        ]}
+                      >
+                        <Text style={[styles.choiceText, currentSlotChoice === "Veg" && styles.choiceTextOn]}>
+                          {UI_TEXT.vegAbbr}
+                        </Text>
+                      </Pressable>
+                    )}
+
+                    {/* Option: Non-veg (Hidden if Veg Only day) */}
+                    {!isVegOnly && isDietaryEnabled(selectedDay, slot, "nonVeg", config) && (
+                      <Pressable
+                        onPress={() => isAdmin && setMealSlotChoice(slot, "Non-veg")}
+                        style={[
+                          styles.choice,
+                          currentSlotChoice === "Non-veg" ? styles.nonVegChoice : styles.noneChoice,
+                          !isAdmin && { opacity: currentSlotChoice === "Non-veg" ? 1 : 0.3 },
+                        ]}
+                      >
+                        <Text style={[styles.choiceText, currentSlotChoice === "Non-veg" && styles.choiceTextOn]}>
+                          {UI_TEXT.nonVegAbbr}
+                        </Text>
+                      </Pressable>
+                    )}
+                  </View>
+                </View>
               );
             })}
         </View>
+
+        {/* SECTION 2: Parcels */}
+        {(() => {
+          const parcelSlots = (["breakfast", "lunch", "dinner"] as const).filter(
+            (slot) => isMealEnabled(selectedDay, slot, config) && isParcelEnabled(selectedDay, slot, config)
+          );
+
+          if (parcelSlots.length === 0) return null;
+
+          return (
+            <View style={{ marginTop: 8 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <Text style={[styles.currentChoice, { marginTop: 0 }]}>Parcels</Text>
+                <Text style={[styles.helper, { marginBottom: 0, fontSize: 11 }]}>P=Parcel, -=None</Text>
+              </View>
+
+              <View style={styles.choiceRow}>
+                {parcelSlots.map((slot) => {
+                  const currentChoice = form.mealSlots[selectedDay]?.[selectedPerson]?.[slot] || "None";
+                  const isParcel = !!form.mealSlots[selectedDay]?.[selectedPerson]?.[`${slot}Parcel` as keyof MealSlot];
+                  const abbr = slot === "breakfast" ? "B" : slot === "lunch" ? "L" : "D";
+
+                  return (
+                    <Pressable
+                      key={slot}
+                      disabled={currentChoice === "None"}
+                      onPress={() => setMealParcel(slot, !isParcel)}
+                      style={[
+                        styles.choice,
+                        isParcel
+                          ? (currentChoice === "Non-veg" ? styles.nonVegChoice : styles.vegChoice)
+                          : styles.noneChoice,
+                        currentChoice === "None" && { opacity: 0.2 },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.choiceText,
+                          isParcel && styles.choiceTextOn,
+                        ]}
+                      >
+                        {abbr}{isParcel ? "P" : "-"}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          );
+        })()}
+
+        {/* SECTION 3: Food Collection (Only shown in Edit mode) */}
+        {lockIdentity && (["breakfast", "lunch", "dinner"] as const).some(s => {
+          const choice = form.mealSlots[selectedDay]?.[selectedPerson]?.[s];
+          return choice && choice !== "None" && isDietaryEnabled(selectedDay, s, choice === "Veg" ? "veg" : "nonVeg", config);
+        }) && (
+          <View style={{ marginTop: 8 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <Text style={[styles.currentChoice, { marginTop: 0 }]}>{UI_TEXT.foodTakenByPerson}</Text>
+              <Text style={[styles.helper, { marginBottom: 0, fontSize: 11 }]}>B=Breakfast, L=Lunch, D=Dinner</Text>
+            </View>
+            <View style={styles.choiceRow}>
+              {(["breakfast", "lunch", "dinner"] as const)
+                .filter((slot) => isMealEnabled(selectedDay, slot, config))
+                .map((slot) => {
+                  const choice =
+                    form.mealSlots[selectedDay]?.[selectedPerson]?.[slot];
+                  if (!choice || choice === "None") return null;
+
+                  const dietKey = choice === "Veg" ? "veg" : "nonVeg";
+                  if (!isDietaryEnabled(selectedDay, slot, dietKey, config))
+                    return null;
+
+                  const isTaken =
+                    !!form.takenByPerson[selectedDay]?.[selectedPerson]?.[slot];
+                  const slotColorStyle =
+                    choice === "Veg"
+                      ? styles.vegChoice
+                      : styles.nonVegChoice;
+
+                  const abbr =
+                    slot === "breakfast"
+                      ? UI_TEXT.breakfastAbbr
+                      : slot === "lunch"
+                      ? UI_TEXT.lunchAbbr
+                      : UI_TEXT.dinnerAbbr;
+                  return (
+                    <Pressable
+                      key={slot}
+                      onPress={() => setTakenChoice(slot, !isTaken)}
+                      style={[
+                        styles.choice,
+                        isTaken ? slotColorStyle : styles.noneChoice,
+                      ]}
+                    >
+                      <Text
+                        style={[styles.choiceText, isTaken && styles.choiceTextOn]}
+                      >
+                        {abbr}
+                        {UI_TEXT.takenLabel}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+            </View>
+          </View>
+        )}
 
         {/* Financials */}
         <View style={styles.row}>

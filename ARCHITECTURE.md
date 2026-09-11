@@ -19,16 +19,17 @@ The project follows a **Modular Layered Architecture**:
 ### 📂 Presentation Layer (`src/screens`, `src/components`)
 - **Screens**: Discrete full-page views.
     - `LoginScreen`: Gateway for role-based session initialization.
-    - `DashboardScreen`: Aggregated kitchen analytics and real-time guest taken tracking.
-    - `SubscriptionForm`: CRUD interface with mandatory Flat No validation, live preview, and granular meal planning (None/Veg/Non-Veg per slot).
-    - `SettingsScreen`: Administrative interface for managing the database-driven festival configuration with strict enforcement of visibility rules.
-    - `ReportScreen`: High-precision analytics engine with multiple reporting modes (Day, Meal, Flat, Payment, Single Meal) and PNG export, respecting active configurations.
+    - `DashboardScreen`: Aggregated kitchen analytics with adaptive layouts for single/dual dietary options and real-time guest management.
+    - `SubscriptionForm`: CRUD interface with mandatory Flat No validation, live preview, and role-based parcel control.
+    - `SettingsScreen`: Administrative interface for managing the database-driven festival configuration, including "Veg only" mode and granular meal rules.
+    - `ReportScreen`: High-precision analytics engine with multiple reporting modes (Day, Meal, Flat, Payment, Not Taken) and config-aware data filtering.
     - `MenuEditorScreen`: Administrative tool for global menu configuration.
     - `ViewMenuScreen`: Read-only feast visibility for operational staff.
     - `ScannerScreen`: Optimized QR scanning interface with centered target alignment.
 - **Components**: Atomic and reusable UI units.
     - `CustomAlert`: A centralized, themed replacement for system dialogs.
     - `Metrics`: Specialized data visualization tiles for dashboard and financial tracking.
+    - `LogoutButton`: A global session termination component available in every operational header.
     - `ActionLabels`: Icon+Text combinations used consistently for interactive elements.
 - **Navigation**: Custom state-based navigation in `App.tsx`, synchronized with Android hardware back-button logic.
 
@@ -52,7 +53,7 @@ The project follows a **Modular Layered Architecture**:
 ### Internal RBAC (Role-Based Access Control)
 The application implements two access levels:
 - **Admin**: Full read/write/delete privileges on all modules, including **Settings**.
-- **Vendor**: Operational access. Can mark food as taken for residents, update Guest Taken counts, and view **Reporting**. Sensitive CRUD actions and global configurations are hidden.
+- **Vendor**: Operational access. Can mark food as taken for residents, update Guest collections (Taken/Demand splits), toggle Parcel options, and view **Reporting**. Sensitive CRUD actions for residents and global settings are hidden.
 
 ### Security Implementation
 - **Field-Level Locking**: UI components evaluate the `userRole` to toggle `editable` properties or adjust opacity on sensitive interactive elements.
@@ -68,13 +69,14 @@ Represents a flat's food registration.
 
 ### `ConfigDay`
 The schema for dynamic festival configuration.
+- `vegOnly`: Global flag to assume "Veg" for all meals on a specific day.
 - `meals`: `{ breakfast: boolean, lunch: boolean, dinner: boolean }`
 - `dietary`: `{ veg: boolean, nonVeg: boolean }`
 - `parcels`: `{ breakfast: boolean, lunch: boolean, dinner: boolean }`
 
 ## 6. Performance & Synchronization Patterns
 - **Transition-Based Data Sync**: To eliminate reliance on stale or cached data, the application performs a comprehensive backend fetch on every screen transition. A global loading state is triggered only during the initial home page load after login; subsequent transitions perform silent background updates to ensure a smooth, uninterrupted user experience while maintaining data integrity.
-- **Periodic Background Refresh**: To handle long-running sessions on a single screen (e.g., the kitchen dashboard), a background interval triggers a silent sync every 2 minutes. This ensures that metrics like "Taken" counts and "Guest Demand" are always reflective of the latest backend state without requiring manual page reloads.
+- **Periodic Background Refresh**: To handle long-running sessions on a single screen (e.g., the kitchen dashboard), a background interval triggers a silent sync every 10 seconds. This ensures that metrics like "Taken" counts and "Guest Demand" are always reflective of the latest backend state without requiring manual page reloads.
 - **Windowed Rendering**: `FlatList` optimization to handle high volumes of flat records (1000+).
 - **Memoized Selectors**: Reports and Dashboard metrics use `useMemo` with deduplication logic to ensure high accuracy and zero UI lag during real-time data sync.
 - **CaptureRef**: Asynchronous PNG generation for reports, allowing admins to share complex data views as static images.

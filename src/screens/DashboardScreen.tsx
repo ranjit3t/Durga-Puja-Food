@@ -22,6 +22,7 @@ import {
 } from "../constants";
 import { FoodMenu, MealMenu, UserRole, ConfigDay } from "../types";
 import { BackButton } from "../components/common/BackButton";
+import { LogoutButton } from "../components/common/LogoutButton";
 import { MealSummaryInline } from "../components/menu/MealSummaryInline";
 import { Metric } from "../components/common/Metric";
 import { EditableMetric } from "../components/common/EditableMetric";
@@ -106,6 +107,10 @@ const DashboardMealSection = memo(
     const nonVegItems = menu?.nonVeg || [];
     const isAdmin = userRole === "admin";
 
+    const isVegEnabled = isDietaryEnabled(day, type, "veg", config);
+    const isNonVegEnabled = isDietaryEnabled(day, type, "nonVeg", config);
+    const isBothEnabled = isVegEnabled && isNonVegEnabled;
+
     const totalVegTaken = flatVegTaken + guestVegTaken;
     const totalNonVegTaken = flatNonVegTaken + guestNonVegTaken;
     const totalMealTaken = totalVegTaken + totalNonVegTaken;
@@ -122,7 +127,7 @@ const DashboardMealSection = memo(
         {/* Menu Quick-View */}
         {(vegItems.length > 0 || nonVegItems.length > 0) && (
           <View style={{ gap: 8, marginBottom: 12 }}>
-            {isDietaryEnabled(day, type, "veg", config) && vegItems.length > 0 && (
+            {isVegEnabled && vegItems.length > 0 && (
               <View style={[styles.menuBox, { marginBottom: 0, marginTop: 0 }]}>
                 <MealSummaryInline
                   label={UI_TEXT.veg}
@@ -133,7 +138,7 @@ const DashboardMealSection = memo(
                 />
               </View>
             )}
-            {isDietaryEnabled(day, type, "nonVeg", config) &&
+            {isNonVegEnabled &&
               nonVegItems.length > 0 && (
                 <View
                   style={[styles.menuBox, { marginBottom: 0, marginTop: 0 }]}
@@ -153,12 +158,37 @@ const DashboardMealSection = memo(
         {/* Aggregated Demand Metrics */}
         <View style={styles.metricGrid}>
           <Metric icon="people-outline" label={UI_TEXT.total} value={total} />
-          {isDietaryEnabled(day, type, "veg", config) && (
-            <Metric icon="leaf-outline" label={labels.veg} value={veg} />
+
+          {/* Guest Total: Editable by Admin/Vendor if single-option, else a metric if both enabled */}
+          {isBothEnabled ? (
+            <Metric
+              icon="people-circle-outline"
+              label={UI_TEXT.guestTotal}
+              value={guestVeg + guestNonVeg}
+            />
+          ) : (
+            <EditableMetric
+              icon="people-circle-outline"
+              label={UI_TEXT.guestTotal}
+              value={guestVeg + guestNonVeg}
+              onSave={(val) =>
+                onUpdateGuest(day, type, isVegEnabled ? "guestVeg" : "guestNonVeg", val)
+              }
+              validate={(val) =>
+                val >= (guestVegTaken + guestNonVegTaken) || UI_TEXT.guestTotalError
+              }
+              showAlert={showAlert}
+            />
           )}
-          {isDietaryEnabled(day, type, "nonVeg", config) && (
-            <Metric icon="flame-outline" label={labels.nonVeg} value={nonVeg} />
+
+          {/* Detailed Demand: Only show Veg/Non-Veg splits if BOTH are enabled */}
+          {isBothEnabled && (
+            <>
+              <Metric icon="leaf-outline" label={labels.veg} value={veg} />
+              <Metric icon="flame-outline" label={labels.nonVeg} value={nonVeg} />
+            </>
           )}
+
           {isParcelEnabled(day, type, config) && (
             <>
               <Metric icon="cube-outline" label={labels.parcel} value={parcel} />
@@ -170,95 +200,98 @@ const DashboardMealSection = memo(
             </>
           )}
 
-          {/* New Metrics: Veg/Non-Veg Taken (Total) */}
-          {isDietaryEnabled(day, type, "veg", config) && (
-            <Metric
-              icon="checkmark-done-outline"
-              label={labels.vegTaken}
-              value={totalVegTaken}
-            />
-          )}
-          {isDietaryEnabled(day, type, "nonVeg", config) && (
-            <Metric
-              icon="checkmark-done-outline"
-              label={labels.nonVegTaken}
-              value={totalNonVegTaken}
-            />
-          )}
           <Metric
             icon="checkmark-done-outline"
             label={UI_TEXT.total + " " + UI_TEXT.taken}
             value={totalMealTaken}
           />
 
-          {/* Guest Management (Editable by Admin) */}
-          {isAdmin ? (
+          {/* Detailed View: Only show Veg/Non-Veg splits if BOTH are enabled */}
+          {isBothEnabled && (
             <>
-              {isDietaryEnabled(day, type, "veg", config) && (
-                <EditableMetric
-                  icon="leaf-outline"
-                  label={labels.guestVeg}
-                  value={guestVeg}
-                  onSave={(val) => onUpdateGuest(day, type, "guestVeg", val)}
-                  showAlert={showAlert}
-                />
-              )}
-              {isDietaryEnabled(day, type, "nonVeg", config) && (
-                <EditableMetric
-                  icon="flame-outline"
-                  label={labels.guestNonVeg}
-                  value={guestNonVeg}
-                  onSave={(val) => onUpdateGuest(day, type, "guestNonVeg", val)}
-                  showAlert={showAlert}
-                />
-              )}
-            </>
-          ) : (
-            <>
-              {isDietaryEnabled(day, type, "veg", config) && (
-                <Metric
-                  icon="leaf-outline"
-                  label={labels.guestVeg}
-                  value={guestVeg}
-                />
-              )}
-              {isDietaryEnabled(day, type, "nonVeg", config) && (
-                <Metric
-                  icon="flame-outline"
-                  label={labels.guestNonVeg}
-                  value={guestNonVeg}
-                />
-              )}
+              {/* Resident Demand Splits */}
+              <Metric icon="leaf-outline" label={labels.veg} value={veg} />
+              <Metric icon="flame-outline" label={labels.nonVeg} value={nonVeg} />
+
+              {/* Collection Status Splits */}
+              <Metric
+                icon="checkmark-done-outline"
+                label={labels.vegTaken}
+                value={totalVegTaken}
+              />
+              <Metric
+                icon="checkmark-done-outline"
+                label={labels.nonVegTaken}
+                value={totalNonVegTaken}
+              />
+
+              {/* Guest Demand Management Splits (Always editable by Admin/Vendor) */}
+              <EditableMetric
+                icon="leaf-outline"
+                label={labels.guestVeg}
+                value={guestVeg}
+                onSave={(val) => onUpdateGuest(day, type, "guestVeg", val)}
+                validate={(val) =>
+                  val >= guestVegTaken || UI_TEXT.guestVegTotalError
+                }
+                showAlert={showAlert}
+              />
+              <EditableMetric
+                icon="flame-outline"
+                label={labels.guestNonVeg}
+                value={guestNonVeg}
+                onSave={(val) => onUpdateGuest(day, type, "guestNonVeg", val)}
+                validate={(val) =>
+                  val >= guestNonVegTaken || UI_TEXT.guestNonVegTotalError
+                }
+                showAlert={showAlert}
+              />
+
+              {/* Guest Collection splits */}
+              <EditableMetric
+                icon="checkbox-outline"
+                label={labels.guestVegTaken}
+                value={guestVegTaken}
+                onSave={(val) => onUpdateGuest(day, type, "guestVegTaken", val)}
+                validate={(val) => val <= guestVeg || UI_TEXT.guestTakenError}
+                showAlert={showAlert}
+              />
+              <EditableMetric
+                icon="checkbox-outline"
+                label={labels.guestNonVegTaken}
+                value={guestNonVegTaken}
+                onSave={(val) => onUpdateGuest(day, type, "guestNonVegTaken", val)}
+                validate={(val) => val <= guestNonVeg || UI_TEXT.guestTakenError}
+                showAlert={showAlert}
+              />
+              <Metric
+                icon="people-circle-outline"
+                label={UI_TEXT.guestTaken}
+                value={guestVegTaken + guestNonVegTaken}
+              />
             </>
           )}
 
-          {/* Guest Taken Management (Editable by Admin/Vendor) */}
-          {isDietaryEnabled(day, type, "veg", config) && (
+          {/* Guest Collection Tracking for Single Option (Always editable by Admin/Vendor) */}
+          {!isBothEnabled && (
             <EditableMetric
               icon="checkbox-outline"
-              label={labels.guestVegTaken}
-              value={guestVegTaken}
-              onSave={(val) => onUpdateGuest(day, type, "guestVegTaken", val)}
-              validate={(val) => val <= guestVeg || UI_TEXT.guestTakenError}
+              label={UI_TEXT.guestTaken}
+              value={guestVegTaken + guestNonVegTaken}
+              onSave={(val) =>
+                onUpdateGuest(
+                  day,
+                  type,
+                  isVegEnabled ? "guestVegTaken" : "guestNonVegTaken",
+                  val
+                )
+              }
+              validate={(val) =>
+                val <= (guestVeg + guestNonVeg) || UI_TEXT.guestTakenError
+              }
               showAlert={showAlert}
             />
           )}
-          {isDietaryEnabled(day, type, "nonVeg", config) && (
-            <EditableMetric
-              icon="checkbox-outline"
-              label={labels.guestNonVegTaken}
-              value={guestNonVegTaken}
-              onSave={(val) => onUpdateGuest(day, type, "guestNonVegTaken", val)}
-              validate={(val) => val <= guestNonVeg || UI_TEXT.guestTakenError}
-              showAlert={showAlert}
-            />
-          )}
-
-          <Metric
-            icon="people-circle-outline"
-            label={UI_TEXT.guestTaken}
-            value={guestVegTaken + guestNonVegTaken}
-          />
         </View>
       </View>
     );
@@ -275,6 +308,7 @@ export function DashboardScreen({
   config,
   onUpdateMenu,
   onBack,
+  onLogout,
   showAlert,
 }: {
   data: Array<any>;
@@ -286,6 +320,7 @@ export function DashboardScreen({
   config: ConfigDay[];
   onUpdateMenu: (menu: FoodMenu) => Promise<void>;
   onBack: () => void;
+  onLogout: () => void;
   showAlert: (title: string, message: string, buttons?: AlertButton[]) => void;
 }) {
   const emptyMeal = {
@@ -340,7 +375,16 @@ export function DashboardScreen({
     >
       <StatusBar style="light" />
       <View style={styles.header}>
-        <BackButton onPress={onBack} />
+        <View
+          style={{
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <BackButton onPress={onBack} />
+          <LogoutButton onLogout={onLogout} />
+        </View>
         <Text style={styles.eyebrow}>{UI_TEXT.operations}</Text>
         <Text style={styles.title}>{UI_TEXT.dashboardTitle}</Text>
         <Text style={styles.subtitle}>{UI_TEXT.dashboardSubtitle}</Text>

@@ -36,6 +36,14 @@ export const isMealEnabled = (
 };
 
 /**
+ * Checks if a day is configured as Veg Only.
+ */
+export const isVegOnlyDay = (dayId: string, config: ConfigDay[]) => {
+  const dayConfig = (config || []).find((d) => d.id === dayId);
+  return dayConfig?.vegOnly || false;
+};
+
+/**
  * Checks if a specific dietary option (veg/nonVeg) is enabled for a day.
  * Returns false if the day itself is disabled in config.
  */

@@ -23,6 +23,7 @@ import {
 } from "../constants";
 import { Subscription, FoodMenu, MealMenu, UserRole, ConfigDay, MealSlot } from "../types";
 import { BackButton } from "../components/common/BackButton";
+import { LogoutButton } from "../components/common/LogoutButton";
 import { ActionLabel } from "../components/common/ActionLabel";
 import { MealSummaryInline } from "../components/menu/MealSummaryInline";
 import { AlertButton } from "../components/common/CustomAlert";
@@ -35,6 +36,7 @@ export function DetailsScreen({
   onEdit,
   onQr,
   onDelete,
+  onLogout,
   menu,
   showAlert,
 }: {
@@ -45,6 +47,7 @@ export function DetailsScreen({
   onEdit: () => void;
   onQr: () => void;
   onDelete: () => void;
+  onLogout: () => void;
   menu: FoodMenu;
   showAlert: (title: string, message: string, buttons?: AlertButton[]) => void;
 }) {
@@ -55,7 +58,16 @@ export function DetailsScreen({
     <View style={styles.root}>
       <StatusBar style="light" />
       <View style={styles.header}>
-        <BackButton onPress={onBack} />
+        <View
+          style={{
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <BackButton onPress={onBack} />
+          <LogoutButton onLogout={onLogout} />
+        </View>
         <Text style={styles.eyebrow}>
           {UI_TEXT.flatIdPrefix}
           {subscription.id}
@@ -95,21 +107,20 @@ export function DetailsScreen({
             const nonVegEnabled = isDietaryEnabledForDay(day, "nonVeg", config);
 
             const parts = [];
-            if (vegEnabled)
-              parts.push(
-                `${subscription.meals[day]?.veg || 0} ${UI_TEXT.veg}`
-              );
-            if (nonVegEnabled)
-              parts.push(
-                `${
-                  subscription.meals[day]?.nonVeg || 0
-                } ${UI_TEXT.nonVeg}`
-              );
+            const vCount = subscription.meals[day]?.veg || 0;
+            const nvCount = subscription.meals[day]?.nonVeg || 0;
+
+            if (vegEnabled && vCount > 0)
+              parts.push(`${vCount} ${UI_TEXT.veg}`);
+            if (nonVegEnabled && nvCount > 0)
+              parts.push(`${nvCount} ${UI_TEXT.nonVeg}`);
+
+            const planSummary = parts.length > 0 ? parts.join(", ") : UI_TEXT.none;
 
             return (
               <View key={day} style={styles.dayMenuSection}>
                 <Text style={styles.person}>
-                  {getDayLabel(day, config)}: {parts.join(", ")}
+                  {getDayLabel(day, config)}: {planSummary}
                 </Text>
                 {dayMenu &&
                   (hasMenu(dayMenu.breakfast) ||

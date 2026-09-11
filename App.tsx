@@ -121,7 +121,16 @@ export default function App() {
    * Shows a loading indicator only if requested (usually only for the initial sync after login).
    */
   const refreshAllData = async (silent = false) => {
-    if (!firebaseRepositoryConfigured || !userRole) return;
+    // If we're not configured or don't have a role, we can't fetch.
+    // However, we must ensure loading is cleared if handleLogin set it.
+    if (!firebaseRepositoryConfigured || !userRole) {
+      setLoading(false);
+      if (!firebaseRepositoryConfigured && !silent) {
+        setFirebaseError("Firebase is not configured. Check your environment variables.");
+      }
+      return;
+    }
+
     if (!silent) setLoading(true);
 
     try {
@@ -148,7 +157,7 @@ export default function App() {
         error instanceof Error ? error.message : "Firebase connection failed"
       );
     } finally {
-      // Always stop the loading indicator (either from here or handleLogin)
+      // Always stop the loading indicator
       setLoading(false);
     }
   };
@@ -163,13 +172,13 @@ export default function App() {
     }
   }, [screen, userRole]);
 
-  // 2. Periodic Background Sync: Refresh data every 2 minutes when on the same screen
+  // 2. Periodic Background Sync: Refresh data every 10 seconds when on the same screen
   useEffect(() => {
     if (!userRole || screen === "login") return;
 
     const interval = setInterval(() => {
       void refreshAllData(true);
-    }, 120000); // 120,000ms = 2 minutes
+    }, 10000); // 10,000ms = 10 seconds
 
     return () => clearInterval(interval);
   }, [screen, userRole]);
@@ -720,6 +729,7 @@ export default function App() {
                   )
               : undefined
           }
+          onLogout={handleLogout}
           lockIdentity={Boolean(editing.flat)}
           showAlert={showAlert}
         />
@@ -745,6 +755,7 @@ export default function App() {
           }}
           onShare={shareQr}
           onPrint={printPass}
+          onLogout={handleLogout}
         />
         <CustomAlert
           visible={alertConfig.visible}
@@ -794,6 +805,7 @@ export default function App() {
             setIsBackNav(true);
             setScreen("home");
           }}
+          onLogout={handleLogout}
           showAlert={showAlert}
         />
         <CustomAlert
@@ -819,6 +831,7 @@ export default function App() {
             setIsBackNav(true);
             setScreen("home");
           }}
+          onLogout={handleLogout}
           showAlert={showAlert}
         />
         <CustomAlert
@@ -842,6 +855,7 @@ export default function App() {
             setIsBackNav(true);
             setScreen("viewMenu");
           }}
+          onLogout={handleLogout}
           showAlert={showAlert}
         />
         <CustomAlert
@@ -867,6 +881,7 @@ export default function App() {
             setScreen("home");
           }}
           onShare={shareQr}
+          onLogout={handleLogout}
           showAlert={showAlert}
         />
         <CustomAlert
@@ -890,6 +905,7 @@ export default function App() {
             setIsBackNav(true);
             setScreen("home");
           }}
+          onLogout={handleLogout}
           showAlert={showAlert}
         />
         <CustomAlert
@@ -920,6 +936,7 @@ export default function App() {
           }}
           onDelete={() => deleteSubscription(selected.id)}
           onQr={() => setScreen("qr")}
+          onLogout={handleLogout}
           menu={foodMenu}
           showAlert={showAlert}
         />

@@ -8,7 +8,8 @@ A robust Expo React Native application designed for food admins and volunteers t
 - **Role-Based Login**: Integrated login system with two distinct roles (**Admin** and **Vendor**).
 - **Permissions Management**:
     - **Admin**: Full access to register flats, update configurations, edit menu items, and delete records.
-    - **Vendor**: Operational access to distribute food, view reports, and track guest collections.
+    - **Vendor**: Operational access to distribute food, manage guest collections, toggle parcels, and view reports.
+- **Global Logout**: Quick-access logout button available in the header of every screen for secure session management.
 
 ### 📋 Subscription Management
 - **Digital Registration**: Register flats with block number, flat number, and headcount. **Flat Number is a mandatory field**. Supports zero-payment entries.
@@ -21,19 +22,26 @@ A robust Expo React Native application designed for food admins and volunteers t
 - **Live Menu Management**: Admins can update the daily menu for each meal. Items are added one-by-one with specific Veg/Non-Veg indicators.
 - **Dedicated Menu View**: A clean, non-editable view for volunteers to see the feast plan.
 - **Kitchen Dashboard**: Real-time operational data showing exactly how many plates and parcels are needed, strictly filtered by current festival configuration.
-- **Integrated Guest Tracking**: Mark **Guest Veg Taken** and **Guest Non-Veg Taken** counts directly from the dashboard. `Guest Taken` is automatically calculated.
+- **Adaptive Dashboard UI**: Automatically simplifies the view for single-dietary meals (e.g., Veg-only days), hiding redundant splits for faster reading.
+- **Integrated Guest Tracking**: Mark **Guest Taken** counts directly from the dashboard. Both Admins and Vendors can update guest collections and demand splits on the fly.
+- **Demand Validation**: Intelligent safeguards prevent guest collection counts from exceeding total guest demand.
 
 ### 📊 Advanced Reporting
 - **Multi-View Engine**: Generate reports by Day, Meal, Flat, Payment, or Single Meal Specific.
+- **Single Meal Not Taken**: Dedicated report listing flats that haven't collected a specific meal yet, with detailed dietary splits.
 - **Precision Metrics**: Detailed segregation of Resident vs. Guest demand for both Veg and Non-Veg across all meal slots.
+- **Parcel Breakdowns**: Comprehensive tracking of Veg vs. Non-Veg parcels across all report types (Day, Meal, Flat).
 - **Distribution Tracking**: Real-time "Meal Taken" vs. "Meal Not Taken" metrics with granular Resident/Guest splits, respecting enabled/disabled settings.
+- **Config-Aware Visibility**: Reports automatically hide disabled dietary options (e.g., hiding Non-Veg columns on Veg-only days) to keep data clear and concise.
 - **PNG Export**: Convert any report into a high-quality image and share it instantly via WhatsApp or Email.
 
 ### ⚙️ Dynamic Configuration (Zero-Code Customization)
 - **Settings Screen**: Admins can manage the entire festival structure directly from the app.
 - **Strict Settings Priority**: Disabled days, meal slots, or dietary options are completely hidden and ignored in all calculations, ensuring distribution only follows the active plan.
-- **Day/Meal Management**: Add or remove days, and toggle specific meal slots (B/L/D), dietary options (Veg/NV) per slot, or Parcel support.
+- **Veg Only Toggle**: Easily convert a day to "Veg only" mode, which simplifies the entire app UI (Form, Dashboard, Reports) for that day by removing Non-Veg options and assuming vegetarian choices.
+- **Day/Meal Management**: Add or remove days, and toggle specific meal slots (B/L/D), dietary options (Veg/NV) per slot, or Parcel support. Feature visibility (like Parcel counts) is intelligently managed per-meal.
 - **Database Driven**: All configurations are stored in Firebase, allowing real-time updates across all devices without app updates.
+- **Smart Defaults**: New days are added with all meal slots (B/L/D) and Parcels disabled by default to minimize accidental entries.
 - **Labels & Abbreviations**: Custom display names and legends are centrally managed.
 
 ### ⚡ Efficient Distribution
@@ -47,7 +55,7 @@ A robust Expo React Native application designed for food admins and volunteers t
 
 ### 🏗️ Technical Highlights
 - **Real-time Synchronization**: Implements a transition-based data synchronization strategy, fetching fresh data from Firebase on every screen navigation.
-- **Periodic Background Refresh**: Automatically reloads data every 2 minutes when the app remains on the same screen, ensuring live metrics (like guest counts and distribution status) stay current without manual intervention.
+- **Periodic Background Refresh**: Automatically reloads data every 10 seconds when the app remains on the same screen, ensuring live metrics (like guest counts and distribution status) stay current without manual intervention.
 - **High Performance**: Optimized with `FlatList` and `useMemo` to handle 1000+ flat records without UI lag.
 - **Modular Architecture**: Clean code structure with separated screens, components, and data repository.
 - **Customizable UI**: All app text is externalized in `src/strings.ts` for easy branding.

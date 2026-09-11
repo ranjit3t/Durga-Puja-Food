@@ -23,7 +23,7 @@ export const AUTH_CONFIG = {
  * Default Festival Day Configuration
  * Used when no configuration is found in the database.
  */
-const emptyMeal = { enabled: true, veg: true, nonVeg: true, parcel: true };
+const emptyMeal = { enabled: false, veg: true, nonVeg: true, parcel: false };
 
 export const DEFAULT_DAY_CONFIG: ConfigDay[] = [
   {

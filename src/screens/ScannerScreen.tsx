@@ -4,8 +4,15 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import { styles } from "../styles";
 import { UI_TEXT } from "../strings";
 import { BackButton } from "../components/common/BackButton";
+import { LogoutButton } from "../components/common/LogoutButton";
 
-export function ScannerScreen({ onBack, onScanned }: { onBack: () => void; onScanned: (value: string) => Promise<boolean> }) {
+export function ScannerScreen({
+  onBack,
+  onScanned,
+}: {
+  onBack: () => void;
+  onScanned: (value: string) => Promise<boolean>;
+}) {
   const [permission, requestPermission] = useCameraPermissions();
   const [error, setError] = useState("");
   const [locked, setLocked] = useState(false);
@@ -63,11 +70,11 @@ export function ScannerScreen({ onBack, onScanned }: { onBack: () => void; onSca
           style={{
             paddingTop: 60,
             paddingHorizontal: 20,
-            position: 'absolute',
+            position: "absolute",
             top: 0,
             left: 0,
             right: 0,
-            zIndex: 999
+            zIndex: 999,
           }}
         >
           <BackButton onPress={onBack} />

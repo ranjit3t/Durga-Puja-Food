@@ -69,6 +69,7 @@ export const UI_TEXT = {
   dashboardSubtitle: "Daily Kitchen Counts.",
   totalCollection: "TOTAL COLLECTION",
   dailyMealDemand: "Daily Meal Demand",
+  guestTotal: "Guest Total",
 
   // Dashboard Metrics
   total: "Total",
@@ -151,7 +152,10 @@ export const UI_TEXT = {
   flatExistsMsgSuffix:
     " is already registered. You can edit the existing record now.",
   saveFailed: "Save failed",
-  guestTakenError: "Guest Taken cannot exceed total guests (Veg + Non-Veg)",
+  guestTotalError: "Guest Total cannot be less than Guest Taken",
+  guestVegTotalError: "Guest Veg Total cannot be less than Guest Veg Taken",
+  guestNonVegTotalError: "Guest Non-Veg Total cannot be less than Guest Non-Veg Taken",
+  guestTakenError: "Guest Taken cannot exceed total guests",
 
   // Report Screen
   reportTitle: "Analytics & Reports",
@@ -159,6 +163,7 @@ export const UI_TEXT = {
   dayWiseReport: "Day Wise Summary",
   mealWiseReport: "Meal Wise Detailed",
   singleMealReport: "Single Meal Specific",
+  notTakenReport: "Single Meal Not Taken",
   flatWiseReport: "Flat Wise Distribution",
   paymentReport: "Payment Summary",
 

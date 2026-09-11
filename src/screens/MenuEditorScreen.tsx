@@ -18,6 +18,7 @@ import {
 } from "../constants";
 import { FoodMenu, Day, DayMenu, MealMenu, ConfigDay } from "../types";
 import { BackButton } from "../components/common/BackButton";
+import { LogoutButton } from "../components/common/LogoutButton";
 import { ActionLabel } from "../components/common/ActionLabel";
 import { MealMenuEditor } from "../components/menu/MealMenuEditor";
 import { AlertButton } from "../components/common/CustomAlert";
@@ -27,12 +28,14 @@ export function MenuEditorScreen({
   config,
   onSave,
   onBack,
+  onLogout,
   showAlert,
 }: {
   menu: FoodMenu;
   config: ConfigDay[];
   onSave: (menu: FoodMenu) => Promise<void>;
   onBack: () => void;
+  onLogout: () => void;
   showAlert: (title: string, message: string, buttons?: AlertButton[]) => void;
 }) {
   const [localMenu, setLocalMenu] = useState(menu);
@@ -75,7 +78,16 @@ export function MenuEditorScreen({
     <View style={styles.root}>
       <StatusBar style="light" />
       <View style={styles.header}>
-        <BackButton onPress={onBack} />
+        <View
+          style={{
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <BackButton onPress={onBack} />
+          <LogoutButton onLogout={onLogout} />
+        </View>
         <Text style={styles.eyebrow}>{UI_TEXT.planning}</Text>
         <Text style={styles.title}>{UI_TEXT.foodMenu}</Text>
         <Text style={styles.subtitle}>{UI_TEXT.menuEditorSubtitle}</Text>

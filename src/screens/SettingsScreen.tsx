@@ -16,6 +16,7 @@ import { styles } from "../styles";
 import { UI_TEXT } from "../strings";
 import { ConfigDay, MealConfig } from "../types";
 import { BackButton } from "../components/common/BackButton";
+import { LogoutButton } from "../components/common/LogoutButton";
 import { ActionLabel } from "../components/common/ActionLabel";
 import { AlertButton } from "../components/common/CustomAlert";
 
@@ -23,11 +24,13 @@ export function SettingsScreen({
   config,
   onSave,
   onBack,
+  onLogout,
   showAlert,
 }: {
   config: ConfigDay[];
   onSave: (config: ConfigDay[]) => Promise<void>;
   onBack: () => void;
+  onLogout: () => void;
   showAlert: (title: string, message: string, buttons?: AlertButton[]) => void;
 }) {
   const [localConfig, setLocalConfig] = useState<ConfigDay[]>(
@@ -37,7 +40,26 @@ export function SettingsScreen({
 
   const updateDay = (id: string, next: Partial<ConfigDay>) => {
     setLocalConfig((current) =>
-      (current || []).map((d) => (d && d.id === id ? { ...d, ...next } : d))
+      (current || []).map((d) => {
+        if (d && d.id === id) {
+          const updated = { ...d, ...next };
+          // If vegOnly is toggled ON, force all meal dietary options to Veg Only
+          if (next.hasOwnProperty("vegOnly")) {
+            if (next.vegOnly) {
+              updated.breakfast = { ...updated.breakfast, veg: true, nonVeg: false };
+              updated.lunch = { ...updated.lunch, veg: true, nonVeg: false };
+              updated.dinner = { ...updated.dinner, veg: true, nonVeg: false };
+            } else {
+              // If toggled OFF, restore both options as default starting point
+              updated.breakfast = { ...updated.breakfast, veg: true, nonVeg: true };
+              updated.lunch = { ...updated.lunch, veg: true, nonVeg: true };
+              updated.dinner = { ...updated.dinner, veg: true, nonVeg: true };
+            }
+          }
+          return updated;
+        }
+        return d;
+      })
     );
   };
 
@@ -60,10 +82,10 @@ export function SettingsScreen({
   const addNewDay = () => {
     const id = `Day${localConfig.length + 1}`;
     const emptyMeal: MealConfig = {
-      enabled: true,
+      enabled: false,
       veg: true,
       nonVeg: true,
-      parcel: true,
+      parcel: false,
     };
     const newDay: ConfigDay = {
       id,
@@ -100,7 +122,16 @@ export function SettingsScreen({
     <View style={styles.root}>
       <StatusBar style="light" />
       <View style={styles.header}>
-        <BackButton onPress={onBack} />
+        <View
+          style={{
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <BackButton onPress={onBack} />
+          <LogoutButton onLogout={onLogout} />
+        </View>
         <Text style={styles.eyebrow}>{UI_TEXT.operations}</Text>
         <Text style={styles.title}>App Settings</Text>
         <Text style={styles.subtitle}>Configure days, meals, and dietary options.</Text>
@@ -136,6 +167,15 @@ export function SettingsScreen({
 
             {day.enabled && (
               <View style={{ marginTop: 12 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16, backgroundColor: '#f0f4f1', padding: 8, borderRadius: 8 }}>
+                  <Text style={{ flex: 1, fontWeight: '700', color: '#356044' }}>Veg only</Text>
+                  <Switch
+                    value={day.vegOnly || false}
+                    onValueChange={(val) => updateDay(day.id, { vegOnly: val })}
+                    trackColor={{ true: '#4d8b58' }}
+                  />
+                </View>
+
                 {(["breakfast", "lunch", "dinner"] as const).map((mKey) => {
                   const m = day[mKey] || {
                     enabled: false,
@@ -149,33 +189,46 @@ export function SettingsScreen({
                         <Text style={[styles.sectionTitle, { marginBottom: 0, fontSize: 16 }]}>
                           {mKey.charAt(0).toUpperCase() + mKey.slice(1)}
                         </Text>
-                        <Switch
-                          value={m.enabled}
-                          onValueChange={(val) => updateMealConfig(day.id, mKey, { enabled: val })}
-                        />
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                          <View style={{ alignItems: 'center' }}>
+                             <Switch
+                                value={m.enabled}
+                                onValueChange={(val) => updateMealConfig(day.id, mKey, { enabled: val })}
+                             />
+                             <Text style={{ fontSize: 9, color: '#666' }}>{m.enabled ? "Enabled" : "Disabled"}</Text>
+                          </View>
+                        </View>
                       </View>
 
                       {m.enabled && (
                         <View style={{ gap: 10 }}>
-                          <View style={styles.selectorRow}>
-                            <Pressable
-                              onPress={() => updateMealConfig(day.id, mKey, { veg: !m.veg })}
-                              style={[styles.selector, m.veg && styles.selectorOn]}
-                            >
-                              <Text style={[styles.selectorText, m.veg && styles.selectorTextOn]}>Veg</Text>
-                            </Pressable>
-                            <Pressable
-                              onPress={() => updateMealConfig(day.id, mKey, { nonVeg: !m.nonVeg })}
-                              style={[styles.selector, m.nonVeg && styles.selectorOn]}
-                            >
-                              <Text style={[styles.selectorText, m.nonVeg && styles.selectorTextOn]}>Non-Veg</Text>
-                            </Pressable>
-                            <Pressable
-                              onPress={() => updateMealConfig(day.id, mKey, { parcel: !m.parcel })}
-                              style={[styles.selector, m.parcel && styles.selectorOn]}
-                            >
-                              <Text style={[styles.selectorText, m.parcel && styles.selectorTextOn]}>Parcel</Text>
-                            </Pressable>
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <View style={styles.selectorRow}>
+                              {!day.vegOnly && (
+                                <>
+                                  <Pressable
+                                    onPress={() => updateMealConfig(day.id, mKey, { veg: !m.veg })}
+                                    style={[styles.selector, m.veg && styles.selectorOn]}
+                                  >
+                                    <Text style={[styles.selectorText, m.veg && styles.selectorTextOn]}>Veg</Text>
+                                  </Pressable>
+                                  <Pressable
+                                    onPress={() => updateMealConfig(day.id, mKey, { nonVeg: !m.nonVeg })}
+                                    style={[styles.selector, m.nonVeg && styles.selectorOn]}
+                                  >
+                                    <Text style={[styles.selectorText, m.nonVeg && styles.selectorTextOn]}>Non-Veg</Text>
+                                  </Pressable>
+                                </>
+                              )}
+                            </View>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                               <Text style={{ fontSize: 12, fontWeight: '700', color: '#7b5a2d' }}>Parcel</Text>
+                               <Switch
+                                 value={m.parcel}
+                                 onValueChange={(val) => updateMealConfig(day.id, mKey, { parcel: val })}
+                                 trackColor={{ true: '#c35b3b' }}
+                               />
+                            </View>
                           </View>
                         </View>
                       )}
