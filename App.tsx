@@ -75,6 +75,7 @@ export default function App() {
   // --- Global State ---
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [screen, setScreen] = useState<Screen>("login");
+  const [isBackNav, setIsBackNav] = useState(false);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedId, setSelectedId] = useState("");
@@ -113,8 +114,69 @@ export default function App() {
         subscriptions[0];
 
   // --- Effects & Data Sync ---
+
+  /**
+   * Syncs all core data from the backend.
+   * Ensures that the app is not relying on stale/cached data.
+   * Shows a loading indicator only if requested (usually only for the initial sync after login).
+   */
+  const refreshAllData = async (silent = false) => {
+    if (!firebaseRepositoryConfigured || !userRole) return;
+    if (!silent) setLoading(true);
+
+    try {
+      const [config, records, menu] = await Promise.all([
+        repository.getConfig(),
+        repository.list(),
+        repository.getMenu(),
+      ]);
+
+      if (config && config.length > 0) setDayConfig(config);
+      setSubscriptions(records);
+      setFoodMenu(menu);
+
+      // Keep the current selection in sync with the fresh data
+      if (selectedId) {
+        const fresh = records.find((r) => r.id === selectedId);
+        if (fresh) setSelectedRecord(fresh);
+      }
+
+      if (firebaseError) setFirebaseError("");
+    } catch (error) {
+      console.warn("Global sync failed", error);
+      setFirebaseError(
+        error instanceof Error ? error.message : "Firebase connection failed"
+      );
+    } finally {
+      // Always stop the loading indicator (either from here or handleLogin)
+      setLoading(false);
+    }
+  };
+
+  // 1. Core Sync Effect: Refresh data silently on every screen transition
   useEffect(() => {
-    // Only begin data synchronization once a user role is assigned
+    if (userRole && screen !== "login") {
+      // Always use silent refresh for screen transitions to avoid flickering.
+      // The initial loader triggered by handleLogin will be cleared by the first sync's finally block.
+      void refreshAllData(true);
+      setIsBackNav(false);
+    }
+  }, [screen, userRole]);
+
+  // 2. Periodic Background Sync: Refresh data every 2 minutes when on the same screen
+  useEffect(() => {
+    if (!userRole || screen === "login") return;
+
+    const interval = setInterval(() => {
+      void refreshAllData(true);
+    }, 120000); // 120,000ms = 2 minutes
+
+    return () => clearInterval(interval);
+  }, [screen, userRole]);
+
+  // 3. Initial Setup & Deep Linking
+  useEffect(() => {
+    // Only begin deep link synchronization once a user role is assigned
     if (!userRole) return;
 
     /**
@@ -140,40 +202,6 @@ export default function App() {
       }
     };
 
-    if (firebaseRepositoryConfigured) {
-      // 1. Initial Load of app config
-      repository.getConfig().then((config) => {
-        if (config && config.length > 0) {
-          setDayConfig(config);
-        }
-      });
-
-      // 2. Initial Load of all flat records
-      repository
-        .list()
-        .then((records) => {
-          setSubscriptions(records);
-          setLoading(false);
-        })
-        .catch((error) => {
-          setFirebaseError(
-            error instanceof Error ? error.message : "Firebase connection failed"
-          );
-          setLoading(false);
-        });
-
-      // 3. Load global menu items
-      repository
-        .getMenu()
-        .then((menu) => setFoodMenu(menu))
-        .catch((error) => console.warn("Could not load menu", error));
-    } else {
-      setFirebaseError(
-        `Firebase is not configured. Add: ${firebaseMissingConfig.join(", ")}`
-      );
-      setLoading(false);
-    }
-
     // Deep link listeners
     Linking.getInitialURL().then((url) => {
       if (url) void openFromLink(url);
@@ -192,6 +220,8 @@ export default function App() {
       if (screen === "home" || screen === "login") {
         return false; // Exit app
       }
+
+      setIsBackNav(true);
 
       // Logical back-navigation mapping
       if (screen === "details") setScreen("home");
@@ -661,7 +691,10 @@ export default function App() {
           value={editing}
           userRole={userRole}
           config={dayConfig}
-          onCancel={() => setScreen(editing.flat ? "details" : "home")}
+          onCancel={() => {
+            setIsBackNav(true);
+            setScreen(editing.flat ? "details" : "home");
+          }}
           onSave={updateSubscription}
           onSaveQr={
             editing.flat
@@ -706,7 +739,10 @@ export default function App() {
       <>
         <QrScreen
           subscription={selected}
-          onBack={() => setScreen("details")}
+          onBack={() => {
+            setIsBackNav(true);
+            setScreen("details");
+          }}
           onShare={shareQr}
           onPrint={printPass}
         />
@@ -725,7 +761,10 @@ export default function App() {
     return (
       <>
         <ScannerScreen
-          onBack={() => setScreen("home")}
+          onBack={() => {
+            setIsBackNav(true);
+            setScreen("home");
+          }}
           onScanned={openScannedValue}
         />
         <CustomAlert
@@ -751,7 +790,10 @@ export default function App() {
           menu={foodMenu}
           config={dayConfig}
           onUpdateMenu={handleUpdateMenu}
-          onBack={() => setScreen("home")}
+          onBack={() => {
+            setIsBackNav(true);
+            setScreen("home");
+          }}
           showAlert={showAlert}
         />
         <CustomAlert
@@ -773,7 +815,10 @@ export default function App() {
           userRole={userRole}
           config={dayConfig}
           onEdit={() => setScreen("menu")}
-          onBack={() => setScreen("home")}
+          onBack={() => {
+            setIsBackNav(true);
+            setScreen("home");
+          }}
           showAlert={showAlert}
         />
         <CustomAlert
@@ -793,7 +838,10 @@ export default function App() {
           menu={foodMenu}
           config={dayConfig}
           onSave={handleUpdateMenu}
-          onBack={() => setScreen("viewMenu")}
+          onBack={() => {
+            setIsBackNav(true);
+            setScreen("viewMenu");
+          }}
           showAlert={showAlert}
         />
         <CustomAlert
@@ -814,7 +862,10 @@ export default function App() {
           subscriptions={subscriptions}
           menu={foodMenu}
           config={dayConfig}
-          onBack={() => setScreen("home")}
+          onBack={() => {
+            setIsBackNav(true);
+            setScreen("home");
+          }}
           onShare={shareQr}
           showAlert={showAlert}
         />
@@ -835,7 +886,10 @@ export default function App() {
         <SettingsScreen
           config={dayConfig}
           onSave={handleUpdateConfig}
-          onBack={() => setScreen("home")}
+          onBack={() => {
+            setIsBackNav(true);
+            setScreen("home");
+          }}
           showAlert={showAlert}
         />
         <CustomAlert
@@ -856,7 +910,10 @@ export default function App() {
           subscription={selected}
           userRole={userRole}
           config={dayConfig}
-          onBack={() => setScreen("home")}
+          onBack={() => {
+            setIsBackNav(true);
+            setScreen("home");
+          }}
           onEdit={() => {
             setEditing(selected);
             setScreen("form");

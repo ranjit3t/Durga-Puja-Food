@@ -72,7 +72,9 @@ The schema for dynamic festival configuration.
 - `dietary`: `{ veg: boolean, nonVeg: boolean }`
 - `parcels`: `{ breakfast: boolean, lunch: boolean, dinner: boolean }`
 
-## 6. Performance Design Patterns
+## 6. Performance & Synchronization Patterns
+- **Transition-Based Data Sync**: To eliminate reliance on stale or cached data, the application performs a comprehensive backend fetch on every screen transition. A global loading state is triggered only during the initial home page load after login; subsequent transitions perform silent background updates to ensure a smooth, uninterrupted user experience while maintaining data integrity.
+- **Periodic Background Refresh**: To handle long-running sessions on a single screen (e.g., the kitchen dashboard), a background interval triggers a silent sync every 2 minutes. This ensures that metrics like "Taken" counts and "Guest Demand" are always reflective of the latest backend state without requiring manual page reloads.
 - **Windowed Rendering**: `FlatList` optimization to handle high volumes of flat records (1000+).
 - **Memoized Selectors**: Reports and Dashboard metrics use `useMemo` with deduplication logic to ensure high accuracy and zero UI lag during real-time data sync.
 - **CaptureRef**: Asynchronous PNG generation for reports, allowing admins to share complex data views as static images.

@@ -46,6 +46,8 @@ A robust Expo React Native application designed for food admins and volunteers t
 - **Responsive Layouts**: Optimized for various screen sizes with `KeyboardAvoidingView` and `ScrollView` integrations.
 
 ### 🏗️ Technical Highlights
+- **Real-time Synchronization**: Implements a transition-based data synchronization strategy, fetching fresh data from Firebase on every screen navigation.
+- **Periodic Background Refresh**: Automatically reloads data every 2 minutes when the app remains on the same screen, ensuring live metrics (like guest counts and distribution status) stay current without manual intervention.
 - **High Performance**: Optimized with `FlatList` and `useMemo` to handle 1000+ flat records without UI lag.
 - **Modular Architecture**: Clean code structure with separated screens, components, and data repository.
 - **Customizable UI**: All app text is externalized in `src/strings.ts` for easy branding.

@@ -6,7 +6,7 @@ export const UI_TEXT = {
   appName: "Eternia Food Desk",
   eventTitle: "ETERNIA FOOD DESK 2026",
   tagline: "Track every plate, flat by flat.",
-  loading: "Loading food data...",
+  loading: "Loading data...",
   offlineMode: "Offline mode",
 
   // Home Screen
