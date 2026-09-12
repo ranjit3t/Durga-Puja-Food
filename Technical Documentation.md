@@ -9,7 +9,7 @@ The application follows a **Serverless Modular Architecture** built on the **Exp
 1.  **Bootstrapping**: `App.tsx` initializes global state and checks for Firebase configuration.
 2.  **Authentication**: `LoginScreen` fetches credentials from the `auth_config` DB node.
 3.  **Data Hydration**: On successful login or screen transition, the app performs a full sync from Firebase.
-4.  **Presentation**: Screens consume a centralized `ConfigDay[]` to determine which UI elements (meals, dietary options, parcels) are visible and active.
+4.  **Presentation**: Screens consume a centralized `AppConfig` (including `seasonName` and `days[]`) to determine which UI elements (meals, dietary options, parcels) are visible and active.
 
 ---
 
@@ -29,7 +29,8 @@ The application follows a **Serverless Modular Architecture** built on the **Exp
 ## 3. Key Technical Implementations
 
 ### A. Dynamic Configuration Engine
-The entire application is **Config-Driven**. The `ConfigDay[]` array fetched from the database controls the behavior of:
+The entire application is **Config-Driven**. The `AppConfig` object fetched from the database controls the behavior of:
+- **Branding**: The `seasonName` field dynamically updates the header of all shared Digital Passes and Reports.
 - **Visibility**: Disabled days or meal slots (Breakfast/Lunch/Dinner) are completely removed from the UI.
 - **Rules**: "Veg Only" mode automatically masks Non-Veg options and enforces vegetarian selections in the Form, Dashboard, and Reports.
 - **Features**: Parcel support and dietary options (Veg/Non-Veg) are toggled per individual meal slot.
@@ -46,9 +47,10 @@ Implemented in `src/repository.ts`, the `normalizeRecord` function acts as a saf
 
 ### D. Digital Pass Generation
 The **"Digital Pass"** isn't just a QR code; it's a dynamic visual card.
-- **Implementation**: The `QrScreen` renders a themed `View` containing branding, headcount, and the QR code.
+- **Implementation**: The `QrScreen` renders a themed `View` containing branding (Season Name), headcount, and the QR code.
 - **Image Capture**: Using `captureRef`, this view is converted into a high-quality PNG.
 - **Logic**: It intentionally excludes volatile data (like specific meal choices for each day) to ensure the physical pass remains valid even if a user's subscription details are edited later.
+- **Persistence**: The pass footer ensures the copyright and instructions are always visible, with corrected layout for various device aspect ratios.
 
 ### E. Advanced Reporting Engine
 The reporting system uses **Memoized Selectors** (`useMemo`) to calculate complex kitchen demand metrics in real-time.
@@ -62,8 +64,9 @@ The reporting system uses **Memoized Selectors** (`useMemo`) to calculate comple
 
 ### Role-Based Access Control (RBAC)
 - **Database Node**: `auth_config` contains the list of valid staff users.
-- **Admin Role**: Unrestricted access to `Settings`, `Delete` actions, and full `SubscriptionForm` editing.
-- **Vendor Role**: Operational access. Can mark food as "Taken", update guest counts, and view reports. Sensitive configuration fields are disabled or hidden based on the `userRole` state.
+- **Admin Role**: Unrestricted access to `Settings`, `Delete` actions, and full `SubscriptionForm` editing. Admins can update the global Season Name and festival days.
+- **Vendor Role**: Operational access. Can mark food as "Taken", update guest counts, and view reports. Sensitive configuration fields and destructive actions are disabled or hidden based on the `userRole` state.
+- **Auth Handshake**: Credentials are verified against the `auth_config` node in real-time during the login process.
 
 ### Firebase Security Rules
 ```json
@@ -89,6 +92,9 @@ Major interaction points use the `ActionLabel` atomic component, which pairs a s
 - **FAB Placement**: The Add Pass button is elevated (`bottom: 90`) to provide clearance for Android's system navigation bar and back button.
 - **Touch-Friendly Dropdowns**: Block selection uses a modal with large padding (`18px`) and full scrollability, specifically optimized for high-volume entry environments.
 - **Scroll Bar Selection**: The report type selector uses a horizontal `ScrollView` to minimize vertical space usage, maximizing the area for data grids.
+- **Flat Form Design**: Buttons for "Save & generate QR" and "Delete" use a flat, high-contrast design (no shadows) for better visibility and a modern feel.
+- **Stacked Legends**: Legend information in the form is vertically stacked to prevent horizontal overflow on narrow screens.
+- **Full Meal Labels**: Selection buttons use full names ("Breakfast", "Lunch", "Dinner") instead of abbreviations to reduce user confusion.
 
 ---
 

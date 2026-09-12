@@ -284,34 +284,31 @@ export function SettingsScreen({
 
                       {m.enabled && (
                         <View style={{ gap: 12 }}>
-                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <View style={styles.selectorRow}>
-                              {!day.vegOnly && (
-                                <>
-                                  <Pressable
-                                    onPress={() => updateMealConfig(day.id, mKey, { veg: !m.veg })}
-                                    style={[styles.selector, m.veg && styles.vegChoice, { marginBottom: 0 }]}
-                                  >
-                                    <Text style={[styles.selectorText, m.veg && styles.selectorTextOn, { fontSize: 12 }]}>{UI_TEXT.vegLabel.toUpperCase()}</Text>
-                                  </Pressable>
-                                  <Pressable
-                                    onPress={() => updateMealConfig(day.id, mKey, { nonVeg: !m.nonVeg })}
-                                    style={[styles.selector, m.nonVeg && styles.nonVegChoice, { marginBottom: 0 }]}
-                                  >
-                                    <Text style={[styles.selectorText, m.nonVeg && styles.selectorTextOn, { fontSize: 12 }]}>{UI_TEXT.nonVegLabel.toUpperCase()}</Text>
-                                  </Pressable>
-                                </>
-                              )}
+                          {!day.vegOnly && (
+                            <View style={[styles.selectorRow, { marginBottom: 0 }]}>
+                              <Pressable
+                                onPress={() => updateMealConfig(day.id, mKey, { veg: !m.veg })}
+                                style={[styles.selector, m.veg && styles.vegChoice, { marginBottom: 0, flex: 1 }]}
+                              >
+                                <Text style={[styles.selectorText, m.veg && styles.selectorTextOn, { fontSize: 12 }]}>{UI_TEXT.vegLabel.toUpperCase()}</Text>
+                              </Pressable>
+                              <Pressable
+                                onPress={() => updateMealConfig(day.id, mKey, { nonVeg: !m.nonVeg })}
+                                style={[styles.selector, m.nonVeg && styles.nonVegChoice, { marginBottom: 0, flex: 1 }]}
+                              >
+                                <Text style={[styles.selectorText, m.nonVeg && styles.selectorTextOn, { fontSize: 12 }]}>{UI_TEXT.nonVegLabel.toUpperCase()}</Text>
+                              </Pressable>
                             </View>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                               <Text style={{ fontSize: 11, fontWeight: '800', color: '#6A6E73' }}>{UI_TEXT.parcelSettingsLabel}</Text>
-                               <Switch
-                                 value={m.parcel}
-                                 onValueChange={(val) => updateMealConfig(day.id, mKey, { parcel: val })}
-                                 trackColor={{ true: '#E31837' }}
-                                 style={{ transform: [{ scale: 0.8 }] }}
-                               />
-                            </View>
+                          )}
+
+                          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#FFF', padding: 10, borderRadius: 12, borderWidth: 1, borderColor: '#E9ECEF' }}>
+                             <Text style={{ fontSize: 12, fontWeight: '800', color: '#6A6E73' }}>{UI_TEXT.parcelSettingsLabel} SUPPORT</Text>
+                             <Switch
+                               value={m.parcel}
+                               onValueChange={(val) => updateMealConfig(day.id, mKey, { parcel: val })}
+                               trackColor={{ true: '#E31837' }}
+                               style={{ transform: [{ scale: 0.9 }] }}
+                             />
                           </View>
                         </View>
                       )}

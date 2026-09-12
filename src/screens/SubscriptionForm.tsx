@@ -201,7 +201,7 @@ export function SubscriptionForm({
               <Text style={styles.label}>{UI_TEXT.blockNo}</Text>
               {isAdmin ? (
                 <Dropdown
-                  value={form.bock}
+                  value={form.block}
                   options={blockOptions}
                   onChange={(block) => set("block", block)}
                 />
@@ -319,11 +319,8 @@ export function SubscriptionForm({
 
           {/* SECTION 1: Meal Plan */}
           <View style={{ marginTop: 8 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <Text style={[styles.currentChoice, { marginTop: 0, fontSize: 16 }]}>{UI_TEXT.foodPlan}</Text>
-              <View style={[styles.pill, { backgroundColor: "#E9ECEF" }]}>
-                 <Text style={[styles.pillText, { color: "#6A6E73" }]}>V=Veg, N=Non-Veg, -=None</Text>
-              </View>
+            <View style={{ marginBottom: 12 }}>
+              <Text style={[styles.currentChoice, { marginTop: 0, fontSize: 16, marginBottom: 8 }]}>{UI_TEXT.foodPlan}</Text>
             </View>
 
             {(["breakfast", "lunch", "dinner"] as const)
@@ -350,10 +347,17 @@ export function SubscriptionForm({
                           styles.choice,
                           currentSlotChoice === "None" ? styles.slotSelected : styles.noneChoice,
                           !isAdmin && { opacity: currentSlotChoice === "None" ? 1 : 0.3 },
+                          { paddingVertical: 12, paddingHorizontal: 4 }
                         ]}
                       >
-                        <Text style={[styles.choiceText, currentSlotChoice === "None" && styles.choiceTextOn]}>
-                          {UI_TEXT.emptyAbbr}
+                        <Text
+                          style={[
+                            styles.choiceText,
+                            currentSlotChoice === "None" && styles.choiceTextOn,
+                            { fontSize: 12 }
+                          ]}
+                        >
+                          {UI_TEXT.none}
                         </Text>
                       </Pressable>
 
@@ -365,10 +369,17 @@ export function SubscriptionForm({
                             styles.choice,
                             currentSlotChoice === "Veg" ? styles.vegChoice : styles.noneChoice,
                             !isAdmin && { opacity: currentSlotChoice === "Veg" ? 1 : 0.3 },
+                            { paddingVertical: 12, paddingHorizontal: 4 }
                           ]}
                         >
-                          <Text style={[styles.choiceText, currentSlotChoice === "Veg" && styles.choiceTextOn]}>
-                            {UI_TEXT.vegAbbr}
+                          <Text
+                            style={[
+                              styles.choiceText,
+                              currentSlotChoice === "Veg" && styles.choiceTextOn,
+                              { fontSize: 12 }
+                            ]}
+                          >
+                            {UI_TEXT.veg}
                           </Text>
                         </Pressable>
                       )}
@@ -381,10 +392,17 @@ export function SubscriptionForm({
                             styles.choice,
                             currentSlotChoice === "Non-veg" ? styles.nonVegChoice : styles.noneChoice,
                             !isAdmin && { opacity: currentSlotChoice === "Non-veg" ? 1 : 0.3 },
+                            { paddingVertical: 12, paddingHorizontal: 4 }
                           ]}
                         >
-                          <Text style={[styles.choiceText, currentSlotChoice === "Non-veg" && styles.choiceTextOn]}>
-                            {UI_TEXT.nonVegAbbr}
+                          <Text
+                            style={[
+                              styles.choiceText,
+                              currentSlotChoice === "Non-veg" && styles.choiceTextOn,
+                              { fontSize: 12 }
+                            ]}
+                          >
+                            {UI_TEXT.nonVeg}
                           </Text>
                         </Pressable>
                       )}
@@ -404,18 +422,15 @@ export function SubscriptionForm({
 
             return (
               <View style={{ marginTop: 8 }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                  <Text style={[styles.currentChoice, { marginTop: 0, fontSize: 16 }]}>Parcels</Text>
-                  <View style={[styles.pill, { backgroundColor: "#E9ECEF" }]}>
-                    <Text style={[styles.pillText, { color: "#6A6E73" }]}>P=Parcel, -=None</Text>
-                  </View>
+                <View style={{ marginBottom: 12 }}>
+                  <Text style={[styles.currentChoice, { marginTop: 0, fontSize: 16, marginBottom: 8 }]}>Parcels</Text>
                 </View>
 
                 <View style={styles.choiceRow}>
                   {parcelSlots.map((slot) => {
                     const currentChoice = form.mealSlots[selectedDay]?.[selectedPerson]?.[slot] || "None";
                     const isParcel = !!form.mealSlots[selectedDay]?.[selectedPerson]?.[`${slot}Parcel` as keyof MealSlot];
-                    const abbr = slot === "breakfast" ? "B" : slot === "lunch" ? "L" : "D";
+                    const label = slot === "breakfast" ? UI_TEXT.breakfastTitle : slot === "lunch" ? UI_TEXT.lunchTitle : UI_TEXT.dinnerTitle;
 
                     return (
                       <Pressable
@@ -428,15 +443,17 @@ export function SubscriptionForm({
                             ? (currentChoice === "Non-veg" ? styles.nonVegChoice : styles.vegChoice)
                             : styles.noneChoice,
                           currentChoice === "None" && { opacity: 0.2 },
+                          { paddingVertical: 12, paddingHorizontal: 4 }
                         ]}
                       >
                         <Text
                           style={[
                             styles.choiceText,
                             isParcel && styles.choiceTextOn,
+                            { fontSize: 11 }
                           ]}
                         >
-                          {abbr}{isParcel ? "P" : "-"}
+                          {label} P
                         </Text>
                       </Pressable>
                     );
@@ -452,11 +469,8 @@ export function SubscriptionForm({
             return choice && choice !== "None" && isDietaryEnabled(selectedDay, s, choice === "Veg" ? "veg" : "nonVeg", config);
           }) && (
             <View style={{ marginTop: 24, borderTopWidth: 1, borderTopColor: "#E9ECEF", paddingTop: 16 }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <Text style={[styles.currentChoice, { marginTop: 0, fontSize: 16 }]}>{UI_TEXT.foodTakenByPerson}</Text>
-                <View style={[styles.pill, { backgroundColor: "#E9ECEF" }]}>
-                  <Text style={[styles.pillText, { color: "#6A6E73" }]}>B=Breakfast, L=Lunch, D=Dinner</Text>
-                </View>
+              <View style={{ marginBottom: 12 }}>
+                <Text style={[styles.currentChoice, { marginTop: 0, fontSize: 16, marginBottom: 8 }]}>{UI_TEXT.foodTakenByPerson}</Text>
               </View>
               <View style={styles.choiceRow}>
                 {(["breakfast", "lunch", "dinner"] as const)
@@ -477,12 +491,12 @@ export function SubscriptionForm({
                         ? styles.vegChoice
                         : styles.nonVegChoice;
 
-                    const abbr =
+                    const label =
                       slot === "breakfast"
-                        ? UI_TEXT.breakfastAbbr
+                        ? UI_TEXT.breakfastTitle
                         : slot === "lunch"
-                        ? UI_TEXT.lunchAbbr
-                        : UI_TEXT.dinnerAbbr;
+                        ? UI_TEXT.lunchTitle
+                        : UI_TEXT.dinnerTitle;
                     return (
                       <Pressable
                         key={slot}
@@ -490,13 +504,17 @@ export function SubscriptionForm({
                         style={[
                           styles.choice,
                           isTaken ? slotColorStyle : styles.noneChoice,
+                          { paddingVertical: 12, paddingHorizontal: 4 }
                         ]}
                       >
                         <Text
-                          style={[styles.choiceText, isTaken && styles.choiceTextOn]}
+                          style={[
+                            styles.choiceText,
+                            isTaken && styles.choiceTextOn,
+                            { fontSize: 12 }
+                          ]}
                         >
-                          {abbr}
-                          {UI_TEXT.takenLabel}
+                          {label}
                         </Text>
                       </Pressable>
                     );
@@ -574,14 +592,22 @@ export function SubscriptionForm({
                 onSaveQr(prepared);
               }}
               style={[
-                styles.secondary,
-                { marginTop: 16 },
+                styles.primary,
+                {
+                  marginTop: 16,
+                  backgroundColor: "#E31837",
+                  shadowOpacity: 0,
+                  elevation: 0,
+                  shadowRadius: 0,
+                  shadowOffset: { width: 0, height: 0 }
+                },
                 !prepared.flat.trim() && { opacity: 0.5 },
               ]}
             >
               <ActionLabel
                 icon="qr-code-outline"
                 label={UI_TEXT.saveGenerateQr}
+                color="#FFF"
                 size={22}
               />
             </Pressable>
@@ -591,12 +617,12 @@ export function SubscriptionForm({
             <Pressable
               accessibilityLabel={UI_TEXT.deleteFlatRecord}
               onPress={onDelete}
-              style={[styles.deleteButton, { borderStyle: "dashed", marginTop: 24 }]}
+              style={styles.deleteButton}
             >
               <ActionLabel
                 icon="trash-outline"
                 label={UI_TEXT.deleteFlatRecord}
-                color="#DC3545"
+                color="#FFF"
               />
             </Pressable>
           ) : null}

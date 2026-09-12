@@ -34,15 +34,12 @@ The project follows a **Modular Layered Architecture**:
 - **Navigation**: Custom state-based navigation in `App.tsx`, synchronized with Android hardware back-button logic.
 
 ### 📂 Logic & Constants Layer (`src/constants.ts`, `src/strings.ts`)
-- **Dynamic Config**: The app consumes a `ConfigDay[]` structure from Firebase that controls:
-    - Enabled/Disabled days.
-    - Labels and Abbreviations.
-    - Meal slot availability (Breakfast/Lunch/Dinner).
-    - Dietary options (Veg/Non-Veg) enabled per specific meal slot.
-    - Parcel support enabled per specific meal slot.
+- **Dynamic Config**: The app consumes an `AppConfig` object from Firebase containing:
+    - **Season Name**: A global string used for branding passes and reports.
+    - **Days**: A `ConfigDay[]` structure that controls enabled/disabled days, labels, meal slot availability, dietary options, and parcel support.
 - **Logic Layer Helpers**: Includes `src/constants.ts` for visibility logic and **Automatic Schema Sanitization** which removes menu data when its corresponding day is deleted from config.
 - **Strict Settings Priority**: Helpers strictly check the active configuration. If a day or meal is disabled, its historical data is masked and it is removed from all summaries and demands. Global action buttons (Add/Edit) are also dynamically disabled if no active days exist.
-- **Strings**: Centralized UI text dictionary for easy customization.
+- **Strings**: Centralized UI text dictionary for easy customization and multi- festival support.
 
 ### 📂 Data Layer (`src/repository.ts`, `src/firebase.ts`)
 - **Real-time Persistence**: Uses Firebase Realtime Database for all subscriptions, menus, configurations, and user credentials (`auth_config`).

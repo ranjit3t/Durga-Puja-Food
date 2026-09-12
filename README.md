@@ -40,9 +40,10 @@ A robust Expo React Native application designed for food admins and volunteers t
 
 ### ⚙️ Dynamic Configuration (Zero-Code Customization)
 - **Settings Screen**: Admins can manage the entire festival structure directly from the app.
-- **Smart Save Logic**: The "Update All Settings" button intelligently detects changes. It remains disabled (opacity: 0.5) until a modification is made, preventing redundant database writes.
+- **Global Season Name**: A persistent setting in the database that dynamically updates the header of all shared Digital Passes and Reports.
+- **Smart Save Logic**: The "Update All Settings" button intelligently detects changes. It remains disabled (opacity: 0.5) until a modification is made (including season name or festival days), preventing redundant database writes.
 - **Automatic Menu Cleanup**: Deleting a festival day from settings automatically scrubs all associated menu data (Veg/Non-Veg lists, guest counts) from the database to prevent stale records.
-- **Enhanced Input UX**: Redesigned abbreviation input with large, touch-friendly fields and automatic capitalization for error-free legend management.
+- **Enhanced Input UX**: Redesigned abbreviation and day name input with large, touch-friendly fields and automatic capitalization for error-free legend management.
 - **Strict Settings Priority**: Disabled days, meal slots, or dietary options are completely hidden and ignored in all calculations, ensuring distribution only follows the active plan.
 - **Veg Only Toggle**: Easily convert a day to "Veg only" mode, which simplifies the entire app UI (Form, Dashboard, Reports) for that day by removing Non-Veg options and assuming vegetarian choices.
 - **Day/Meal Management**: Add or remove days, and toggle specific meal slots (B/L/D), dietary options (Veg/NV) per slot, or Parcel support. Feature visibility (like Parcel counts) is intelligently managed per-meal.
@@ -58,9 +59,11 @@ A robust Expo React Native application designed for food admins and volunteers t
 
 ### 🎨 Polished UI/UX
 - **Custom Alerts**: Replaced system default dialogs with a sleek, themed `CustomAlert` component for a unified professional look.
+- **Full Meal Names**: Replaced confusing abbreviations (B/L/D) with full meal names ("Breakfast", "Lunch", "Dinner") in all selection and collection buttons for better clarity.
 - **Dynamic Action Control**: The "Add Pass" and "Edit Pass" buttons are intelligently disabled when no active festival days are configured, preventing data entry errors during non-festival periods.
 - **Touch-Optimized Dropdowns**: Redesigned block selection with generous vertical spacing (18px padding) and full scrollability for effortless navigation on small screens.
 - **Optimized FAB Placement**: The "Add Pass" Floating Action Button is positioned higher (bottom: 90) to avoid interference with Android system navigation bars.
+- **Flat UI Design**: Actions like "Save & generate QR" and "Delete" use solid, high-contrast colors (Red/Green) without distracting shadows for a modern aesthetic.
 - **Legible Navigation**: Simplified "Back" button styling with sentence-case labels and optimized font sizes for better fit on various device widths.
 - **Responsive Layouts**: Optimized for various screen sizes with `KeyboardAvoidingView` and `ScrollView` integrations.
 
