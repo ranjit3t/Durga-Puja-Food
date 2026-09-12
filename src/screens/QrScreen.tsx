@@ -57,7 +57,7 @@ export function QrScreen({
           <View ref={qrRef} collapsable={false} style={styles.qrPassCard}>
             <View style={styles.qrPassHeader}>
               <Text style={styles.qrPassEvent}>{UI_TEXT.eventTitle}</Text>
-              {seasonName && <Text style={styles.qrPassEvent}>{seasonName}</Text> }
+              {seasonName && <Text style={styles.qrPassEvent}>{seasonName}</Text>}
               <Text style={styles.qrPassTitle}>{UI_TEXT.foodPass}</Text>
             </View>
 
