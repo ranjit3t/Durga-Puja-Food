@@ -3,78 +3,122 @@
  * Handles user login and role assignment (Admin/Vendor).
  */
 import React, { useState } from "react";
-import { View, Text, TextInput, Pressable, ImageBackground, KeyboardAvoidingView, Platform, StatusBar } from "react-native";
+import {
+  View,
+  Text,
+  TextInput,
+  Pressable,
+  ImageBackground,
+  KeyboardAvoidingView,
+  Platform,
+  StatusBar,
+  ScrollView,
+} from "react-native";
 import { styles } from "../styles";
 import { UI_TEXT } from "../strings";
-import { AUTH_CONFIG } from "../config";
 import { UserRole } from "../types";
 import { ActionLabel } from "../components/common/ActionLabel";
 import { AlertButton } from "../components/common/CustomAlert";
 
-export function LoginScreen({ onLogin, showAlert }: { onLogin: (role: UserRole) => void, showAlert: (title: string, message: string, buttons?: AlertButton[]) => void }) {
+import { Ionicons } from "@expo/vector-icons";
+import { SubscriptionRepository } from "../repository";
+
+export function LoginScreen({
+  onLogin,
+  showAlert,
+  repository,
+}: {
+  onLogin: (role: UserRole) => void;
+  showAlert: (title: string, message: string, buttons?: AlertButton[]) => void;
+  repository: SubscriptionRepository;
+}) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
-    const user = AUTH_CONFIG.users.find(
-      (u) => u.username.toLowerCase() === username.toLowerCase() && u.password === password
-    );
+  const handleLogin = async () => {
+    setLoading(true);
+    try {
+      const authConfig = await repository.getAuthConfig();
 
-    if (user) {
-      onLogin(user.role as UserRole);
-    } else {
-      showAlert(UI_TEXT.error, UI_TEXT.invalidCredentials);
+      if (!authConfig || !Array.isArray(authConfig.users)) {
+        showAlert(UI_TEXT.error, "Internal Error: Auth config missing in database.");
+        return;
+      }
+
+      const user = authConfig.users.find(
+        (u: any) => u.username.toLowerCase() === username.toLowerCase() && u.password === password
+      );
+
+      if (user) {
+        onLogin(user.role as UserRole);
+      } else {
+        showAlert(UI_TEXT.error, UI_TEXT.invalidCredentials);
+      }
+    } catch (err) {
+      console.error("Login fetch error:", err);
+      showAlert(UI_TEXT.error, "Could not connect to authentication server.");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <ImageBackground
-      source={{ uri: "https://source.unsplash.com/featured/1200x1800/?durga,puja,festival" }}
-      style={styles.root}
-      imageStyle={styles.backgroundImage}
-    >
+    <View style={styles.root}>
+      <StatusBar style="dark" />
       <KeyboardAvoidingView
-        style={styles.rootOverlay}
+        style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-        <StatusBar style="light" />
-        <View style={styles.header}>
-          <Text style={styles.eyebrow}>{UI_TEXT.eventTitle}</Text>
-          <Text style={styles.title}>{UI_TEXT.loginTitle}</Text>
-          <Text style={styles.subtitle}>{UI_TEXT.loginSubtitle}</Text>
-        </View>
+        <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }}>
+          <View style={styles.loginContainer}>
+            <View style={styles.loginLogo}>
+               <Ionicons name="restaurant" size={48} color="#FFF" />
+            </View>
 
-        <View style={[styles.content, { justifyContent: "center" }]}>
-          <View style={styles.card}>
-            <Text style={styles.label}>{UI_TEXT.username}</Text>
-            <TextInput
-              style={styles.input}
-              value={username}
-              onChangeText={setUsername}
-              autoCapitalize="none"
-            />
+            <View style={{ alignItems: "center", marginBottom: 40 }}>
+              <Text style={[styles.eyebrow, { color: "#E31837" }]}>{UI_TEXT.eventTitle}</Text>
+              <Text style={[styles.title, { textAlign: "center", marginTop: 12 }]}>{UI_TEXT.loginTitle}</Text>
+              <Text style={[styles.subtitle, { textAlign: "center" }]}>{UI_TEXT.loginSubtitle}</Text>
+            </View>
 
-            <Text style={styles.label}>{UI_TEXT.password}</Text>
-            <TextInput
-              style={styles.input}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              autoCapitalize="none"
-            />
+            <View>
+              <Text style={styles.label}>{UI_TEXT.username}</Text>
+              <TextInput
+                style={styles.input}
+                value={username}
+                onChangeText={setUsername}
+                autoCapitalize="none"
+                placeholder="Enter username"
+                placeholderTextColor="#ADB5BD"
+              />
 
-            <Pressable
-              style={[styles.primary, (!username || !password) && { opacity: 0.5 }]}
-              onPress={handleLogin}
-              disabled={!username || !password}
-            >
-              <ActionLabel icon="log-in-outline" label={UI_TEXT.loginButton} color="#fff" />
-            </Pressable>
+              <Text style={styles.label}>{UI_TEXT.password}</Text>
+              <TextInput
+                style={styles.input}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                autoCapitalize="none"
+                placeholder="Enter password"
+                placeholderTextColor="#ADB5BD"
+              />
+
+              <Pressable
+                style={[styles.primary, (!username || !password || loading) && { opacity: 0.5 }, { marginTop: 40 }]}
+                onPress={handleLogin}
+                disabled={!username || !password || loading}
+              >
+                <Text style={styles.primaryText}>{loading ? UI_TEXT.loading : UI_TEXT.loginButton}</Text>
+              </Pressable>
+            </View>
+
+            <View style={styles.footer}>
+               <Text style={styles.footerText}>{UI_TEXT.footerCopyright}</Text>
+            </View>
           </View>
-
-          <View style={styles.footer} />
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
-    </ImageBackground>
+    </View>
   );
 }

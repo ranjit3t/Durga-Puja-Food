@@ -12,6 +12,7 @@ interface EditableMetricProps {
   onSave: (newValue: number) => void;
   validate?: (newValue: number) => boolean | string;
   showAlert?: (title: string, message: string, buttons?: AlertButton[]) => void;
+  color?: string;
 }
 
 /**
@@ -24,6 +25,7 @@ export function EditableMetric({
   onSave,
   validate,
   showAlert,
+  color = "#E31837",
 }: EditableMetricProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [localValue, setLocalValue] = useState(String(value));
@@ -56,11 +58,11 @@ export function EditableMetric({
 
   if (isEditing) {
     return (
-      <View style={[styles.metric, { borderColor: "#c35b3b", borderWidth: 1 }]}>
+      <View style={[styles.metric, { borderColor: color, borderStyle: "dashed" }]}>
         <TextInput
           style={[
             styles.metricValue,
-            { marginTop: 0, padding: 0, textAlign: "center", width: "100%" },
+            { marginTop: 0, padding: 0, textAlign: "center", width: "100%", color },
           ]}
           value={localValue}
           onChangeText={(text) => setLocalValue(text.replace(/[^0-9]/g, ""))}
@@ -74,7 +76,7 @@ export function EditableMetric({
         <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
           <Text style={styles.metricLabel}>{label}</Text>
           <Pressable onPress={handleSave}>
-            <Ionicons name="checkmark-circle" size={12} color="#356044" />
+            <Ionicons name="checkmark-circle" size={12} color={color} />
           </Pressable>
         </View>
       </View>
@@ -83,8 +85,8 @@ export function EditableMetric({
 
   return (
     <Pressable style={styles.metric} onPress={() => setIsEditing(true)}>
-      <Ionicons name={icon} size={16} color="#356044" />
-      <Text style={styles.metricValue}>{value}</Text>
+      <Ionicons name={icon} size={18} color={color} />
+      <Text style={[styles.metricValue, { color }]}>{value}</Text>
       <Text style={styles.metricLabel}>{label}</Text>
     </Pressable>
   );

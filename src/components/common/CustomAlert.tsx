@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, Pressable, Modal, StyleSheet } from "react-native";
+import { View, Text, Pressable, Modal, StyleSheet, Platform } from "react-native";
 
 export type AlertButton = {
   text: string;
@@ -14,6 +14,17 @@ export interface CustomAlertProps {
   buttons?: AlertButton[];
   onClose: () => void;
 }
+
+const COLORS = {
+  primary: "#E31837",
+  textPrimary: "#1A1C1E",
+  textSecondary: "#6A6E73",
+  white: "#FFFFFF",
+  border: "#E9ECEF",
+  backdrop: "rgba(0, 0, 0, 0.65)",
+  error: "#DC3545",
+  surface: "#F8F9FA",
+};
 
 export function CustomAlert({
   visible,
@@ -33,31 +44,36 @@ export function CustomAlert({
           </View>
           <Text style={styles.message}>{message}</Text>
           <View style={styles.footer}>
-            {buttons.map((btn, index) => (
-              <Pressable
-                key={index}
-                onPress={() => {
-                  if (btn.onPress) btn.onPress();
-                  onClose();
-                }}
-                style={[
-                  styles.button,
-                  btn.style === "destructive" && styles.destructiveButton,
-                  btn.style === "cancel" && styles.cancelButton,
-                  index > 0 && { marginLeft: 10 },
-                ]}
-              >
-                <Text
+            {buttons.map((btn, index) => {
+              const isDestructive = btn.style === "destructive";
+              const isCancel = btn.style === "cancel";
+
+              return (
+                <Pressable
+                  key={index}
+                  onPress={() => {
+                    if (btn.onPress) btn.onPress();
+                    onClose();
+                  }}
                   style={[
-                    styles.buttonText,
-                    btn.style === "destructive" && styles.destructiveText,
-                    btn.style === "cancel" && styles.cancelText,
+                    styles.button,
+                    isDestructive && styles.destructiveButton,
+                    isCancel && styles.cancelButton,
+                    index > 0 && { marginLeft: 12 },
                   ]}
                 >
-                  {btn.text}
-                </Text>
-              </Pressable>
-            ))}
+                  <Text
+                    style={[
+                      styles.buttonText,
+                      isDestructive && styles.destructiveText,
+                      isCancel && styles.cancelText,
+                    ]}
+                  >
+                    {btn.text}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
         </View>
       </View>
@@ -68,64 +84,78 @@ export function CustomAlert({
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    backgroundColor: COLORS.backdrop,
     justifyContent: "center",
     alignItems: "center",
     padding: 24,
   },
   card: {
-    backgroundColor: "#fffaf0",
-    borderRadius: 20,
+    backgroundColor: COLORS.white,
+    borderRadius: 28,
     width: "100%",
     maxWidth: 340,
     padding: 24,
-    elevation: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 12 },
+        shadowOpacity: 0.15,
+        shadowRadius: 16,
+      },
+      android: {
+        elevation: 12,
+      },
+    }),
   },
   header: {
-    marginBottom: 12,
+    marginBottom: 10,
   },
   title: {
-    fontSize: 20,
-    fontWeight: "800",
-    color: "#253d35",
+    fontSize: 22,
+    fontWeight: "900",
+    color: COLORS.textPrimary,
+    letterSpacing: -0.5,
   },
   message: {
     fontSize: 15,
-    color: "#58665b",
+    color: COLORS.textSecondary,
     lineHeight: 22,
-    marginBottom: 24,
+    fontWeight: "500",
+    marginBottom: 28,
   },
   footer: {
     flexDirection: "row",
     justifyContent: "flex-end",
+    alignItems: "center",
   },
   button: {
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-    backgroundColor: "#d9e7d4",
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 14,
+    backgroundColor: COLORS.primary,
+    minWidth: 80,
+    alignItems: "center",
+    justifyContent: "center",
   },
   buttonText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#356044",
+    fontSize: 15,
+    fontWeight: "800",
+    color: COLORS.white,
   },
   destructiveButton: {
-    backgroundColor: "#fdecea",
+    backgroundColor: "#FFF5F5",
+    borderWidth: 1,
+    borderColor: COLORS.error,
   },
   destructiveText: {
-    color: "#b34e45",
+    color: COLORS.error,
   },
   cancelButton: {
-    backgroundColor: "transparent",
+    backgroundColor: COLORS.surface,
     borderWidth: 1,
-    borderColor: "#c9bca9",
+    borderColor: COLORS.border,
   },
   cancelText: {
-    color: "#675f55",
+    color: COLORS.textSecondary,
   },
 });

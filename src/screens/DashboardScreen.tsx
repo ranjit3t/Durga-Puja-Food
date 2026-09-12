@@ -117,18 +117,23 @@ const DashboardMealSection = memo(
 
     return (
       <View style={styles.dashboardMealSection}>
-        <View style={[styles.mealDisplayHeader, { marginBottom: 10 }]}>
-          <Ionicons name={icon} size={20} color="#356044" />
-          <Text style={[styles.mealDisplayTitle, { fontSize: 16 }]}>
-            {title}
-          </Text>
+        <View style={[styles.mealDisplayHeader, { marginBottom: 12, justifyContent: "space-between" }]}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <Ionicons name={icon} size={22} color="#E31837" />
+            <Text style={[styles.sectionTitle, { marginBottom: 0, fontSize: 18 }]}>
+              {title}
+            </Text>
+          </View>
+          <View style={[styles.pill, { backgroundColor: "#F1F3F5" }]}>
+             <Text style={[styles.pillText, { color: "#6A6E73" }]}>{total} Plates</Text>
+          </View>
         </View>
 
         {/* Menu Quick-View */}
         {(vegItems.length > 0 || nonVegItems.length > 0) && (
-          <View style={{ gap: 8, marginBottom: 12 }}>
+          <View style={{ gap: 8, marginBottom: 16 }}>
             {isVegEnabled && vegItems.length > 0 && (
-              <View style={[styles.menuBox, { marginBottom: 0, marginTop: 0 }]}>
+              <View style={[styles.menuBox, { borderLeftWidth: 4, borderLeftColor: "#28A745", paddingVertical: 8 }]}>
                 <MealSummaryInline
                   label={UI_TEXT.veg}
                   dayId={day}
@@ -141,7 +146,7 @@ const DashboardMealSection = memo(
             {isNonVegEnabled &&
               nonVegItems.length > 0 && (
                 <View
-                  style={[styles.menuBox, { marginBottom: 0, marginTop: 0 }]}
+                  style={[styles.menuBox, { borderLeftWidth: 4, borderLeftColor: "#DC3545", paddingVertical: 8 }]}
                 >
                   <MealSummaryInline
                     label={UI_TEXT.nonVeg}
@@ -159,7 +164,7 @@ const DashboardMealSection = memo(
         <View style={styles.metricGrid}>
           <Metric icon="people-outline" label={UI_TEXT.total} value={total} />
 
-          {/* Guest Total: Editable by Admin/Vendor if single-option, else a metric if both enabled */}
+          {/* Guest Total */}
           {isBothEnabled ? (
             <Metric
               icon="people-circle-outline"
@@ -181,11 +186,11 @@ const DashboardMealSection = memo(
             />
           )}
 
-          {/* Detailed Demand: Only show Veg/Non-Veg splits if BOTH are enabled */}
+          {/* Detailed Demand */}
           {isBothEnabled && (
             <>
-              <Metric icon="leaf-outline" label={labels.veg} value={veg} />
-              <Metric icon="flame-outline" label={labels.nonVeg} value={nonVeg} />
+              <Metric icon="leaf-outline" label={labels.veg} value={veg} color="#28A745" />
+              <Metric icon="flame-outline" label={labels.nonVeg} value={nonVeg} color="#DC3545" />
             </>
           )}
 
@@ -196,6 +201,7 @@ const DashboardMealSection = memo(
                 icon="checkmark-circle-outline"
                 label={labels.parcelTaken}
                 value={parcelTaken}
+                color="#E31837"
               />
             </>
           )}
@@ -204,28 +210,27 @@ const DashboardMealSection = memo(
             icon="checkmark-done-outline"
             label={UI_TEXT.total + " " + UI_TEXT.taken}
             value={totalMealTaken}
+            color="#28A745"
           />
 
-          {/* Detailed View: Only show Veg/Non-Veg splits if BOTH are enabled */}
+          {/* Detailed View */}
           {isBothEnabled && (
             <>
-              {/* Resident Demand Splits */}
-              <Metric icon="leaf-outline" label={labels.veg} value={veg} />
-              <Metric icon="flame-outline" label={labels.nonVeg} value={nonVeg} />
+              <View style={{ width: "100%", height: 1, backgroundColor: "#E9ECEF", marginVertical: 8 }} />
 
-              {/* Collection Status Splits */}
               <Metric
                 icon="checkmark-done-outline"
                 label={labels.vegTaken}
                 value={totalVegTaken}
+                color="#28A745"
               />
               <Metric
                 icon="checkmark-done-outline"
                 label={labels.nonVegTaken}
                 value={totalNonVegTaken}
+                color="#DC3545"
               />
 
-              {/* Guest Demand Management Splits (Always editable by Admin/Vendor) */}
               <EditableMetric
                 icon="leaf-outline"
                 label={labels.guestVeg}
@@ -235,6 +240,7 @@ const DashboardMealSection = memo(
                   val >= guestVegTaken || UI_TEXT.guestVegTotalError
                 }
                 showAlert={showAlert}
+                color="#28A745"
               />
               <EditableMetric
                 icon="flame-outline"
@@ -245,9 +251,9 @@ const DashboardMealSection = memo(
                   val >= guestNonVegTaken || UI_TEXT.guestNonVegTotalError
                 }
                 showAlert={showAlert}
+                color="#DC3545"
               />
 
-              {/* Guest Collection splits */}
               <EditableMetric
                 icon="checkbox-outline"
                 label={labels.guestVegTaken}
@@ -264,15 +270,9 @@ const DashboardMealSection = memo(
                 validate={(val) => val <= guestNonVeg || UI_TEXT.guestTakenError}
                 showAlert={showAlert}
               />
-              <Metric
-                icon="people-circle-outline"
-                label={UI_TEXT.guestTaken}
-                value={guestVegTaken + guestNonVegTaken}
-              />
             </>
           )}
 
-          {/* Guest Collection Tracking for Single Option (Always editable by Admin/Vendor) */}
           {!isBothEnabled && (
             <EditableMetric
               icon="checkbox-outline"
@@ -290,6 +290,7 @@ const DashboardMealSection = memo(
                 val <= (guestVeg + guestNonVeg) || UI_TEXT.guestTakenError
               }
               showAlert={showAlert}
+              color="#28A745"
             />
           )}
         </View>
@@ -544,7 +545,9 @@ export function DashboardScreen({
             </View>
           );
         })}
-        <View style={styles.footer} />
+        <View style={styles.footer}>
+           <Text style={styles.footerText}>{UI_TEXT.footerCopyright}</Text>
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );

@@ -106,17 +106,20 @@ export function ViewMenuScreen({
         })}
 
         {isAdmin && (
-          <View style={{ alignItems: "center", marginTop: 8 }}>
-            <Pressable onPress={onEdit} style={styles.compactSecondary}>
+          <View style={{ marginTop: 24, paddingHorizontal: 4 }}>
+            <Pressable onPress={onEdit} style={styles.primary}>
               <ActionLabel
                 icon="create-outline"
                 label={UI_TEXT.updateMenuItems}
+                color="#FFF"
               />
             </Pressable>
           </View>
         )}
 
-        <View style={styles.footer} />
+        <View style={styles.footer}>
+           <Text style={styles.footerText}>{UI_TEXT.footerCopyright}</Text>
+        </View>
       </ScrollView>
     </View>
   );

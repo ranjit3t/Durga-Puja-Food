@@ -18,11 +18,11 @@ The project follows a **Modular Layered Architecture**:
 
 ### 📂 Presentation Layer (`src/screens`, `src/components`)
 - **Screens**: Discrete full-page views.
-    - `LoginScreen`: Gateway for role-based session initialization.
+    - `LoginScreen`: Gateway for role-based session initialization. Dynamically fetches credentials from the `auth_config` database node to verify access.
     - `DashboardScreen`: Aggregated kitchen analytics with adaptive layouts for single/dual dietary options and real-time guest management.
-    - `SubscriptionForm`: CRUD interface with mandatory Flat No validation, live preview, and role-based parcel control.
-    - `SettingsScreen`: Administrative interface for managing the database-driven festival configuration, including "Veg only" mode and granular meal rules.
-    - `ReportScreen`: High-precision analytics engine with multiple reporting modes (Day, Meal, Flat, Payment, Not Taken) and config-aware data filtering.
+    - `SubscriptionForm`: CRUD interface with touch-optimized block dropdowns (18px spacing), mandatory validation, and role-based control.
+    - `SettingsScreen`: Administrative interface for managing festival config. Features **Deep Change Detection** to manage save-button states and improved abbreviation input ergonomics.
+    - `ReportScreen`: High-precision analytics engine with multiple reporting modes (Day, Meal, Flat, Payment, Not Taken). Uses a space-saving horizontal scroll selector and standardized dietary color-coding (Veg: Green, Non-Veg: Red).
     - `MenuEditorScreen`: Administrative tool for global menu configuration.
     - `ViewMenuScreen`: Read-only feast visibility for operational staff.
     - `ScannerScreen`: Optimized QR scanning interface with centered target alignment.
@@ -30,7 +30,7 @@ The project follows a **Modular Layered Architecture**:
     - `CustomAlert`: A centralized, themed replacement for system dialogs.
     - `Metrics`: Specialized data visualization tiles for dashboard and financial tracking.
     - `LogoutButton`: A global session termination component available in every operational header.
-    - `ActionLabels`: Icon+Text combinations used consistently for interactive elements.
+    - `ActionLabels`: Standardized Icon+Text component used across all major action buttons (Reports, Sharing, Logout) to ensure UI consistency and high legibility.
 - **Navigation**: Custom state-based navigation in `App.tsx`, synchronized with Android hardware back-button logic.
 
 ### 📂 Logic & Constants Layer (`src/constants.ts`, `src/strings.ts`)
@@ -40,11 +40,12 @@ The project follows a **Modular Layered Architecture**:
     - Meal slot availability (Breakfast/Lunch/Dinner).
     - Dietary options (Veg/Non-Veg) enabled per specific meal slot.
     - Parcel support enabled per specific meal slot.
-- **Strict Settings Priority**: Helpers in `src/constants.ts` and UI components strictly check the active configuration. If a day or meal is disabled, its historical data is masked and it is removed from all summaries and demands.
+- **Logic Layer Helpers**: Includes `src/constants.ts` for visibility logic and **Automatic Schema Sanitization** which removes menu data when its corresponding day is deleted from config.
+- **Strict Settings Priority**: Helpers strictly check the active configuration. If a day or meal is disabled, its historical data is masked and it is removed from all summaries and demands. Global action buttons (Add/Edit) are also dynamically disabled if no active days exist.
 - **Strings**: Centralized UI text dictionary for easy customization.
 
 ### 📂 Data Layer (`src/repository.ts`, `src/firebase.ts`)
-- **Real-time Persistence**: Uses Firebase Realtime Database for all subscriptions, menus, and configurations.
+- **Real-time Persistence**: Uses Firebase Realtime Database for all subscriptions, menus, configurations, and user credentials (`auth_config`).
 - **Data Normalization**: The `normalizeRecord` function handles schema variations, legacy data formats, and enforces matrix integrity (Person x Day x Meal).
 - **Atomic Upserts**: Subscriptions are updated by ID to ensure consistent record state.
 
@@ -54,6 +55,8 @@ The project follows a **Modular Layered Architecture**:
 The application implements two access levels:
 - **Admin**: Full read/write/delete privileges on all modules, including **Settings**.
 - **Vendor**: Operational access. Can mark food as taken for residents, update Guest collections (Taken/Demand splits), toggle Parcel options, and view **Reporting**. Sensitive CRUD actions for residents and global settings are hidden.
+
+**Note**: The user registry is fetched from the database root on demand during the login handshake.
 
 ### Security Implementation
 - **Field-Level Locking**: UI components evaluate the `userRole` to toggle `editable` properties or adjust opacity on sensitive interactive elements.
@@ -79,4 +82,4 @@ The schema for dynamic festival configuration.
 - **Periodic Background Refresh**: To handle long-running sessions on a single screen (e.g., the kitchen dashboard), a background interval triggers a silent sync every 10 seconds. This ensures that metrics like "Taken" counts and "Guest Demand" are always reflective of the latest backend state without requiring manual page reloads.
 - **Windowed Rendering**: `FlatList` optimization to handle high volumes of flat records (1000+).
 - **Memoized Selectors**: Reports and Dashboard metrics use `useMemo` with deduplication logic to ensure high accuracy and zero UI lag during real-time data sync.
-- **CaptureRef**: Asynchronous PNG generation for reports, allowing admins to share complex data views as static images.
+- **CaptureRef (Digital Pass)**: Asynchronous PNG generation for reports and QR passes. The "Digital Pass" design encapsulates stable flat details and branding into a single sharable image to ensure information persistence regardless of future subscription edits.

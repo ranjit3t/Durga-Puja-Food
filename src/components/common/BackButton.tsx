@@ -20,7 +20,13 @@ export function BackButton({ onPress }: { onPress: () => void }) {
         <Text
           style={[
             styles.eyebrow,
-            { color: "#f0c977", marginBottom: 0, letterSpacing: 0, fontSize: 14 },
+            {
+              color: "#f0c977",
+              marginBottom: 0,
+              letterSpacing: 0,
+              fontSize: 12,
+              textTransform: "none"
+            },
           ]}
         >
           {UI_TEXT.back}

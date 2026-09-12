@@ -4,7 +4,7 @@
  */
 import { get, ref, remove, set } from "firebase/database";
 import { ensureFirebaseAuth, firebaseConfigured } from "./firebase";
-import { ConfigDay } from "./types";
+import { ConfigDay, AppConfig } from "./types";
 
 // --- Domain Types ---
 
@@ -69,13 +69,15 @@ export interface SubscriptionRepository {
   remove(flatId: string): Promise<void>;
   getMenu(): Promise<FoodMenu>;
   updateMenu(menu: FoodMenu): Promise<void>;
-  getConfig(): Promise<ConfigDay[]>;
-  updateConfig(config: ConfigDay[]): Promise<void>;
+  getConfig(): Promise<AppConfig>;
+  updateConfig(config: AppConfig): Promise<void>;
+  getAuthConfig(): Promise<any>;
 }
 
 const subscriptionsPath = "subscriptions";
 const menuPath = "menu";
 const configPath = "config";
+const authConfigPath = "auth_config";
 
 // --- Helper Functions ---
 
@@ -254,8 +256,15 @@ export function createFirebaseRepository(): SubscriptionRepository {
   async function getActiveDays(services: any): Promise<string[]> {
     const snapshot = await get(ref(services.db, configPath));
     const val = snapshot.val();
-    const config = snapshot.exists() && Array.isArray(val) ? (val as ConfigDay[]) : [];
-    return config.filter((d) => d && d.enabled).map((d) => d.id);
+    let days: ConfigDay[] = [];
+    if (snapshot.exists()) {
+      if (Array.isArray(val)) {
+        days = val;
+      } else if (val && Array.isArray(val.days)) {
+        days = val.days;
+      }
+    }
+    return days.filter((d) => d && d.enabled).map((d) => d.id);
   }
 
   return {
@@ -309,15 +318,30 @@ export function createFirebaseRepository(): SubscriptionRepository {
     },
     async getConfig() {
       const services = await ensureFirebaseAuth();
-      if (!services) return [];
+      if (!services) return { seasonName: "", days: [] };
       const snapshot = await get(ref(services.db, configPath));
       const val = snapshot.val();
-      return snapshot.exists() && Array.isArray(val) ? (val as ConfigDay[]) : [];
+      if (snapshot.exists()) {
+        if (Array.isArray(val)) {
+          return { seasonName: "", days: val as ConfigDay[] };
+        }
+        return {
+          seasonName: val.seasonName || "",
+          days: Array.isArray(val.days) ? (val.days as ConfigDay[]) : [],
+        };
+      }
+      return { seasonName: "", days: [] };
     },
     async updateConfig(config) {
       const services = await ensureFirebaseAuth();
       if (!services) return;
       await set(ref(services.db, configPath), config);
+    },
+    async getAuthConfig() {
+      const services = await ensureFirebaseAuth();
+      if (!services) return undefined;
+      const snapshot = await get(ref(services.db, authConfigPath));
+      return snapshot.exists() ? snapshot.val() : undefined;
     },
   };
 }

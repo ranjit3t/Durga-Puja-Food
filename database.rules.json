@@ -16,6 +16,10 @@
     "config": {
       ".read": "auth != null",
       ".write": "auth != null"
+    },
+    "auth_config": {
+      ".read": "auth != null",
+      ".write": false
     }
   }
 }

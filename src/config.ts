@@ -1,74 +1,58 @@
-import { ConfigDay } from "./types";
+import { AppConfig } from "./types";
 
 /**
- * Internal Authentication Configuration
- * Defines user roles and their associated credentials.
- */
-export const AUTH_CONFIG = {
-  users: [
-    {
-      username: "admin",
-      password: "adminEternia@2026",
-      role: "admin",
-    },
-    {
-      username: "vendor",
-      password: "vendor",
-      role: "vendor",
-    },
-  ] as const,
-};
-
-/**
- * Default Festival Day Configuration
+ * Default Festival App Configuration
  * Used when no configuration is found in the database.
  */
 const emptyMeal = { enabled: false, veg: true, nonVeg: true, parcel: false };
 
-export const DEFAULT_DAY_CONFIG: ConfigDay[] = [
-  {
-    id: "Shashthi",
-    label: "Shashthi",
-    abbr: "Sha",
-    enabled: true,
-    breakfast: { ...emptyMeal },
-    lunch: { ...emptyMeal },
-    dinner: { ...emptyMeal },
-  },
-  {
-    id: "Saptami",
-    label: "Saptami",
-    abbr: "Sap",
-    enabled: true,
-    breakfast: { ...emptyMeal },
-    lunch: { ...emptyMeal },
-    dinner: { ...emptyMeal },
-  },
-  {
-    id: "Ashtami",
-    label: "Ashtami",
-    abbr: "Ash",
-    enabled: true,
-    breakfast: { ...emptyMeal },
-    lunch: { ...emptyMeal },
-    dinner: { ...emptyMeal },
-  },
-  {
-    id: "Nabami",
-    label: "Nabami",
-    abbr: "Nab",
-    enabled: true,
-    breakfast: { ...emptyMeal },
-    lunch: { ...emptyMeal },
-    dinner: { ...emptyMeal },
-  },
-  {
-    id: "Dashami",
-    label: "Dashami",
-    abbr: "Das",
-    enabled: true,
-    breakfast: { ...emptyMeal },
-    lunch: { ...emptyMeal },
-    dinner: { ...emptyMeal },
-  },
-];
+export const DEFAULT_APP_CONFIG: AppConfig = {
+  seasonName: "ETERNIA FESTIVAL 2026",
+  days: [
+    {
+      id: "Shashthi",
+      label: "Shashthi",
+      abbr: "Sha",
+      enabled: true,
+      breakfast: { ...emptyMeal },
+      lunch: { ...emptyMeal },
+      dinner: { ...emptyMeal },
+    },
+    {
+      id: "Saptami",
+      label: "Saptami",
+      abbr: "Sap",
+      enabled: true,
+      breakfast: { ...emptyMeal },
+      lunch: { ...emptyMeal },
+      dinner: { ...emptyMeal },
+    },
+    {
+      id: "Ashtami",
+      label: "Ashtami",
+      abbr: "Ash",
+      enabled: true,
+      breakfast: { ...emptyMeal },
+      lunch: { ...emptyMeal },
+      dinner: { ...emptyMeal },
+    },
+    {
+      id: "Nabami",
+      label: "Nabami",
+      abbr: "Nab",
+      enabled: true,
+      breakfast: { ...emptyMeal },
+      lunch: { ...emptyMeal },
+      dinner: { ...emptyMeal },
+    },
+    {
+      id: "Dashami",
+      label: "Dashami",
+      abbr: "Das",
+      enabled: true,
+      breakfast: { ...emptyMeal },
+      lunch: { ...emptyMeal },
+      dinner: { ...emptyMeal },
+    },
+  ],
+};

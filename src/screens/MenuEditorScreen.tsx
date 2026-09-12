@@ -153,7 +153,9 @@ export function MenuEditorScreen({
           />
         </Pressable>
 
-        <View style={styles.footer} />
+        <View style={styles.footer}>
+           <Text style={styles.footerText}>{UI_TEXT.footerCopyright}</Text>
+        </View>
       </ScrollView>
     </View>
   );

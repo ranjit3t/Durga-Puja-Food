@@ -5,9 +5,9 @@ A robust Expo React Native application designed for food admins and volunteers t
 ## ✨ Key Features
 
 ### 🔐 Security & Access Control
-- **Role-Based Login**: Integrated login system with two distinct roles (**Admin** and **Vendor**).
-- **Permissions Management**:
-    - **Admin**: Full access to register flats, update configurations, edit menu items, and delete records.
+- **Database-Driven Authentication**: All user credentials, passwords, and roles are managed centrally in the Firebase Realtime Database (`auth_config` node). This allows for instant staff updates without code changes.
+- **Role-Based Permissions**:
+    - **Admin**: Full access to register flats, update festival settings, edit menu items, and delete records.
     - **Vendor**: Operational access to distribute food, manage guest collections, toggle parcels, and view reports.
 - **Global Logout**: Quick-access logout button available in the header of every screen for secure session management.
 
@@ -17,6 +17,7 @@ A robust Expo React Native application designed for food admins and volunteers t
 - **Dynamic Color Coding**: UI elements automatically change color (Green/Red/Green-Dark) based on the selected dietary choice (Veg/Non-Veg/Taken) for intuitive tracking.
 - **Payment Tracking**: Log UPI and Cash subscriptions with a live collection summary.
 - **Stable QR Identity**: Each flat gets a unique, permanent QR code based on its `block-flat` ID.
+- **Professional Digital Pass**: Generates a branded "Digital Pass" image for sharing. It includes the Event Title, Flat ID, Headcount, and Verification Instructions. Specifically designed to exclude volatile food legends to ensure the pass remains valid even after subscription edits.
 
 ### 🍛 Daily Menu & Operations
 - **Live Menu Management**: Admins can update the daily menu for each meal. Items are added one-by-one with specific Veg/Non-Veg indicators.
@@ -28,6 +29,8 @@ A robust Expo React Native application designed for food admins and volunteers t
 
 ### 📊 Advanced Reporting
 - **Multi-View Engine**: Generate reports by Day, Meal, Flat, Payment, or Single Meal Specific.
+- **Space-Saving UI**: Features a horizontal scrollable selection bar for report types, maximizing screen space for actual data visualization.
+- **Color-Coded Data**: All dietary text is intuitively color-coded (Green for Veg, Red for Non-Veg) across all reports for rapid scanning.
 - **Single Meal Not Taken**: Dedicated report listing flats that haven't collected a specific meal yet, with detailed dietary splits.
 - **Precision Metrics**: Detailed segregation of Resident vs. Guest demand for both Veg and Non-Veg across all meal slots.
 - **Parcel Breakdowns**: Comprehensive tracking of Veg vs. Non-Veg parcels across all report types (Day, Meal, Flat).
@@ -37,6 +40,9 @@ A robust Expo React Native application designed for food admins and volunteers t
 
 ### ⚙️ Dynamic Configuration (Zero-Code Customization)
 - **Settings Screen**: Admins can manage the entire festival structure directly from the app.
+- **Smart Save Logic**: The "Update All Settings" button intelligently detects changes. It remains disabled (opacity: 0.5) until a modification is made, preventing redundant database writes.
+- **Automatic Menu Cleanup**: Deleting a festival day from settings automatically scrubs all associated menu data (Veg/Non-Veg lists, guest counts) from the database to prevent stale records.
+- **Enhanced Input UX**: Redesigned abbreviation input with large, touch-friendly fields and automatic capitalization for error-free legend management.
 - **Strict Settings Priority**: Disabled days, meal slots, or dietary options are completely hidden and ignored in all calculations, ensuring distribution only follows the active plan.
 - **Veg Only Toggle**: Easily convert a day to "Veg only" mode, which simplifies the entire app UI (Form, Dashboard, Reports) for that day by removing Non-Veg options and assuming vegetarian choices.
 - **Day/Meal Management**: Add or remove days, and toggle specific meal slots (B/L/D), dietary options (Veg/NV) per slot, or Parcel support. Feature visibility (like Parcel counts) is intelligently managed per-meal.
@@ -47,10 +53,15 @@ A robust Expo React Native application designed for food admins and volunteers t
 ### ⚡ Efficient Distribution
 - **QR Scanner**: Fast check-in at the food desk using the built-in camera scanner with centered target alignment.
 - **Per-Meal Tracking**: Mark food as "Taken" for each meal individually (Breakfast, Lunch, Dinner) per person.
+- **Parcel Visibility**: Individual meal choices now display a gold "P" badge for easy parcel identification in the flat details view.
 - **Native Navigation**: Full synchronization with Android hardware back-button logic for a seamless experience.
 
 ### 🎨 Polished UI/UX
 - **Custom Alerts**: Replaced system default dialogs with a sleek, themed `CustomAlert` component for a unified professional look.
+- **Dynamic Action Control**: The "Add Pass" and "Edit Pass" buttons are intelligently disabled when no active festival days are configured, preventing data entry errors during non-festival periods.
+- **Touch-Optimized Dropdowns**: Redesigned block selection with generous vertical spacing (18px padding) and full scrollability for effortless navigation on small screens.
+- **Optimized FAB Placement**: The "Add Pass" Floating Action Button is positioned higher (bottom: 90) to avoid interference with Android system navigation bars.
+- **Legible Navigation**: Simplified "Back" button styling with sentence-case labels and optimized font sizes for better fit on various device widths.
 - **Responsive Layouts**: Optimized for various screen sizes with `KeyboardAvoidingView` and `ScrollView` integrations.
 
 ### 🏗️ Technical Highlights
@@ -97,7 +108,9 @@ The app requires a Firebase project for data persistence.
    ```sh
    firebase deploy --only database
    ```
-   *Note: Ensure the `menu`, `subscriptions`, and `config` paths are correctly configured in `database.rules.json`.*
+6. **Initialize Users**: Add an `auth_config` node to your database root containing a `users` array with `username`, `password`, and `role` fields.
+
+*Note: Ensure the `menu`, `subscriptions`, `config`, and `auth_config` paths are correctly configured in `database.rules.json`.*
 
 ## 📂 Project Structure
 - `App.tsx`: App entry point, session management, and global state coordination.

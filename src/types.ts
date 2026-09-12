@@ -30,6 +30,11 @@ export type ConfigDay = {
   dinner: MealConfig;
 };
 
+export type AppConfig = {
+  seasonName: string;
+  days: ConfigDay[];
+};
+
 export type Day = string;
 export type PaymentMode = "UPI" | "Cash";
 export type UserRole = "admin" | "vendor";

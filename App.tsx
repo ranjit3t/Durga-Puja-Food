@@ -84,6 +84,7 @@ export default function App() {
   );
   const [editing, setEditing] = useState<Subscription | null>(null);
   const [dayConfig, setDayConfig] = useState<ConfigDay[]>([]);
+  const [seasonName, setSeasonName] = useState("");
   const [foodMenu, setFoodMenu] = useState<FoodMenu>({});
   const [firebaseError, setFirebaseError] = useState("");
   const [searchText, setSearchText] = useState("");
@@ -100,67 +101,50 @@ export default function App() {
     message: "",
   });
 
-  const showAlert = (title: string, message: string, buttons?: AlertButton[]) => {
+  const showAlert = (
+    title: string,
+    message: string,
+    buttons?: AlertButton[]
+  ) => {
     setAlertConfig({ visible: true, title, message, buttons });
   };
 
-  const activeDays = useMemo(() => getActiveDays(dayConfig), [dayConfig]);
-
-  // Derived state for the currently active/selected flat
-  const selected =
-    selectedRecord?.id === selectedId
-      ? selectedRecord
-      : subscriptions.find((item) => item.id === selectedId) ??
-        subscriptions[0];
-
-  // --- Effects & Data Sync ---
-
   /**
-   * Syncs all core data from the backend.
-   * Ensures that the app is not relying on stale/cached data.
-   * Shows a loading indicator only if requested (usually only for the initial sync after login).
+   * Loads all operational data from Firebase.
    */
   const refreshAllData = async (silent = false) => {
-    // If we're not configured or don't have a role, we can't fetch.
-    // However, we must ensure loading is cleared if handleLogin set it.
-    if (!firebaseRepositoryConfigured || !userRole) {
-      setLoading(false);
-      if (!firebaseRepositoryConfigured && !silent) {
-        setFirebaseError("Firebase is not configured. Check your environment variables.");
-      }
-      return;
-    }
-
     if (!silent) setLoading(true);
-
     try {
-      const [config, records, menu] = await Promise.all([
-        repository.getConfig(),
+      if (!firebaseRepositoryConfigured) {
+        setFirebaseError(firebaseMissingConfig.join(", "));
+        return;
+      }
+      const [subs, config, menu] = await Promise.all([
         repository.list(),
+        repository.getConfig(),
         repository.getMenu(),
       ]);
-
-      if (config && config.length > 0) setDayConfig(config);
-      setSubscriptions(records);
+      setSubscriptions(subs);
+      setDayConfig(config.days);
+      setSeasonName(config.seasonName);
       setFoodMenu(menu);
-
-      // Keep the current selection in sync with the fresh data
-      if (selectedId) {
-        const fresh = records.find((r) => r.id === selectedId);
-        if (fresh) setSelectedRecord(fresh);
-      }
-
-      if (firebaseError) setFirebaseError("");
-    } catch (error) {
-      console.warn("Global sync failed", error);
-      setFirebaseError(
-        error instanceof Error ? error.message : "Firebase connection failed"
-      );
+      setFirebaseError("");
+    } catch (err: any) {
+      console.error("Sync error:", err);
+      setFirebaseError(err.message || "Could not sync with database.");
     } finally {
-      // Always stop the loading indicator
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
+
+  /**
+   * Initializes the session and validates connection.
+   */
+  useEffect(() => {
+    if (userRole) {
+      void refreshAllData();
+    }
+  }, [userRole]);
 
   // 1. Core Sync Effect: Refresh data silently on every screen transition
   useEffect(() => {
@@ -183,83 +167,41 @@ export default function App() {
     return () => clearInterval(interval);
   }, [screen, userRole]);
 
-  // 3. Initial Setup & Deep Linking
-  useEffect(() => {
-    // Only begin deep link synchronization once a user role is assigned
-    if (!userRole) return;
-
-    /**
-     * Handles deep links (e.g. scanning a QR code with external camera app)
-     */
-    const openFromLink = async (url: string) => {
-      const match = url.match(/flat\/([^/?]+)/);
-      if (!match) return;
-
-      const remote = await repository.getByFlatId(match[1]);
-      if (remote) {
-        setSelectedRecord(remote);
-        setSubscriptions((current) =>
-          current.some((item) => item.id === remote.id)
-            ? current.map((item) => (item.id === remote.id ? remote : item))
-            : [...current, remote]
-        );
-      }
-
-      if (remote || subscriptions.some((item) => item.id === match[1])) {
-        setSelectedId(match[1]);
-        setScreen("details");
-      }
-    };
-
-    // Deep link listeners
-    Linking.getInitialURL().then((url) => {
-      if (url) void openFromLink(url);
-    });
-    const listener = Linking.addEventListener("url", ({ url }) =>
-      openFromLink(url)
-    );
-    return () => listener.remove();
-  }, [userRole]);
-
   /**
-   * Hardware Back Button Support (Android)
+   * Native hardware back button handling.
+   * Ensures physical back button logic matches in-app navigation flow.
    */
   useEffect(() => {
     const handleBackPress = () => {
-      if (screen === "home" || screen === "login") {
+      if (screen === "login" || screen === "home") {
         return false; // Exit app
       }
 
       setIsBackNav(true);
-
-      // Logical back-navigation mapping
       if (screen === "details") setScreen("home");
-      else if (screen === "viewMenu") setScreen("home");
-      else if (screen === "dashboard") setScreen("home");
-      else if (screen === "scanner") setScreen("home");
+      else if (screen === "form")
+        setScreen(editing?.flat ? "details" : "home");
       else if (screen === "qr") setScreen("details");
+      else if (screen === "scanner") setScreen("home");
+      else if (screen === "dashboard") setScreen("home");
+      else if (screen === "viewMenu") setScreen("home");
       else if (screen === "menu") setScreen("viewMenu");
       else if (screen === "report") setScreen("home");
       else if (screen === "settings") setScreen("home");
-      else if (screen === "form") {
-        setScreen(editing?.flat ? "details" : "home");
-      } else {
-        setScreen("home");
-      }
+      else setScreen("home");
 
-      return true; // Prevent default behavior (exiting app)
+      return true;
     };
 
-    const subscription = BackHandler.addEventListener(
-      "hardwareBackPress",
-      handleBackPress
-    );
+    const subscription = BackHandler.addEventListener("hardwareBackPress", handleBackPress);
     return () => subscription.remove();
   }, [screen, editing]);
 
-  // --- Session Handlers ---
+  /**
+   * Handles user authentication and transitions to the Home screen.
+   */
   const handleLogin = (role: UserRole) => {
-    setLoading(true);
+    setLoading(true); // Trigger global loader while initial data fetch happens
     setUserRole(role);
     setScreen("home");
   };
@@ -267,220 +209,171 @@ export default function App() {
   const handleLogout = () => {
     setUserRole(null);
     setScreen("login");
+    setSubscriptions([]);
+    setDayConfig([]);
+    setFoodMenu({});
   };
 
-  // --- Data Persistence Actions ---
+  /**
+   * Transitions to the Add Pass form with blank state.
+   */
+  const startNew = () => {
+    const newId = "";
+    setEditing({
+      id: newId,
+      flat: "",
+      block: "1",
+      peopleCount: 1,
+      meals: emptyMeals(dayConfig),
+      mealByPerson: mealChoicesFromMeals(emptyMeals(dayConfig), 1, dayConfig),
+      mealSlots: mealSlotsFromChoices({}, 1, dayConfig),
+      takenByPerson: emptyTaken(1, dayConfig),
+      paymentMode: "UPI",
+      amount: "0",
+    });
+    setScreen("form");
+  };
 
   /**
-   * Creates or updates a flat subscription record.
+   * Saves or updates a flat subscription.
    */
-  const updateSubscription = async (next: Subscription) => {
-    // 1. Validation: Ensure Flat No is not empty
-    if (!next.flat.trim()) {
-      showAlert(UI_TEXT.error, UI_TEXT.flatNoRequired);
-      return false;
-    }
-
-    // 2. Check for duplicate flat ID unless we are editing an existing record
-    const duplicate = subscriptions.find(
-      (item) => item.id.toLowerCase() === next.id.trim().toLowerCase()
-    );
-
-    if (duplicate && editing && !editing.flat) {
-      setSelectedId(duplicate.id);
-      setSelectedRecord(duplicate);
-      setEditing(duplicate);
-      setScreen("form");
-      showAlert(
-        UI_TEXT.flatExists,
-        `${UI_TEXT.flatExistsMsgPrefix}${duplicate.block}-${duplicate.flat}${UI_TEXT.flatExistsMsgSuffix}`
-      );
-      return false;
-    }
-
-    const amount = next.amount.trim() || "0";
-
-    const record = { ...next, amount };
+  const updateSubscription = async (sub: Subscription) => {
     try {
-      await repository.upsert(record);
-    } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Firebase could not save this record.";
-      showAlert(UI_TEXT.saveFailed, message);
+      await repository.upsert(sub);
+      await refreshAllData(true);
+      setSelectedId(sub.id);
+      setSelectedRecord(sub);
+      setScreen("details");
+      return true;
+    } catch (err) {
+      showAlert(UI_TEXT.error, UI_TEXT.saveFailed);
       return false;
     }
-
-    setSelectedRecord(record);
-    setSubscriptions((current) =>
-      current.some((item) => item.id === record.id)
-        ? current.map((item) => (item.id === record.id ? record : item))
-        : [...current, record]
-    );
-
-    setSelectedId(record.id);
-    setEditing(null);
-    setScreen("details");
-    return true;
   };
 
   const deleteSubscription = async (id: string) => {
     try {
       await repository.remove(id);
-    } catch (error) {
-      console.warn("Could not delete subscription", error);
-      return;
+      await refreshAllData(true);
+      setScreen("home");
+    } catch (err) {
+      showAlert(UI_TEXT.error, "Could not delete record");
     }
-    setSubscriptions((current) => current.filter((item) => item.id !== id));
-    setSelectedRecord(null);
-    setSelectedId("");
-    setEditing(null);
-    setScreen("home");
   };
 
-  const handleUpdateMenu = async (next: FoodMenu) => {
+  const handleUpdateConfig = async (config: AppConfig) => {
     try {
-      await repository.updateMenu(next);
-      setFoodMenu(next);
-    } catch (error) {
+      await repository.updateConfig(config);
+
+      // Clean up Menu data for deleted days
+      const activeDayIds = config.days.map(d => d.id);
+      const updatedMenu = { ...foodMenu };
+      let menuChanged = false;
+
+      Object.keys(updatedMenu).forEach(dayId => {
+        if (!activeDayIds.includes(dayId)) {
+          delete updatedMenu[dayId];
+          menuChanged = true;
+        }
+      });
+
+      if (menuChanged) {
+        await repository.updateMenu(updatedMenu);
+        setFoodMenu(updatedMenu);
+      }
+
+      setDayConfig(config.days);
+      setSeasonName(config.seasonName);
+      await refreshAllData(true);
+    } catch (err) {
+      showAlert(UI_TEXT.error, "Could not save configuration");
+    }
+  };
+
+  const handleUpdateMenu = async (menu: FoodMenu) => {
+    try {
+      await repository.updateMenu(menu);
+      setFoodMenu(menu);
+      await refreshAllData(true);
+    } catch (err) {
       showAlert(UI_TEXT.error, UI_TEXT.couldNotUpdateMenu);
     }
   };
 
-  const handleUpdateConfig = async (next: ConfigDay[]) => {
-    try {
-      await repository.updateConfig(next);
-      setDayConfig(next);
-    } catch (error) {
-      showAlert(UI_TEXT.error, "Could not update settings");
-    }
-  };
-
-  /**
-   * Initializes state for creating a new flat record.
-   */
-  const startNew = () => {
-    if (activeDays.length === 0) {
-      showAlert("Configuration Missing", "Please add at least one enabled day in Settings first.");
+  const shareQr = async (uri: string, message?: string) => {
+    if (!(await Sharing.isAvailableAsync())) {
+      showAlert("Error", "Sharing is not available on this device");
       return;
     }
-    const nextId = `C-${String(subscriptions.length + 1).padStart(3, "0")}`;
-    const initialMeals = emptyMeals(dayConfig);
-    const initialChoices = mealChoicesFromMeals(initialMeals, 1, dayConfig);
-    setEditing({
-      id: nextId,
-      block: "1",
-      flat: "",
-      peopleCount: 1,
-      meals: initialMeals,
-      mealByPerson: initialChoices,
-      mealSlots: mealSlotsFromChoices(initialChoices, 1, dayConfig),
-      amount: "",
-      paymentMode: "UPI",
-      takenByPerson: emptyTaken(1, dayConfig),
-    });
-    setScreen("form");
-  };
 
-  // --- Distribution Handlers ---
-
-  const shareQr = async (uri: string) => {
-    if (await Sharing.isAvailableAsync()) {
+    try {
+      // For WhatsApp and other apps, sharing the message + image
+      // works differently across OS versions.
       await Sharing.shareAsync(uri, {
-        mimeType: "image/png",
-        dialogTitle: `${UI_TEXT.shareQrDialog}${selected.id}`,
+        dialogTitle: message || UI_TEXT.shareQrDialog,
+        mimeType: 'image/png',
+        UTI: 'public.png',
       });
-    } else {
-      Share.share({
-        message: `${UI_TEXT.passMessage}${selected.id}: ${qrValueFor(
-          selected.id
-        )}`,
-      });
+
+      // If a message is provided, also try to put it in clipboard or share text
+      // as a separate action if needed, but for now the Digital Pass solves it.
+    } catch (err) {
+      console.error("Share error:", err);
     }
   };
 
-  const printPass = async () => {
-    await Print.printAsync({
-      html: `<html><body style="font-family: sans-serif; text-align:center"><h1>${
-        UI_TEXT.appName
-      }</h1><h2>Flat ${selected.id}</h2><p>${selected.peopleCount}${
-        selected.peopleCount === 1 ? UI_TEXT.personSuffix : UI_TEXT.personsSuffix
-      }</p><p>${qrValueFor(selected.id)}</p></body></html>`,
-    });
+  const printPass = async (html: string) => {
+    try {
+      await Print.printAsync({ html });
+    } catch (err) {
+      showAlert("Error", "Could not print pass");
+    }
   };
 
   /**
-   * Processes a QR value scanned via the internal camera.
+   * Navigates to a flat detail screen by searching its ID.
    */
-  const openScannedValue = async (value: string) => {
-    const match =
-      value.match(/(?:flat\/|flat=)([^/?&]+)/) ??
-      value.match(/^([A-Za-z0-9]+-[A-Za-z0-9]+)$/);
-    if (!match) return false;
-
-    const flatId = match[1];
-    const remote = await repository.getByFlatId(flatId);
-    const record = remote ?? subscriptions.find((item) => item.id === flatId);
-
-    if (!record) return false;
-
-    if (remote) {
-      setSubscriptions((current) =>
-        current.some((item) => item.id === remote.id)
-          ? current.map((item) => (item.id === remote.id ? remote : item))
-          : [...current, remote]
-      );
+  const openScannedValue = (val: string) => {
+    const match = subscriptions.find((s) => qrValueFor(s.id) === val);
+    if (match) {
+      setSelectedId(match.id);
+      setSelectedRecord(match);
+      setScreen("details");
+    } else {
+      showAlert(UI_TEXT.error, UI_TEXT.scanError);
+      setScreen("home");
     }
-
-    setSelectedId(flatId);
-    setScreen("details");
-    return true;
   };
 
-  // --- Memoized Analytics & UI Filters ---
-
-  const visibleSubscriptions = useMemo(
-    () =>
-      subscriptions
-        .filter((item) => {
-          const query = searchText.trim().toLowerCase();
-          return (
-            !query ||
-            item.block.toLowerCase().includes(query) ||
-            item.flat.toLowerCase().includes(query) ||
-            item.id.toLowerCase().includes(query)
-          );
-        })
-        .sort(
-          (left, right) =>
-            left.block.localeCompare(right.block, undefined, {
-              numeric: true,
-            }) ||
-            left.flat.localeCompare(right.flat, undefined, { numeric: true })
-        ),
-    [subscriptions, searchText]
-  );
+  /**
+   * Search filter logic for the Home screen list.
+   */
+  const visibleSubscriptions = useMemo(() => {
+    if (!searchText) return subscriptions;
+    return subscriptions.filter(
+      (s) =>
+        s.flat.toLowerCase().includes(searchText.toLowerCase()) ||
+        s.block.toLowerCase().includes(searchText.toLowerCase())
+    );
+  }, [subscriptions, searchText]);
 
   /**
    * Memoized dashboard metrics.
-   * Aggregates total demand, dietary split, and parcel counts per day.
    */
   const dashboard = useMemo(() => {
-    // 1. Deduplicate subscriptions by ID to avoid double-counting "junk" or legacy entries
     const uniqueSubscriptions = Array.from(
       new Map(subscriptions.map((s) => [s.id, s])).values()
     );
 
+    const activeDays = getActiveDays(dayConfig);
     if (activeDays.length === 0) return [];
 
     return activeDays.map((day) => {
       const dayMenu = foodMenu[day];
+      const dayConf = dayConfig.find((d) => d.id === day);
 
-      // Initialize totals with Guest values from the Menu
       const initialTotals = {
         people: 0,
-
         breakfast:
           (dayMenu?.breakfast?.guestVeg || 0) +
           (dayMenu?.breakfast?.guestNonVeg || 0),
@@ -501,8 +394,7 @@ export default function App() {
         breakfastFlatVegTaken: 0,
         breakfastFlatNonVegTaken: 0,
 
-        lunch:
-          (dayMenu?.lunch?.guestVeg || 0) + (dayMenu?.lunch?.guestNonVeg || 0),
+        lunch: (dayMenu?.lunch?.guestVeg || 0) + (dayMenu?.lunch?.guestNonVeg || 0),
         lunchVeg: dayMenu?.lunch?.guestVeg || 0,
         lunchNonVeg: dayMenu?.lunch?.guestNonVeg || 0,
         lunchParcel: 0,
@@ -521,8 +413,7 @@ export default function App() {
         lunchFlatNonVegTaken: 0,
 
         dinner:
-          (dayMenu?.dinner?.guestVeg || 0) +
-          (dayMenu?.dinner?.guestNonVeg || 0),
+          (dayMenu?.dinner?.guestVeg || 0) + (dayMenu?.dinner?.guestNonVeg || 0),
         dinnerVeg: dayMenu?.dinner?.guestVeg || 0,
         dinnerNonVeg: dayMenu?.dinner?.guestNonVeg || 0,
         dinnerParcel: 0,
@@ -541,58 +432,39 @@ export default function App() {
         dinnerFlatNonVegTaken: 0,
       };
 
-      // 2. Aggregate data from unique flat records
       return uniqueSubscriptions.reduce((totals, item) => {
         const mealSlots = item.mealSlots?.[day] || [];
         const takenByPerson = item.takenByPerson?.[day] || [];
 
         mealSlots.forEach((slots, index) => {
           const taken = takenByPerson?.[index];
-          let personCounted = false;
 
-          // Breakfast logic
-          if (
-            isMealEnabled(day, "breakfast", dayConfig) &&
-            slots?.breakfast &&
-            slots.breakfast !== "None"
-          ) {
-            const diet = slots.breakfast === "Veg" ? "veg" : "nonVeg";
-            if (isDietaryEnabled(day, "breakfast", diet, dayConfig)) {
-              totals.breakfast += 1;
-              if (slots.breakfast === "Veg") totals.breakfastVeg += 1;
-              else if (slots.breakfast === "Non-veg")
-                totals.breakfastNonVeg += 1;
-
-              if (
-                isParcelEnabled(day, "breakfast", dayConfig) &&
-                slots.breakfastParcel
-              ) {
-                totals.breakfastParcel += 1;
-                if (taken?.breakfast) totals.breakfastParcelTaken += 1;
-              }
-              if (taken?.breakfast) {
-                totals.breakfastTaken += 1;
-                if (slots.breakfast === "Veg")
-                  totals.breakfastFlatVegTaken += 1;
-                else if (slots.breakfast === "Non-veg")
-                  totals.breakfastFlatNonVegTaken += 1;
-              }
-              personCounted = true;
-            }
+          // Breakfast
+          if (isMealEnabled(day, "breakfast", dayConfig) && slots?.breakfast && slots.breakfast !== "None") {
+             const diet = slots.breakfast === "Veg" ? "veg" : "nonVeg";
+             if (isDietaryEnabled(day, "breakfast", diet, dayConfig)) {
+                totals.breakfast += 1;
+                if (slots.breakfast === "Veg") totals.breakfastVeg += 1;
+                else totals.breakfastNonVeg += 1;
+                if (isParcelEnabled(day, "breakfast", dayConfig) && slots.breakfastParcel) {
+                  totals.breakfastParcel += 1;
+                  if (taken?.breakfast) totals.breakfastParcelTaken += 1;
+                }
+                if (taken?.breakfast) {
+                  totals.breakfastTaken += 1;
+                  if (slots.breakfast === "Veg") totals.breakfastFlatVegTaken += 1;
+                  else totals.breakfastFlatNonVegTaken += 1;
+                }
+             }
           }
 
-          // Lunch logic
-          if (
-            isMealEnabled(day, "lunch", dayConfig) &&
-            slots?.lunch &&
-            slots.lunch !== "None"
-          ) {
+          // Lunch
+          if (isMealEnabled(day, "lunch", dayConfig) && slots?.lunch && slots.lunch !== "None") {
             const diet = slots.lunch === "Veg" ? "veg" : "nonVeg";
             if (isDietaryEnabled(day, "lunch", diet, dayConfig)) {
               totals.lunch += 1;
               if (slots.lunch === "Veg") totals.lunchVeg += 1;
-              else if (slots.lunch === "Non-veg") totals.lunchNonVeg += 1;
-
+              else totals.lunchNonVeg += 1;
               if (isParcelEnabled(day, "lunch", dayConfig) && slots.lunchParcel) {
                 totals.lunchParcel += 1;
                 if (taken?.lunch) totals.lunchParcelTaken += 1;
@@ -600,44 +472,28 @@ export default function App() {
               if (taken?.lunch) {
                 totals.lunchTaken += 1;
                 if (slots.lunch === "Veg") totals.lunchFlatVegTaken += 1;
-                else if (slots.lunch === "Non-veg")
-                  totals.lunchFlatNonVegTaken += 1;
+                else totals.lunchFlatNonVegTaken += 1;
               }
-              personCounted = true;
             }
           }
 
-          // Dinner logic
-          if (
-            isMealEnabled(day, "dinner", dayConfig) &&
-            slots?.dinner &&
-            slots.dinner !== "None"
-          ) {
+          // Dinner
+          if (isMealEnabled(day, "dinner", dayConfig) && slots?.dinner && slots.dinner !== "None") {
             const diet = slots.dinner === "Veg" ? "veg" : "nonVeg";
             if (isDietaryEnabled(day, "dinner", diet, dayConfig)) {
               totals.dinner += 1;
               if (slots.dinner === "Veg") totals.dinnerVeg += 1;
-              else if (slots.dinner === "Non-veg") totals.dinnerNonVeg += 1;
-
-              if (
-                isParcelEnabled(day, "dinner", dayConfig) &&
-                slots.dinnerParcel
-              ) {
+              else totals.dinnerNonVeg += 1;
+              if (isParcelEnabled(day, "dinner", dayConfig) && slots.dinnerParcel) {
                 totals.dinnerParcel += 1;
                 if (taken?.dinner) totals.dinnerParcelTaken += 1;
               }
               if (taken?.dinner) {
                 totals.dinnerTaken += 1;
                 if (slots.dinner === "Veg") totals.dinnerFlatVegTaken += 1;
-                else if (slots.dinner === "Non-veg")
-                  totals.dinnerFlatNonVegTaken += 1;
+                else totals.dinnerFlatNonVegTaken += 1;
               }
-              personCounted = true;
             }
-          }
-
-          if (personCounted) {
-            totals.people += 1;
           }
         });
         return totals;
@@ -658,44 +514,34 @@ export default function App() {
     return { total, upi, cash };
   }, [subscriptions]);
 
-  // --- Rendering Conditional Views ---
+  const selected = subscriptions.find((s) => s.id === selectedId) || selectedRecord;
 
-  if (loading) {
-    return (
-      <ImageBackground
-        source={{
-          uri: "https://source.unsplash.com/featured/1200x1800/?durga,puja,festival",
-        }}
-        style={styles.root}
-        imageStyle={styles.backgroundImage}
-      >
-        <View style={[styles.rootOverlay, styles.center]}>
-          <ActivityIndicator size="large" color="#c35b3b" />
-          <Text style={styles.loadingText}>{UI_TEXT.loading}</Text>
-        </View>
-      </ImageBackground>
-    );
-  }
+  // --- Screen Selector ---
 
-  // Session Wall
-  if (screen === "login" || !userRole)
-    return (
-      <>
-        <LoginScreen onLogin={handleLogin} showAlert={showAlert} />
-        <CustomAlert
-          visible={alertConfig.visible}
-          title={alertConfig.title}
-          message={alertConfig.message}
-          buttons={alertConfig.buttons}
-          onClose={() => setAlertConfig((c) => ({ ...c, visible: false }))}
-        />
-      </>
-    );
+  const renderContent = () => {
+    if (loading) {
+      return (
+        <ImageBackground
+          source={{
+            uri: "https://source.unsplash.com/featured/1200x1800/?durga,puja,festival",
+          }}
+          style={styles.root}
+          imageStyle={styles.backgroundImage}
+        >
+          <View style={[styles.rootOverlay, styles.center]}>
+            <ActivityIndicator size="large" color="#c35b3b" />
+            <Text style={styles.loadingText}>{UI_TEXT.loading}</Text>
+          </View>
+        </ImageBackground>
+      );
+    }
 
-  // Form View (New/Edit)
-  if (screen === "form" && editing)
-    return (
-      <>
+    if (screen === "login" || !userRole) {
+      return <LoginScreen onLogin={handleLogin} showAlert={showAlert} repository={repository} />;
+    }
+
+    if (screen === "form" && editing) {
+      return (
         <SubscriptionForm
           value={editing}
           userRole={userRole}
@@ -733,22 +579,15 @@ export default function App() {
           lockIdentity={Boolean(editing.flat)}
           showAlert={showAlert}
         />
-        <CustomAlert
-          visible={alertConfig.visible}
-          title={alertConfig.title}
-          message={alertConfig.message}
-          buttons={alertConfig.buttons}
-          onClose={() => setAlertConfig((c) => ({ ...c, visible: false }))}
-        />
-      </>
-    );
+      );
+    }
 
-  // Digital Food Pass
-  if (screen === "qr")
-    return (
-      <>
+    if (screen === "qr" && selected) {
+      return (
         <QrScreen
           subscription={selected}
+          config={dayConfig}
+          seasonName={seasonName}
           onBack={() => {
             setIsBackNav(true);
             setScreen("details");
@@ -757,20 +596,11 @@ export default function App() {
           onPrint={printPass}
           onLogout={handleLogout}
         />
-        <CustomAlert
-          visible={alertConfig.visible}
-          title={alertConfig.title}
-          message={alertConfig.message}
-          buttons={alertConfig.buttons}
-          onClose={() => setAlertConfig((c) => ({ ...c, visible: false }))}
-        />
-      </>
-    );
+      );
+    }
 
-  // Camera Scanner
-  if (screen === "scanner")
-    return (
-      <>
+    if (screen === "scanner") {
+      return (
         <ScannerScreen
           onBack={() => {
             setIsBackNav(true);
@@ -778,20 +608,11 @@ export default function App() {
           }}
           onScanned={openScannedValue}
         />
-        <CustomAlert
-          visible={alertConfig.visible}
-          title={alertConfig.title}
-          message={alertConfig.message}
-          buttons={alertConfig.buttons}
-          onClose={() => setAlertConfig((c) => ({ ...c, visible: false }))}
-        />
-      </>
-    );
+      );
+    }
 
-  // Operations Analytics
-  if (screen === "dashboard")
-    return (
-      <>
+    if (screen === "dashboard") {
+      return (
         <DashboardScreen
           data={dashboard}
           userRole={userRole}
@@ -808,20 +629,11 @@ export default function App() {
           onLogout={handleLogout}
           showAlert={showAlert}
         />
-        <CustomAlert
-          visible={alertConfig.visible}
-          title={alertConfig.title}
-          message={alertConfig.message}
-          buttons={alertConfig.buttons}
-          onClose={() => setAlertConfig((c) => ({ ...c, visible: false }))}
-        />
-      </>
-    );
+      );
+    }
 
-  // Menu Management Views
-  if (screen === "viewMenu")
-    return (
-      <>
+    if (screen === "viewMenu") {
+      return (
         <ViewMenuScreen
           menu={foodMenu}
           userRole={userRole}
@@ -834,19 +646,11 @@ export default function App() {
           onLogout={handleLogout}
           showAlert={showAlert}
         />
-        <CustomAlert
-          visible={alertConfig.visible}
-          title={alertConfig.title}
-          message={alertConfig.message}
-          buttons={alertConfig.buttons}
-          onClose={() => setAlertConfig((c) => ({ ...c, visible: false }))}
-        />
-      </>
-    );
+      );
+    }
 
-  if (screen === "menu")
-    return (
-      <>
+    if (screen === "menu") {
+      return (
         <MenuEditorScreen
           menu={foodMenu}
           config={dayConfig}
@@ -858,48 +662,31 @@ export default function App() {
           onLogout={handleLogout}
           showAlert={showAlert}
         />
-        <CustomAlert
-          visible={alertConfig.visible}
-          title={alertConfig.title}
-          message={alertConfig.message}
-          buttons={alertConfig.buttons}
-          onClose={() => setAlertConfig((c) => ({ ...c, visible: false }))}
-        />
-      </>
-    );
+      );
+    }
 
-  // Admin Reports
-  if (screen === "report")
-    return (
-      <>
+    if (screen === "report") {
+      return (
         <ReportScreen
           subscriptions={subscriptions}
           menu={foodMenu}
           config={dayConfig}
+          seasonName={seasonName}
           onBack={() => {
             setIsBackNav(true);
             setScreen("home");
           }}
           onShare={shareQr}
           onLogout={handleLogout}
-          showAlert={showAlert}
         />
-        <CustomAlert
-          visible={alertConfig.visible}
-          title={alertConfig.title}
-          message={alertConfig.message}
-          buttons={alertConfig.buttons}
-          onClose={() => setAlertConfig((c) => ({ ...c, visible: false }))}
-        />
-      </>
-    );
+      );
+    }
 
-  // App Settings
-  if (screen === "settings")
-    return (
-      <>
+    if (screen === "settings") {
+      return (
         <SettingsScreen
           config={dayConfig}
+          seasonName={seasonName}
           onSave={handleUpdateConfig}
           onBack={() => {
             setIsBackNav(true);
@@ -908,20 +695,11 @@ export default function App() {
           onLogout={handleLogout}
           showAlert={showAlert}
         />
-        <CustomAlert
-          visible={alertConfig.visible}
-          title={alertConfig.title}
-          message={alertConfig.message}
-          buttons={alertConfig.buttons}
-          onClose={() => setAlertConfig((c) => ({ ...c, visible: false }))}
-        />
-      </>
-    );
+      );
+    }
 
-  // Individual Flat Details
-  if (screen === "details")
-    return (
-      <>
+    if (screen === "details" && selected) {
+      return (
         <DetailsScreen
           subscription={selected}
           userRole={userRole}
@@ -940,81 +718,85 @@ export default function App() {
           menu={foodMenu}
           showAlert={showAlert}
         />
-        <CustomAlert
-          visible={alertConfig.visible}
-          title={alertConfig.title}
-          message={alertConfig.message}
-          buttons={alertConfig.buttons}
-          onClose={() => setAlertConfig((c) => ({ ...c, visible: false }))}
-        />
-      </>
-    );
+      );
+    }
 
-  // --- Home Screen (Default) ---
-
-  return (
-    <ImageBackground
-      source={{
-        uri: "https://source.unsplash.com/featured/1200x1800/?durga,puja,festival",
-      }}
-      style={styles.root}
-      imageStyle={styles.backgroundImage}
-    >
-      <KeyboardAvoidingView
-        style={styles.rootOverlay}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-      >
-        <StatusBar style="light" />
-        <View style={styles.header}>
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            <Text style={styles.eyebrow}>{UI_TEXT.eventTitle}</Text>
-            <Pressable onPress={handleLogout} style={{ padding: 4 }}>
-              <ActionLabel
-                icon="log-out-outline"
-                label={UI_TEXT.logoutButton}
-                color="#f0c977"
-              />
-            </Pressable>
+    // Default: Home Screen
+    return (
+      <View style={styles.root}>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
+          <StatusBar style="dark" />
+          <View style={styles.header}>
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <Text style={styles.eyebrow}>{UI_TEXT.eventTitle}</Text>
+              <Pressable onPress={handleLogout} style={{ padding: 4 }}>
+                <ActionLabel
+                  icon="log-out-outline"
+                  label={UI_TEXT.logoutButton}
+                  color="#E31837"
+                />
+              </Pressable>
+            </View>
+            <Text style={styles.title}>{UI_TEXT.appName}</Text>
+            <Text style={styles.subtitle}>{UI_TEXT.tagline}</Text>
           </View>
-          <Text style={styles.title}>{UI_TEXT.appName}</Text>
-          <Text style={styles.subtitle}>{UI_TEXT.tagline}</Text>
-        </View>
 
-        <FlatList
-          data={visibleSubscriptions}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.content}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
-          initialNumToRender={10}
-          maxToRenderPerBatch={10}
-          windowSize={5}
-          ListHeaderComponent={
-            <>
-              {firebaseError ? (
-                <View style={styles.firebaseBanner}>
-                  <Text style={styles.firebaseBannerTitle}>
-                    {UI_TEXT.offlineMode}
-                  </Text>
-                  <Text style={styles.firebaseBannerText}>{firebaseError}</Text>
+          <FlatList
+            data={visibleSubscriptions}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.content}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            initialNumToRender={10}
+            maxToRenderPerBatch={10}
+            windowSize={5}
+            ListHeaderComponent={
+              <>
+                {firebaseError ? (
+                  <View style={styles.firebaseBanner}>
+                    <Text style={styles.firebaseBannerTitle}>
+                      {UI_TEXT.offlineMode}
+                    </Text>
+                    <Text style={styles.firebaseBannerText}>{firebaseError}</Text>
+                  </View>
+                ) : null}
+
+                <View style={styles.summary}>
+                  <View>
+                    <Text style={styles.summaryLabel}>{UI_TEXT.activePasses}</Text>
+                    <Text style={styles.summaryNumber}>
+                      {subscriptions.length}
+                    </Text>
+                  </View>
+                  <Ionicons name="ticket-outline" size={64} color="rgba(255,255,255,0.3)" />
                 </View>
-              ) : null}
-              <View style={styles.summary}>
-                <View>
-                  <Text style={styles.summaryLabel}>{UI_TEXT.activePasses}</Text>
-                  <Text style={styles.summaryNumber}>
-                    {subscriptions.length}
-                  </Text>
-                </View>
+
+              <View style={styles.searchBox}>
+                <Ionicons name="search-outline" size={22} color="#6A6E73" />
+                <TextInput
+                  value={searchText}
+                  onChangeText={setSearchText}
+                  placeholder={UI_TEXT.searchPlaceholder}
+                  placeholderTextColor="#ADB5BD"
+                  style={styles.searchInput}
+                  autoCapitalize="characters"
+                  clearButtonMode="while-editing"
+                />
               </View>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>{UI_TEXT.subscriptions}</Text>
+
+              <View style={{ marginBottom: 32 }}>
+                <View style={[styles.sectionHeader, { marginBottom: 16 }]}>
+                  <Text style={styles.sectionTitle}>{UI_TEXT.subscriptions}</Text>
+                </View>
                 <View style={styles.compactActions}>
                   <Pressable
                     accessibilityLabel={UI_TEXT.viewMenu}
@@ -1065,79 +847,77 @@ export default function App() {
                       />
                     </Pressable>
                   )}
-                  {userRole === "admin" && (
-                    <Pressable
-                      accessibilityLabel={UI_TEXT.addFlat}
-                      onPress={startNew}
-                      style={styles.addButton}
-                    >
-                      <ActionLabel
-                        icon="add-circle-outline"
-                        label={UI_TEXT.addFlat}
-                        color="#fff"
-                      />
-                    </Pressable>
-                  )}
                 </View>
               </View>
-              <View style={styles.searchBox}>
-                <Ionicons name="search-outline" size={19} color="#8d8171" />
-                <TextInput
-                  value={searchText}
-                  onChangeText={setSearchText}
-                  placeholder={UI_TEXT.searchPlaceholder}
-                  placeholderTextColor="#8d8171"
-                  style={styles.searchInput}
-                  autoCapitalize="characters"
-                  clearButtonMode="while-editing"
-                />
-              </View>
-              {visibleSubscriptions.length === 0 ? (
-                <Text style={styles.emptyState}>
-                  {subscriptions.length === 0
-                    ? UI_TEXT.noRecords
-                    : UI_TEXT.noMatches}
-                </Text>
-              ) : null}
-            </>
+
+                {visibleSubscriptions.length === 0 ? (
+                  <Text style={styles.emptyState}>
+                    {subscriptions.length === 0
+                      ? UI_TEXT.noRecords
+                      : UI_TEXT.noMatches}
+                  </Text>
+                ) : null}
+              </>
+            }
+            ListFooterComponent={
+            <View style={styles.footer}>
+               <Text style={styles.footerText}>{UI_TEXT.footerCopyright}</Text>
+            </View>
           }
-          ListFooterComponent={
-            <View style={styles.footer} />
-          }
-          renderItem={({ item }) => (
-            <Pressable
-              onPress={() => {
-                setSelectedId(item.id);
-                setSelectedRecord(item);
-                setScreen("details");
-              }}
-              style={styles.card}
-            >
-              <View style={styles.cardTop}>
-                <View>
-                  <Text style={styles.flatLabel}>BLOCK {item.block}</Text>
-                  <Text style={styles.flatTitle}>Flat {item.flat}</Text>
+            renderItem={({ item }) => (
+              <Pressable
+                onPress={() => {
+                  setSelectedId(item.id);
+                  setSelectedRecord(item);
+                  setScreen("details");
+                }}
+                style={styles.card}
+              >
+                <View style={styles.cardTop}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.flatLabel}>BLOCK {item.block}</Text>
+                    <Text style={styles.flatTitle}>Flat {item.flat}</Text>
+                    <Text style={{ color: "#6A6E73", marginTop: 4, fontWeight: "600" }}>
+                      {item.peopleCount} {item.peopleCount === 1 ? UI_TEXT.personSuffix : UI_TEXT.personsSuffix}
+                    </Text>
+                  </View>
+                  <View style={styles.pill}>
+                    <Text style={styles.pillText}>{mealSummary(item, dayConfig) || UI_TEXT.flexibleMeals}</Text>
+                  </View>
                 </View>
-                <View style={styles.pill}>
-                  <Text style={styles.pillText}>{mealSummary(item, dayConfig) || UI_TEXT.flexibleMeals}</Text>
+
+                <View style={{ height: 1, backgroundColor: "#E9ECEF", marginVertical: 16 }} />
+
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                    <Ionicons name="card-outline" size={16} color="#E31837" />
+                    <Text style={{ fontWeight: "700", color: "#1A1C1E" }}>{item.paymentMode}</Text>
+                  </View>
+                  <Text style={{ fontSize: 18, fontWeight: "900", color: "#E31837" }}>
+                    {UI_TEXT.rs} {item.amount || "0"}
+                  </Text>
                 </View>
-              </View>
-              <Text style={styles.people}>
-                {item.peopleCount}
-                {item.peopleCount === 1
-                  ? UI_TEXT.personSuffix
-                  : UI_TEXT.personsSuffix}
-              </Text>
-              <View style={styles.cardBottom}>
-                <Text style={styles.daysText}>{item.paymentMode}</Text>
-                <Text style={styles.amount}>
-                  {UI_TEXT.rs} {item.amount || "0"}
-                </Text>
-              </View>
-            </Pressable>
-          )}
-        />
-      </KeyboardAvoidingView>
+              </Pressable>
+            )}
+          />
+        </KeyboardAvoidingView>
+
+        {userRole === "admin" && (
+          <Pressable
+            style={[styles.fab, getActiveDays(dayConfig).length === 0 && { opacity: 0.4 }]}
+            onPress={startNew}
+            disabled={getActiveDays(dayConfig).length === 0}
+          >
+            <Ionicons name="add" size={32} color="#FFF" />
+          </Pressable>
+        )}
+      </View>
+    );
+  };
+
+  return (
+    <>
+      {renderContent()}
       <CustomAlert
         visible={alertConfig.visible}
         title={alertConfig.title}
@@ -1145,6 +925,6 @@ export default function App() {
         buttons={alertConfig.buttons}
         onClose={() => setAlertConfig((c) => ({ ...c, visible: false }))}
       />
-    </ImageBackground>
+    </>
   );
 }
