@@ -156,7 +156,7 @@ export function SettingsScreen({
 
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         {/* Season Configuration */}
-        <View style={[styles.dashboardCard, { borderLeftWidth: 2, borderLeftColor: "#E31837" }]}>
+        <View style={[styles.dashboardCard, { borderLeftWidth: 1, borderLeftColor: "#E9ECEF" }]}>
            <Text style={{ fontSize: 18, fontWeight: '900', color: '#1A1C1E', marginBottom: 4 }}>{UI_TEXT.seasonNameLabel}</Text>
            <Text style={{ fontSize: 12, color: "#6A6E73", fontWeight: "600", marginBottom: 16 }}>{UI_TEXT.seasonNameHelper}</Text>
 
