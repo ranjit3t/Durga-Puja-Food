@@ -21,6 +21,7 @@ import { StatusBar } from "expo-status-bar";
 import * as Linking from "expo-linking";
 import * as Sharing from "expo-sharing";
 import * as Print from "expo-print";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 
 // --- Internal Modules ---
@@ -62,6 +63,10 @@ import { CustomAlert, AlertButton } from "./src/components/common/CustomAlert";
 
 const repository = createFirebaseRepository();
 
+const SESSION_ROLE_KEY = "eternia_user_role";
+const SESSION_TIME_KEY = "eternia_login_time";
+const SESSION_TIMEOUT = 24 * 60 * 60 * 1000; // 24 hours
+
 // Suppress framework noise from older libraries used in Expo Go / peer dependencies
 LogBox.ignoreLogs([
   "ProgressBarAndroid has been extracted",
@@ -77,7 +82,7 @@ export default function App() {
   const [screen, setScreen] = useState<Screen>("login");
   const [isBackNav, setIsBackNav] = useState(false);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState("");
   const [selectedRecord, setSelectedRecord] = useState<Subscription | null>(
     null
@@ -141,6 +146,31 @@ export default function App() {
    * Initializes the session and validates connection.
    */
   useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const storedRole = await AsyncStorage.getItem(SESSION_ROLE_KEY);
+        const storedTime = await AsyncStorage.getItem(SESSION_TIME_KEY);
+
+        if (storedRole && storedTime) {
+          const loginTime = parseInt(storedTime, 10);
+          if (Date.now() - loginTime < SESSION_TIMEOUT) {
+            setUserRole(storedRole as UserRole);
+            setScreen("home");
+          } else {
+            // Session expired
+            await AsyncStorage.multiRemove([SESSION_ROLE_KEY, SESSION_TIME_KEY]);
+          }
+        }
+      } catch (err) {
+        console.error("Session check error:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    void checkSession();
+  }, []);
+
+  useEffect(() => {
     if (userRole) {
       void refreshAllData();
     }
@@ -157,10 +187,21 @@ export default function App() {
   }, [screen, userRole]);
 
   // 2. Periodic Background Sync: Refresh data every 10 seconds when on the same screen
+  // Also checks if session has expired (24h limit)
   useEffect(() => {
     if (!userRole || screen === "login") return;
 
-    const interval = setInterval(() => {
+    const interval = setInterval(async () => {
+      // Check session expiration
+      const storedTime = await AsyncStorage.getItem(SESSION_TIME_KEY);
+      if (storedTime) {
+        const loginTime = parseInt(storedTime, 10);
+        if (Date.now() - loginTime >= SESSION_TIMEOUT) {
+          handleLogout();
+          return;
+        }
+      }
+
       void refreshAllData(true);
     }, 10000); // 10,000ms = 10 seconds
 
@@ -204,6 +245,9 @@ export default function App() {
     setLoading(true); // Trigger global loader while initial data fetch happens
     setUserRole(role);
     setScreen("home");
+    // Persist session for 24 hours
+    void AsyncStorage.setItem(SESSION_ROLE_KEY, role);
+    void AsyncStorage.setItem(SESSION_TIME_KEY, Date.now().toString());
   };
 
   const handleLogout = () => {
@@ -212,6 +256,8 @@ export default function App() {
     setSubscriptions([]);
     setDayConfig([]);
     setFoodMenu({});
+    // Clear session
+    void AsyncStorage.multiRemove([SESSION_ROLE_KEY, SESSION_TIME_KEY]);
   };
 
   /**

@@ -6,6 +6,7 @@ A robust Expo React Native application designed for food admins and volunteers t
 
 ### 🔐 Security & Access Control
 - **Database-Driven Authentication**: All user credentials, passwords, and roles are managed centrally in the Firebase Realtime Database (`auth_config` node). This allows for instant staff updates without code changes.
+- **Session Persistence**: Securely stores the user session on the device for 24 hours. After this period, the app automatically logs out the user to ensure security.
 - **Role-Based Permissions**:
     - **Admin**: Full access to register flats, update festival settings, edit menu items, and delete records.
     - **Vendor**: Operational access to distribute food, manage guest collections, toggle parcels, and view reports.

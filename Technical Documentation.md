@@ -20,6 +20,7 @@ The application follows a **Serverless Modular Architecture** built on the **Exp
 | **Language** | TypeScript (Strict Mode) |
 | **Backend** | Firebase Realtime Database |
 | **Authentication** | Anonymous (Firebase) + Database-Driven RBAC |
+| **Session Management** | 24-hour Auto-logout via `AsyncStorage` |
 | **Image Export** | `react-native-view-shot` |
 | **QR Generation** | `react-native-qrcode-svg` |
 | **Storage** | `AsyncStorage` (Auth Persistence) |
@@ -64,6 +65,7 @@ The reporting system uses **Memoized Selectors** (`useMemo`) to calculate comple
 
 ### Role-Based Access Control (RBAC)
 - **Database Node**: `auth_config` contains the list of valid staff users.
+- **Session Management**: On successful login, the `userRole` and `loginTime` are persisted to `AsyncStorage`. The app performs a validation check on startup and every 10 seconds during background refresh. If the session exceeds 24 hours, the user is automatically logged out.
 - **Admin Role**: Unrestricted access to `Settings`, `Delete` actions, and full `SubscriptionForm` editing. Admins can update the global Season Name and festival days.
 - **Vendor Role**: Operational access. Can mark food as "Taken", update guest counts, and view reports. Sensitive configuration fields and destructive actions are disabled or hidden based on the `userRole` state.
 - **Auth Handshake**: Credentials are verified against the `auth_config` node in real-time during the login process.

@@ -9,7 +9,7 @@ Eternia Food Desk is a mobile application built with **React Native (Expo)** des
 - **Framework**: React Native with Expo (Latest SDK)
 - **Language**: TypeScript (Strict mode)
 - **Backend**: Firebase Realtime Database
-- **Auth**: Hybrid model using Internal Role-based Login and Firebase Anonymous Authentication (initialized post-login).
+- **Auth**: Hybrid model using Internal Role-based Login and Firebase Anonymous Authentication (initialized post-login). Sessions are persisted for 24 hours via `AsyncStorage`.
 - **Scanning**: `expo-camera` for QR code processing.
 - **Reporting**: `react-native-view-shot` for PNG export.
 
