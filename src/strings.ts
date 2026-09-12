@@ -131,7 +131,7 @@ export const UI_TEXT = {
   cameraAccessSubtitle: "Allow camera access to validate a flat pass.",
   allowCamera: "Allow Camera",
   scanFrameHint: "Place a flat QR inside the frame",
-  scanError: "This QR does not match a registered flat.",
+  scanError: "This QR does not match a registered pass.",
 
   // QR Pass Screen
   foodPass: "Food Pass",
