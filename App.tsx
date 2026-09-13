@@ -16,12 +16,12 @@ import {
   Share,
   LogBox,
   BackHandler,
+  ScrollView,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import * as Linking from "expo-linking";
 import * as Sharing from "expo-sharing";
 import * as Print from "expo-print";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 
 // --- Internal Modules ---
@@ -58,13 +58,13 @@ import { SubscriptionForm } from "./src/screens/SubscriptionForm";
 import { LoginScreen } from "./src/screens/LoginScreen";
 import { ReportScreen } from "./src/screens/ReportScreen";
 import { SettingsScreen } from "./src/screens/SettingsScreen";
+import { SubscriptionListScreen } from "./src/screens/SubscriptionListScreen";
 import { ActionLabel } from "./src/components/common/ActionLabel";
+import { LogoutButton } from "./src/components/common/LogoutButton";
 import { CustomAlert, AlertButton } from "./src/components/common/CustomAlert";
 
 const repository = createFirebaseRepository();
 
-const SESSION_ROLE_KEY = "eternia_user_role";
-const SESSION_TIME_KEY = "eternia_login_time";
 const SESSION_TIMEOUT = 24 * 60 * 60 * 1000; // 24 hours
 
 // Suppress framework noise from older libraries used in Expo Go / peer dependencies
@@ -82,7 +82,8 @@ export default function App() {
   const [screen, setScreen] = useState<Screen>("login");
   const [isBackNav, setIsBackNav] = useState(false);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [sessionStartTime, setSessionStartTime] = useState<number | null>(null);
   const [selectedId, setSelectedId] = useState("");
   const [selectedRecord, setSelectedRecord] = useState<Subscription | null>(
     null
@@ -90,9 +91,12 @@ export default function App() {
   const [editing, setEditing] = useState<Subscription | null>(null);
   const [dayConfig, setDayConfig] = useState<ConfigDay[]>([]);
   const [seasonName, setSeasonName] = useState("");
+  const [paymentConfig, setPaymentConfig] = useState<PaymentConfig>({
+    enabled: true,
+    options: { upi: true, cash: true, bankTransfer: true }
+  });
   const [foodMenu, setFoodMenu] = useState<FoodMenu>({});
   const [firebaseError, setFirebaseError] = useState("");
-  const [searchText, setSearchText] = useState("");
 
   // Custom Alert State
   const [alertConfig, setAlertConfig] = useState<{
@@ -132,6 +136,7 @@ export default function App() {
       setSubscriptions(subs);
       setDayConfig(config.days);
       setSeasonName(config.seasonName);
+      if (config.payment) setPaymentConfig(config.payment);
       setFoodMenu(menu);
       setFirebaseError("");
     } catch (err: any) {
@@ -145,31 +150,6 @@ export default function App() {
   /**
    * Initializes the session and validates connection.
    */
-  useEffect(() => {
-    const checkSession = async () => {
-      try {
-        const storedRole = await AsyncStorage.getItem(SESSION_ROLE_KEY);
-        const storedTime = await AsyncStorage.getItem(SESSION_TIME_KEY);
-
-        if (storedRole && storedTime) {
-          const loginTime = parseInt(storedTime, 10);
-          if (Date.now() - loginTime < SESSION_TIMEOUT) {
-            setUserRole(storedRole as UserRole);
-            setScreen("home");
-          } else {
-            // Session expired
-            await AsyncStorage.multiRemove([SESSION_ROLE_KEY, SESSION_TIME_KEY]);
-          }
-        }
-      } catch (err) {
-        console.error("Session check error:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    void checkSession();
-  }, []);
-
   useEffect(() => {
     if (userRole) {
       void refreshAllData();
@@ -191,12 +171,10 @@ export default function App() {
   useEffect(() => {
     if (!userRole || screen === "login") return;
 
-    const interval = setInterval(async () => {
+    const interval = setInterval(() => {
       // Check session expiration
-      const storedTime = await AsyncStorage.getItem(SESSION_TIME_KEY);
-      if (storedTime) {
-        const loginTime = parseInt(storedTime, 10);
-        if (Date.now() - loginTime >= SESSION_TIMEOUT) {
+      if (sessionStartTime) {
+        if (Date.now() - sessionStartTime >= SESSION_TIMEOUT) {
           handleLogout();
           return;
         }
@@ -206,7 +184,7 @@ export default function App() {
     }, 10000); // 10,000ms = 10 seconds
 
     return () => clearInterval(interval);
-  }, [screen, userRole]);
+  }, [screen, userRole, sessionStartTime]);
 
   /**
    * Native hardware back button handling.
@@ -229,6 +207,7 @@ export default function App() {
       else if (screen === "menu") setScreen("viewMenu");
       else if (screen === "report") setScreen("home");
       else if (screen === "settings") setScreen("home");
+      else if (screen === "subscriptionList") setScreen("home");
       else setScreen("home");
 
       return true;
@@ -242,22 +221,19 @@ export default function App() {
    * Handles user authentication and transitions to the Home screen.
    */
   const handleLogin = (role: UserRole) => {
-    setLoading(true); // Trigger global loader while initial data fetch happens
+    setLoading(true);
     setUserRole(role);
+    setSessionStartTime(Date.now());
     setScreen("home");
-    // Persist session for 24 hours
-    void AsyncStorage.setItem(SESSION_ROLE_KEY, role);
-    void AsyncStorage.setItem(SESSION_TIME_KEY, Date.now().toString());
   };
 
   const handleLogout = () => {
     setUserRole(null);
+    setSessionStartTime(null);
     setScreen("login");
     setSubscriptions([]);
     setDayConfig([]);
     setFoodMenu({});
-    // Clear session
-    void AsyncStorage.multiRemove([SESSION_ROLE_KEY, SESSION_TIME_KEY]);
   };
 
   /**
@@ -330,6 +306,7 @@ export default function App() {
 
       setDayConfig(config.days);
       setSeasonName(config.seasonName);
+      if (config.payment) setPaymentConfig(config.payment);
       await refreshAllData(true);
     } catch (err) {
       showAlert(UI_TEXT.error, "Could not save configuration");
@@ -391,17 +368,7 @@ export default function App() {
     }
   };
 
-  /**
-   * Search filter logic for the Home screen list.
-   */
-  const visibleSubscriptions = useMemo(() => {
-    if (!searchText) return subscriptions;
-    return subscriptions.filter(
-      (s) =>
-        s.flat.toLowerCase().includes(searchText.toLowerCase()) ||
-        s.block.toLowerCase().includes(searchText.toLowerCase())
-    );
-  }, [subscriptions, searchText]);
+
 
   /**
    * Memoized dashboard metrics.
@@ -551,13 +518,15 @@ export default function App() {
     let total = 0;
     let upi = 0;
     let cash = 0;
+    let bankTransfer = 0;
     subscriptions.forEach((item) => {
       const amt = Number.parseFloat(item.amount) || 0;
       total += amt;
       if (item.paymentMode === "UPI") upi += amt;
       else if (item.paymentMode === "Cash") cash += amt;
+      else if (item.paymentMode === "Bank transfer") bankTransfer += amt;
     });
-    return { total, upi, cash };
+    return { total, upi, cash, bankTransfer };
   }, [subscriptions]);
 
   const selected = subscriptions.find((s) => s.id === selectedId) || selectedRecord;
@@ -592,6 +561,7 @@ export default function App() {
           value={editing}
           userRole={userRole}
           config={dayConfig}
+          paymentConfig={paymentConfig}
           onCancel={() => {
             setIsBackNav(true);
             setScreen(editing.flat ? "details" : "home");
@@ -665,8 +635,10 @@ export default function App() {
           totalCollection={collections.total}
           upiCollection={collections.upi}
           cashCollection={collections.cash}
+          bankTransferCollection={collections.bankTransfer}
           menu={foodMenu}
           config={dayConfig}
+          paymentConfig={paymentConfig}
           onUpdateMenu={handleUpdateMenu}
           onBack={() => {
             setIsBackNav(true);
@@ -718,6 +690,7 @@ export default function App() {
           menu={foodMenu}
           config={dayConfig}
           seasonName={seasonName}
+          paymentConfig={paymentConfig}
           onBack={() => {
             setIsBackNav(true);
             setScreen("home");
@@ -733,6 +706,7 @@ export default function App() {
         <SettingsScreen
           config={dayConfig}
           seasonName={seasonName}
+          payment={paymentConfig}
           onSave={handleUpdateConfig}
           onBack={() => {
             setIsBackNav(true);
@@ -744,12 +718,35 @@ export default function App() {
       );
     }
 
+    if (screen === "subscriptionList") {
+      return (
+        <SubscriptionListScreen
+          subscriptions={subscriptions}
+          config={dayConfig}
+          paymentConfig={paymentConfig}
+          userRole={userRole || "vendor"}
+          onBack={() => {
+            setIsBackNav(true);
+            setScreen("home");
+          }}
+          onSelect={(sub) => {
+            setSelectedId(sub.id);
+            setSelectedRecord(sub);
+            setScreen("details");
+          }}
+          onAdd={startNew}
+          onLogout={handleLogout}
+        />
+      );
+    }
+
     if (screen === "details" && selected) {
       return (
         <DetailsScreen
           subscription={selected}
           userRole={userRole}
           config={dayConfig}
+          paymentConfig={paymentConfig}
           onBack={() => {
             setIsBackNav(true);
             setScreen("home");
@@ -770,193 +767,153 @@ export default function App() {
     // Default: Home Screen
     return (
       <View style={styles.root}>
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-        >
-          <StatusBar style="dark" />
-          <View style={styles.header}>
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <Text style={styles.eyebrow}>{UI_TEXT.eventTitle}</Text>
-              <Pressable onPress={handleLogout} style={{ padding: 4 }}>
-                <ActionLabel
-                  icon="log-out-outline"
-                  label={UI_TEXT.logoutButton}
-                  color="#E31837"
-                />
-              </Pressable>
-            </View>
-            <Text style={styles.title}>{UI_TEXT.appName}</Text>
-            <Text style={styles.subtitle}>{UI_TEXT.tagline}</Text>
-          </View>
-
-          <FlatList
-            data={visibleSubscriptions}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.content}
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="on-drag"
-            initialNumToRender={10}
-            maxToRenderPerBatch={10}
-            windowSize={5}
-            ListHeaderComponent={
-              <>
-                {firebaseError ? (
-                  <View style={styles.firebaseBanner}>
-                    <Text style={styles.firebaseBannerTitle}>
-                      {UI_TEXT.offlineMode}
-                    </Text>
-                    <Text style={styles.firebaseBannerText}>{firebaseError}</Text>
-                  </View>
-                ) : null}
-
-                <View style={styles.summary}>
-                  <View>
-                    <Text style={styles.summaryLabel}>{UI_TEXT.activePasses}</Text>
-                    <Text style={styles.summaryNumber}>
-                      {subscriptions.length}
-                    </Text>
-                  </View>
-                  <Ionicons name="ticket-outline" size={64} color="rgba(255,255,255,0.3)" />
-                </View>
-
-              <View style={styles.searchBox}>
-                <Ionicons name="search-outline" size={22} color="#6A6E73" />
-                <TextInput
-                  value={searchText}
-                  onChangeText={setSearchText}
-                  placeholder={UI_TEXT.searchPlaceholder}
-                  placeholderTextColor="#ADB5BD"
-                  style={styles.searchInput}
-                  autoCapitalize="characters"
-                  clearButtonMode="while-editing"
-                />
-              </View>
-
-              <View style={{ marginBottom: 32 }}>
-                <View style={[styles.sectionHeader, { marginBottom: 16 }]}>
-                  <Text style={styles.sectionTitle}>{UI_TEXT.subscriptions}</Text>
-                </View>
-                <View style={styles.compactActions}>
-                  <Pressable
-                    accessibilityLabel={UI_TEXT.viewMenu}
-                    onPress={() => setScreen("viewMenu")}
-                    style={styles.compactSecondary}
-                  >
-                    <ActionLabel
-                      icon="restaurant-outline"
-                      label={UI_TEXT.viewMenu}
-                    />
-                  </Pressable>
-                  <Pressable
-                    accessibilityLabel={UI_TEXT.dashboard}
-                    onPress={() => setScreen("dashboard")}
-                    style={styles.compactSecondary}
-                  >
-                    <ActionLabel
-                      icon="stats-chart-outline"
-                      label={UI_TEXT.dashboard}
-                    />
-                  </Pressable>
-                  <Pressable
-                    accessibilityLabel={UI_TEXT.report}
-                    onPress={() => setScreen("report")}
-                    style={styles.compactSecondary}
-                  >
-                    <ActionLabel
-                      icon="document-text-outline"
-                      label={UI_TEXT.report}
-                    />
-                  </Pressable>
-                  <Pressable
-                    accessibilityLabel={UI_TEXT.scanQr}
-                    onPress={() => setScreen("scanner")}
-                    style={styles.compactSecondary}
-                  >
-                    <ActionLabel icon="scan-outline" label={UI_TEXT.scanQr} />
-                  </Pressable>
-                  {userRole === "admin" && (
-                    <Pressable
-                      accessibilityLabel="Settings"
-                      onPress={() => setScreen("settings")}
-                      style={styles.compactSecondary}
-                    >
-                      <ActionLabel
-                        icon="settings-outline"
-                        label="Settings"
-                      />
-                    </Pressable>
-                  )}
-                </View>
-              </View>
-
-                {visibleSubscriptions.length === 0 ? (
-                  <Text style={styles.emptyState}>
-                    {subscriptions.length === 0
-                      ? UI_TEXT.noRecords
-                      : UI_TEXT.noMatches}
-                  </Text>
-                ) : null}
-              </>
-            }
-            ListFooterComponent={
-            <View style={styles.footer}>
-               <Text style={styles.footerText}>{UI_TEXT.footerCopyright}</Text>
-            </View>
-          }
-            renderItem={({ item }) => (
-              <Pressable
-                onPress={() => {
-                  setSelectedId(item.id);
-                  setSelectedRecord(item);
-                  setScreen("details");
-                }}
-                style={styles.card}
-              >
-                <View style={styles.cardTop}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.flatLabel}>BLOCK {item.block}</Text>
-                    <Text style={styles.flatTitle}>Flat {item.flat}</Text>
-                    <Text style={{ color: "#6A6E73", marginTop: 4, fontWeight: "600" }}>
-                      {item.peopleCount} {item.peopleCount === 1 ? UI_TEXT.personSuffix : UI_TEXT.personsSuffix}
-                    </Text>
-                  </View>
-                  <View style={styles.pill}>
-                    <Text style={styles.pillText}>{mealSummary(item, dayConfig) || UI_TEXT.flexibleMeals}</Text>
-                  </View>
-                </View>
-
-                <View style={{ height: 1, backgroundColor: "#E9ECEF", marginVertical: 16 }} />
-
-                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                    <Ionicons name="card-outline" size={16} color="#E31837" />
-                    <Text style={{ fontWeight: "700", color: "#1A1C1E" }}>{item.paymentMode}</Text>
-                  </View>
-                  <Text style={{ fontSize: 18, fontWeight: "900", color: "#E31837" }}>
-                    {UI_TEXT.rs} {item.amount || "0"}
-                  </Text>
-                </View>
-              </Pressable>
-            )}
-          />
-        </KeyboardAvoidingView>
-
-        {userRole === "admin" && (
-          <Pressable
-            style={[styles.fab, getActiveDays(dayConfig).length === 0 && { opacity: 0.4 }]}
-            onPress={startNew}
-            disabled={getActiveDays(dayConfig).length === 0}
+        <StatusBar style="dark" />
+        <View style={styles.header}>
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "flex-end",
+              alignItems: "center",
+              height: 40,
+              marginBottom: 16,
+            }}
           >
-            <Ionicons name="add" size={32} color="#FFF" />
+            <LogoutButton onLogout={handleLogout} />
+          </View>
+          <Text style={styles.title}>{UI_TEXT.appName}</Text>
+          <Text style={styles.subtitle}>{UI_TEXT.tagline}</Text>
+        </View>
+
+        <ScrollView contentContainerStyle={styles.content}>
+          {firebaseError ? (
+            <View style={styles.firebaseBanner}>
+              <Text style={styles.firebaseBannerTitle}>
+                {UI_TEXT.offlineMode}
+              </Text>
+              <Text style={styles.firebaseBannerText}>{firebaseError}</Text>
+            </View>
+          ) : null}
+
+          <Pressable
+            onPress={() => setScreen("subscriptionList")}
+            style={styles.summary}
+          >
+            <View>
+              {seasonName ? (
+                <Text style={[styles.summaryLabel, { marginBottom: 2, color: "#FFB300" }]}>
+                  {seasonName}
+                </Text>
+              ) : null}
+              <Text style={styles.summaryLabel}>{UI_TEXT.activePasses}</Text>
+              <Text style={styles.summaryNumber}>
+                {subscriptions.length}
+              </Text>
+            </View>
+            <Ionicons name="ticket-outline" size={64} color="rgba(255,255,255,0.3)" />
           </Pressable>
-        )}
+
+          <View style={styles.compactActions}>
+            {userRole === "admin" ? (
+              <Pressable
+                accessibilityLabel={UI_TEXT.addFlat}
+                onPress={startNew}
+                style={styles.compactSecondary}
+                disabled={getActiveDays(dayConfig).length === 0}
+              >
+                <ActionLabel
+                  icon="add-circle-outline"
+                  label={UI_TEXT.addFlat}
+                  color="#E31837"
+                  size={24}
+                  vertical
+                />
+              </Pressable>
+            ) : null}
+            <Pressable
+              accessibilityLabel={UI_TEXT.subscriptions}
+              onPress={() => setScreen("subscriptionList")}
+              style={styles.compactSecondary}
+            >
+              <ActionLabel
+                icon="list-outline"
+                label={UI_TEXT.subscriptions}
+                color="#E31837"
+                size={24}
+                vertical
+              />
+            </Pressable>
+            <Pressable
+              accessibilityLabel={UI_TEXT.scanQr}
+              onPress={() => setScreen("scanner")}
+              style={styles.compactSecondary}
+            >
+              <ActionLabel
+                icon="scan-outline"
+                label={UI_TEXT.scanQr}
+                color="#E31837"
+                size={24}
+                vertical
+              />
+            </Pressable>
+            <Pressable
+              accessibilityLabel={UI_TEXT.dashboard}
+              onPress={() => setScreen("dashboard")}
+              style={styles.compactSecondary}
+            >
+              <ActionLabel
+                icon="stats-chart-outline"
+                label={UI_TEXT.dashboard}
+                color="#E31837"
+                size={24}
+                vertical
+              />
+            </Pressable>
+            <Pressable
+              accessibilityLabel={UI_TEXT.report}
+              onPress={() => setScreen("report")}
+              style={styles.compactSecondary}
+            >
+              <ActionLabel
+                icon="document-text-outline"
+                label={UI_TEXT.report}
+                color="#E31837"
+                size={24}
+                vertical
+              />
+            </Pressable>
+            <Pressable
+              accessibilityLabel={UI_TEXT.viewMenu}
+              onPress={() => setScreen("viewMenu")}
+              style={styles.compactSecondary}
+            >
+              <ActionLabel
+                icon="restaurant-outline"
+                label={UI_TEXT.viewMenu}
+                color="#E31837"
+                size={24}
+                vertical
+              />
+            </Pressable>
+            {userRole === "admin" ? (
+              <Pressable
+                accessibilityLabel="Settings"
+                onPress={() => setScreen("settings")}
+                style={styles.compactSecondary}
+              >
+                <ActionLabel
+                  icon="settings-outline"
+                  label="Settings"
+                  color="#E31837"
+                  size={24}
+                  vertical
+                />
+              </Pressable>
+            ) : null}
+          </View>
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>{UI_TEXT.footerCopyright}</Text>
+          </View>
+        </ScrollView>
       </View>
     );
   };

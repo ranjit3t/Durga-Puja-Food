@@ -8,7 +8,6 @@ import {
   Text,
   TextInput,
   Pressable,
-  ImageBackground,
   KeyboardAvoidingView,
   Platform,
   StatusBar,
@@ -17,9 +16,7 @@ import {
 import { styles } from "../styles";
 import { UI_TEXT } from "../strings";
 import { UserRole } from "../types";
-import { ActionLabel } from "../components/common/ActionLabel";
 import { AlertButton } from "../components/common/CustomAlert";
-
 import { Ionicons } from "@expo/vector-icons";
 import { SubscriptionRepository } from "../repository";
 
@@ -34,6 +31,7 @@ export function LoginScreen({
 }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
@@ -77,7 +75,6 @@ export function LoginScreen({
             </View>
 
             <View style={{ alignItems: "center", marginBottom: 40 }}>
-              <Text style={[styles.eyebrow, { color: "#E31837" }]}>{UI_TEXT.eventTitle}</Text>
               <Text style={[styles.title, { textAlign: "center", marginTop: 12 }]}>{UI_TEXT.loginTitle}</Text>
               <Text style={[styles.subtitle, { textAlign: "center" }]}>{UI_TEXT.loginSubtitle}</Text>
             </View>
@@ -94,15 +91,27 @@ export function LoginScreen({
               />
 
               <Text style={styles.label}>{UI_TEXT.password}</Text>
-              <TextInput
-                style={styles.input}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-                autoCapitalize="none"
-                placeholder="Enter password"
-                placeholderTextColor="#ADB5BD"
-              />
+              <View style={{ position: 'relative', justifyContent: 'center' }}>
+                <TextInput
+                  style={[styles.input, { paddingRight: 50 }]}
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                  placeholder="Enter password"
+                  placeholderTextColor="#ADB5BD"
+                />
+                <Pressable
+                  onPress={() => setShowPassword(!showPassword)}
+                  style={{ position: 'absolute', right: 16, padding: 4 }}
+                >
+                  <Ionicons
+                    name={showPassword ? "eye-off-outline" : "eye-outline"}
+                    size={22}
+                    color="#6A6E73"
+                  />
+                </Pressable>
+              </View>
 
               <Pressable
                 style={[styles.primary, (!username || !password || loading) && { opacity: 0.5 }, { marginTop: 40 }]}
@@ -111,10 +120,6 @@ export function LoginScreen({
               >
                 <Text style={styles.primaryText}>{loading ? UI_TEXT.loading : UI_TEXT.loginButton}</Text>
               </Pressable>
-            </View>
-
-            <View style={styles.footer}>
-               <Text style={styles.footerText}>{UI_TEXT.footerCopyright}</Text>
             </View>
           </View>
         </ScrollView>

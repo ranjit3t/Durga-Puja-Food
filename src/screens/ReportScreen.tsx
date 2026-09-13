@@ -21,6 +21,7 @@ import { Subscription, FoodMenu, Day, ConfigDay } from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { LogoutButton } from "../components/common/LogoutButton";
 import { ActionLabel } from "../components/common/ActionLabel";
+import { PaymentConfig } from "../types";
 
 type ReportType = "day" | "meal" | "flat" | "payment" | "single" | "notTaken";
 
@@ -29,6 +30,7 @@ export function ReportScreen({
   menu,
   config,
   seasonName,
+  paymentConfig,
   onBack,
   onShare,
   onLogout,
@@ -37,6 +39,7 @@ export function ReportScreen({
   menu: FoodMenu;
   config: ConfigDay[];
   seasonName: string;
+  paymentConfig: PaymentConfig;
   onBack: () => void;
   onShare: (uri: string, message?: string) => void;
   onLogout: () => void;
@@ -86,7 +89,7 @@ export function ReportScreen({
           reportType === "flat" ? UI_TEXT.flatWiseReport :
           UI_TEXT.paymentReport;
 
-        const message = `${seasonName || UI_TEXT.eventTitle} - ${reportTitle}\n${UI_TEXT.day}: ${new Date().toLocaleDateString()}`;
+        const message = `${seasonName || UI_TEXT.headerTitle} - ${reportTitle}\n${UI_TEXT.day}: ${new Date().toLocaleDateString()}`;
         onShare(uri, message);
       } catch (err) {
         console.error("Failed to capture report", err);
@@ -327,22 +330,28 @@ export function ReportScreen({
   }, [subscriptions, config]);
 
   const paymentData = useMemo(() => {
-    const summary = {
+    const summary: Record<string, { count: number; total: number }> = {
       UPI: { count: 0, total: 0 },
       Cash: { count: 0, total: 0 },
+      "Bank transfer": { count: 0, total: 0 },
     };
 
     subscriptions.forEach((sub) => {
-      const mode = sub.paymentMode === "UPI" ? "UPI" : "Cash";
+      const mode = sub.paymentMode || "Cash";
+      if (!summary[mode]) {
+        summary[mode] = { count: 0, total: 0 };
+      }
       summary[mode].count += 1;
       summary[mode].total += parseFloat(sub.amount) || 0;
     });
 
-    return [
-      { mode: "UPI", ...summary.UPI },
-      { mode: "Cash", ...summary.Cash },
-    ];
-  }, [subscriptions]);
+    const enabledMethods = [];
+    if (paymentConfig.options.upi) enabledMethods.push({ mode: "UPI", ...summary.UPI });
+    if (paymentConfig.options.cash) enabledMethods.push({ mode: "Cash", ...summary.Cash });
+    if (paymentConfig.options.bankTransfer) enabledMethods.push({ mode: "Bank transfer", ...summary["Bank transfer"] });
+
+    return enabledMethods;
+  }, [subscriptions, paymentConfig]);
 
   const notTakenData = useMemo(() => {
     if (reportType !== "notTaken") return [];
@@ -390,6 +399,7 @@ export function ReportScreen({
             flexDirection: "row",
             justifyContent: "space-between",
             alignItems: "center",
+            marginBottom: 16,
           }}
         >
           <BackButton onPress={onBack} />
@@ -418,8 +428,8 @@ export function ReportScreen({
             { id: "single", label: UI_TEXT.split, icon: "fast-food-outline" },
             { id: "notTaken", label: UI_TEXT.pending, icon: "alert-circle-outline" },
             { id: "flat", label: UI_TEXT.flat, icon: "business-outline" },
-            { id: "payment", label: UI_TEXT.cash, icon: "card-outline" },
-          ].map((type) => (
+            { id: "payment", label: UI_TEXT.payment, icon: "card-outline" },
+          ].filter(type => type.id !== "payment" || paymentConfig.enabled).map((type) => (
             <Pressable
               key={type.id}
               onPress={() => setReportType(type.id as ReportType)}
@@ -481,7 +491,11 @@ export function ReportScreen({
                   <Pressable
                     key={day}
                     onPress={() => setSelectedDayId(day)}
-                    style={[styles.selector, selectedDayId === day && styles.selectorOn]}
+                    style={[
+                      styles.selector,
+                      selectedDayId === day && styles.selectorOn,
+                      { minWidth: 60, paddingHorizontal: 12 }
+                    ]}
                   >
                     <Text style={[styles.selectorText, selectedDayId === day && styles.selectorTextOn]}>
                       {getDayAbbr(day, config)}
@@ -502,12 +516,14 @@ export function ReportScreen({
                     style={[
                       styles.selector,
                       selectedMealType === mKey && styles.selectorOn,
+                      { minWidth: 80, paddingHorizontal: 10 }
                     ]}
                   >
                     <Text
                       style={[
                         styles.selectorText,
                         selectedMealType === mKey && styles.selectorTextOn,
+                        { fontSize: 12 }
                       ]}
                     >
                       {mKey.charAt(0).toUpperCase() + mKey.slice(1)}
@@ -550,13 +566,13 @@ export function ReportScreen({
                         <Text style={styles.dashboardDay}>{item.block}-{item.flat}</Text>
                         <View style={{ alignItems: 'flex-end' }}>
                           <Text style={[styles.amount, { color: "#DC3545" }]}>
-                            {item.count} {item.count === 1 ? UI_TEXT.personSuffix : UI_TEXT.personsSuffix} Not Taken
+                            {item.count} {item.count === 1 ? UI_TEXT.personNotTaken : UI_TEXT.personsNotTaken}
                           </Text>
                           <Text style={[styles.helper, { fontSize: 11, fontWeight: "700" }]}>
                             (
-                            {vegEnabled && item.veg > 0 && <Text style={{ color: "#28A745" }}>{item.veg} Veg</Text>}
-                            {vegEnabled && item.veg > 0 && nonVegEnabled && item.nonVeg > 0 && ", "}
-                            {nonVegEnabled && item.nonVeg > 0 && <Text style={{ color: "#DC3545" }}>{item.nonVeg} Non-Veg</Text>}
+                            {vegEnabled && item.veg > 0 && <Text style={{ color: "#28A745" }}>{item.veg} {UI_TEXT.veg}</Text>}
+                            {vegEnabled && item.veg > 0 && nonVegEnabled && item.nonVeg > 0 && <Text>, </Text>}
+                            {nonVegEnabled && item.nonVeg > 0 && <Text style={{ color: "#DC3545" }}>{item.nonVeg} {UI_TEXT.nonVeg}</Text>}
                             )
                           </Text>
                         </View>
@@ -580,7 +596,7 @@ export function ReportScreen({
                 const mealEnabled = isMealEnabled(selectedDayId, selectedMealType, config);
 
                 if (!mealEnabled) {
-                  return <Text style={styles.emptyState}>This meal is disabled for the selected day.</Text>;
+                  return <Text style={styles.emptyState}>{UI_TEXT.mealDisabled}</Text>;
                 }
 
                 const tVeg = m.veg + m.guestVeg;
@@ -615,7 +631,6 @@ export function ReportScreen({
                         </View>
                       </View>
 
-                      {/* Meal Taken Detail */}
                       <View style={{ backgroundColor: "#EBFBEE", borderRadius: 16, padding: 16, flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
                         <Text style={{ color: "#28A745", fontWeight: "800", fontSize: 16 }}>{UI_TEXT.mealTaken}</Text>
                         <View style={{ alignItems: 'flex-end' }}>
@@ -635,7 +650,6 @@ export function ReportScreen({
                         </View>
                       </View>
 
-                      {/* Meal Not Taken Detail */}
                       <View style={{ backgroundColor: "#FFF5F5", borderRadius: 16, padding: 16, flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
                         <Text style={{ color: "#DC3545", fontWeight: "800", fontSize: 16 }}>{UI_TEXT.mealNotTaken}</Text>
                         <View style={{ alignItems: 'flex-end' }}>
@@ -655,7 +669,7 @@ export function ReportScreen({
                         </View>
                       </View>
 
-                      {parcelEnabled && (m.vegParcel + m.nonVegParcel) > 0 && (
+                      {parcelEnabled && (m.vegParcel + m.nonVegParcel) > 0 ? (
                         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", borderTopWidth: 1, borderTopColor: "#E9ECEF", paddingTop: 16 }}>
                           <Text style={{ fontSize: 15, fontWeight: "700", color: "#6A6E73" }}>{UI_TEXT.parcelsNeeded}</Text>
                           <View style={{ alignItems: 'flex-end' }}>
@@ -665,7 +679,7 @@ export function ReportScreen({
                                 <Text style={{ fontSize: 11, fontWeight: "600" }}>
                                   (
                                   {vegEnabled && m.vegParcel > 0 && <Text style={{ color: "#28A745" }}>{m.vegParcel} {UI_TEXT.veg}</Text>}
-                                  {vegEnabled && m.vegParcel > 0 && nonVegEnabled && m.nonVegParcel > 0 && ", "}
+                                  {vegEnabled && m.vegParcel > 0 && nonVegEnabled && m.nonVegParcel > 0 && <Text>, </Text>}
                                   {nonVegEnabled && m.nonVegParcel > 0 && <Text style={{ color: "#DC3545" }}>{m.nonVegParcel} {UI_TEXT.nonVeg}</Text>}
                                   )
                                 </Text>
@@ -673,7 +687,7 @@ export function ReportScreen({
                             })()}
                           </View>
                         </View>
-                      )}
+                      ) : null}
                     </View>
                   </View>
                 );
@@ -717,38 +731,38 @@ export function ReportScreen({
                         {getDayLabel(item.day, config)}
                       </Text>
                       <View style={styles.pill}>
-                        <Text style={styles.pillText}>{totalDemand} Plates Demand</Text>
+                        <Text style={styles.pillText}>{totalDemand} {UI_TEXT.platesDemand}</Text>
                       </View>
                     </View>
 
                     <View style={{ marginTop: 20, gap: 12 }}>
                       {/* Total Demand Section */}
                       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                        <Text style={{ fontSize: 15, fontWeight: "700", color: "#6A6E73" }}>Total Demand</Text>
+                        <Text style={{ fontSize: 15, fontWeight: "700", color: "#6A6E73" }}>{UI_TEXT.totalDemand}</Text>
                         <View style={{ alignItems: 'flex-end' }}>
                           {vegEnabled && (
-                            <Text style={{ fontSize: 13, fontWeight: "600", color: "#28A745", marginBottom: 2 }}>Veg: {totalVeg} (Res:{item.veg}, Guest:{item.guestVeg})</Text>
+                            <Text style={{ fontSize: 13, fontWeight: "600", color: "#28A745", marginBottom: 2 }}>{UI_TEXT.veg}: {totalVeg} ({UI_TEXT.resSuffix}:{item.veg}, {UI_TEXT.guestSuffix}:{item.guestVeg})</Text>
                           )}
                           {nonVegEnabled && (
-                            <Text style={{ fontSize: 13, fontWeight: "600", color: "#DC3545" }}>Non-Veg: {totalNonVeg} (Res:{item.nonVeg}, Guest:{item.guestNonVeg})</Text>
+                            <Text style={{ fontSize: 13, fontWeight: "600", color: "#DC3545" }}>{UI_TEXT.nonVeg}: {totalNonVeg} ({UI_TEXT.resSuffix}:{item.nonVeg}, {UI_TEXT.guestSuffix}:{item.guestNonVeg})</Text>
                           )}
                         </View>
                       </View>
 
                       {/* Meal Taken Section */}
                       <View style={{ backgroundColor: "#EBFBEE", borderRadius: 16, padding: 16, flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                        <Text style={{ color: "#28A745", fontWeight: "800", fontSize: 16 }}>Meal Taken</Text>
+                        <Text style={{ color: "#28A745", fontWeight: "800", fontSize: 16 }}>{UI_TEXT.mealTaken}</Text>
                         <View style={{ alignItems: 'flex-end' }}>
                           <Text style={{ color: "#28A745", fontSize: 24, fontWeight: "900" }}>{totalTaken}</Text>
                           <View style={{ marginTop: 4 }}>
                             {vegEnabled && (
                               <Text style={{ color: '#28A745', fontSize: 12, fontWeight: "700", textAlign: 'right' }}>
-                                Veg: {totalVegTaken} (Res:{item.vegTaken}, Guest:{item.guestVegTaken})
+                                {UI_TEXT.veg}: {totalVegTaken} ({UI_TEXT.resSuffix}:{item.vegTaken}, {UI_TEXT.guestSuffix}:{item.guestVegTaken})
                               </Text>
                             )}
                             {nonVegEnabled && (
                               <Text style={{ color: '#DC3545', fontSize: 12, fontWeight: "700", textAlign: 'right' }}>
-                                Non-Veg: {totalNonVegTaken} (Res:{item.nonVegTaken}, Guest:{item.guestNonVegTaken})
+                                {UI_TEXT.nonVeg}: {totalNonVegTaken} ({UI_TEXT.resSuffix}:{item.nonVegTaken}, {UI_TEXT.guestSuffix}:{item.guestNonVegTaken})
                               </Text>
                             )}
                           </View>
@@ -757,43 +771,43 @@ export function ReportScreen({
 
                       {/* Meal Not Taken Section */}
                       <View style={{ backgroundColor: "#FFF5F5", borderRadius: 16, padding: 16, flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                        <Text style={{ color: "#DC3545", fontWeight: "800", fontSize: 16 }}>Meal Not Taken</Text>
+                        <Text style={{ color: "#DC3545", fontWeight: "800", fontSize: 16 }}>{UI_TEXT.mealNotTaken}</Text>
                         <View style={{ alignItems: 'flex-end' }}>
                           <Text style={{ color: "#DC3545", fontSize: 24, fontWeight: "900" }}>{totalNotTaken}</Text>
                           <View style={{ marginTop: 4 }}>
                             {vegEnabled && (
                               <Text style={{ color: '#28A745', fontSize: 12, fontWeight: "700", textAlign: 'right' }}>
-                                Veg: {totalVeg - totalVegTaken} (Res:{item.veg - item.vegTaken}, Guest:{item.guestVeg - item.guestVegTaken})
+                                {UI_TEXT.veg}: {totalVeg - totalVegTaken} ({UI_TEXT.resSuffix}:{item.veg - item.vegTaken}, {UI_TEXT.guestSuffix}:{item.guestVeg - item.guestVegTaken})
                               </Text>
                             )}
                             {nonVegEnabled && (
                               <Text style={{ color: '#DC3545', fontSize: 12, fontWeight: "700", textAlign: 'right' }}>
-                                Non-Veg: {totalNonVeg - totalNonVegTaken} (Res:{item.nonVeg - item.nonVegTaken}, Guest:{item.guestNonVeg - item.guestNonVegTaken})
+                                {UI_TEXT.nonVeg}: {totalNonVeg - totalNonVegTaken} ({UI_TEXT.resSuffix}:{item.nonVeg - item.nonVegTaken}, {UI_TEXT.guestSuffix}:{item.guestNonVeg - item.guestNonVegTaken})
                               </Text>
                             )}
                           </View>
                         </View>
                       </View>
 
-                      {hasParcelSupport && (item.vegParcel + item.nonVegParcel) > 0 && (
+                      {hasParcelSupport && (item.vegParcel + item.nonVegParcel) > 0 ? (
                         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", borderTopWidth: 1, borderTopColor: "#E9ECEF", paddingTop: 16 }}>
-                          <Text style={{ fontSize: 15, fontWeight: "700", color: "#6A6E73" }}>Total Parcels</Text>
+                          <Text style={{ fontSize: 15, fontWeight: "700", color: "#6A6E73" }}>{UI_TEXT.totalParcels}</Text>
                           <View style={{ alignItems: 'flex-end' }}>
-                            <Text style={{ fontSize: 18, fontWeight: "800", color: "#E31837" }}>{item.vegParcel + item.nonVegParcel} P</Text>
+                            <Text style={{ fontSize: 18, fontWeight: "800", color: "#E31837" }}>{item.vegParcel + item.nonVegParcel} {UI_TEXT.parcelAbbr}</Text>
                             {(() => {
                               return (
                                 <Text style={{ fontSize: 11, fontWeight: "600" }}>
                                   (
-                                  {vegEnabled && item.vegParcel > 0 && <Text style={{ color: "#28A745" }}>{item.vegParcel} Veg</Text>}
-                                  {vegEnabled && item.vegParcel > 0 && nonVegEnabled && item.nonVegParcel > 0 && ", "}
-                                  {nonVegEnabled && item.nonVegParcel > 0 && <Text style={{ color: "#DC3545" }}>{item.nonVegParcel} Non-Veg</Text>}
+                                  {vegEnabled && item.vegParcel > 0 && <Text style={{ color: "#28A745" }}>{item.vegParcel} {UI_TEXT.veg}</Text>}
+                                  {vegEnabled && item.vegParcel > 0 && nonVegEnabled && item.nonVegParcel > 0 && <Text>, </Text>}
+                                  {nonVegEnabled && item.nonVegParcel > 0 && <Text style={{ color: "#DC3545" }}>{item.nonVegParcel} {UI_TEXT.nonVeg}</Text>}
                                   )
                                 </Text>
                               );
                             })()}
                           </View>
                         </View>
-                      )}
+                      ) : null}
                     </View>
                   </View>
                 );
@@ -863,21 +877,21 @@ export function ReportScreen({
                             {/* Detailed split for this meal slot */}
                             {vegEnabled && (
                               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
-                                <Text style={{ color: "#28A745", fontWeight: "700", fontSize: 13 }}>Veg</Text>
+                                <Text style={{ color: "#28A745", fontWeight: "700", fontSize: 13 }}>{UI_TEXT.veg}</Text>
                                 <View style={{ alignItems: "flex-end" }}>
-                                   <Text style={{ fontSize: 12, color: "#28A745", fontWeight: "600" }}>Demand: {tVeg} (Res:{m.veg}, Guest:{m.guestVeg})</Text>
-                                   <Text style={{ fontSize: 12, color: "#28A745", fontWeight: "700" }}>Taken: {tTakenVeg} (Res:{m.vegTaken}, Guest:{m.guestVegTaken})</Text>
-                                   <Text style={{ fontSize: 12, color: "#28A745", fontWeight: "700" }}>Missed: {tVeg - tTakenVeg}</Text>
+                                   <Text style={{ fontSize: 12, color: "#28A745", fontWeight: "600" }}>{UI_TEXT.demand}: {tVeg} ({UI_TEXT.resSuffix}:{m.veg}, {UI_TEXT.guestSuffix}:{m.guestVeg})</Text>
+                                   <Text style={{ fontSize: 12, color: "#28A745", fontWeight: "700" }}>{UI_TEXT.taken}: {tTakenVeg} ({UI_TEXT.resSuffix}:{m.vegTaken}, {UI_TEXT.guestSuffix}:{m.guestVegTaken})</Text>
+                                   <Text style={{ fontSize: 12, color: "#28A745", fontWeight: "700" }}>{UI_TEXT.missed}: {tVeg - tTakenVeg}</Text>
                                 </View>
                               </View>
                             )}
                             {nonVegEnabled && (
                               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", borderTopWidth: 1, borderTopColor: "#E9ECEF", paddingTop: 8 }}>
-                                <Text style={{ color: "#DC3545", fontWeight: "700", fontSize: 13 }}>Non-Veg</Text>
+                                <Text style={{ color: "#DC3545", fontWeight: "700", fontSize: 13 }}>{UI_TEXT.nonVeg}</Text>
                                 <View style={{ alignItems: "flex-end" }}>
-                                   <Text style={{ fontSize: 12, color: "#DC3545", fontWeight: "600" }}>Demand: {tNonVeg} (Res:{m.nonVeg}, Guest:{m.guestNonVeg})</Text>
-                                   <Text style={{ fontSize: 12, color: "#DC3545", fontWeight: "700" }}>Taken: {tTakenNonVeg} (Res:{m.nonVegTaken}, Guest:{m.guestNonVegTaken})</Text>
-                                   <Text style={{ fontSize: 12, color: "#DC3545", fontWeight: "700" }}>Missed: {tNonVeg - tTakenNonVeg}</Text>
+                                   <Text style={{ fontSize: 12, color: "#DC3545", fontWeight: "600" }}>{UI_TEXT.demand}: {tNonVeg} ({UI_TEXT.resSuffix}:{m.nonVeg}, {UI_TEXT.guestSuffix}:{m.guestNonVeg})</Text>
+                                   <Text style={{ fontSize: 12, color: "#DC3545", fontWeight: "700" }}>{UI_TEXT.taken}: {tTakenNonVeg} ({UI_TEXT.resSuffix}:{m.nonVegTaken}, {UI_TEXT.guestSuffix}:{m.guestNonVegTaken})</Text>
+                                   <Text style={{ fontSize: 12, color: "#DC3545", fontWeight: "700" }}>{UI_TEXT.missed}: {tNonVeg - tTakenNonVeg}</Text>
                                 </View>
                               </View>
                             )}
@@ -886,13 +900,13 @@ export function ReportScreen({
                               <View style={{ borderTopWidth: 1, borderTopColor: "#E9ECEF", paddingTop: 8, flexDirection: "row", justifyContent: "space-between" }}>
                                 <Text style={{ color: "#6A6E73", fontWeight: "700", fontSize: 13 }}>{UI_TEXT.parcels}</Text>
                                 <Text style={{ fontSize: 13, color: "#E31837", fontWeight: "800" }}>
-                                  {m.vegParcel + m.nonVegParcel} P
+                                  <Text>{m.vegParcel + m.nonVegParcel} P</Text>
                                   {(() => {
                                      return (
                                        <Text>
                                          (
                                          {vegEnabled && m.vegParcel > 0 && <Text style={{ color: "#28A745" }}>{m.vegParcel} {UI_TEXT.veg}</Text>}
-                                         {vegEnabled && m.vegParcel > 0 && nonVegEnabled && m.nonVegParcel > 0 && ", "}
+                                         {vegEnabled && m.vegParcel > 0 && nonVegEnabled && m.nonVegParcel > 0 && <Text>, </Text>}
                                          {nonVegEnabled && m.nonVegParcel > 0 && <Text style={{ color: "#DC3545" }}>{m.nonVegParcel} {UI_TEXT.nonVeg}</Text>}
                                          )
                                        </Text>
@@ -903,9 +917,9 @@ export function ReportScreen({
                             )}
 
                             <View style={{ borderTopWidth: 1, borderTopColor: '#E9ECEF', paddingTop: 10, flexDirection: "row", justifyContent: "space-between" }}>
-                              <Text style={{ color: "#1A1C1E", fontWeight: "900", fontSize: 14 }}>TOTAL</Text>
+                              <Text style={{ color: "#1A1C1E", fontWeight: "900", fontSize: 14 }}>{UI_TEXT.total}</Text>
                               <Text style={{ color: "#28A745", fontWeight: "900", fontSize: 14 }}>
-                                {tVeg + tNonVeg} Demand | {tTakenVeg + tTakenNonVeg} Taken
+                                {tVeg + tNonVeg} {UI_TEXT.demand} | {tTakenVeg + tTakenNonVeg} {UI_TEXT.taken}
                               </Text>
                             </View>
                           </View>
@@ -933,12 +947,12 @@ export function ReportScreen({
                     ]}
                   >
                     <View>
-                       <Text style={styles.flatLabel}>BLOCK {item.block}</Text>
-                       <Text style={[styles.dashboardDay, { fontSize: 24 }]}>Flat {item.flat}</Text>
+                       <Text style={styles.flatLabel}>{UI_TEXT.block} {item.block}</Text>
+                       <Text style={[styles.dashboardDay, { fontSize: 24 }]}>{UI_TEXT.flatUpper} {item.flat}</Text>
                     </View>
                     <View style={{ alignItems: "flex-end" }}>
-                       <Text style={{ color: "#E31837", fontSize: 20, fontWeight: "900" }}>{UI_TEXT.rs} {item.amount}</Text>
-                       <Text style={{ color: "#6A6E73", fontWeight: "600", fontSize: 12, marginTop: 4 }}>{item.people} People</Text>
+                       {paymentConfig.enabled && <Text style={{ color: "#E31837", fontSize: 20, fontWeight: "900" }}>{UI_TEXT.rs} {item.amount}</Text>}
+                       <Text style={{ color: "#6A6E73", fontWeight: "600", fontSize: 12, marginTop: 4 }}>{item.people} {UI_TEXT.people}</Text>
                     </View>
                   </View>
 
@@ -985,15 +999,15 @@ export function ReportScreen({
                               <View style={{ flex: 1, alignItems: "flex-end" }}>
                                 <Text style={{ fontSize: 12, fontWeight: "700" }}>
                                   {vegEnabled && m.veg > 0 && <Text style={{ color: "#28A745" }}>Veg: {m.vegTaken}/{m.veg}</Text>}
-                                  {vegEnabled && m.veg > 0 && nonVegEnabled && m.nonVeg > 0 && " | "}
+                                  {vegEnabled && m.veg > 0 && nonVegEnabled && m.nonVeg > 0 && <Text> | </Text>}
                                   {nonVegEnabled && m.nonVeg > 0 && <Text style={{ color: "#DC3545" }}>Non-Veg: {m.nonVegTaken}/{m.nonVeg}</Text>}
                                 </Text>
-                                {(m.vegParcel + m.nonVegParcel) > 0 && (
+                                {m.vegParcel + m.nonVegParcel} > 0 && (
                                   <Text style={{ fontSize: 11, fontWeight: '700', marginTop: 2 }}>
-                                    Parcels: {m.vegParcel + m.nonVegParcel}P (
-                                    {vegEnabled && m.vegParcel > 0 && <Text style={{ color: "#28A745" }}>{m.vegParcel} Veg</Text>}
-                                    {vegEnabled && m.vegParcel > 0 && nonVegEnabled && m.nonVegParcel > 0 && ", "}
-                                    {nonVegEnabled && m.nonVegParcel > 0 && <Text style={{ color: "#DC3545" }}>{m.nonVegParcel} Non-Veg</Text>}
+                                    {UI_TEXT.parcels}: {m.vegParcel + m.nonVegParcel}{UI_TEXT.parcelAbbr} (
+                                    {vegEnabled && m.vegParcel > 0 && <Text style={{ color: "#28A745" }}>{m.vegParcel} {UI_TEXT.veg}</Text>}
+                                    {vegEnabled && m.vegParcel > 0 && nonVegEnabled && m.nonVegParcel > 0 && <Text>, </Text>}
+                                    {nonVegEnabled && m.nonVegParcel > 0 && <Text style={{ color: "#DC3545" }}>{m.nonVegParcel} {UI_TEXT.nonVeg}</Text>}
                                     )
                                   </Text>
                                 )}
@@ -1021,7 +1035,7 @@ export function ReportScreen({
                 </View>
               ))}
               <View style={{ backgroundColor: "#E31837", padding: 20, flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                <Text style={{ color: "#FFFFFF", fontWeight: "900", fontSize: 18 }}>TOTAL COLLECTION</Text>
+                <Text style={{ color: "#FFFFFF", fontWeight: "900", fontSize: 18 }}>{UI_TEXT.totalCollection}</Text>
                 <Text style={{ color: "#FFFFFF", fontWeight: "900", fontSize: 24 }}>
                   {UI_TEXT.rs} {paymentData.reduce((acc, curr) => acc + curr.total, 0).toFixed(2)}
                 </Text>

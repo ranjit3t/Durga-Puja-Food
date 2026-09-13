@@ -80,7 +80,14 @@ export function MealMenuEditor({
           </Pressable>
         )}
 
-        <Pressable onPress={addItem} style={styles.addSmall}>
+        <Pressable
+          onPress={addItem}
+          style={[
+            styles.addSmall,
+            type === "veg" ? styles.vegChoice : styles.nonVegChoice,
+            { borderWidth: 0 } // Ensure no border conflict with choice styles
+          ]}
+        >
           <Ionicons name="add" size={20} color="#fff" />
         </Pressable>
       </View>

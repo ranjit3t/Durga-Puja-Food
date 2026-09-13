@@ -31,7 +31,6 @@ import { AlertButton } from "../components/common/CustomAlert";
 interface MealSectionProps {
   day: string;
   type: "breakfast" | "lunch" | "dinner";
-  title: string;
   icon: keyof typeof Ionicons.glyphMap;
   total: number;
   veg: number;
@@ -82,7 +81,6 @@ const DashboardMealSection = memo(
   ({
     day,
     type,
-    title,
     icon,
     total,
     veg,
@@ -115,22 +113,24 @@ const DashboardMealSection = memo(
     const totalNonVegTaken = flatNonVegTaken + guestNonVegTaken;
     const totalMealTaken = totalVegTaken + totalNonVegTaken;
 
+    const mealLabel = type === "breakfast" ? UI_TEXT.breakfast : type === "lunch" ? UI_TEXT.lunch : UI_TEXT.dinner;
+
     return (
       <View style={styles.dashboardMealSection}>
         <View style={[styles.mealDisplayHeader, { marginBottom: 12, justifyContent: "space-between" }]}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <Ionicons name={icon} size={22} color="#E31837" />
             <Text style={[styles.sectionTitle, { marginBottom: 0, fontSize: 18 }]}>
-              {title}
+              {mealLabel}
             </Text>
           </View>
           <View style={[styles.pill, { backgroundColor: "#F1F3F5" }]}>
-             <Text style={[styles.pillText, { color: "#6A6E73" }]}>{total} Plates</Text>
+             <Text style={[styles.pillText, { color: "#6A6E73" }]}>{total} {UI_TEXT.plates}</Text>
           </View>
         </View>
 
         {/* Menu Quick-View */}
-        {(vegItems.length > 0 || nonVegItems.length > 0) && (
+        {(vegItems.length > 0 || nonVegItems.length > 0) ? (
           <View style={{ gap: 8, marginBottom: 16 }}>
             {isVegEnabled && vegItems.length > 0 && (
               <View style={[styles.menuBox, { borderLeftWidth: 4, borderLeftColor: "#28A745", paddingVertical: 8 }]}>
@@ -143,8 +143,7 @@ const DashboardMealSection = memo(
                 />
               </View>
             )}
-            {isNonVegEnabled &&
-              nonVegItems.length > 0 && (
+            {isNonVegEnabled && nonVegItems.length > 0 && (
                 <View
                   style={[styles.menuBox, { borderLeftWidth: 4, borderLeftColor: "#DC3545", paddingVertical: 8 }]}
                 >
@@ -158,7 +157,7 @@ const DashboardMealSection = memo(
                 </View>
               )}
           </View>
-        )}
+        ) : null}
 
         {/* Aggregated Demand Metrics */}
         <View style={styles.metricGrid}>
@@ -302,11 +301,13 @@ const DashboardMealSection = memo(
 export function DashboardScreen({
   data,
   userRole,
+  menu,
+  config,
+  paymentConfig,
   totalCollection,
   upiCollection,
   cashCollection,
-  menu,
-  config,
+  bankTransferCollection,
   onUpdateMenu,
   onBack,
   onLogout,
@@ -317,8 +318,10 @@ export function DashboardScreen({
   totalCollection: number;
   upiCollection: number;
   cashCollection: number;
+  bankTransferCollection: number;
   menu: FoodMenu;
   config: ConfigDay[];
+  paymentConfig: PaymentConfig;
   onUpdateMenu: (menu: FoodMenu) => Promise<void>;
   onBack: () => void;
   onLogout: () => void;
@@ -381,6 +384,7 @@ export function DashboardScreen({
             flexDirection: "row",
             justifyContent: "space-between",
             alignItems: "center",
+            marginBottom: 16,
           }}
         >
           <BackButton onPress={onBack} />
@@ -395,19 +399,31 @@ export function DashboardScreen({
         keyboardShouldPersistTaps="handled"
       >
         {/* Financial Overview */}
-        <View style={styles.collectionCard}>
-          <Ionicons name="wallet-outline" size={25} color="#7b5a2d" />
-          <View>
-            <Text style={styles.summaryLabel}>{UI_TEXT.totalCollection}</Text>
-            <Text style={styles.collectionAmount}>
-              {UI_TEXT.rs} {totalCollection.toFixed(2)}
-            </Text>
-            <Text style={styles.collectionBreakdown}>
-              UPI {UI_TEXT.rs} {upiCollection.toFixed(2)} | Cash {UI_TEXT.rs}{" "}
-              {cashCollection.toFixed(2)}
-            </Text>
-          </View>
-        </View>
+        {paymentConfig.enabled && (
+          <>
+            <Text style={[styles.sectionTitle, { marginBottom: 16 }]}>{UI_TEXT.payment}</Text>
+            <View style={styles.collectionCard}>
+              <View style={{ backgroundColor: "#F7F3F0", width: 56, height: 56, borderRadius: 20, alignItems: "center", justifyContent: "center" }}>
+                 <Ionicons name="wallet-outline" size={28} color="#7B5A2D" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.collectionLabel}>{UI_TEXT.totalCollection}</Text>
+                <Text style={styles.collectionAmount}>
+                  {UI_TEXT.rs} {totalCollection.toFixed(0)}
+                </Text>
+                <Text style={styles.collectionBreakdown}>
+                  {(() => {
+                     const parts = [];
+                     if (paymentConfig.options.upi) parts.push(`${UI_TEXT.upi} ${upiCollection.toFixed(0)}`);
+                     if (paymentConfig.options.cash) parts.push(`${UI_TEXT.cash} ${cashCollection.toFixed(0)}`);
+                     if (paymentConfig.options.bankTransfer) parts.push(`${UI_TEXT.bankTransfer} ${bankTransferCollection.toFixed(0)}`);
+                     return parts.join(" • ");
+                  })()}
+                </Text>
+              </View>
+            </View>
+          </>
+        )}
 
         <Text style={styles.sectionTitle}>{UI_TEXT.dailyMealDemand}</Text>
 
@@ -430,7 +446,6 @@ export function DashboardScreen({
                 <DashboardMealSection
                   day={day}
                   type="breakfast"
-                  title={UI_TEXT.breakfast}
                   icon="sunny-outline"
                   total={item.breakfast || 0}
                   veg={item.breakfastVeg || 0}
@@ -469,7 +484,6 @@ export function DashboardScreen({
                 <DashboardMealSection
                   day={day}
                   type="lunch"
-                  title={UI_TEXT.lunch}
                   icon="restaurant-outline"
                   total={item.lunch || 0}
                   veg={item.lunchVeg || 0}
@@ -508,7 +522,6 @@ export function DashboardScreen({
                 <DashboardMealSection
                   day={day}
                   type="dinner"
-                  title={UI_TEXT.dinner}
                   icon="moon-outline"
                   total={item.dinner || 0}
                   veg={item.dinnerVeg || 0}

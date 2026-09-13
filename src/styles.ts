@@ -89,21 +89,19 @@ export const styles = StyleSheet.create({
   },
   backButton: {
     height: 40,
-    width: 40,
+    paddingHorizontal: 8,
     borderRadius: 20,
     backgroundColor: COLORS.surface,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 16,
   },
   backButtonLight: {
     height: 40,
-    width: 40,
+    paddingHorizontal: 8,
     borderRadius: 20,
     backgroundColor: "rgba(255, 255, 255, 0.2)",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 16,
   },
 
   // Main Content
@@ -221,6 +219,52 @@ export const styles = StyleSheet.create({
     marginTop: 4,
   },
 
+  // Dashboard Financial Card (Sleek Look)
+  collectionCard: {
+    backgroundColor: "#FDFCFB", // Very light cream
+    borderRadius: 28,
+    padding: 24,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 20,
+    marginBottom: 32, // More gap from demand section
+    borderWidth: 1,
+    borderColor: "#F1F3F5",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#7B5A2D",
+        shadowOffset: { width: 0, height: 12 },
+        shadowOpacity: 0.08,
+        shadowRadius: 20,
+      },
+      android: {
+        elevation: 6,
+      },
+    }),
+  },
+  collectionLabel: {
+    color: "#7B5A2D", // Earthy brown for sleek look
+    fontSize: 12,
+    fontWeight: "800",
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+    opacity: 0.7,
+  },
+  collectionAmount: {
+    color: "#1A1C1E",
+    fontSize: 32,
+    fontWeight: "900",
+    marginTop: 2,
+    letterSpacing: -0.5,
+  },
+  collectionBreakdown: {
+    color: "#6A6E73",
+    fontSize: 13,
+    fontWeight: "600",
+    marginTop: 6,
+    opacity: 0.9,
+  },
+
   // Section Management
   sectionHeader: {
     flexDirection: "row",
@@ -238,10 +282,8 @@ export const styles = StyleSheet.create({
   },
   compactActions: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    rowGap: 12,
     flexWrap: "wrap",
+    gap: 12,
   },
 
   // Dashboard Sections
@@ -627,12 +669,26 @@ export const styles = StyleSheet.create({
   firebaseBannerText: { color: COLORS.error, fontSize: 13, marginTop: 4 },
 
   compactSecondary: {
-    borderColor: COLORS.border,
-    borderWidth: 1.5,
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    backgroundColor: COLORS.white,
+    backgroundColor: "#FDFCFB",
+    borderColor: "#F1F3F5",
+    borderWidth: 1,
+    borderRadius: 20,
+    padding: 16,
+    flexGrow: 1,
+    minWidth: "45%",
+    alignItems: "center",
+    justifyContent: "center",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
   actionLabel: {
     flexDirection: "row",

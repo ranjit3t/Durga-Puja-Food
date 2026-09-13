@@ -14,16 +14,16 @@ import {
 } from "react-native";
 import { styles } from "../styles";
 import { UI_TEXT } from "../strings";
-import { ConfigDay, MealConfig, AppConfig } from "../types";
+import { ConfigDay, MealConfig, AppConfig, PaymentConfig } from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { LogoutButton } from "../components/common/LogoutButton";
 import { ActionLabel } from "../components/common/ActionLabel";
 import { AlertButton } from "../components/common/CustomAlert";
 import { Ionicons } from "@expo/vector-icons";
-
 export function SettingsScreen({
   config,
   seasonName,
+  payment,
   onSave,
   onBack,
   onLogout,
@@ -31,6 +31,7 @@ export function SettingsScreen({
 }: {
   config: ConfigDay[];
   seasonName: string;
+  payment: PaymentConfig;
   onSave: (config: AppConfig) => Promise<void>;
   onBack: () => void;
   onLogout: () => void;
@@ -40,6 +41,10 @@ export function SettingsScreen({
     Array.isArray(config) ? [...config] : []
   );
   const [localSeasonName, setLocalSeasonName] = useState(seasonName || "");
+  const [localPayment, setLocalPayment] = useState<PaymentConfig>(payment || {
+    enabled: true,
+    options: { upi: true, cash: true, bankTransfer: true }
+  });
   const [saving, setSaving] = useState(false);
 
   const updateDay = (id: string, next: Partial<ConfigDay>) => {
@@ -126,14 +131,19 @@ export function SettingsScreen({
 
   const handleSave = async () => {
     setSaving(true);
-    await onSave({ seasonName: localSeasonName, days: localConfig });
+    await onSave({
+      seasonName: localSeasonName,
+      days: localConfig,
+      payment: localPayment
+    });
     setSaving(false);
     showAlert(UI_TEXT.success, UI_TEXT.settingsUpdated);
   };
 
   const hasChanged =
     JSON.stringify(config) !== JSON.stringify(localConfig) ||
-    localSeasonName !== seasonName;
+    localSeasonName !== seasonName ||
+    JSON.stringify(payment) !== JSON.stringify(localPayment);
 
   return (
     <View style={styles.root}>
@@ -144,6 +154,7 @@ export function SettingsScreen({
             flexDirection: "row",
             justifyContent: "space-between",
             alignItems: "center",
+            marginBottom: 16,
           }}
         >
           <BackButton onPress={onBack} />
@@ -155,8 +166,8 @@ export function SettingsScreen({
       </View>
 
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        {/* Season Configuration */}
-        <View style={[styles.dashboardCard, { borderLeftWidth: 1, borderLeftColor: "#E9ECEF" }]}>
+        {/* Season & Payment Configuration */}
+        <View style={styles.dashboardCard}>
            <Text style={{ fontSize: 18, fontWeight: '900', color: '#1A1C1E', marginBottom: 4 }}>{UI_TEXT.seasonNameLabel}</Text>
            <Text style={{ fontSize: 12, color: "#6A6E73", fontWeight: "600", marginBottom: 16 }}>{UI_TEXT.seasonNameHelper}</Text>
 
@@ -170,13 +181,64 @@ export function SettingsScreen({
                paddingVertical: 14,
                fontSize: 16,
                color: "#1A1C1E",
-               fontWeight: "700"
+               fontWeight: "700",
+               marginBottom: 20
              }}
              value={localSeasonName}
              onChangeText={setLocalSeasonName}
              placeholder={UI_TEXT.seasonNamePlaceholder}
              selectTextOnFocus
            />
+
+           <View style={{ height: 1, backgroundColor: '#E9ECEF', marginBottom: 20 }} />
+
+           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <View>
+                 <Text style={{ fontSize: 16, fontWeight: '800', color: '#1A1C1E' }}>Payment Integration</Text>
+                 <Text style={{ fontSize: 11, color: '#6A6E73', fontWeight: '600' }}>Enable tracking for subscriptions</Text>
+              </View>
+              <Switch
+                value={localPayment.enabled}
+                onValueChange={(val) => setLocalPayment({ ...localPayment, enabled: val })}
+                trackColor={{ true: '#E31837' }}
+              />
+           </View>
+
+           {localPayment.enabled && (
+             <View style={{ backgroundColor: '#F8F9FA', borderRadius: 16, padding: 12, gap: 12 }}>
+                <Text style={{ fontSize: 12, fontWeight: '800', color: '#E31837' }}>ENABLED METHODS</Text>
+
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                   <Text style={{ fontSize: 14, fontWeight: '700', color: '#1A1C1E' }}>UPI</Text>
+                   <Switch
+                     value={localPayment.options.upi}
+                     onValueChange={(val) => setLocalPayment({ ...localPayment, options: { ...localPayment.options, upi: val } })}
+                     trackColor={{ true: '#28A745' }}
+                     style={{ transform: [{ scale: 0.8 }] }}
+                   />
+                </View>
+
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                   <Text style={{ fontSize: 14, fontWeight: '700', color: '#1A1C1E' }}>Cash</Text>
+                   <Switch
+                     value={localPayment.options.cash}
+                     onValueChange={(val) => setLocalPayment({ ...localPayment, options: { ...localPayment.options, cash: val } })}
+                     trackColor={{ true: '#28A745' }}
+                     style={{ transform: [{ scale: 0.8 }] }}
+                   />
+                </View>
+
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                   <Text style={{ fontSize: 14, fontWeight: '700', color: '#1A1C1E' }}>Bank Transfer</Text>
+                   <Switch
+                     value={localPayment.options.bankTransfer}
+                     onValueChange={(val) => setLocalPayment({ ...localPayment, options: { ...localPayment.options, bankTransfer: val } })}
+                     trackColor={{ true: '#28A745' }}
+                     style={{ transform: [{ scale: 0.8 }] }}
+                   />
+                </View>
+             </View>
+           )}
         </View>
 
         {(localConfig || []).filter(d => d).map((day) => (

@@ -29,11 +29,13 @@ import { ActionLabel } from "../components/common/ActionLabel";
 import { MealSummaryInline } from "../components/menu/MealSummaryInline";
 import { AlertButton } from "../components/common/CustomAlert";
 import { Ionicons } from "@expo/vector-icons";
+import { PaymentConfig } from "../types";
 
 export function DetailsScreen({
   subscription,
   userRole,
   config,
+  paymentConfig,
   onBack,
   onEdit,
   onQr,
@@ -45,6 +47,7 @@ export function DetailsScreen({
   subscription: Subscription;
   userRole: UserRole;
   config: ConfigDay[];
+  paymentConfig: PaymentConfig;
   onBack: () => void;
   onEdit: () => void;
   onQr: () => void;
@@ -65,6 +68,7 @@ export function DetailsScreen({
             flexDirection: "row",
             justifyContent: "space-between",
             alignItems: "center",
+            marginBottom: 16,
           }}
         >
           <BackButton onPress={onBack} />
@@ -79,9 +83,11 @@ export function DetailsScreen({
             ? UI_TEXT.personSuffix
             : UI_TEXT.personsSuffix}
         </Text>
-        <Text style={styles.subtitle}>
-          {subscription.paymentMode} | {UI_TEXT.rs} {subscription.amount}
-        </Text>
+        {paymentConfig.enabled && (
+          <Text style={styles.subtitle}>
+            {subscription.paymentMode} | {UI_TEXT.rs} {subscription.amount}
+          </Text>
+        )}
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
@@ -89,9 +95,11 @@ export function DetailsScreen({
         <View style={styles.card}>
            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
               <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>Subscription Summary</Text>
-              <View style={styles.pill}>
-                 <Text style={styles.pillText}>{subscription.paymentMode}</Text>
-              </View>
+              {paymentConfig.enabled && (
+                <View style={styles.pill}>
+                   <Text style={styles.pillText}>{subscription.paymentMode}</Text>
+                </View>
+              )}
            </View>
            <View style={{ height: 1, backgroundColor: "#E9ECEF", marginVertical: 16 }} />
            <Text style={{ fontSize: 16, color: "#1A1C1E", lineHeight: 24, fontWeight: "600" }}>
@@ -176,7 +184,7 @@ export function DetailsScreen({
           <View key={personIndex} style={styles.card}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 16 }}>
                <Ionicons name="person-outline" size={18} color="#E31837" />
-               <Text style={[styles.sectionTitle, { marginBottom: 0, fontSize: 16 }]}>{UI_TEXT.person} {personIndex + 1}</Text>
+               <Text style={[styles.sectionTitle, { marginBottom: 0, fontSize: 16 }]}>{UI_TEXT.personAbbr}{personIndex + 1}</Text>
             </View>
             <View style={styles.personDays}>
               {activeDays.map((day) => {
@@ -233,7 +241,7 @@ export function DetailsScreen({
           <View key={personIndex} style={styles.card}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 16 }}>
                <Ionicons name="checkmark-circle-outline" size={18} color="#28A745" />
-               <Text style={[styles.sectionTitle, { marginBottom: 0, fontSize: 16 }]}>{UI_TEXT.person} {personIndex + 1}</Text>
+               <Text style={[styles.sectionTitle, { marginBottom: 0, fontSize: 16 }]}>{UI_TEXT.personAbbr}{personIndex + 1}</Text>
             </View>
             <View style={styles.personDays}>
               {activeDays.map((day) => {

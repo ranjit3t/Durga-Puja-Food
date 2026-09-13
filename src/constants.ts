@@ -1,7 +1,8 @@
 /**
  * Shared Application Constants and Logic Helpers
  */
-import { Day, Subscription, FoodMenu, ConfigDay } from "./types";
+import { Day, Subscription, FoodMenu, ConfigDay, AppConfig } from "./types";
+import { UI_TEXT } from "./strings";
 
 /**
  * Returns the enabled days from the config.
@@ -94,7 +95,27 @@ export const blockOptions = Array.from({ length: 25 }, (_, index) =>
   String(index + 1)
 );
 
-export const paymentOptions: Subscription["paymentMode"][] = ["UPI", "Cash"];
+/**
+ * Checks if payment is enabled globally.
+ */
+export const isPaymentEnabled = (config: AppConfig) => {
+  if (!config.payment) return true;
+  return config.payment.enabled;
+};
+
+/**
+ * Returns list of enabled payment methods.
+ */
+export const getEnabledPaymentMethods = (config: AppConfig) => {
+  if (!config.payment || !config.payment.enabled) return ["UPI", "Cash"];
+  const methods: string[] = [];
+  if (config.payment.options.upi) methods.push(UI_TEXT.upi);
+  if (config.payment.options.cash) methods.push(UI_TEXT.cash);
+  if (config.payment.options.bankTransfer) methods.push(UI_TEXT.bankTransfer);
+  return methods;
+};
+
+export const paymentOptions: Subscription["paymentMode"][] = [UI_TEXT.upi, UI_TEXT.cash];
 
 /**
  * Returns an empty meal allocation for all days.
@@ -289,8 +310,8 @@ export const mealSummary = (subscription: Subscription, config: ConfigDay[]) =>
       const nv = subscription?.meals?.[day]?.nonVeg || 0;
 
       const parts = [];
-      if (isDietaryEnabledForDay(day, "veg", config) && v > 0) parts.push(`${v} Veg`);
-      if (isDietaryEnabledForDay(day, "nonVeg", config) && nv > 0) parts.push(`${nv} Non-Veg`);
+      if (isDietaryEnabledForDay(day, "veg", config) && v > 0) parts.push(`${v} ${UI_TEXT.veg}`);
+      if (isDietaryEnabledForDay(day, "nonVeg", config) && nv > 0) parts.push(`${nv} ${UI_TEXT.nonVeg}`);
 
       return `${getDayAbbr(day, config)} ${parts.join("/")}`;
     })

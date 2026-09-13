@@ -42,11 +42,13 @@ import { Dropdown } from "../components/common/Dropdown";
 import { BackButton } from "../components/common/BackButton";
 import { LogoutButton } from "../components/common/LogoutButton";
 import { AlertButton } from "../components/common/CustomAlert";
+import { PaymentConfig } from "../types";
 
 export function SubscriptionForm({
   value,
   userRole,
   config,
+  paymentConfig,
   onCancel,
   onSave,
   onSaveQr,
@@ -58,6 +60,7 @@ export function SubscriptionForm({
   value: Subscription;
   userRole: UserRole;
   config: ConfigDay[];
+  paymentConfig: PaymentConfig;
   onCancel: () => void;
   onSave: (value: Subscription) => void;
   onSaveQr?: (value: Subscription) => void;
@@ -148,6 +151,7 @@ export function SubscriptionForm({
             flexDirection: "row",
             justifyContent: "space-between",
             alignItems: "center",
+            marginBottom: 16,
           }}
         >
           <BackButton onPress={onCancel} />
@@ -177,9 +181,11 @@ export function SubscriptionForm({
                 {form.block || "-"}-{form.flat || "-"}
               </Text>
             </View>
-            <Text style={[styles.previewAmount, { color: "#FFF", fontSize: 22 }]}>
-              {form.amount ? `${UI_TEXT.rs} ${form.amount}` : ""}
-            </Text>
+            {paymentConfig.enabled && (
+              <Text style={[styles.previewAmount, { color: "#FFF", fontSize: 22 }]}>
+                {form.amount ? `${UI_TEXT.rs} ${form.amount}` : ""}
+              </Text>
+            )}
           </View>
 
           <View style={{ height: 1, backgroundColor: "rgba(255,255,255,0.2)", marginVertical: 12 }} />
@@ -188,8 +194,8 @@ export function SubscriptionForm({
             {form.peopleCount}
             {form.peopleCount === 1
               ? UI_TEXT.personSuffix
-              : UI_TEXT.personsSuffix}{" "}
-            | {form.paymentMode || UI_TEXT.paymentModeNotSet}
+              : UI_TEXT.personsSuffix}
+            {paymentConfig.enabled && ` | ${form.paymentMode || UI_TEXT.paymentModeNotSet}`}
           </Text>
         </View>
 
@@ -253,7 +259,7 @@ export function SubscriptionForm({
                 mealSlots: resizeMealSlots(form.mealSlots, count, config),
               });
             }}
-            placeholder="e.g. 2"
+            placeholder={UI_TEXT.egPeople}
             keyboardType="numeric"
             editable={isAdmin}
             selectTextOnFocus={isAdmin}
@@ -277,6 +283,7 @@ export function SubscriptionForm({
                   style={[
                     styles.selector,
                     selectedPerson === index && styles.selectorOn,
+                    { minWidth: 50, paddingHorizontal: 12 }
                   ]}
                 >
                   <Text
@@ -285,7 +292,7 @@ export function SubscriptionForm({
                       selectedPerson === index && styles.selectorTextOn,
                     ]}
                   >
-                    {UI_TEXT.person} {index + 1}
+                    {UI_TEXT.personAbbr}{index + 1}
                   </Text>
                 </Pressable>
               ))}
@@ -423,7 +430,7 @@ export function SubscriptionForm({
             return (
               <View style={{ marginTop: 8 }}>
                 <View style={{ marginBottom: 12 }}>
-                  <Text style={[styles.currentChoice, { marginTop: 0, fontSize: 16, marginBottom: 8 }]}>Parcels</Text>
+                  <Text style={[styles.currentChoice, { marginTop: 0, fontSize: 16, marginBottom: 8 }]}>{UI_TEXT.parcels}</Text>
                 </View>
 
                 <View style={styles.choiceRow}>
@@ -453,7 +460,7 @@ export function SubscriptionForm({
                             { fontSize: 11 }
                           ]}
                         >
-                          {label} P
+                          {label} {UI_TEXT.parcelAbbr}
                         </Text>
                       </Pressable>
                     );
@@ -525,41 +532,49 @@ export function SubscriptionForm({
         </View>
 
         {/* Financials */}
-        <View style={styles.card}>
-           <Text style={[styles.sectionTitle, { fontSize: 18, marginBottom: 12 }]}>Payment Details</Text>
-           <View style={styles.row}>
-            <View style={styles.fieldHalf}>
-              <Text style={styles.label}>{UI_TEXT.amount}</Text>
-              <TextInput
-                value={form.amount}
-                onChangeText={(amount) => set("amount", amount)}
-                keyboardType="decimal-pad"
-                inputMode="decimal"
-                editable={isAdmin}
-                returnKeyType="done"
-                blurOnSubmit
-                placeholder="0.00"
-                style={[styles.input, !isAdmin && { backgroundColor: "#F8F9FA" }]}
-              />
-            </View>
-            <View style={styles.fieldHalf}>
-              <Text style={styles.label}>{UI_TEXT.paymentMode}</Text>
-              {isAdmin ? (
-                <Dropdown
-                  value={form.paymentMode}
-                  options={["UPI", "Cash"]}
-                  onChange={(paymentMode) =>
-                    set("paymentMode", paymentMode as any)
-                  }
+        {paymentConfig.enabled && (
+          <View style={styles.card}>
+             <Text style={[styles.sectionTitle, { fontSize: 18, marginBottom: 12 }]}>{UI_TEXT.paymentDetails}</Text>
+             <View style={styles.row}>
+              <View style={styles.fieldHalf}>
+                <Text style={styles.label}>{UI_TEXT.amount}</Text>
+                <TextInput
+                  value={form.amount}
+                  onChangeText={(amount) => set("amount", amount)}
+                  keyboardType="decimal-pad"
+                  inputMode="decimal"
+                  editable={isAdmin}
+                  returnKeyType="done"
+                  blurOnSubmit
+                  placeholder="0.00"
+                  style={[styles.input, !isAdmin && { backgroundColor: "#F8F9FA" }]}
                 />
-              ) : (
-                <View style={[styles.input, { backgroundColor: "#F8F9FA", justifyContent: "center" }]}>
-                  <Text style={{ fontSize: 16, fontWeight: "600" }}>{form.paymentMode}</Text>
-                </View>
-              )}
+              </View>
+              <View style={styles.fieldHalf}>
+                <Text style={styles.label}>{UI_TEXT.paymentMode}</Text>
+                {isAdmin ? (
+                  <Dropdown
+                    value={form.paymentMode}
+                    options={(() => {
+                       const opts = [];
+                       if (paymentConfig.options.upi) opts.push(UI_TEXT.upi);
+                       if (paymentConfig.options.cash) opts.push(UI_TEXT.cash);
+                       if (paymentConfig.options.bankTransfer) opts.push(UI_TEXT.bankTransfer);
+                       return opts;
+                    })()}
+                    onChange={(paymentMode) =>
+                      set("paymentMode", paymentMode as any)
+                    }
+                  />
+                ) : (
+                  <View style={[styles.input, { backgroundColor: "#F8F9FA", justifyContent: "center" }]}>
+                    <Text style={{ fontSize: 16, fontWeight: "600" }}>{form.paymentMode}</Text>
+                  </View>
+                )}
+              </View>
             </View>
           </View>
-        </View>
+        )}
 
         {/* Actions */}
         <View style={{ marginBottom: 40 }}>

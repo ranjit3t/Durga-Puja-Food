@@ -30,9 +30,19 @@ export type ConfigDay = {
   dinner: MealConfig;
 };
 
+export type PaymentConfig = {
+  enabled: boolean;
+  options: {
+    upi: boolean;
+    cash: boolean;
+    bankTransfer: boolean;
+  };
+};
+
 export type AppConfig = {
   seasonName: string;
   days: ConfigDay[];
+  payment?: PaymentConfig;
 };
 
 export type Day = string;
@@ -49,6 +59,7 @@ export type Screen =
   | "viewMenu"
   | "report"
   | "settings"
+  | "subscriptionList"
   | "login";
 
 export type Subscription = SubscriptionRecord;

@@ -31,7 +31,7 @@ export function QrScreen({
   const shareImage = async () => {
     if (qrRef.current) {
       const uri = await captureRef(qrRef, { format: "png", quality: 1 });
-      onShare(uri, `${seasonName || UI_TEXT.eventTitle} - Digital Pass`);
+      onShare(uri, `${seasonName || UI_TEXT.headerTitle} - Digital Pass`);
     }
   };
   return (
@@ -56,8 +56,7 @@ export function QrScreen({
         <View style={styles.qrContent}>
           <View ref={qrRef} collapsable={false} style={styles.qrPassCard}>
             <View style={styles.qrPassHeader}>
-              <Text style={styles.qrPassEvent}>{UI_TEXT.eventTitle}</Text>
-              {seasonName && <Text style={styles.qrPassEvent}>{seasonName}</Text>}
+              <Text style={styles.qrPassEvent}>{seasonName || UI_TEXT.headerTitle}</Text>
               <Text style={styles.qrPassTitle}>{UI_TEXT.foodPass}</Text>
             </View>
 

@@ -318,19 +318,23 @@ export function createFirebaseRepository(): SubscriptionRepository {
     },
     async getConfig() {
       const services = await ensureFirebaseAuth();
-      if (!services) return { seasonName: "", days: [] };
+      if (!services) return { seasonName: "", days: [], payment: { enabled: true, options: { upi: true, cash: true, bankTransfer: true } } };
       const snapshot = await get(ref(services.db, configPath));
       const val = snapshot.val();
+
+      const defaultPayment = { enabled: true, options: { upi: true, cash: true, bankTransfer: true } };
+
       if (snapshot.exists()) {
         if (Array.isArray(val)) {
-          return { seasonName: "", days: val as ConfigDay[] };
+          return { seasonName: "", days: val as ConfigDay[], payment: defaultPayment };
         }
         return {
           seasonName: val.seasonName || "",
           days: Array.isArray(val.days) ? (val.days as ConfigDay[]) : [],
+          payment: val.payment || defaultPayment,
         };
       }
-      return { seasonName: "", days: [] };
+      return { seasonName: "", days: [], payment: defaultPayment };
     },
     async updateConfig(config) {
       const services = await ensureFirebaseAuth();
