@@ -25,6 +25,15 @@ const COLORS = {
   nonVeg: "#DC3545",
 };
 
+export const CARD_COLORS = [
+  { bg: "#FFF5F5", border: "#FFE3E3", accent: "#E31837" }, // Red
+  { bg: "#E7F5FF", border: "#D0EBFF", accent: "#007BFF" }, // Blue
+  { bg: "#EBFBEE", border: "#D3F9D8", accent: "#28A745" }, // Green
+  { bg: "#FFF4E6", border: "#FFE8CC", accent: "#FD7E14" }, // Orange
+  { bg: "#F8F0FC", border: "#F3D9FA", accent: "#6F42C1" }, // Purple
+  { bg: "#E3FAFC", border: "#C5F6FA", accent: "#17A2B8" }, // Cyan
+];
+
 export const styles = StyleSheet.create({
   // Root Containers
   root: { flex: 1, backgroundColor: COLORS.background },
@@ -360,7 +369,7 @@ export const styles = StyleSheet.create({
   primary: {
     backgroundColor: COLORS.success,
     borderRadius: 18,
-    height: 60,
+    height: 52,
     alignItems: "center",
     justifyContent: "center",
     marginTop: 24,
@@ -376,22 +385,22 @@ export const styles = StyleSheet.create({
       },
     }),
   },
-  primaryText: { color: COLORS.white, fontSize: 18, fontWeight: "800" },
+  primaryText: { color: COLORS.white, fontSize: 17, fontWeight: "800" },
   secondary: {
     backgroundColor: COLORS.white,
     borderColor: COLORS.border,
     borderWidth: 1.5,
     borderRadius: 18,
-    height: 56,
+    height: 48,
     alignItems: "center",
     justifyContent: "center",
   },
-  secondaryText: { color: COLORS.textPrimary, fontSize: 16, fontWeight: "700" },
+  secondaryText: { color: COLORS.textPrimary, fontSize: 15, fontWeight: "700" },
 
   deleteButton: {
     backgroundColor: COLORS.error,
     borderRadius: 18,
-    height: 60,
+    height: 52,
     alignItems: "center",
     justifyContent: "center",
     marginTop: 24,
@@ -644,9 +653,9 @@ export const styles = StyleSheet.create({
     bottom: 90,
     right: 20,
     backgroundColor: COLORS.primary,
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     alignItems: "center",
     justifyContent: "center",
     elevation: 8,
@@ -669,13 +678,14 @@ export const styles = StyleSheet.create({
   firebaseBannerText: { color: COLORS.error, fontSize: 13, marginTop: 4 },
 
   compactSecondary: {
-    backgroundColor: "#FDFCFB",
-    borderColor: "#F1F3F5",
+    backgroundColor: COLORS.white,
+    borderColor: COLORS.border,
     borderWidth: 1,
     borderRadius: 20,
-    padding: 16,
+    padding: 12,
     flexGrow: 1,
-    minWidth: "45%",
+    minWidth: "30%",
+    height: 80,
     alignItems: "center",
     justifyContent: "center",
     ...Platform.select({
@@ -697,7 +707,7 @@ export const styles = StyleSheet.create({
     gap: 8,
   },
   actionLabelText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "700",
   },
 
@@ -771,7 +781,7 @@ export const styles = StyleSheet.create({
   },
   dropdownModalCancel: {
     marginTop: 10,
-    height: 56,
+    height: 48,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: COLORS.surface,

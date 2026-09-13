@@ -17,6 +17,7 @@ export function MealMenuEditor({
   config,
   value,
   onChange,
+  disabled = false,
 }: {
   title: string;
   mealKey: "breakfast" | "lunch" | "dinner";
@@ -24,6 +25,7 @@ export function MealMenuEditor({
   config: ConfigDay[];
   value: MealMenu;
   onChange: (next: MealMenu) => void;
+  disabled?: boolean;
 }) {
   const vegEnabled = isDietaryEnabled(dayId, mealKey, "veg", config);
   const nonVegEnabled = isDietaryEnabled(dayId, mealKey, "nonVeg", config);
@@ -52,7 +54,7 @@ export function MealMenuEditor({
   };
 
   return (
-    <View style={styles.mealEditor}>
+    <View style={[styles.mealEditor, disabled && { opacity: 0.6 }]}>
       <Text style={styles.mealEditorTitle}>{title}</Text>
 
       <View style={styles.mealEditorInputs}>
@@ -64,11 +66,13 @@ export function MealMenuEditor({
             type === "veg" ? UI_TEXT.addVegItem : UI_TEXT.addNonVegItem
           }
           placeholderTextColor="#8d8171"
+          editable={!disabled}
         />
 
         {vegEnabled && nonVegEnabled && (
           <Pressable
-            onPress={() => setType(type === "veg" ? "nonVeg" : "veg")}
+            onPress={() => !disabled && setType(type === "veg" ? "nonVeg" : "veg")}
+            disabled={disabled}
             style={[
               styles.typeToggle,
               type === "veg" ? styles.vegChoice : styles.nonVegChoice,
@@ -81,7 +85,8 @@ export function MealMenuEditor({
         )}
 
         <Pressable
-          onPress={addItem}
+          onPress={() => !disabled && addItem()}
+          disabled={disabled}
           style={[
             styles.addSmall,
             type === "veg" ? styles.vegChoice : styles.nonVegChoice,
@@ -97,7 +102,7 @@ export function MealMenuEditor({
           <View key={`v-${i}`} style={styles.itemBadge}>
             <View style={[styles.dot, styles.vegChoice]} />
             <Text style={styles.itemBadgeText}>{item}</Text>
-            <Pressable onPress={() => removeItem("veg", i)}>
+            <Pressable onPress={() => !disabled && removeItem("veg", i)} disabled={disabled}>
               <Ionicons name="close-circle" size={14} color="#8d8171" />
             </Pressable>
           </View>
@@ -107,7 +112,7 @@ export function MealMenuEditor({
           <View key={`n-${i}`} style={styles.itemBadge}>
             <View style={[styles.dot, styles.nonVegChoice]} />
             <Text style={styles.itemBadgeText}>{item}</Text>
-            <Pressable onPress={() => removeItem("nonVeg", i)}>
+            <Pressable onPress={() => !disabled && removeItem("nonVeg", i)} disabled={disabled}>
               <Ionicons name="close-circle" size={14} color="#8d8171" />
             </Pressable>
           </View>

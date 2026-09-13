@@ -8,7 +8,7 @@ import { ConfigDay, AppConfig } from "./types";
 
 // --- Domain Types ---
 
-export type PujaDay = string;
+export type EventDay = string;
 export type PaymentMode = "UPI" | "Cash" | "Bank transfer";
 
 export type MealAllocation = { veg: number; nonVeg: number };
@@ -45,19 +45,19 @@ export type DayMenu = {
   dinner: MealMenu;
 };
 
-export type FoodMenu = Record<PujaDay, DayMenu>;
+export type FoodMenu = Record<EventDay, DayMenu>;
 
 export type SubscriptionRecord = {
   id: string;
   block: string;
   flat: string;
   peopleCount: number;
-  meals: Record<PujaDay, MealAllocation>;
-  mealByPerson: Record<PujaDay, MealChoice[]>;
-  mealSlots: Record<PujaDay, MealSlot[]>;
+  meals: Record<EventDay, MealAllocation>;
+  mealByPerson: Record<EventDay, MealChoice[]>;
+  mealSlots: Record<EventDay, MealSlot[]>;
   amount: string;
   paymentMode: PaymentMode;
-  takenByPerson: Record<PujaDay, TakenState[]>;
+  takenByPerson: Record<EventDay, TakenState[]>;
 };
 
 // --- Repository Interface ---
@@ -84,7 +84,7 @@ const authConfigPath = "auth_config";
 /**
  * Creates an empty menu structure.
  */
-function emptyMenu(pujaDays: string[]): FoodMenu {
+function emptyMenu(eventDays: string[]): FoodMenu {
   const emptyMeal = () => ({
     veg: [],
     nonVeg: [],
@@ -94,7 +94,7 @@ function emptyMenu(pujaDays: string[]): FoodMenu {
     guestVegTaken: 0,
     guestNonVegTaken: 0,
   });
-  return pujaDays.reduce((acc, day) => {
+  return eventDays.reduce((acc, day) => {
     acc[day] = {
       breakfast: emptyMeal(),
       lunch: emptyMeal(),
@@ -110,7 +110,7 @@ function emptyMenu(pujaDays: string[]): FoodMenu {
  */
 function normalizeRecord(
   value: Record<string, unknown>,
-  pujaDays: string[]
+  eventDays: string[]
 ): SubscriptionRecord {
   const peopleCount = Number(value.peopleCount) || 0;
   const block = String(value.block || "");
@@ -126,7 +126,7 @@ function normalizeRecord(
   const legacyMeal = value.mealType === "Non-veg" ? "nonVeg" : "veg";
 
   // 3. Choice Matrix Initialization (mealByPerson)
-  const mealByPerson = pujaDays.reduce((result, day) => {
+  const mealByPerson = eventDays.reduce((result, day) => {
     const current = (
       value.mealByPerson as Record<string, MealChoice[]> | undefined
     )?.[day];
@@ -152,10 +152,10 @@ function normalizeRecord(
       });
     }
     return result;
-  }, {} as Record<PujaDay, MealChoice[]>);
+  }, {} as Record<EventDay, MealChoice[]>);
 
   // 4. Slot Matrix Initialization (mealSlots)
-  const mealSlots = pujaDays.reduce((result, day) => {
+  const mealSlots = eventDays.reduce((result, day) => {
     const current = (value.mealSlots as Record<string, any[]> | undefined)?.[
       day
     ];
@@ -185,11 +185,11 @@ function normalizeRecord(
             dinnerParcel: false,
           }));
     return result;
-  }, {} as Record<PujaDay, MealSlot[]>);
+  }, {} as Record<EventDay, MealSlot[]>);
 
   // 5. Taken Status Normalization
   const legacyTaken = (value.taken ?? {}) as Record<string, boolean>;
-  const takenByPerson = pujaDays.reduce((result, day) => {
+  const takenByPerson = eventDays.reduce((result, day) => {
     const current = (
       value.takenByPerson as Record<string, TakenState[]> | undefined
     )?.[day];
@@ -205,11 +205,11 @@ function normalizeRecord(
             return { breakfast: isTaken, lunch: isTaken, dinner: isTaken };
           });
     return result;
-  }, {} as Record<PujaDay, TakenState[]>);
+  }, {} as Record<EventDay, TakenState[]>);
 
   // 6. Aggregate Stats Generation (meals) & mealByPerson finalization
-  const finalMealByPerson: Record<PujaDay, MealChoice[]> = {};
-  const normalizedMeals = pujaDays.reduce((result, day) => {
+  const finalMealByPerson: Record<EventDay, MealChoice[]> = {};
+  const normalizedMeals = eventDays.reduce((result, day) => {
     const slots = mealSlots[day] || [];
     const choices = slots.map((s) => {
       if (
@@ -228,7 +228,7 @@ function normalizeRecord(
       nonVeg: choices.filter((choice) => choice === "Non-veg").length,
     };
     return result;
-  }, {} as Record<PujaDay, MealAllocation>);
+  }, {} as Record<EventDay, MealAllocation>);
 
   return {
     ...value,
@@ -271,24 +271,24 @@ export function createFirebaseRepository(): SubscriptionRepository {
     async list() {
       const services = await ensureFirebaseAuth();
       if (!services) return [];
-      const pujaDays = await getActiveDays(services);
+      const eventDays = await getActiveDays(services);
       const snapshot = await get(ref(services.db, subscriptionsPath));
       const records = snapshot.val() as Record<string, SubscriptionRecord> | null;
       return records
         ? Object.values(records).map((record) =>
-            normalizeRecord(record as Record<string, unknown>, pujaDays)
+            normalizeRecord(record as Record<string, unknown>, eventDays)
           )
         : [];
     },
     async getByFlatId(flatId) {
       const services = await ensureFirebaseAuth();
       if (!services) return undefined;
-      const pujaDays = await getActiveDays(services);
+      const eventDays = await getActiveDays(services);
       const snapshot = await get(
         ref(services.db, `${subscriptionsPath}/${flatId}`)
       );
       return snapshot.exists()
-        ? normalizeRecord(snapshot.val() as Record<string, unknown>, pujaDays)
+        ? normalizeRecord(snapshot.val() as Record<string, unknown>, eventDays)
         : undefined;
     },
     async upsert(record) {
@@ -305,11 +305,11 @@ export function createFirebaseRepository(): SubscriptionRepository {
     async getMenu() {
       const services = await ensureFirebaseAuth();
       if (!services) return {}; // Will be merged with emptyMenu in App
-      const pujaDays = await getActiveDays(services);
+      const eventDays = await getActiveDays(services);
       const snapshot = await get(ref(services.db, menuPath));
       return snapshot.exists()
         ? (snapshot.val() as FoodMenu)
-        : emptyMenu(pujaDays);
+        : emptyMenu(eventDays);
     },
     async updateMenu(menu) {
       const services = await ensureFirebaseAuth();
@@ -318,7 +318,7 @@ export function createFirebaseRepository(): SubscriptionRepository {
     },
     async getConfig() {
       const services = await ensureFirebaseAuth();
-      if (!services) return { seasonName: "", days: [], payment: { enabled: true, options: { upi: true, cash: true, bankTransfer: true } } };
+      if (!services) return { seasonName: "", days: [], payment: { enabled: true, options: { upi: true, cash: true, bankTransfer: true } }, guestEnabled: true, seasonEnabled: true };
       const snapshot = await get(ref(services.db, configPath));
       const val = snapshot.val();
 
@@ -326,15 +326,17 @@ export function createFirebaseRepository(): SubscriptionRepository {
 
       if (snapshot.exists()) {
         if (Array.isArray(val)) {
-          return { seasonName: "", days: val as ConfigDay[], payment: defaultPayment };
+          return { seasonName: "", days: val as ConfigDay[], payment: defaultPayment, guestEnabled: true, seasonEnabled: true };
         }
         return {
           seasonName: val.seasonName || "",
           days: Array.isArray(val.days) ? (val.days as ConfigDay[]) : [],
           payment: val.payment || defaultPayment,
+          guestEnabled: val.guestEnabled !== false,
+          seasonEnabled: val.seasonEnabled !== false,
         };
       }
-      return { seasonName: "", days: [], payment: defaultPayment };
+      return { seasonName: "", days: [], payment: defaultPayment, guestEnabled: true, seasonEnabled: true };
     },
     async updateConfig(config) {
       const services = await ensureFirebaseAuth();

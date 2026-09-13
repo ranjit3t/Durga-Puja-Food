@@ -12,7 +12,7 @@ import {
   TextInput,
   Switch,
 } from "react-native";
-import { styles } from "../styles";
+import { styles, CARD_COLORS } from "../styles";
 import { UI_TEXT } from "../strings";
 import { ConfigDay, MealConfig, AppConfig, PaymentConfig } from "../types";
 import { BackButton } from "../components/common/BackButton";
@@ -23,7 +23,9 @@ import { Ionicons } from "@expo/vector-icons";
 export function SettingsScreen({
   config,
   seasonName,
+  seasonEnabled,
   payment,
+  guestEnabled,
   onSave,
   onBack,
   onLogout,
@@ -31,7 +33,9 @@ export function SettingsScreen({
 }: {
   config: ConfigDay[];
   seasonName: string;
+  seasonEnabled: boolean;
   payment: PaymentConfig;
+  guestEnabled: boolean;
   onSave: (config: AppConfig) => Promise<void>;
   onBack: () => void;
   onLogout: () => void;
@@ -41,10 +45,12 @@ export function SettingsScreen({
     Array.isArray(config) ? [...config] : []
   );
   const [localSeasonName, setLocalSeasonName] = useState(seasonName || "");
+  const [localSeasonEnabled, setLocalSeasonEnabled] = useState(seasonEnabled);
   const [localPayment, setLocalPayment] = useState<PaymentConfig>(payment || {
     enabled: true,
     options: { upi: true, cash: true, bankTransfer: true }
   });
+  const [localGuestEnabled, setLocalGuestEnabled] = useState(guestEnabled);
   const [saving, setSaving] = useState(false);
 
   const updateDay = (id: string, next: Partial<ConfigDay>) => {
@@ -133,8 +139,10 @@ export function SettingsScreen({
     setSaving(true);
     await onSave({
       seasonName: localSeasonName,
+      seasonEnabled: localSeasonEnabled,
       days: localConfig,
-      payment: localPayment
+      payment: localPayment,
+      guestEnabled: localGuestEnabled
     });
     setSaving(false);
     showAlert(UI_TEXT.success, UI_TEXT.settingsUpdated);
@@ -143,7 +151,9 @@ export function SettingsScreen({
   const hasChanged =
     JSON.stringify(config) !== JSON.stringify(localConfig) ||
     localSeasonName !== seasonName ||
-    JSON.stringify(payment) !== JSON.stringify(localPayment);
+    localSeasonEnabled !== seasonEnabled ||
+    JSON.stringify(payment) !== JSON.stringify(localPayment) ||
+    localGuestEnabled !== guestEnabled;
 
   return (
     <View style={styles.root}>
@@ -160,16 +170,26 @@ export function SettingsScreen({
           <BackButton onPress={onBack} />
           <LogoutButton onLogout={onLogout} />
         </View>
-        <Text style={styles.eyebrow}>{UI_TEXT.operations}</Text>
         <Text style={styles.title}>{UI_TEXT.settingsTitle}</Text>
         <Text style={styles.subtitle}>{UI_TEXT.settingsSubtitle}</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         {/* Season & Payment Configuration */}
-        <View style={styles.dashboardCard}>
-           <Text style={{ fontSize: 18, fontWeight: '900', color: '#1A1C1E', marginBottom: 4 }}>{UI_TEXT.seasonNameLabel}</Text>
-           <Text style={{ fontSize: 12, color: "#6A6E73", fontWeight: "600", marginBottom: 16 }}>{UI_TEXT.seasonNameHelper}</Text>
+        <View style={[styles.dashboardCard, { backgroundColor: CARD_COLORS[1].bg, borderColor: CARD_COLORS[1].border, borderWidth: 1.5 }, !localSeasonEnabled && { opacity: 0.6 }]}>
+           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <View style={{ flex: 1 }}>
+                 <Text style={{ fontSize: 18, fontWeight: '900', color: CARD_COLORS[1].accent }}>{UI_TEXT.seasonNameLabel}</Text>
+                 <Text style={{ fontSize: 11, color: '#6A6E73', fontWeight: '600', marginTop: 2 }}>{UI_TEXT.seasonNameHelper}</Text>
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Switch
+                  value={localSeasonEnabled}
+                  onValueChange={setLocalSeasonEnabled}
+                  trackColor={{ true: '#E31837' }}
+                />
+              </View>
+           </View>
 
            <TextInput
              style={{
@@ -239,16 +259,29 @@ export function SettingsScreen({
                 </View>
              </View>
            )}
+
+           <View style={{ height: 1, backgroundColor: '#E9ECEF', marginVertical: 20 }} />
+
+           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <View>
+                 <Text style={{ fontSize: 16, fontWeight: '800', color: '#1A1C1E' }}>{UI_TEXT.guestManagementLabel}</Text>
+                 <Text style={{ fontSize: 11, color: '#6A6E73', fontWeight: '600' }}>{UI_TEXT.guestManagementHelper}</Text>
+              </View>
+              <Switch
+                value={localGuestEnabled}
+                onValueChange={setLocalGuestEnabled}
+                trackColor={{ true: '#E31837' }}
+              />
+           </View>
         </View>
 
-        {(localConfig || []).filter(d => d).map((day) => (
-          <View key={day.id} style={[styles.dashboardCard, !day.enabled && { opacity: 0.6 }]}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-               <Text style={{ fontSize: 18, fontWeight: '900', color: '#1A1C1E' }}>{UI_TEXT.dayConfigTitle}</Text>
-               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: day.enabled ? '#28A745' : '#6A6E73' }}>
-                    {day.enabled ? UI_TEXT.activeLabel : UI_TEXT.disabledLabel}
-                  </Text>
+        {(localConfig || []).filter(d => d).map((day, index) => {
+          const colorScheme = CARD_COLORS[(index + 2) % CARD_COLORS.length];
+          return (
+            <View key={day.id} style={[styles.dashboardCard, { backgroundColor: colorScheme.bg, borderColor: colorScheme.border, borderWidth: 1.5 }, !day.enabled && { opacity: 0.6 }]}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                 <Text style={{ fontSize: 18, fontWeight: '900', color: colorScheme.accent }}>{UI_TEXT.dayConfigTitle}</Text>
+               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <Switch
                     value={day.enabled}
                     onValueChange={(val) => updateDay(day.id, { enabled: val })}
@@ -257,8 +290,8 @@ export function SettingsScreen({
                </View>
             </View>
 
-            <View style={{ flexDirection: 'row', gap: 12, marginBottom: 20 }}>
-              <View style={{ flex: 2 }}>
+            <View style={{ marginBottom: 20 }}>
+              <View style={{ marginBottom: 16 }}>
                 <Text style={{ fontSize: 12, color: "#6A6E73", fontWeight: "700", marginBottom: 6, marginLeft: 4 }}>{UI_TEXT.dayNameLabel}</Text>
                 <TextInput
                   style={{
@@ -278,7 +311,7 @@ export function SettingsScreen({
                   selectTextOnFocus
                 />
               </View>
-              <View style={{ flex: 1 }}>
+              <View>
                 <Text style={{ fontSize: 12, color: "#6A6E73", fontWeight: "700", marginBottom: 6, marginLeft: 4 }}>{UI_TEXT.abbrLabel}</Text>
                 <TextInput
                   style={{
@@ -290,8 +323,7 @@ export function SettingsScreen({
                     paddingVertical: 12,
                     fontSize: 16,
                     color: "#E31837",
-                    fontWeight: "900",
-                    textAlign: 'center'
+                    fontWeight: "900"
                   }}
                   value={day.abbr}
                   onChangeText={(val) => updateDay(day.id, { abbr: val.toUpperCase() })}
@@ -325,7 +357,7 @@ export function SettingsScreen({
                     parcel: false,
                   };
                   return (
-                    <View key={mKey} style={[styles.dashboardMealSection, { marginBottom: 12, padding: 12, backgroundColor: "#F8F9FA" }]}>
+                    <View key={mKey} style={[styles.dashboardMealSection, { marginBottom: 12, padding: 12, backgroundColor: "#F8F9FA" }, !m.enabled && { opacity: 0.6 }]}>
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                            <Ionicons
@@ -387,7 +419,8 @@ export function SettingsScreen({
               </View>
             )}
           </View>
-        ))}
+        );
+      })}
 
         <Pressable onPress={addNewDay} style={[styles.secondary, { borderStyle: "dashed", marginTop: 10, height: 64 }]}>
           <ActionLabel icon="add-outline" label={UI_TEXT.addDayButton} />

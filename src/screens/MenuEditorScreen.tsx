@@ -10,7 +10,7 @@ import {
   Pressable,
   StatusBar,
 } from "react-native";
-import { styles } from "../styles";
+import { styles, CARD_COLORS } from "../styles";
 import { UI_TEXT } from "../strings";
 import {
   getDayLabel,
@@ -30,6 +30,8 @@ export function MenuEditorScreen({
   onBack,
   onLogout,
   showAlert,
+  guestEnabled,
+  seasonEnabled,
 }: {
   menu: FoodMenu;
   config: ConfigDay[];
@@ -37,9 +39,12 @@ export function MenuEditorScreen({
   onBack: () => void;
   onLogout: () => void;
   showAlert: (title: string, message: string, buttons?: AlertButton[]) => void;
+  guestEnabled: boolean;
+  seasonEnabled: boolean;
 }) {
   const [localMenu, setLocalMenu] = useState(menu);
   const [saving, setSaving] = useState(false);
+  const canEdit = seasonEnabled;
   const emptyMeal = {
     veg: [],
     nonVeg: [],
@@ -89,7 +94,6 @@ export function MenuEditorScreen({
           <BackButton onPress={onBack} />
           <LogoutButton onLogout={onLogout} />
         </View>
-        <Text style={styles.eyebrow}>{UI_TEXT.planning}</Text>
         <Text style={styles.title}>{UI_TEXT.foodMenu}</Text>
         <Text style={styles.subtitle}>{UI_TEXT.menuEditorSubtitle}</Text>
       </View>
@@ -98,15 +102,16 @@ export function MenuEditorScreen({
         keyboardShouldPersistTaps="handled"
       >
         {/* Daily meal editors */}
-        {activeDays.map((day) => {
+        {activeDays.map((day, index) => {
           const dayMenu = localMenu[day] || {
             breakfast: emptyMeal,
             lunch: emptyMeal,
             dinner: emptyMeal,
           };
+          const colorScheme = CARD_COLORS[index % CARD_COLORS.length];
           return (
-            <View key={day} style={styles.dashboardCard}>
-              <Text style={styles.dashboardDay}>{getDayLabel(day, config)}</Text>
+            <View key={day} style={[styles.dashboardCard, { backgroundColor: colorScheme.bg, borderColor: colorScheme.border, borderWidth: 1.5 }]}>
+              <Text style={[styles.dashboardDay, { color: colorScheme.accent, marginBottom: 12 }]}>{getDayLabel(day, config)}</Text>
               {isMealEnabled(day, "breakfast", config) && (
                 <MealMenuEditor
                   title={UI_TEXT.breakfast}
@@ -115,6 +120,7 @@ export function MenuEditorScreen({
                   config={config}
                   value={dayMenu.breakfast || emptyMeal}
                   onChange={(next) => updateMeal(day, "breakfast", next)}
+                  disabled={!canEdit}
                 />
               )}
               {isMealEnabled(day, "lunch", config) && (
@@ -125,6 +131,7 @@ export function MenuEditorScreen({
                   config={config}
                   value={dayMenu.lunch || emptyMeal}
                   onChange={(next) => updateMeal(day, "lunch", next)}
+                  disabled={!canEdit}
                 />
               )}
               {isMealEnabled(day, "dinner", config) && (
@@ -135,6 +142,7 @@ export function MenuEditorScreen({
                   config={config}
                   value={dayMenu.dinner || emptyMeal}
                   onChange={(next) => updateMeal(day, "dinner", next)}
+                  disabled={!canEdit}
                 />
               )}
             </View>
@@ -142,17 +150,19 @@ export function MenuEditorScreen({
         })}
 
         {/* Action Button */}
-        <Pressable
-          onPress={handleSave}
-          style={[styles.primary, saving && { opacity: 0.7 }]}
-          disabled={saving}
-        >
-          <ActionLabel
-            icon="save-outline"
-            label={saving ? UI_TEXT.saving : UI_TEXT.saveMenu}
-            color="#fff"
-          />
-        </Pressable>
+        {canEdit && (
+          <Pressable
+            onPress={handleSave}
+            style={[styles.primary, saving && { opacity: 0.7 }]}
+            disabled={saving}
+          >
+            <ActionLabel
+              icon="save-outline"
+              label={saving ? UI_TEXT.saving : UI_TEXT.saveMenu}
+              color="#fff"
+            />
+          </Pressable>
+        )}
 
         <View style={styles.footer}>
            <Text style={styles.footerText}>{UI_TEXT.footerCopyright}</Text>

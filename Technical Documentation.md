@@ -6,10 +6,11 @@ A comprehensive technical breakdown of the implementation, data flow, and archit
 The application follows a **Serverless Modular Architecture** built on the **Expo React Native** framework, utilizing **Firebase Realtime Database** for synchronized persistence.
 
 ### High-Level Flow
-1.  **Bootstrapping**: `App.tsx` initializes global state and checks for session validity.
+1.  **Bootstrapping**: `App.tsx` initializes global state, navigation history stack, and checks for session validity.
 2.  **Authentication**: `LoginScreen` verifies credentials against the `auth_config` DB node in real-time.
 3.  **Hydration**: Upon login or screen transition, the app performs a full fetch of subscriptions, menu, and configuration.
-4.  **Presentation**: UI elements are rendered conditionally based on the global `AppConfig` (Branding, Payment, Day Rules).
+4.  **Navigation**: Custom history stack management allows predictable back navigation, including Android hardware button support. History is automatically purged upon returning to the root Home screen.
+5.  **Presentation**: UI elements are rendered conditionally based on the global `AppConfig` (Branding, Payment, Day Rules, and Season Status).
 
 ---
 
@@ -31,8 +32,12 @@ The application employs a **Zero-Hardcoding Policy** for UI text. All strings ar
 - **Transition-Based Sync**: Triggers a silent fetch whenever the `screen` state changes.
 - **Periodic Background Refresh**: Runs every 10 seconds. This is critical for synchronizing "Food Taken" counts and "Guest Demand" in a multi-user environment.
 
-### C. Data Normalization Layer
-Implemented in `src/repository.ts`, `normalizeRecord` ensures that the local matrices (Person x Day x Meal) are always correctly sized and shaped, regardless of changes in headcount or festival day count.
+### D. Navigation & View State Management
+- **History Stack**: A React-state-based array in `App.tsx` tracks navigation depth. `goBack()` pops the stack, while navigating to "home" clears it entirely.
+- **State Hoisting**: Crucial UI states like the `ReportScreen` active tab/filters and the `SubscriptionListScreen` search text are hoisted to the root `App` component. This ensures UI continuity during sub-navigation.
+
+### E. Data Normalization Layer
+Implemented in `src/repository.ts`, `normalizeRecord` ensures that the local matrices (Person x Day x Meal) are always correctly sized and shaped. Renamed `PujaDay` to `EventDay` to support generic event scheduling.
 
 ### D. Digital Pass & Reporting
 - **Image Generation**: Uses `captureRef` from `react-native-view-shot` to convert themed views into PNGs.
@@ -44,8 +49,15 @@ Implemented in `src/repository.ts`, `normalizeRecord` ensures that the local mat
 
 ### Role-Based Access Control (RBAC)
 - **Database Node**: `auth_config` stores staff credentials and roles.
-- **Admin**: Full write/delete access.
+- **Admin**: Full write/delete access. Exclusive permission to edit **Guest Total** plates on the kitchen dashboard.
 - **Vendor**: Read-only access to subscriptions and restricted "Taken" status updates.
+
+### Global Read-Only Mode
+Controlled via the `seasonEnabled` config flag. When disabled, the application enforces strict Read-Only mode globally:
+- Hides all "Save", "Add", and "Delete" actions.
+- Disables all text inputs and toggles.
+- Hides QR sharing functionality.
+- Fades out disabled configuration blocks in Settings for visual feedback.
 
 ### Session Lifecycle
 - **Ephemeral Persistence**: Login state is stored in React state only. Users are prompted for credentials every time the app is launched.
@@ -71,10 +83,12 @@ Implemented in `src/repository.ts`, `normalizeRecord` ensures that the local mat
 ## 5. UI/UX Architecture
 
 ### Layout Optimization
+- **Colorful Premium Palette**: Primary info boxes use a high-contrast palette of pastel colors (`CARD_COLORS`) defined in `src/styles.ts` for instant visual segmentation.
 - **Quick-Action Tiles**: Home page grid replaces basic list views for a "sleek" entry experience.
 - **Dedicated Subscription Screen**: Offloads pass management to a standalone screen with high-performance search.
-- **Compact Selectors**: Uses "P1", "P2" for members and 3-char abbreviations for days to maximize screen real-estate.
+- **Compact Selectors**: Uses "P1", "P2" for members and 4-char abbreviations for days.
 - **Password Toggle**: Integrated visibility switch in the Login screen.
+- **Dashed Interactive Cues**: Editable metrics (Guest counts) are highlighted with bold dashed borders and 15% opacity themed background tints for discovery.
 - **Adaptive Buttons**: "Add Item" button changes color based on the selected dietary type (Green/Red).
 
 ---

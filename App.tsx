@@ -7,19 +7,13 @@ import {
   View,
   ImageBackground,
   ActivityIndicator,
-  FlatList,
   Pressable,
   Text,
-  TextInput,
-  KeyboardAvoidingView,
-  Platform,
-  Share,
   LogBox,
   BackHandler,
   ScrollView,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
-import * as Linking from "expo-linking";
 import * as Sharing from "expo-sharing";
 import * as Print from "expo-print";
 import { Ionicons } from "@expo/vector-icons";
@@ -39,13 +33,11 @@ import {
   mealSlotsFromChoices,
   qrValueFor,
   emptyTaken,
-  mealSummary,
-  mealsFromChoices,
   isMealEnabled,
   isDietaryEnabled,
   isParcelEnabled,
 } from "./src/constants";
-import { Screen, Subscription, FoodMenu, UserRole, ConfigDay } from "./src/types";
+import { Screen, Subscription, FoodMenu, UserRole, ConfigDay, Day, ReportType } from "./src/types";
 
 // --- Screen Components ---
 import { DetailsScreen } from "./src/screens/DetailsScreen";
@@ -80,7 +72,7 @@ export default function App() {
   // --- Global State ---
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [screen, setScreen] = useState<Screen>("login");
-  const [isBackNav, setIsBackNav] = useState(false);
+  const [history, setHistory] = useState<Screen[]>([]);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [loading, setLoading] = useState(false);
   const [sessionStartTime, setSessionStartTime] = useState<number | null>(null);
@@ -91,12 +83,20 @@ export default function App() {
   const [editing, setEditing] = useState<Subscription | null>(null);
   const [dayConfig, setDayConfig] = useState<ConfigDay[]>([]);
   const [seasonName, setSeasonName] = useState("");
+  const [seasonEnabled, setSeasonEnabled] = useState(true);
   const [paymentConfig, setPaymentConfig] = useState<PaymentConfig>({
     enabled: true,
     options: { upi: true, cash: true, bankTransfer: true }
   });
+  const [guestEnabled, setGuestEnabled] = useState(true);
   const [foodMenu, setFoodMenu] = useState<FoodMenu>({});
   const [firebaseError, setFirebaseError] = useState("");
+
+  // Persistent View State (to keep tabs/filters active when navigating back)
+  const [reportType, setReportType] = useState<ReportType>("day");
+  const [reportDayId, setReportDayId] = useState<Day>("");
+  const [reportMealType, setReportMealType] = useState<"breakfast" | "lunch" | "dinner">("breakfast");
+  const [subscriptionSearch, setSubscriptionListSearch] = useState("");
 
   // Custom Alert State
   const [alertConfig, setAlertConfig] = useState<{
@@ -136,7 +136,9 @@ export default function App() {
       setSubscriptions(subs);
       setDayConfig(config.days);
       setSeasonName(config.seasonName);
+      setSeasonEnabled(config.seasonEnabled !== false);
       if (config.payment) setPaymentConfig(config.payment);
+      setGuestEnabled(config.guestEnabled !== false); // Default to true
       setFoodMenu(menu);
       setFirebaseError("");
     } catch (err: any) {
@@ -162,7 +164,6 @@ export default function App() {
       // Always use silent refresh for screen transitions to avoid flickering.
       // The initial loader triggered by handleLogin will be cleared by the first sync's finally block.
       void refreshAllData(true);
-      setIsBackNav(false);
     }
   }, [screen, userRole]);
 
@@ -187,35 +188,61 @@ export default function App() {
   }, [screen, userRole, sessionStartTime]);
 
   /**
+   * Resets persistent view states to defaults.
+   */
+  const resetViewStates = () => {
+    setReportType("day");
+    setReportDayId("");
+    setReportMealType("breakfast");
+    setSubscriptionListSearch("");
+  };
+
+  /**
+   * Navigation helper that manages the history stack.
+   */
+  const navigate = (next: Screen) => {
+    if (next === "home") {
+      setHistory([]);
+      resetViewStates();
+    } else if (next !== screen) {
+      // If navigating AWAY from home to anywhere else, start with fresh states
+      if (screen === "home") {
+        resetViewStates();
+      }
+      setHistory((prev) => [...prev, screen]);
+    }
+    setScreen(next);
+  };
+
+  const goBack = () => {
+    if (history.length > 0) {
+      const prev = history[history.length - 1];
+      setHistory((current) => current.slice(0, -1));
+
+      // If returning to home, ensure history and states are clean
+      if (prev === "home") {
+        setHistory([]);
+        resetViewStates();
+      }
+
+      setScreen(prev);
+      return true;
+    }
+    if (screen !== "home" && screen !== "login") {
+      navigate("home");
+      return true;
+    }
+    return false; // Exit app
+  };
+
+  /**
    * Native hardware back button handling.
    * Ensures physical back button logic matches in-app navigation flow.
    */
   useEffect(() => {
-    const handleBackPress = () => {
-      if (screen === "login" || screen === "home") {
-        return false; // Exit app
-      }
-
-      setIsBackNav(true);
-      if (screen === "details") setScreen("home");
-      else if (screen === "form")
-        setScreen(editing?.flat ? "details" : "home");
-      else if (screen === "qr") setScreen("details");
-      else if (screen === "scanner") setScreen("home");
-      else if (screen === "dashboard") setScreen("home");
-      else if (screen === "viewMenu") setScreen("home");
-      else if (screen === "menu") setScreen("viewMenu");
-      else if (screen === "report") setScreen("home");
-      else if (screen === "settings") setScreen("home");
-      else if (screen === "subscriptionList") setScreen("home");
-      else setScreen("home");
-
-      return true;
-    };
-
-    const subscription = BackHandler.addEventListener("hardwareBackPress", handleBackPress);
+    const subscription = BackHandler.addEventListener("hardwareBackPress", goBack);
     return () => subscription.remove();
-  }, [screen, editing]);
+  }, [screen, history]);
 
   /**
    * Handles user authentication and transitions to the Home screen.
@@ -224,16 +251,21 @@ export default function App() {
     setLoading(true);
     setUserRole(role);
     setSessionStartTime(Date.now());
-    setScreen("home");
+    navigate("home");
   };
 
   const handleLogout = () => {
     setUserRole(null);
     setSessionStartTime(null);
     setScreen("login");
+    setHistory([]);
     setSubscriptions([]);
     setDayConfig([]);
     setFoodMenu({});
+    setReportType("day");
+    setReportDayId("");
+    setReportMealType("breakfast");
+    setSubscriptionListSearch("");
   };
 
   /**
@@ -253,7 +285,7 @@ export default function App() {
       paymentMode: "UPI",
       amount: "0",
     });
-    setScreen("form");
+    navigate("form");
   };
 
   /**
@@ -265,7 +297,7 @@ export default function App() {
       await refreshAllData(true);
       setSelectedId(sub.id);
       setSelectedRecord(sub);
-      setScreen("details");
+      navigate("details");
       return true;
     } catch (err) {
       showAlert(UI_TEXT.error, UI_TEXT.saveFailed);
@@ -277,7 +309,7 @@ export default function App() {
     try {
       await repository.remove(id);
       await refreshAllData(true);
-      setScreen("home");
+      navigate("home");
     } catch (err) {
       showAlert(UI_TEXT.error, "Could not delete record");
     }
@@ -306,7 +338,9 @@ export default function App() {
 
       setDayConfig(config.days);
       setSeasonName(config.seasonName);
+      setSeasonEnabled(config.seasonEnabled !== false);
       if (config.payment) setPaymentConfig(config.payment);
+      setGuestEnabled(config.guestEnabled !== false);
       await refreshAllData(true);
     } catch (err) {
       showAlert(UI_TEXT.error, "Could not save configuration");
@@ -361,10 +395,10 @@ export default function App() {
     if (match) {
       setSelectedId(match.id);
       setSelectedRecord(match);
-      setScreen("details");
+      navigate("details");
     } else {
       showAlert(UI_TEXT.error, UI_TEXT.scanError);
-      setScreen("home");
+      navigate("home");
     }
   };
 
@@ -387,60 +421,68 @@ export default function App() {
 
       const initialTotals = {
         people: 0,
-        breakfast:
+        breakfast: guestEnabled ? (
           (dayMenu?.breakfast?.guestVeg || 0) +
-          (dayMenu?.breakfast?.guestNonVeg || 0),
-        breakfastVeg: dayMenu?.breakfast?.guestVeg || 0,
-        breakfastNonVeg: dayMenu?.breakfast?.guestNonVeg || 0,
+          (dayMenu?.breakfast?.guestNonVeg || 0)
+        ) : 0,
+        breakfastVeg: guestEnabled ? (dayMenu?.breakfast?.guestVeg || 0) : 0,
+        breakfastNonVeg: guestEnabled ? (dayMenu?.breakfast?.guestNonVeg || 0) : 0,
         breakfastParcel: 0,
         breakfastParcelTaken: 0,
-        breakfastTaken:
+        breakfastTaken: guestEnabled ? (
           (dayMenu?.breakfast?.guestVegTaken || 0) +
-          (dayMenu?.breakfast?.guestNonVegTaken || 0),
-        breakfastGuestVeg: dayMenu?.breakfast?.guestVeg || 0,
-        breakfastGuestNonVeg: dayMenu?.breakfast?.guestNonVeg || 0,
-        breakfastGuestTaken:
+          (dayMenu?.breakfast?.guestNonVegTaken || 0)
+        ) : 0,
+        breakfastGuestVeg: guestEnabled ? (dayMenu?.breakfast?.guestVeg || 0) : 0,
+        breakfastGuestNonVeg: guestEnabled ? (dayMenu?.breakfast?.guestNonVeg || 0) : 0,
+        breakfastGuestTaken: guestEnabled ? (
           (dayMenu?.breakfast?.guestVegTaken || 0) +
-          (dayMenu?.breakfast?.guestNonVegTaken || 0),
-        breakfastGuestVegTaken: dayMenu?.breakfast?.guestVegTaken || 0,
-        breakfastGuestNonVegTaken: dayMenu?.breakfast?.guestNonVegTaken || 0,
+          (dayMenu?.breakfast?.guestNonVegTaken || 0)
+        ) : 0,
+        breakfastGuestVegTaken: guestEnabled ? (dayMenu?.breakfast?.guestVegTaken || 0) : 0,
+        breakfastGuestNonVegTaken: guestEnabled ? (dayMenu?.breakfast?.guestNonVegTaken || 0) : 0,
         breakfastFlatVegTaken: 0,
         breakfastFlatNonVegTaken: 0,
 
-        lunch: (dayMenu?.lunch?.guestVeg || 0) + (dayMenu?.lunch?.guestNonVeg || 0),
-        lunchVeg: dayMenu?.lunch?.guestVeg || 0,
-        lunchNonVeg: dayMenu?.lunch?.guestNonVeg || 0,
+        lunch: guestEnabled ? (dayMenu?.lunch?.guestVeg || 0) + (dayMenu?.lunch?.guestNonVeg || 0) : 0,
+        lunchVeg: guestEnabled ? (dayMenu?.lunch?.guestVeg || 0) : 0,
+        lunchNonVeg: guestEnabled ? (dayMenu?.lunch?.guestNonVeg || 0) : 0,
         lunchParcel: 0,
         lunchParcelTaken: 0,
-        lunchTaken:
+        lunchTaken: guestEnabled ? (
           (dayMenu?.lunch?.guestVegTaken || 0) +
-          (dayMenu?.lunch?.guestNonVegTaken || 0),
-        lunchGuestVeg: dayMenu?.lunch?.guestVeg || 0,
-        lunchGuestNonVeg: dayMenu?.lunch?.guestNonVeg || 0,
-        lunchGuestTaken:
+          (dayMenu?.lunch?.guestNonVegTaken || 0)
+        ) : 0,
+        lunchGuestVeg: guestEnabled ? (dayMenu?.lunch?.guestVeg || 0) : 0,
+        lunchGuestNonVeg: guestEnabled ? (dayMenu?.lunch?.guestNonVeg || 0) : 0,
+        lunchGuestTaken: guestEnabled ? (
           (dayMenu?.lunch?.guestVegTaken || 0) +
-          (dayMenu?.lunch?.guestNonVegTaken || 0),
-        lunchGuestVegTaken: dayMenu?.lunch?.guestVegTaken || 0,
-        lunchGuestNonVegTaken: dayMenu?.lunch?.guestNonVegTaken || 0,
+          (dayMenu?.lunch?.guestNonVegTaken || 0)
+        ) : 0,
+        lunchGuestVegTaken: guestEnabled ? (dayMenu?.lunch?.guestVegTaken || 0) : 0,
+        lunchGuestNonVegTaken: guestEnabled ? (dayMenu?.lunch?.guestNonVegTaken || 0) : 0,
         lunchFlatVegTaken: 0,
         lunchFlatNonVegTaken: 0,
 
-        dinner:
-          (dayMenu?.dinner?.guestVeg || 0) + (dayMenu?.dinner?.guestNonVeg || 0),
-        dinnerVeg: dayMenu?.dinner?.guestVeg || 0,
-        dinnerNonVeg: dayMenu?.dinner?.guestNonVeg || 0,
+        dinner: guestEnabled ? (
+          (dayMenu?.dinner?.guestVeg || 0) + (dayMenu?.dinner?.guestNonVeg || 0)
+        ) : 0,
+        dinnerVeg: guestEnabled ? (dayMenu?.dinner?.guestVeg || 0) : 0,
+        dinnerNonVeg: guestEnabled ? (dayMenu?.dinner?.guestNonVeg || 0) : 0,
         dinnerParcel: 0,
         dinnerParcelTaken: 0,
-        dinnerTaken:
+        dinnerTaken: guestEnabled ? (
           (dayMenu?.dinner?.guestVegTaken || 0) +
-          (dayMenu?.dinner?.guestNonVegTaken || 0),
-        dinnerGuestVeg: dayMenu?.dinner?.guestVeg || 0,
-        dinnerGuestNonVeg: dayMenu?.dinner?.guestNonVeg || 0,
-        dinnerGuestTaken:
+          (dayMenu?.dinner?.guestNonVegTaken || 0)
+        ) : 0,
+        dinnerGuestVeg: guestEnabled ? (dayMenu?.dinner?.guestVeg || 0) : 0,
+        dinnerGuestNonVeg: guestEnabled ? (dayMenu?.dinner?.guestNonVeg || 0) : 0,
+        dinnerGuestTaken: guestEnabled ? (
           (dayMenu?.dinner?.guestVegTaken || 0) +
-          (dayMenu?.dinner?.guestNonVegTaken || 0),
-        dinnerGuestVegTaken: dayMenu?.dinner?.guestVegTaken || 0,
-        dinnerGuestNonVegTaken: dayMenu?.dinner?.guestNonVegTaken || 0,
+          (dayMenu?.dinner?.guestNonVegTaken || 0)
+        ) : 0,
+        dinnerGuestVegTaken: guestEnabled ? (dayMenu?.dinner?.guestVegTaken || 0) : 0,
+        dinnerGuestNonVegTaken: guestEnabled ? (dayMenu?.dinner?.guestNonVegTaken || 0) : 0,
         dinnerFlatVegTaken: 0,
         dinnerFlatNonVegTaken: 0,
       };
@@ -562,16 +604,16 @@ export default function App() {
           userRole={userRole}
           config={dayConfig}
           paymentConfig={paymentConfig}
+          seasonEnabled={seasonEnabled}
           onCancel={() => {
-            setIsBackNav(true);
-            setScreen(editing.flat ? "details" : "home");
+            goBack();
           }}
           onSave={updateSubscription}
           onSaveQr={
             editing.flat
               ? undefined
               : async (next) => {
-                  if (await updateSubscription(next)) setScreen("qr");
+                  if (await updateSubscription(next)) navigate("qr");
                 }
           }
           onDelete={
@@ -604,10 +646,8 @@ export default function App() {
           subscription={selected}
           config={dayConfig}
           seasonName={seasonName}
-          onBack={() => {
-            setIsBackNav(true);
-            setScreen("details");
-          }}
+          seasonEnabled={seasonEnabled}
+          onBack={goBack}
           onShare={shareQr}
           onPrint={printPass}
           onLogout={handleLogout}
@@ -618,10 +658,7 @@ export default function App() {
     if (screen === "scanner") {
       return (
         <ScannerScreen
-          onBack={() => {
-            setIsBackNav(true);
-            setScreen("home");
-          }}
+          onBack={goBack}
           onScanned={openScannedValue}
         />
       );
@@ -640,12 +677,11 @@ export default function App() {
           config={dayConfig}
           paymentConfig={paymentConfig}
           onUpdateMenu={handleUpdateMenu}
-          onBack={() => {
-            setIsBackNav(true);
-            setScreen("home");
-          }}
+          onBack={goBack}
           onLogout={handleLogout}
           showAlert={showAlert}
+          guestEnabled={guestEnabled}
+          seasonEnabled={seasonEnabled}
         />
       );
     }
@@ -656,13 +692,12 @@ export default function App() {
           menu={foodMenu}
           userRole={userRole}
           config={dayConfig}
-          onEdit={() => setScreen("menu")}
-          onBack={() => {
-            setIsBackNav(true);
-            setScreen("home");
-          }}
+          onEdit={() => navigate("menu")}
+          onBack={goBack}
           onLogout={handleLogout}
           showAlert={showAlert}
+          guestEnabled={guestEnabled}
+          seasonEnabled={seasonEnabled}
         />
       );
     }
@@ -673,12 +708,11 @@ export default function App() {
           menu={foodMenu}
           config={dayConfig}
           onSave={handleUpdateMenu}
-          onBack={() => {
-            setIsBackNav(true);
-            setScreen("viewMenu");
-          }}
+          onBack={goBack}
           onLogout={handleLogout}
           showAlert={showAlert}
+          guestEnabled={guestEnabled}
+          seasonEnabled={seasonEnabled}
         />
       );
     }
@@ -691,12 +725,25 @@ export default function App() {
           config={dayConfig}
           seasonName={seasonName}
           paymentConfig={paymentConfig}
-          onBack={() => {
-            setIsBackNav(true);
-            setScreen("home");
-          }}
+          onBack={goBack}
           onShare={shareQr}
           onLogout={handleLogout}
+          guestEnabled={guestEnabled}
+          reportType={reportType}
+          selectedDayId={reportDayId}
+          selectedMealType={reportMealType}
+          onSetReportType={setReportType}
+          onSetSelectedDayId={setReportDayId}
+          onSetSelectedMealType={setReportMealType}
+          seasonEnabled={seasonEnabled}
+          onSelectFlat={(id) => {
+            const match = subscriptions.find((s) => s.id === id);
+            if (match) {
+              setSelectedId(match.id);
+              setSelectedRecord(match);
+              navigate("details");
+            }
+          }}
         />
       );
     }
@@ -706,12 +753,11 @@ export default function App() {
         <SettingsScreen
           config={dayConfig}
           seasonName={seasonName}
+          seasonEnabled={seasonEnabled}
           payment={paymentConfig}
+          guestEnabled={guestEnabled}
           onSave={handleUpdateConfig}
-          onBack={() => {
-            setIsBackNav(true);
-            setScreen("home");
-          }}
+          onBack={goBack}
           onLogout={handleLogout}
           showAlert={showAlert}
         />
@@ -725,14 +771,14 @@ export default function App() {
           config={dayConfig}
           paymentConfig={paymentConfig}
           userRole={userRole || "vendor"}
-          onBack={() => {
-            setIsBackNav(true);
-            setScreen("home");
-          }}
+          seasonEnabled={seasonEnabled}
+          searchText={subscriptionSearch}
+          onSearchChange={setSubscriptionListSearch}
+          onBack={goBack}
           onSelect={(sub) => {
             setSelectedId(sub.id);
             setSelectedRecord(sub);
-            setScreen("details");
+            navigate("details");
           }}
           onAdd={startNew}
           onLogout={handleLogout}
@@ -747,16 +793,14 @@ export default function App() {
           userRole={userRole}
           config={dayConfig}
           paymentConfig={paymentConfig}
-          onBack={() => {
-            setIsBackNav(true);
-            setScreen("home");
-          }}
+          seasonEnabled={seasonEnabled}
+          onBack={goBack}
           onEdit={() => {
             setEditing(selected);
-            setScreen("form");
+            navigate("form");
           }}
           onDelete={() => deleteSubscription(selected.id)}
-          onQr={() => setScreen("qr")}
+          onQr={() => navigate("qr")}
           onLogout={handleLogout}
           menu={foodMenu}
           showAlert={showAlert}
@@ -795,7 +839,7 @@ export default function App() {
           ) : null}
 
           <Pressable
-            onPress={() => setScreen("subscriptionList")}
+            onPress={() => navigate("subscriptionList")}
             style={styles.summary}
           >
             <View>
@@ -813,98 +857,98 @@ export default function App() {
           </Pressable>
 
           <View style={styles.compactActions}>
-            {userRole === "admin" ? (
+            {userRole === "admin" && seasonEnabled ? (
               <Pressable
                 accessibilityLabel={UI_TEXT.addFlat}
                 onPress={startNew}
-                style={styles.compactSecondary}
+                style={[styles.compactSecondary, { backgroundColor: "#28A745", borderColor: "#28A745" }]}
                 disabled={getActiveDays(dayConfig).length === 0}
               >
                 <ActionLabel
                   icon="add-circle-outline"
                   label={UI_TEXT.addFlat}
-                  color="#E31837"
-                  size={24}
+                  color="#FFF"
+                  size={22}
                   vertical
                 />
               </Pressable>
             ) : null}
             <Pressable
               accessibilityLabel={UI_TEXT.subscriptions}
-              onPress={() => setScreen("subscriptionList")}
-              style={styles.compactSecondary}
+              onPress={() => navigate("subscriptionList")}
+              style={[styles.compactSecondary, { backgroundColor: "#007BFF", borderColor: "#007BFF" }]}
             >
               <ActionLabel
                 icon="list-outline"
                 label={UI_TEXT.subscriptions}
-                color="#E31837"
-                size={24}
+                color="#FFF"
+                size={22}
                 vertical
               />
             </Pressable>
             <Pressable
               accessibilityLabel={UI_TEXT.scanQr}
-              onPress={() => setScreen("scanner")}
-              style={styles.compactSecondary}
+              onPress={() => navigate("scanner")}
+              style={[styles.compactSecondary, { backgroundColor: "#6F42C1", borderColor: "#6F42C1" }]}
             >
               <ActionLabel
                 icon="scan-outline"
                 label={UI_TEXT.scanQr}
-                color="#E31837"
-                size={24}
+                color="#FFF"
+                size={22}
                 vertical
               />
             </Pressable>
             <Pressable
               accessibilityLabel={UI_TEXT.dashboard}
-              onPress={() => setScreen("dashboard")}
-              style={styles.compactSecondary}
+              onPress={() => navigate("dashboard")}
+              style={[styles.compactSecondary, { backgroundColor: "#FD7E14", borderColor: "#FD7E14" }]}
             >
               <ActionLabel
                 icon="stats-chart-outline"
                 label={UI_TEXT.dashboard}
-                color="#E31837"
-                size={24}
+                color="#FFF"
+                size={22}
                 vertical
               />
             </Pressable>
             <Pressable
               accessibilityLabel={UI_TEXT.report}
-              onPress={() => setScreen("report")}
-              style={styles.compactSecondary}
+              onPress={() => navigate("report")}
+              style={[styles.compactSecondary, { backgroundColor: "#17A2B8", borderColor: "#17A2B8" }]}
             >
               <ActionLabel
                 icon="document-text-outline"
                 label={UI_TEXT.report}
-                color="#E31837"
-                size={24}
+                color="#FFF"
+                size={22}
                 vertical
               />
             </Pressable>
             <Pressable
               accessibilityLabel={UI_TEXT.viewMenu}
-              onPress={() => setScreen("viewMenu")}
-              style={styles.compactSecondary}
+              onPress={() => navigate("viewMenu")}
+              style={[styles.compactSecondary, { backgroundColor: "#E31837", borderColor: "#E31837" }]}
             >
               <ActionLabel
                 icon="restaurant-outline"
                 label={UI_TEXT.viewMenu}
-                color="#E31837"
-                size={24}
+                color="#FFF"
+                size={22}
                 vertical
               />
             </Pressable>
             {userRole === "admin" ? (
               <Pressable
                 accessibilityLabel="Settings"
-                onPress={() => setScreen("settings")}
-                style={styles.compactSecondary}
+                onPress={() => navigate("settings")}
+                style={[styles.compactSecondary, { backgroundColor: "#6C757D", borderColor: "#6C757D" }]}
               >
                 <ActionLabel
                   icon="settings-outline"
                   label="Settings"
-                  color="#E31837"
-                  size={24}
+                  color="#FFF"
+                  size={22}
                   vertical
                 />
               </Pressable>

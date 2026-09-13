@@ -13,6 +13,7 @@ interface EditableMetricProps {
   validate?: (newValue: number) => boolean | string;
   showAlert?: (title: string, message: string, buttons?: AlertButton[]) => void;
   color?: string;
+  disabled?: boolean;
 }
 
 /**
@@ -26,6 +27,7 @@ export function EditableMetric({
   validate,
   showAlert,
   color = "#E31837",
+  disabled = false,
 }: EditableMetricProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [localValue, setLocalValue] = useState(String(value));
@@ -58,7 +60,7 @@ export function EditableMetric({
 
   if (isEditing) {
     return (
-      <View style={[styles.metric, { borderColor: color, borderStyle: "dashed" }]}>
+      <View style={[styles.metric, { borderColor: color, borderStyle: "dashed", borderWidth: 2 }]}>
         <TextInput
           style={[
             styles.metricValue,
@@ -84,7 +86,19 @@ export function EditableMetric({
   }
 
   return (
-    <Pressable style={styles.metric} onPress={() => setIsEditing(true)}>
+    <Pressable
+      style={[
+        styles.metric,
+        !disabled && {
+          borderWidth: 2,
+          borderColor: color,
+          borderStyle: "dashed",
+          backgroundColor: color + "15"
+        }
+      ]}
+      onPress={() => !disabled && setIsEditing(true)}
+      disabled={disabled}
+    >
       <Ionicons name={icon} size={18} color={color} />
       <Text style={[styles.metricValue, { color }]}>{value}</Text>
       <Text style={styles.metricLabel}>{label}</Text>

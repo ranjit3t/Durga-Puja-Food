@@ -12,7 +12,7 @@ import {
   Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { styles } from "../styles";
+import { styles, CARD_COLORS } from "../styles";
 import { UI_TEXT } from "../strings";
 import {
   getDayLabel,
@@ -59,6 +59,8 @@ interface MealSectionProps {
     value: number
   ) => void;
   showAlert: (title: string, message: string, buttons?: AlertButton[]) => void;
+  guestEnabled: boolean;
+  seasonEnabled: boolean;
   labels: {
     veg: string;
     nonVeg: string;
@@ -99,11 +101,14 @@ const DashboardMealSection = memo(
     config,
     onUpdateGuest,
     showAlert,
+    guestEnabled,
+    seasonEnabled,
     labels,
   }: MealSectionProps) => {
     const vegItems = menu?.veg || [];
     const nonVegItems = menu?.nonVeg || [];
     const isAdmin = userRole === "admin";
+    const canEdit = seasonEnabled;
 
     const isVegEnabled = isDietaryEnabled(day, type, "veg", config);
     const isNonVegEnabled = isDietaryEnabled(day, type, "nonVeg", config);
@@ -164,25 +169,28 @@ const DashboardMealSection = memo(
           <Metric icon="people-outline" label={UI_TEXT.total} value={total} />
 
           {/* Guest Total */}
-          {isBothEnabled ? (
-            <Metric
-              icon="people-circle-outline"
-              label={UI_TEXT.guestTotal}
-              value={guestVeg + guestNonVeg}
-            />
-          ) : (
-            <EditableMetric
-              icon="people-circle-outline"
-              label={UI_TEXT.guestTotal}
-              value={guestVeg + guestNonVeg}
-              onSave={(val) =>
-                onUpdateGuest(day, type, isVegEnabled ? "guestVeg" : "guestNonVeg", val)
-              }
-              validate={(val) =>
-                val >= (guestVegTaken + guestNonVegTaken) || UI_TEXT.guestTotalError
-              }
-              showAlert={showAlert}
-            />
+          {guestEnabled && (
+            isBothEnabled ? (
+              <Metric
+                icon="people-circle-outline"
+                label={UI_TEXT.guestTotal}
+                value={guestVeg + guestNonVeg}
+              />
+            ) : (
+              <EditableMetric
+                icon="people-circle-outline"
+                label={UI_TEXT.guestTotal}
+                value={guestVeg + guestNonVeg}
+                onSave={(val) =>
+                  canEdit && isAdmin && onUpdateGuest(day, type, isVegEnabled ? "guestVeg" : "guestNonVeg", val)
+                }
+                validate={(val) =>
+                  val >= (guestVegTaken + guestNonVegTaken) || UI_TEXT.guestTotalError
+                }
+                showAlert={showAlert}
+                disabled={!canEdit || !isAdmin}
+              />
+            )
           )}
 
           {/* Detailed Demand */}
@@ -230,55 +238,63 @@ const DashboardMealSection = memo(
                 color="#DC3545"
               />
 
-              <EditableMetric
-                icon="leaf-outline"
-                label={labels.guestVeg}
-                value={guestVeg}
-                onSave={(val) => onUpdateGuest(day, type, "guestVeg", val)}
-                validate={(val) =>
-                  val >= guestVegTaken || UI_TEXT.guestVegTotalError
-                }
-                showAlert={showAlert}
-                color="#28A745"
-              />
-              <EditableMetric
-                icon="flame-outline"
-                label={labels.guestNonVeg}
-                value={guestNonVeg}
-                onSave={(val) => onUpdateGuest(day, type, "guestNonVeg", val)}
-                validate={(val) =>
-                  val >= guestNonVegTaken || UI_TEXT.guestNonVegTotalError
-                }
-                showAlert={showAlert}
-                color="#DC3545"
-              />
+              {guestEnabled && (
+                <>
+                  <EditableMetric
+                    icon="leaf-outline"
+                    label={labels.guestVeg}
+                    value={guestVeg}
+                    onSave={(val) => canEdit && onUpdateGuest(day, type, "guestVeg", val)}
+                    validate={(val) =>
+                      val >= guestVegTaken || UI_TEXT.guestVegTotalError
+                    }
+                    showAlert={showAlert}
+                    color="#28A745"
+                    disabled={!canEdit}
+                  />
+                  <EditableMetric
+                    icon="flame-outline"
+                    label={labels.guestNonVeg}
+                    value={guestNonVeg}
+                    onSave={(val) => canEdit && onUpdateGuest(day, type, "guestNonVeg", val)}
+                    validate={(val) =>
+                      val >= guestNonVegTaken || UI_TEXT.guestNonVegTotalError
+                    }
+                    showAlert={showAlert}
+                    color="#DC3545"
+                    disabled={!canEdit}
+                  />
 
-              <EditableMetric
-                icon="checkbox-outline"
-                label={labels.guestVegTaken}
-                value={guestVegTaken}
-                onSave={(val) => onUpdateGuest(day, type, "guestVegTaken", val)}
-                validate={(val) => val <= guestVeg || UI_TEXT.guestTakenError}
-                showAlert={showAlert}
-              />
-              <EditableMetric
-                icon="checkbox-outline"
-                label={labels.guestNonVegTaken}
-                value={guestNonVegTaken}
-                onSave={(val) => onUpdateGuest(day, type, "guestNonVegTaken", val)}
-                validate={(val) => val <= guestNonVeg || UI_TEXT.guestTakenError}
-                showAlert={showAlert}
-              />
+                  <EditableMetric
+                    icon="checkbox-outline"
+                    label={labels.guestVegTaken}
+                    value={guestVegTaken}
+                    onSave={(val) => canEdit && onUpdateGuest(day, type, "guestVegTaken", val)}
+                    validate={(val) => val <= guestVeg || UI_TEXT.guestTakenError}
+                    showAlert={showAlert}
+                    disabled={!canEdit}
+                  />
+                  <EditableMetric
+                    icon="checkbox-outline"
+                    label={labels.guestNonVegTaken}
+                    value={guestNonVegTaken}
+                    onSave={(val) => canEdit && onUpdateGuest(day, type, "guestNonVegTaken", val)}
+                    validate={(val) => val <= guestNonVeg || UI_TEXT.guestTakenError}
+                    showAlert={showAlert}
+                    disabled={!canEdit}
+                  />
+                </>
+              )}
             </>
           )}
 
-          {!isBothEnabled && (
+          {!isBothEnabled && guestEnabled && (
             <EditableMetric
               icon="checkbox-outline"
               label={UI_TEXT.guestTaken}
               value={guestVegTaken + guestNonVegTaken}
               onSave={(val) =>
-                onUpdateGuest(
+                canEdit && onUpdateGuest(
                   day,
                   type,
                   isVegEnabled ? "guestVegTaken" : "guestNonVegTaken",
@@ -290,6 +306,7 @@ const DashboardMealSection = memo(
               }
               showAlert={showAlert}
               color="#28A745"
+              disabled={!canEdit}
             />
           )}
         </View>
@@ -312,6 +329,8 @@ export function DashboardScreen({
   onBack,
   onLogout,
   showAlert,
+  guestEnabled,
+  seasonEnabled,
 }: {
   data: Array<any>;
   userRole: UserRole;
@@ -326,6 +345,8 @@ export function DashboardScreen({
   onBack: () => void;
   onLogout: () => void;
   showAlert: (title: string, message: string, buttons?: AlertButton[]) => void;
+  guestEnabled: boolean;
+  seasonEnabled: boolean;
 }) {
   const emptyMeal = {
     veg: [],
@@ -390,7 +411,6 @@ export function DashboardScreen({
           <BackButton onPress={onBack} />
           <LogoutButton onLogout={onLogout} />
         </View>
-        <Text style={styles.eyebrow}>{UI_TEXT.operations}</Text>
         <Text style={styles.title}>{UI_TEXT.dashboardTitle}</Text>
         <Text style={styles.subtitle}>{UI_TEXT.dashboardSubtitle}</Text>
       </View>
@@ -425,7 +445,7 @@ export function DashboardScreen({
           </>
         )}
 
-        <Text style={styles.sectionTitle}>{UI_TEXT.dailyMealDemand}</Text>
+        <Text style={[styles.sectionTitle, { marginBottom: 16 }]}>{UI_TEXT.dailyMealDemand}</Text>
 
         {/* Daily Demand Matrices */}
         {activeDays.map((day, index) => {
@@ -435,11 +455,12 @@ export function DashboardScreen({
             lunch: emptyMeal,
             dinner: emptyMeal,
           };
+          const colorScheme = CARD_COLORS[index % CARD_COLORS.length];
 
           return (
-            <View key={day} style={styles.dashboardCard}>
+            <View key={day} style={[styles.dashboardCard, { backgroundColor: colorScheme.bg, borderColor: colorScheme.border, borderWidth: 1.5 }]}>
               <View style={[styles.dashboardCardTop, { marginBottom: 16 }]}>
-                <Text style={styles.dashboardDay}>{getDayLabel(day, config)}</Text>
+                <Text style={[styles.dashboardDay, { color: colorScheme.accent }]}>{getDayLabel(day, config)}</Text>
               </View>
 
               {isMealEnabled(day, "breakfast", config) && (
@@ -464,6 +485,7 @@ export function DashboardScreen({
                   config={config}
                   onUpdateGuest={onUpdateGuest}
                   showAlert={showAlert}
+                  guestEnabled={guestEnabled} seasonEnabled={seasonEnabled}
                   labels={{
                     veg: UI_TEXT.bVeg,
                     nonVeg: UI_TEXT.bNonVeg,
@@ -502,6 +524,7 @@ export function DashboardScreen({
                   config={config}
                   onUpdateGuest={onUpdateGuest}
                   showAlert={showAlert}
+                  guestEnabled={guestEnabled} seasonEnabled={seasonEnabled}
                   labels={{
                     veg: UI_TEXT.lVeg,
                     nonVeg: UI_TEXT.lNonVeg,
@@ -540,6 +563,7 @@ export function DashboardScreen({
                   config={config}
                   onUpdateGuest={onUpdateGuest}
                   showAlert={showAlert}
+                  guestEnabled={guestEnabled} seasonEnabled={seasonEnabled}
                   labels={{
                     veg: UI_TEXT.dVeg,
                     nonVeg: UI_TEXT.dNonVeg,

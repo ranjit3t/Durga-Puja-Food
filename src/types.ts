@@ -43,9 +43,12 @@ export type AppConfig = {
   seasonName: string;
   days: ConfigDay[];
   payment?: PaymentConfig;
+  guestEnabled?: boolean;
+  seasonEnabled?: boolean;
 };
 
 export type Day = string;
+export type ReportType = "day" | "meal" | "flat" | "payment" | "single" | "notTaken";
 export type PaymentMode = "UPI" | "Cash";
 export type UserRole = "admin" | "vendor";
 export type Screen =

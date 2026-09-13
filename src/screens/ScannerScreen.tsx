@@ -24,7 +24,6 @@ export function ScannerScreen({
         <StatusBar style="light" />
         <View style={styles.header}>
           <BackButton onPress={onBack} />
-          <Text style={styles.eyebrow}>{UI_TEXT.qrScanner}</Text>
           <Text style={styles.title}>{UI_TEXT.cameraAccess}</Text>
           <Text style={styles.subtitle}>{UI_TEXT.cameraAccessSubtitle}</Text>
         </View>

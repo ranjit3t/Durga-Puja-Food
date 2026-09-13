@@ -13,12 +13,11 @@ import {
   Platform,
   StatusBar,
 } from "react-native";
-import { styles } from "../styles";
+import { styles, CARD_COLORS } from "../styles";
 import { UI_TEXT } from "../strings";
 import {
   getActiveDays,
   blockOptions,
-  mealSummary,
   mealsFromChoices,
   resizeMealChoices,
   resizeMealSlots,
@@ -36,19 +35,20 @@ import {
   MealSlot,
   TakenState,
   UserRole,
+  PaymentConfig,
 } from "../types";
 import { ActionLabel } from "../components/common/ActionLabel";
 import { Dropdown } from "../components/common/Dropdown";
 import { BackButton } from "../components/common/BackButton";
 import { LogoutButton } from "../components/common/LogoutButton";
 import { AlertButton } from "../components/common/CustomAlert";
-import { PaymentConfig } from "../types";
 
 export function SubscriptionForm({
   value,
   userRole,
   config,
   paymentConfig,
+  seasonEnabled,
   onCancel,
   onSave,
   onSaveQr,
@@ -61,6 +61,7 @@ export function SubscriptionForm({
   userRole: UserRole;
   config: ConfigDay[];
   paymentConfig: PaymentConfig;
+  seasonEnabled: boolean;
   onCancel: () => void;
   onSave: (value: Subscription) => void;
   onSaveQr?: (value: Subscription) => void;
@@ -70,6 +71,7 @@ export function SubscriptionForm({
   showAlert: (title: string, message: string, buttons?: AlertButton[]) => void;
 }) {
   const isAdmin = userRole === "admin";
+  const canEdit = seasonEnabled;
   const activeDays = getActiveDays(config);
 
   const [form, setForm] = useState(value);
@@ -157,9 +159,6 @@ export function SubscriptionForm({
           <BackButton onPress={onCancel} />
           <LogoutButton onLogout={onLogout} />
         </View>
-        <Text style={styles.eyebrow}>
-          {lockIdentity ? UI_TEXT.editSubscription : UI_TEXT.newSubscription}
-        </Text>
         <Text style={styles.title}>
           {lockIdentity ? UI_TEXT.editFlat : UI_TEXT.addFlatTitle}
         </Text>
@@ -200,8 +199,8 @@ export function SubscriptionForm({
         </View>
 
         {/* Identity Inputs */}
-        <View style={[styles.card, { marginTop: 8 }]}>
-           <Text style={[styles.sectionTitle, { fontSize: 18, marginBottom: 12 }]}>{UI_TEXT.blockAndFlat}</Text>
+        <View style={[styles.card, { marginTop: 8, backgroundColor: CARD_COLORS[1].bg, borderColor: CARD_COLORS[1].border }]}>
+           <Text style={[styles.sectionTitle, { fontSize: 18, marginBottom: 12, color: CARD_COLORS[1].accent }]}>{UI_TEXT.blockAndFlat}</Text>
            <View style={styles.row}>
             <View style={styles.fieldHalf}>
               <Text style={styles.label}>{UI_TEXT.blockNo}</Text>
@@ -261,16 +260,16 @@ export function SubscriptionForm({
             }}
             placeholder={UI_TEXT.egPeople}
             keyboardType="numeric"
-            editable={isAdmin}
-            selectTextOnFocus={isAdmin}
+            editable={isAdmin && canEdit}
+            selectTextOnFocus={isAdmin && canEdit}
             returnKeyType="done"
             style={[styles.input, !isAdmin && { backgroundColor: "#F8F9FA" }]}
           />
         </View>
 
         {/* Selection Matrix */}
-        <View style={styles.card}>
-          <Text style={[styles.sectionTitle, { fontSize: 18, marginBottom: 4 }]}>{UI_TEXT.foodChoice}</Text>
+        <View style={[styles.card, { backgroundColor: CARD_COLORS[2].bg, borderColor: CARD_COLORS[2].border }]}>
+          <Text style={[styles.sectionTitle, { fontSize: 18, marginBottom: 4, color: CARD_COLORS[2].accent }]}>{UI_TEXT.foodChoice}</Text>
           <Text style={styles.helper}>{UI_TEXT.foodChoiceInstruction}</Text>
 
           <Text style={styles.selectorLabel}>{UI_TEXT.person}</Text>
@@ -349,7 +348,7 @@ export function SubscriptionForm({
                     <View style={styles.choiceRow}>
                       {/* Option: None */}
                       <Pressable
-                        onPress={() => isAdmin && setMealSlotChoice(slot, "None")}
+                        onPress={() => isAdmin && canEdit && setMealSlotChoice(slot, "None")}
                         style={[
                           styles.choice,
                           currentSlotChoice === "None" ? styles.slotSelected : styles.noneChoice,
@@ -371,7 +370,7 @@ export function SubscriptionForm({
                       {/* Option: Veg */}
                       {isDietaryEnabled(selectedDay, slot, "veg", config) && (
                         <Pressable
-                          onPress={() => isAdmin && setMealSlotChoice(slot, "Veg")}
+                          onPress={() => isAdmin && canEdit && setMealSlotChoice(slot, "Veg")}
                           style={[
                             styles.choice,
                             currentSlotChoice === "Veg" ? styles.vegChoice : styles.noneChoice,
@@ -394,7 +393,7 @@ export function SubscriptionForm({
                       {/* Option: Non-veg */}
                       {!isVegOnly && isDietaryEnabled(selectedDay, slot, "nonVeg", config) && (
                         <Pressable
-                          onPress={() => isAdmin && setMealSlotChoice(slot, "Non-veg")}
+                          onPress={() => isAdmin && canEdit && setMealSlotChoice(slot, "Non-veg")}
                           style={[
                             styles.choice,
                             currentSlotChoice === "Non-veg" ? styles.nonVegChoice : styles.noneChoice,
@@ -443,7 +442,7 @@ export function SubscriptionForm({
                       <Pressable
                         key={slot}
                         disabled={currentChoice === "None"}
-                        onPress={() => setMealParcel(slot, !isParcel)}
+                        onPress={() => canEdit && setMealParcel(slot, !isParcel)}
                         style={[
                           styles.choice,
                           isParcel
@@ -507,7 +506,7 @@ export function SubscriptionForm({
                     return (
                       <Pressable
                         key={slot}
-                        onPress={() => setTakenChoice(slot, !isTaken)}
+                        onPress={() => canEdit && setTakenChoice(slot, !isTaken)}
                         style={[
                           styles.choice,
                           isTaken ? slotColorStyle : styles.noneChoice,
@@ -533,8 +532,8 @@ export function SubscriptionForm({
 
         {/* Financials */}
         {paymentConfig.enabled && (
-          <View style={styles.card}>
-             <Text style={[styles.sectionTitle, { fontSize: 18, marginBottom: 12 }]}>{UI_TEXT.paymentDetails}</Text>
+          <View style={[styles.card, { backgroundColor: CARD_COLORS[3].bg, borderColor: CARD_COLORS[3].border }]}>
+             <Text style={[styles.sectionTitle, { fontSize: 18, marginBottom: 12, color: CARD_COLORS[3].accent }]}>{UI_TEXT.paymentDetails}</Text>
              <View style={styles.row}>
               <View style={styles.fieldHalf}>
                 <Text style={styles.label}>{UI_TEXT.amount}</Text>
@@ -543,7 +542,7 @@ export function SubscriptionForm({
                   onChangeText={(amount) => set("amount", amount)}
                   keyboardType="decimal-pad"
                   inputMode="decimal"
-                  editable={isAdmin}
+                  editable={isAdmin && canEdit}
                   returnKeyType="done"
                   blurOnSubmit
                   placeholder="0.00"
@@ -578,25 +577,27 @@ export function SubscriptionForm({
 
         {/* Actions */}
         <View style={{ marginBottom: 40 }}>
-          <Pressable
-            onPress={() => {
-              if (!prepared.flat.trim()) {
-                showAlert(UI_TEXT.error, UI_TEXT.flatNoRequired);
-                return;
-              }
-              onSave(prepared);
-            }}
-            style={[styles.primary, !prepared.flat.trim() && { opacity: 0.5 }]}
-          >
-            <ActionLabel
-              icon="checkmark-circle-outline"
-              label={UI_TEXT.saveChanges}
-              color="#fff"
-              size={24}
-            />
-          </Pressable>
+          {canEdit && (
+            <Pressable
+              onPress={() => {
+                if (!prepared.flat.trim()) {
+                  showAlert(UI_TEXT.error, UI_TEXT.flatNoRequired);
+                  return;
+                }
+                onSave(prepared);
+              }}
+              style={[styles.primary, !prepared.flat.trim() && { opacity: 0.5 }]}
+            >
+              <ActionLabel
+                icon="checkmark-circle-outline"
+                label={UI_TEXT.saveChanges}
+                color="#fff"
+                size={24}
+              />
+            </Pressable>
+          )}
 
-          {isAdmin && onSaveQr ? (
+          {isAdmin && canEdit && onSaveQr ? (
             <Pressable
               accessibilityLabel={UI_TEXT.saveGenerateQr}
               onPress={() => {
@@ -628,11 +629,15 @@ export function SubscriptionForm({
             </Pressable>
           ) : null}
 
-          {isAdmin && onDelete ? (
+          <Pressable onPress={onCancel} style={[styles.secondary, { marginTop: 16, backgroundColor: "#E9ECEF", borderColor: "#6A6E73" }]}>
+             <ActionLabel icon="close-outline" label={UI_TEXT.cancel} color="#6A6E73" />
+          </Pressable>
+
+          {isAdmin && canEdit && onDelete ? (
             <Pressable
               accessibilityLabel={UI_TEXT.deleteFlatRecord}
               onPress={onDelete}
-              style={styles.deleteButton}
+              style={[styles.deleteButton, { marginTop: 24 }]}
             >
               <ActionLabel
                 icon="trash-outline"

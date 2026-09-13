@@ -18,6 +18,7 @@ export function QrScreen({
   onShare,
   onPrint,
   onLogout,
+  seasonEnabled,
 }: {
   subscription: Subscription;
   config: ConfigDay[];
@@ -26,10 +27,12 @@ export function QrScreen({
   onShare: (uri: string, message?: string) => void;
   onPrint: () => void;
   onLogout: () => void;
+  seasonEnabled: boolean;
 }) {
   const qrRef = useRef<View>(null);
+  const canShare = seasonEnabled;
   const shareImage = async () => {
-    if (qrRef.current) {
+    if (qrRef.current && canShare) {
       const uri = await captureRef(qrRef, { format: "png", quality: 1 });
       onShare(uri, `${seasonName || UI_TEXT.headerTitle} - Digital Pass`);
     }
@@ -48,7 +51,6 @@ export function QrScreen({
           <BackButton onPress={onBack} />
           <LogoutButton onLogout={onLogout} />
         </View>
-        <Text style={styles.eyebrow}>{UI_TEXT.flatIdPrefix}{subscription.id}</Text>
         <Text style={styles.title}>{UI_TEXT.foodPass}</Text>
         <Text style={styles.subtitle}>{UI_TEXT.qrIdentityStay}</Text>
       </View>
@@ -85,13 +87,15 @@ export function QrScreen({
           </View>
           
           <View style={{ width: "100%" }}>
-            <Pressable onPress={shareImage} style={styles.primary}>
-              <ActionLabel
-                icon="logo-whatsapp"
-                label={UI_TEXT.shareWhatsApp}
-                color="#fff"
-              />
-            </Pressable>
+            {canShare && (
+              <Pressable onPress={shareImage} style={styles.primary}>
+                <ActionLabel
+                  icon="logo-whatsapp"
+                  label={UI_TEXT.shareWhatsApp}
+                  color="#fff"
+                />
+              </Pressable>
+            )}
           </View>
         </View>
         <View style={styles.footer}>

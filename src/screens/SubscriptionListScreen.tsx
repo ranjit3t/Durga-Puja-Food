@@ -14,7 +14,7 @@ import {
   Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { styles } from "../styles";
+import { styles, CARD_COLORS } from "../styles";
 import { UI_TEXT } from "../strings";
 import { mealSummary } from "../constants";
 import { Subscription, ConfigDay, PaymentConfig, UserRole } from "../types";
@@ -28,23 +28,28 @@ export function SubscriptionListScreen({
   config,
   paymentConfig,
   userRole,
+  searchText,
+  onSearchChange,
   onBack,
   onSelect,
   onAdd,
   onLogout,
+  seasonEnabled,
 }: {
   subscriptions: Subscription[];
   config: ConfigDay[];
   paymentConfig: PaymentConfig;
   userRole: UserRole;
+  searchText: string;
+  onSearchChange: (text: string) => void;
   onBack: () => void;
   onSelect: (sub: Subscription) => void;
   onAdd: () => void;
   onLogout: () => void;
+  seasonEnabled: boolean;
 }) {
   const isAdmin = userRole === "admin";
-  const [searchText, setSearchText] = useState("");
-  const canAdd = getActiveDays(config).length > 0;
+  const canAdd = getActiveDays(config).length > 0 && seasonEnabled;
 
   const visibleSubscriptions = useMemo(() => {
     if (!searchText) return subscriptions;
@@ -54,6 +59,7 @@ export function SubscriptionListScreen({
         s.block.toLowerCase().includes(searchText.toLowerCase())
     );
   }, [subscriptions, searchText]);
+
 
   return (
     <View style={styles.root}>
@@ -74,7 +80,6 @@ export function SubscriptionListScreen({
             <BackButton onPress={onBack} />
             <LogoutButton onLogout={onLogout} />
           </View>
-          <Text style={styles.eyebrow}>{UI_TEXT.operations}</Text>
           <Text style={styles.title}>{UI_TEXT.subscriptions}</Text>
           <Text style={styles.subtitle}>{UI_TEXT.activePasses}: {subscriptions.length}</Text>
         </View>
@@ -83,7 +88,7 @@ export function SubscriptionListScreen({
           <Ionicons name="search-outline" size={22} color="#6A6E73" />
           <TextInput
             value={searchText}
-            onChangeText={setSearchText}
+            onChangeText={onSearchChange}
             placeholder={UI_TEXT.searchPlaceholder}
             placeholderTextColor="#ADB5BD"
             style={styles.searchInput}
@@ -108,50 +113,62 @@ export function SubscriptionListScreen({
                 : UI_TEXT.noMatches}
             </Text>
           }
-          renderItem={({ item }) => (
-            <Pressable
-              onPress={() => onSelect(item)}
-              style={styles.card}
-            >
-              <View style={styles.cardTop}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.flatLabel}>{UI_TEXT.block} {item.block}</Text>
-                  <Text style={styles.flatTitle}>{UI_TEXT.flatUpper} {item.flat}</Text>
-                  <Text style={{ color: "#6A6E73", marginTop: 4, fontWeight: "600" }}>
-                    {item.peopleCount} {item.peopleCount === 1 ? UI_TEXT.personSuffix : UI_TEXT.personsSuffix}
-                  </Text>
+          ListFooterComponent={
+            <View style={styles.footer}>
+               <Text style={styles.footerText}>{UI_TEXT.footerCopyright}</Text>
+            </View>
+          }
+          renderItem={({ item, index }) => {
+            const colorScheme = CARD_COLORS[index % CARD_COLORS.length];
+            return (
+              <Pressable
+                onPress={() => onSelect(item)}
+                style={[
+                  styles.card,
+                  {
+                    backgroundColor: colorScheme.bg,
+                    borderColor: colorScheme.border,
+                    borderWidth: 1.5
+                  }
+                ]}
+              >
+                <View style={styles.cardTop}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.flatLabel, { color: colorScheme.accent, opacity: 0.8 }]}>{UI_TEXT.block} {item.block}</Text>
+                    <Text style={[styles.flatTitle, { color: "#1A1C1E" }]}>{UI_TEXT.flatUpper} {item.flat}</Text>
+                    <Text style={{ color: "#6A6E73", marginTop: 4, fontWeight: "600" }}>
+                      {item.peopleCount} {item.peopleCount === 1 ? UI_TEXT.personSuffix : UI_TEXT.personsSuffix}
+                    </Text>
+                  </View>
+                  <View style={[styles.pill, { backgroundColor: colorScheme.accent + "20" }]}>
+                    <Text style={[styles.pillText, { color: colorScheme.accent }]}>{mealSummary(item, config) || UI_TEXT.flexibleMeals}</Text>
+                  </View>
                 </View>
-                <View style={styles.pill}>
-                  <Text style={styles.pillText}>{mealSummary(item, config) || UI_TEXT.flexibleMeals}</Text>
-                </View>
-              </View>
 
-              <View style={{ height: 1, backgroundColor: "#E9ECEF", marginVertical: 16 }} />
+                <View style={{ height: 1, backgroundColor: colorScheme.border, marginVertical: 16 }} />
 
-              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                    {paymentConfig.enabled && (
+                      <>
+                        <Ionicons name="card-outline" size={16} color={colorScheme.accent} />
+                        <Text style={{ fontWeight: "700", color: "#1A1C1E" }}>{item.paymentMode}</Text>
+                      </>
+                    )}
+                  </View>
                   {paymentConfig.enabled && (
-                    <>
-                      <Ionicons name="card-outline" size={16} color="#E31837" />
-                      <Text style={{ fontWeight: "700", color: "#1A1C1E" }}>{item.paymentMode}</Text>
-                    </>
+                    <Text style={{ fontSize: 18, fontWeight: "900", color: colorScheme.accent }}>
+                      {UI_TEXT.rs} {item.amount || "0"}
+                    </Text>
                   )}
                 </View>
-                {paymentConfig.enabled && (
-                  <Text style={{ fontSize: 18, fontWeight: "900", color: "#E31837" }}>
-                    {UI_TEXT.rs} {item.amount || "0"}
-                  </Text>
-                )}
-              </View>
-            </Pressable>
-          )}
+              </Pressable>
+            );
+          }}
         />
-        <View style={styles.footer}>
-           <Text style={styles.footerText}>{UI_TEXT.footerCopyright}</Text>
-        </View>
       </KeyboardAvoidingView>
 
-      {isAdmin ? (
+      {isAdmin && seasonEnabled ? (
         <Pressable
           style={[styles.fab, !canAdd && { opacity: 0.4 }]}
           onPress={onAdd}

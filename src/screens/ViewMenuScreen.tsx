@@ -1,6 +1,6 @@
 import React from "react";
 import { View, Text, ScrollView, Pressable, StatusBar } from "react-native";
-import { styles } from "../styles";
+import { styles, CARD_COLORS } from "../styles";
 import { UI_TEXT } from "../strings";
 import {
   getDayLabel,
@@ -19,6 +19,8 @@ export function ViewMenuScreen({
   onEdit,
   onBack,
   onLogout,
+  guestEnabled,
+  seasonEnabled,
 }: {
   menu: FoodMenu;
   userRole: UserRole;
@@ -26,6 +28,8 @@ export function ViewMenuScreen({
   onEdit: () => void;
   onBack: () => void;
   onLogout: () => void;
+  guestEnabled: boolean;
+  seasonEnabled: boolean;
 }) {
   const emptyMeal = {
     veg: [],
@@ -54,21 +58,21 @@ export function ViewMenuScreen({
           <BackButton onPress={onBack} />
           <LogoutButton onLogout={onLogout} />
         </View>
-        <Text style={styles.eyebrow}>{UI_TEXT.festivalFeast}</Text>
         <Text style={styles.title}>{UI_TEXT.foodMenu}</Text>
         <Text style={styles.subtitle}>{UI_TEXT.menuSubtitle}</Text>
       </View>
       <ScrollView contentContainerStyle={styles.content}>
-        {activeDays.map((day) => {
+        {activeDays.map((day, index) => {
           const dayMenu = menu[day] || {
             breakfast: emptyMeal,
             lunch: emptyMeal,
             dinner: emptyMeal,
           };
+          const colorScheme = CARD_COLORS[index % CARD_COLORS.length];
           return (
-            <View key={day} style={styles.menuDayCard}>
-              <View style={styles.menuDayHeader}>
-                <Text style={styles.menuDayTitle}>{getDayLabel(day, config)}</Text>
+            <View key={day} style={[styles.menuDayCard, { backgroundColor: colorScheme.bg, borderColor: colorScheme.border, borderWidth: 1.5 }]}>
+              <View style={[styles.menuDayHeader, { backgroundColor: colorScheme.accent + "15", borderBottomColor: colorScheme.border }]}>
+                <Text style={[styles.menuDayTitle, { color: colorScheme.accent }]}>{getDayLabel(day, config)}</Text>
               </View>
               <View style={styles.menuDayBody}>
                 {isMealEnabled(day, "breakfast", config) && (
@@ -79,6 +83,7 @@ export function ViewMenuScreen({
                     config={config}
                     icon="sunny-outline"
                     menu={dayMenu.breakfast || emptyMeal}
+                    guestEnabled={guestEnabled}
                   />
                 )}
                 {isMealEnabled(day, "lunch", config) && (
@@ -89,6 +94,7 @@ export function ViewMenuScreen({
                     config={config}
                     icon="restaurant-outline"
                     menu={dayMenu.lunch || emptyMeal}
+                    guestEnabled={guestEnabled}
                   />
                 )}
                 {isMealEnabled(day, "dinner", config) && (
@@ -99,6 +105,7 @@ export function ViewMenuScreen({
                     config={config}
                     icon="moon-outline"
                     menu={dayMenu.dinner || emptyMeal}
+                    guestEnabled={guestEnabled}
                   />
                 )}
               </View>
@@ -106,7 +113,7 @@ export function ViewMenuScreen({
           );
         })}
 
-        {isAdmin && (
+        {isAdmin && seasonEnabled && (
           <View style={{ marginTop: 24, paddingHorizontal: 4 }}>
             <Pressable onPress={onEdit} style={styles.primary}>
               <ActionLabel

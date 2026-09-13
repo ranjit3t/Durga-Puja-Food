@@ -34,18 +34,22 @@ The project follows a **Modular Layered Architecture**:
 - **Centralized String Resource System (`strings.ts`)**: Every single UI string, label, placeholder, and message is centralized in a constant object. This ensures architectural purity, prevents hardcoded "magic strings," and makes the entire app localization-ready.
 - **AppConfig Schema**: The application consumes a central configuration object:
     - `seasonName`: Global branding string.
+    - `seasonEnabled`: Global master switch for Read-Only mode.
     - `payment`: Global switch and method whitelist (UPI, Cash, Bank).
-    - `days`: Array of festival day rules (meals, dietary, parcels).
+    - `days`: Array of event day rules (meals, dietary, parcels).
+- **Navigation & History Stack**: Uses a custom-built history array in the root `App` component. The `navigate()` and `goBack()` helpers manage the transition state, ensuring that the Android hardware back button behaves predictably. History is automatically purged upon returning to the **Home** screen to prevent stack bloat.
+- **Persistent View State Hoisting**: Selected tabs and filter states for the `ReportScreen` and search queries for the `SubscriptionListScreen` are hoisted to the root level. This ensures UI continuity during sub-navigation (e.g., returning from a pass detail to the exact same report tab).
 - **Visibility Logic**: Helpers in `constants.ts` strictly enforce the active configuration, hiding disabled features (like payments or specific meals) globally across all screens.
 
 ### 📂 Data Layer (`src/repository.ts`, `src/firebase.ts`)
 - **Real-time Persistence**: Uses Firebase Realtime Database for all subscriptions, menus, and configurations.
-- **Data Normalization**: Handles schema variations and ensures data matrix integrity (Person x Day x Meal).
+- **Data Normalization**: Handles schema variations and ensures data matrix integrity (Person x Day x Meal). Renamed `PujaDay` to `EventDay` for generic event support.
 
 ## 4. Security & Permissions Model
 The application implements **Role-Based Access Control (RBAC)**:
-- **Admin**: Full read/write/delete privileges on all modules, including global configuration.
-- **Vendor**: Operational access. Can mark food as taken, update Guest counts, and view Reports. Destructive actions and pass registration are restricted.
+- **Admin**: Full read/write/delete privileges on all modules, including global configuration. Exclusive permission to modify the **Guest Total** plates on the kitchen dashboard.
+- **Vendor**: Operational access. Can mark food as taken and view Reports. Destructive actions, guest count planning, and pass registration are restricted.
+- **Global Read-Only Enforcement**: When the `seasonEnabled` config flag is false, the application automatically locks all data-modifying components (text inputs, checkboxes, save buttons) across all roles, effectively archiving the season's data.
 
 ## 5. Performance & Synchronization Patterns
 - **Transition-Based Data Sync**: Performs a comprehensive backend fetch on every screen transition to eliminate reliance on stale data.

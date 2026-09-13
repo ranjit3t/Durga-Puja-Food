@@ -10,7 +10,7 @@ export function ActionLabel({
   icon,
   label,
   color = "#4c5d51",
-  size = 17,
+  size = 16,
   vertical = false,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
