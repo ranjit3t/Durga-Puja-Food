@@ -1002,7 +1002,7 @@ export function ReportScreen({
                                   {vegEnabled && m.veg > 0 && nonVegEnabled && m.nonVeg > 0 && <Text> | </Text>}
                                   {nonVegEnabled && m.nonVeg > 0 && <Text style={{ color: "#DC3545" }}>Non-Veg: {m.nonVegTaken}/{m.nonVeg}</Text>}
                                 </Text>
-                                {m.vegParcel + m.nonVegParcel} > 0 && (
+                                {(m.vegParcel + m.nonVegParcel) > 0 && (
                                   <Text style={{ fontSize: 11, fontWeight: '700', marginTop: 2 }}>
                                     {UI_TEXT.parcels}: {m.vegParcel + m.nonVegParcel}{UI_TEXT.parcelAbbr} (
                                     {vegEnabled && m.vegParcel > 0 && <Text style={{ color: "#28A745" }}>{m.vegParcel} {UI_TEXT.veg}</Text>}
