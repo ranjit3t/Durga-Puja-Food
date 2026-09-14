@@ -326,6 +326,7 @@ export function DashboardScreen({
   menu,
   config,
   paymentConfig,
+  seasonName,
   totalCollection,
   upiCollection,
   cashCollection,
@@ -347,6 +348,7 @@ export function DashboardScreen({
   menu: FoodMenu;
   config: ConfigDay[];
   paymentConfig: PaymentConfig;
+  seasonName: string;
   onUpdateMenu: (menu: FoodMenu) => Promise<void>;
   onBack: () => void;
   onHome: () => void;
@@ -378,6 +380,21 @@ export function DashboardScreen({
       return acc;
     }, { total: 0, veg: 0, nonVeg: 0, taken: 0 });
   }, [data]);
+
+  const { isVegEnabledGlobally, isNonVegEnabledGlobally } = useMemo(() => {
+    return {
+      isVegEnabledGlobally: config.some(d => d.enabled && (
+        (d.breakfast.enabled && d.breakfast.veg) ||
+        (d.lunch.enabled && d.lunch.veg) ||
+        (d.dinner.enabled && d.dinner.veg)
+      )),
+      isNonVegEnabledGlobally: config.some(d => d.enabled && (
+        (d.breakfast.enabled && d.breakfast.nonVeg) ||
+        (d.lunch.enabled && d.lunch.nonVeg) ||
+        (d.dinner.enabled && d.dinner.nonVeg)
+      ))
+    };
+  }, [config]);
 
   /**
    * Updates guest count or status in the global Food Menu.
@@ -437,11 +454,12 @@ export function DashboardScreen({
         {/* Event Summary Card */}
         <View style={[styles.card, { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary, elevation: 6, marginBottom: 24 }]}>
           <View style={styles.previewTop}>
-            <View>
+            <View style={{ flex: 1, paddingRight: 10 }}>
               <Text style={[styles.previewLabel, { color: "rgba(255,255,255,0.7)" }]}>{UI_TEXT.dailyDemandSummary}</Text>
-              <Text style={[styles.previewTitle, { color: theme.colors.white, fontSize: 24 }]}>
-                {UI_TEXT.totalEventDemand}
-              </Text>
+              {seasonName && <Text style={[styles.previewTitle, { color: theme.colors.white, fontSize: 22 }]} numberOfLines={2}>
+                  {seasonName}
+                </Text>
+              }
             </View>
             <View style={{ alignItems: 'flex-end' }}>
                <Text style={[styles.previewAmount, { color: theme.colors.white, fontSize: 32 }]}>
@@ -455,7 +473,12 @@ export function DashboardScreen({
 
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <Text style={[styles.previewMeta, { color: theme.colors.white }]}>
-               {summaryTotals.veg} {UI_TEXT.veg} | {summaryTotals.nonVeg} {UI_TEXT.nonVeg}
+               {(() => {
+                 const parts = [];
+                 if (isVegEnabledGlobally) parts.push(`${summaryTotals.veg} ${UI_TEXT.veg}`);
+                 if (isNonVegEnabledGlobally) parts.push(`${summaryTotals.nonVeg} ${UI_TEXT.nonVeg}`);
+                 return parts.length > 0 ? parts.join(" | ") : UI_TEXT.none;
+               })()}
             </Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                <Ionicons name="checkmark-done-circle" size={16} color={theme.colors.white} />

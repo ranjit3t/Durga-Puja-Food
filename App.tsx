@@ -706,6 +706,7 @@ function AppContent() {
           bankTransferCollection={collections.bankTransfer}
           menu={foodMenu}
           config={dayConfig}
+          seasonName={seasonName}
           paymentConfig={paymentConfig}
           onUpdateMenu={handleUpdateMenu}
           onBack={goBack}

@@ -119,8 +119,7 @@ export const UI_TEXT = {
   dashboardTitle: "Food Dashboard",
   dashboardSubtitle: "Daily Kitchen Counts.",
   dailyMealDemand: "Daily Meal Demand",
-  dailyDemandSummary: "DAILY DEMAND SUMMARY",
-  totalEventDemand: "Total Event Demand",
+  dailyDemandSummary: "Demand Summary",
   editableLegend: "Fields with dashed borders are interactive/editable.",
   guestTotal: "Guest Total",
 
