@@ -216,7 +216,7 @@ export const UI_TEXT = {
   reportSubtitle: "Detailed data breakdown and summaries.",
   dayWiseReport: "Day Wise Summary",
   mealWiseReport: "Meal Wise Details",
-  guestReport: "Guest wise Summary",
+  guestReport: "Guest Summary",
   singleMealReport: "Single Meal Specific",
   notTakenReport: "Single Meal Not Taken",
   flatWiseReport: "Flat Wise Distribution",
