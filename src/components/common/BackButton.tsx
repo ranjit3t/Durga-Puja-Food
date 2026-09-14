@@ -19,15 +19,16 @@ export function BackButton({ onPress }: { onPress: () => void }) {
       style={styles.backButton}
     >
       <View style={{ flexDirection: "row", alignItems: "center", gap: 2 }}>
-        <Ionicons name="chevron-back-outline" size={24} color="#f0c977" />
+        <Ionicons name="chevron-back-outline" size={20} color={theme.colors.secondary} />
         <Text
           style={[
             styles.eyebrow,
             {
-              color: "#f0c977",
+              color: theme.colors.secondary,
               marginBottom: 0,
               letterSpacing: 0,
-              fontSize: 12,
+              fontSize: 11,
+              fontWeight: '800',
               textTransform: "none"
             },
           ]}

@@ -14,7 +14,10 @@
     "expo-status-bar": "~57.0.1",
     "firebase": "^12.18.0",
     "react": "19.2.3",
+    "react-dom": "19.2.3",
     "react-native": "0.86.3",
+    "react-native-web": "~0.19.13",
+    "@expo/metro-runtime": "~4.0.0",
     "react-native-qrcode-svg": "^6.3.23",
     "react-native-svg": "^15.15.4",
     "react-native-view-shot": "5.1.0"
@@ -25,9 +28,17 @@
   },
   "scripts": {
     "start": "expo start",
-    "android": "expo run:android",
-    "ios": "expo run:ios",
-    "web": "expo start --web"
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
+    "build:android": "eas build --platform android",
+    "build:web": "expo export --platform web"
+  },
+  "overrides": {
+    "react-native-web": {
+      "react": "$react",
+      "react-dom": "$react-dom"
+    }
   },
   "private": true
 }

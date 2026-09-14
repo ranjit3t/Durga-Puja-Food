@@ -1,25 +1,23 @@
+import React from "react";
+import { Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useStyles } from "../../styles";
 import { useAppTheme } from "../../theme";
-import { Pressable } from "react-native";
-import React from "react";
 
 /**
- * Standard logout button for screen headers.
+ * Standard home navigation button for screen headers.
  */
-export function LogoutButton({ onLogout }: { onLogout: () => void }) {
+export function HomeButton({ onPress }: { onPress: () => void }) {
   const styles = useStyles();
   const { theme } = useAppTheme();
   return (
     <Pressable
-      onPress={onLogout}
+      accessibilityLabel="Home"
+      accessibilityRole="button"
+      onPress={onPress}
       style={[styles.backButton, { width: 36, height: 36, borderRadius: 18, paddingHorizontal: 0 }]}
     >
-      <Ionicons
-        name="log-out-outline"
-        size={18}
-        color={theme.colors.secondary}
-      />
+      <Ionicons name="home-outline" size={18} color={theme.colors.secondary} />
     </Pressable>
   );
 }

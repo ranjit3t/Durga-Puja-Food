@@ -25,6 +25,7 @@ import {
 } from "../constants";
 import { Subscription, FoodMenu, MealMenu, UserRole, ConfigDay, PaymentConfig } from "../types";
 import { BackButton } from "../components/common/BackButton";
+import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
 import { ActionLabel } from "../components/common/ActionLabel";
 import { MealSummaryInline } from "../components/menu/MealSummaryInline";
@@ -42,6 +43,7 @@ export function DetailsScreen({
   onQr,
   onDelete,
   onLogout,
+  onHome,
   menu,
   showAlert,
 }: {
@@ -55,6 +57,7 @@ export function DetailsScreen({
   onQr: () => void;
   onDelete: () => void;
   onLogout: () => void;
+  onHome: () => void;
   menu: FoodMenu;
   showAlert: (title: string, message: string, buttons?: AlertButton[]) => void;
 }) {
@@ -68,21 +71,20 @@ export function DetailsScreen({
     <View style={styles.root}>
       <StatusBar style={themeType === "dark" ? "light" : "dark"} />
       <View style={styles.header}>
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: 16,
-          }}
-        >
-          <BackButton onPress={onBack} />
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <BackButton onPress={onBack} />
+            <HomeButton onPress={onHome} />
+          </View>
           <LogoutButton onLogout={onLogout} />
         </View>
         <Text style={styles.title}>{UI_TEXT.foodPass}</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView
+        style={{ flex: 1, width: "100%" }}
+        contentContainerStyle={styles.content}
+      >
         {/* Pass Identity Card */}
         <View style={[styles.card, { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary, elevation: 6 }]}>
           <View style={styles.previewTop}>
@@ -126,7 +128,7 @@ export function DetailsScreen({
         </View>
 
         {/* Global Food Plan */}
-        <Text style={styles.sectionTitle}>{UI_TEXT.foodPlan}</Text>
+        <Text style={[styles.sectionTitle, { marginBottom: 12 }]}>{UI_TEXT.foodPlan}</Text>
         <View style={[styles.card, { paddingVertical: 10, backgroundColor: theme.cardColors[5].bg, borderColor: theme.cardColors[5].border }]}>
           {activeDays.map((day, idx) => {
             const dayMenu = menu[day];
@@ -196,7 +198,7 @@ export function DetailsScreen({
         </View>
 
         {/* Choice Matrix */}
-        <Text style={styles.sectionTitle}>{UI_TEXT.foodChoiceByPerson}</Text>
+        <Text style={[styles.sectionTitle, { marginBottom: 12 }]}>{UI_TEXT.foodChoiceByPerson}</Text>
         <Text style={styles.helper}>{UI_TEXT.foodChoiceHelper}</Text>
         {Array.from({ length: subscription.peopleCount }, (_, personIndex) => (
           <View key={personIndex} style={[styles.card, { backgroundColor: theme.cardColors[2].bg, borderColor: theme.cardColors[2].border }]}>
@@ -253,7 +255,7 @@ export function DetailsScreen({
         ))}
 
         {/* Collection Matrix */}
-        <Text style={styles.sectionTitle}>{UI_TEXT.foodTakenByPerson}</Text>
+        <Text style={[styles.sectionTitle, { marginBottom: 12 }]}>{UI_TEXT.foodTakenByPerson}</Text>
         <Text style={styles.helper}>{UI_TEXT.foodTakenHelper}</Text>
         {Array.from({ length: subscription.peopleCount }, (_, personIndex) => (
           <View key={personIndex} style={[styles.card, { backgroundColor: theme.cardColors[0].bg, borderColor: theme.cardColors[0].border }]}>

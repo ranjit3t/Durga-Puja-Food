@@ -20,6 +20,7 @@ import { UI_TEXT } from "../strings";
 import { mealSummary } from "../constants";
 import { Subscription, ConfigDay, PaymentConfig, UserRole } from "../types";
 import { BackButton } from "../components/common/BackButton";
+import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
 import { ActionLabel } from "../components/common/ActionLabel";
 import { getActiveDays } from "../constants";
@@ -32,6 +33,7 @@ export function SubscriptionListScreen({
   searchText,
   onSearchChange,
   onBack,
+  onHome,
   onSelect,
   onAdd,
   onLogout,
@@ -44,6 +46,7 @@ export function SubscriptionListScreen({
   searchText: string;
   onSearchChange: (text: string) => void;
   onBack: () => void;
+  onHome: () => void;
   onSelect: (sub: Subscription) => void;
   onAdd: () => void;
   onLogout: () => void;
@@ -72,15 +75,11 @@ export function SubscriptionListScreen({
       >
         <StatusBar style={theme.themeType === "dark" ? "light" : "dark"} />
         <View style={styles.header}>
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: 16,
-            }}
-          >
-            <BackButton onPress={onBack} />
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <BackButton onPress={onBack} />
+              <HomeButton onPress={onHome} />
+            </View>
             <LogoutButton onLogout={onLogout} />
           </View>
           <Text style={styles.title}>{UI_TEXT.subscriptions}</Text>
@@ -101,6 +100,7 @@ export function SubscriptionListScreen({
         </View>
 
         <FlatList
+          style={{ flex: 1, width: "100%" }}
           data={visibleSubscriptions}
           keyExtractor={(item) => item.id}
           contentContainerStyle={[styles.content, { paddingTop: 10 }]}

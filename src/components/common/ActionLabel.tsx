@@ -10,7 +10,7 @@ import { useAppTheme } from "../../theme";
 export function ActionLabel({
   icon,
   label,
-  color = "#4c5d51",
+  color,
   size = 16,
   vertical = false,
 }: {
@@ -22,10 +22,11 @@ export function ActionLabel({
 }) {
   const styles = useStyles();
   const { theme } = useAppTheme();
+  const finalColor = color || theme.colors.textSecondary;
   return (
     <View style={[styles.actionLabel, vertical && { flexDirection: 'column', gap: 6 }]}>
-      <Ionicons name={icon} size={size} color={color} />
-      <Text style={[styles.actionLabelText, { color }, vertical && { fontSize: 13, textAlign: 'center' }]}>{label}</Text>
+      <Ionicons name={icon} size={size} color={finalColor} />
+      <Text style={[styles.actionLabelText, { color: finalColor }, vertical && { fontSize: 13, textAlign: 'center' }]}>{label}</Text>
     </View>
   );
 }

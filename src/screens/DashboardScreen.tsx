@@ -23,6 +23,7 @@ import {
 } from "../constants";
 import { FoodMenu, MealMenu, UserRole, ConfigDay } from "../types";
 import { BackButton } from "../components/common/BackButton";
+import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
 import { MealSummaryInline } from "../components/menu/MealSummaryInline";
 import { Metric } from "../components/common/Metric";
@@ -331,6 +332,7 @@ export function DashboardScreen({
   bankTransferCollection,
   onUpdateMenu,
   onBack,
+  onHome,
   onLogout,
   showAlert,
   guestEnabled,
@@ -347,6 +349,7 @@ export function DashboardScreen({
   paymentConfig: PaymentConfig;
   onUpdateMenu: (menu: FoodMenu) => Promise<void>;
   onBack: () => void;
+  onHome: () => void;
   onLogout: () => void;
   showAlert: (title: string, message: string, buttons?: AlertButton[]) => void;
   guestEnabled: boolean;
@@ -416,21 +419,18 @@ export function DashboardScreen({
     >
       <StatusBar style={themeType === "dark" ? "light" : "dark"} />
       <View style={styles.header}>
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: 16,
-          }}
-        >
-          <BackButton onPress={onBack} />
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <BackButton onPress={onBack} />
+            <HomeButton onPress={onHome} />
+          </View>
           <LogoutButton onLogout={onLogout} />
         </View>
         <Text style={styles.title}>{UI_TEXT.dashboardTitle}</Text>
         <Text style={styles.subtitle}>{UI_TEXT.dashboardSubtitle}</Text>
       </View>
       <ScrollView
+        style={{ flex: 1, width: "100%" }}
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
       >

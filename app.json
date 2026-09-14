@@ -21,7 +21,8 @@
       "package": "com.ranjit3t.durgapujafood"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
     },
     "plugins": [
       "expo-font",
@@ -32,6 +33,6 @@
         "projectId": "32b26668-5f90-4044-8f48-c73c215a6ff6"
       }
     },
-    "owner": "Ranjit Bhakta"
+    "owner": "keyarishita "
   }
 }

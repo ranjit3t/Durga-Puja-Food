@@ -17,6 +17,7 @@ import { useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
 import { ConfigDay, MealConfig, AppConfig, PaymentConfig } from "../types";
 import { BackButton } from "../components/common/BackButton";
+import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
 import { ActionLabel } from "../components/common/ActionLabel";
 import { AlertButton } from "../components/common/CustomAlert";
@@ -29,6 +30,7 @@ export function SettingsScreen({
   guestEnabled,
   onSave,
   onBack,
+  onHome,
   onLogout,
   showAlert,
 }: {
@@ -39,6 +41,7 @@ export function SettingsScreen({
   guestEnabled: boolean;
   onSave: (config: AppConfig) => Promise<void>;
   onBack: () => void;
+  onHome: () => void;
   onLogout: () => void;
   showAlert: (title: string, message: string, buttons?: AlertButton[]) => void;
 }) {
@@ -162,22 +165,22 @@ export function SettingsScreen({
     <View style={styles.root}>
       <StatusBar style={themeType === "dark" ? "light" : "dark"} />
       <View style={styles.header}>
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: 16,
-          }}
-        >
-          <BackButton onPress={onBack} />
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <BackButton onPress={onBack} />
+            <HomeButton onPress={onHome} />
+          </View>
           <LogoutButton onLogout={onLogout} />
         </View>
         <Text style={styles.title}>{UI_TEXT.settingsTitle}</Text>
         <Text style={styles.subtitle}>{UI_TEXT.settingsSubtitle}</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        style={{ flex: 1, width: "100%" }}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+      >
         {/* Season & Payment Configuration */}
         <View style={[styles.dashboardCard, { backgroundColor: theme.cardColors[1].bg, borderColor: theme.cardColors[1].border, borderWidth: 1.5 }, !localSeasonEnabled && { opacity: 0.6 }]}>
            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>

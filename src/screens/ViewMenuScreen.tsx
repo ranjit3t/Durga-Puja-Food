@@ -9,6 +9,7 @@ import {
 } from "../constants";
 import { FoodMenu, UserRole, ConfigDay } from "../types";
 import { BackButton } from "../components/common/BackButton";
+import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
 import { ActionLabel } from "../components/common/ActionLabel";
 import { MealDisplay } from "../components/menu/MealDisplay";
@@ -19,6 +20,7 @@ export function ViewMenuScreen({
   config,
   onEdit,
   onBack,
+  onHome,
   onLogout,
   guestEnabled,
   seasonEnabled,
@@ -28,6 +30,7 @@ export function ViewMenuScreen({
   config: ConfigDay[];
   onEdit: () => void;
   onBack: () => void;
+  onHome: () => void;
   onLogout: () => void;
   guestEnabled: boolean;
   seasonEnabled: boolean;
@@ -50,21 +53,20 @@ export function ViewMenuScreen({
     <View style={styles.root}>
       <StatusBar style={themeType === "dark" ? "light" : "dark"} />
       <View style={styles.header}>
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: 16,
-          }}
-        >
-          <BackButton onPress={onBack} />
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <BackButton onPress={onBack} />
+            <HomeButton onPress={onHome} />
+          </View>
           <LogoutButton onLogout={onLogout} />
         </View>
         <Text style={styles.title}>{UI_TEXT.foodMenu}</Text>
         <Text style={styles.subtitle}>{UI_TEXT.menuSubtitle}</Text>
       </View>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView
+        style={{ flex: 1, width: "100%" }}
+        contentContainerStyle={styles.content}
+      >
         {activeDays.map((day, index) => {
           const dayMenu = menu[day] || {
             breakfast: emptyMeal,

@@ -28,6 +28,7 @@ The project follows a **Modular Layered Architecture**:
 - **Components**: Atomic and reusable UI units.
     - `ActionLabel`: Standardized Icon+Text component supporting both horizontal and vertical layouts.
     - `CustomAlert`: A centralized, themed replacement for system dialogs.
+    - `Header Controls`: Unified set of components (`BackButton`, `HomeButton`, `LogoutButton`) designed with a consistent **36px circular aesthetic**.
     - `Metric Tiles`: Read-only and interactive tiles for rapid data consumption.
 
 ### 📂 Logic & Theme Layer (`src/theme/`, `src/constants.ts`, `src/strings.ts`)

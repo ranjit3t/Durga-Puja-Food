@@ -78,6 +78,8 @@ Controlled via the `seasonEnabled` config flag. When disabled, the application e
 | `ActionLabel` | Combines Ionicons and labels. Supports horizontal rows and vertical tiles. |
 | `Dropdown` | Modal-based selector optimized with 18px padding for touch accuracy. |
 | `CustomAlert` | Themed, high-contrast replacement for system dialogs. |
+| `HomeButton` | Fast-access dashboard navigation positioned in the primary header group. |
+| `LogoutButton` | Circular icon-only session terminator with high visual consistency. |
 
 ### B. Specialized Metric Tiles
 - **Dashboard Metrics**: Sleek, earthy-toned cards with high-precision typography.
@@ -88,6 +90,7 @@ Controlled via the `seasonEnabled` config flag. When disabled, the application e
 ## 5. UI/UX Architecture
 
 ### Layout Optimization
+- **Sleek Navigation Bar**: Top-level headers utilize a standardized height and icon-only interaction model. Back and Home actions are anchored to the left, while session management (Logout) is anchored to the far right.
 - **Colorful Premium Palette**: Primary info boxes use a high-contrast palette of pastel colors (`CARD_COLORS`) defined in `src/theme/` for instant visual segmentation.
 - **Quick-Action Tiles**: Home page grid replaces basic list views for a "sleek" entry experience.
 - **Home Summary Analytics**: Centralized card displaying both **Active Pass Count** and **Total Registered Members** for high-level event monitoring.

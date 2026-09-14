@@ -1,5 +1,5 @@
 import React, { useRef } from "react";
-import { View, Text, Pressable, StatusBar, ScrollView, Platform } from "react-native";
+import { View, Text, Pressable, StatusBar, ScrollView, Platform, useWindowDimensions } from "react-native";
 import { captureRef } from "react-native-view-shot";
 import QRCode from "react-native-qrcode-svg";
 import { useStyles } from "../styles";
@@ -8,6 +8,7 @@ import { UI_TEXT } from "../strings";
 import { qrValueFor, mealSummary } from "../constants";
 import { Subscription, ConfigDay } from "../types";
 import { BackButton } from "../components/common/BackButton";
+import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
 import { ActionLabel } from "../components/common/ActionLabel";
 
@@ -16,6 +17,7 @@ export function QrScreen({
   config,
   seasonName,
   onBack,
+  onHome,
   onShare,
   onPrint,
   onLogout,
@@ -25,6 +27,7 @@ export function QrScreen({
   config: ConfigDay[];
   seasonName: string;
   onBack: () => void;
+  onHome: () => void;
   onShare: (uri: string, message?: string) => void;
   onPrint: () => void;
   onLogout: () => void;
@@ -32,7 +35,10 @@ export function QrScreen({
 }) {
   const styles = useStyles();
   const { theme, themeType } = useAppTheme();
+  const { width } = useWindowDimensions();
   const qrRef = useRef<View>(null);
+
+  const qrSize = width > 768 ? 220 : Math.min(width * 0.5, 180);
   const canShare = seasonEnabled;
   const shareImage = async () => {
     if (qrRef.current && canShare) {
@@ -44,20 +50,17 @@ export function QrScreen({
     <View style={styles.root}>
       <StatusBar style={themeType === "dark" ? "light" : "dark"} />
       <View style={styles.header}>
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <BackButton onPress={onBack} />
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <BackButton onPress={onBack} />
+            <HomeButton onPress={onHome} />
+          </View>
           <LogoutButton onLogout={onLogout} />
         </View>
         <Text style={styles.title}>{UI_TEXT.foodPass}</Text>
         <Text style={styles.subtitle}>{UI_TEXT.qrIdentityStay}</Text>
       </View>
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, paddingBottom: 80 }}>
+      <ScrollView style={{ flex: 1, width: "100%" }} contentContainerStyle={{ flexGrow: 1, paddingBottom: 80 }}>
         <View style={styles.qrContent}>
           <View ref={qrRef} collapsable={false} style={styles.qrPassCard}>
             <View style={styles.qrPassHeader}>
@@ -67,7 +70,7 @@ export function QrScreen({
 
             <QRCode
               value={qrValueFor(subscription.id)}
-              size={180}
+              size={qrSize}
               color="#000"
               backgroundColor="#fff"
             />
@@ -93,8 +96,8 @@ export function QrScreen({
             {canShare && (
               <Pressable onPress={shareImage} style={styles.primary}>
                 <ActionLabel
-                  icon="logo-whatsapp"
-                  label={UI_TEXT.shareWhatsApp}
+                  icon={Platform.OS === "web" ? "download-outline" : "logo-whatsapp"}
+                  label={Platform.OS === "web" ? UI_TEXT.downloadPass : UI_TEXT.shareWhatsApp}
                   color="#fff"
                 />
               </Pressable>

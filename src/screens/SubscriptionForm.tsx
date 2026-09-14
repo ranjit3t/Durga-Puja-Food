@@ -41,6 +41,7 @@ import {
 import { ActionLabel } from "../components/common/ActionLabel";
 import { Dropdown } from "../components/common/Dropdown";
 import { BackButton } from "../components/common/BackButton";
+import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
 import { AlertButton } from "../components/common/CustomAlert";
 
@@ -52,6 +53,7 @@ export function SubscriptionForm({
   seasonEnabled,
   onCancel,
   onSave,
+  onHome,
   onSaveQr,
   onDelete,
   onLogout,
@@ -65,6 +67,7 @@ export function SubscriptionForm({
   seasonEnabled: boolean;
   onCancel: () => void;
   onSave: (value: Subscription) => void;
+  onHome: () => void;
   onSaveQr?: (value: Subscription) => void;
   onDelete?: () => void;
   onLogout: () => void;
@@ -151,15 +154,11 @@ export function SubscriptionForm({
     >
       <StatusBar style={themeType === "dark" ? "light" : "dark"} />
       <View style={styles.header}>
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: 16,
-          }}
-        >
-          <BackButton onPress={onCancel} />
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <BackButton onPress={onCancel} />
+            <HomeButton onPress={onHome} />
+          </View>
           <LogoutButton onLogout={onLogout} />
         </View>
         <Text style={styles.title}>
@@ -170,6 +169,7 @@ export function SubscriptionForm({
         </Text>
       </View>
       <ScrollView
+        style={{ flex: 1, width: "100%" }}
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"

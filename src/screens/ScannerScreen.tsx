@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, Pressable, StatusBar, StyleSheet } from "react-native";
+import { View, Text, Pressable, StatusBar, StyleSheet, useWindowDimensions } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useStyles } from "../styles";
 import { useAppTheme } from "../theme";
@@ -16,7 +16,10 @@ export function ScannerScreen({
 }) {
   const styles = useStyles();
   const { theme, themeType } = useAppTheme();
+  const { width } = useWindowDimensions();
   const [permission, requestPermission] = useCameraPermissions();
+
+  const scanSize = Math.min(width * 0.7, 260);
   const [error, setError] = useState("");
   const [locked, setLocked] = useState(false);
 
@@ -93,8 +96,8 @@ export function ScannerScreen({
         >
           <View
             style={{
-              width: 260,
-              height: 260,
+              width: scanSize,
+              height: scanSize,
               borderWidth: 2,
               borderColor: "#f0c977",
               borderRadius: 30

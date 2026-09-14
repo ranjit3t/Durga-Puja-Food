@@ -3,23 +3,33 @@
  * Modern, sleek UI inspired by premium food delivery apps.
  * Utilizes a theme-based approach for easy customization.
  */
-import { StyleSheet, Platform } from "react-native";
+import { StyleSheet, Platform, useWindowDimensions } from "react-native";
 import { useMemo } from "react";
 import { primaryTheme as defaultTheme } from "./theme/primary";
 import { AppTheme } from "./theme/types";
 import { useAppTheme } from "./theme";
 
-export const createStyles = (theme: AppTheme) => {
+export const createStyles = (theme: AppTheme, width: number, height: number) => {
   const COLORS = theme?.colors || defaultTheme.colors;
   const SIZES = theme?.sizes || defaultTheme.sizes;
   const TYPOGRAPHY = theme?.typography || defaultTheme.typography;
+
+  const isLargeScreen = width > 768;
+  const MAX_WIDTH = 600;
 
   if (!theme) return {} as any;
 
   return StyleSheet.create({
     // Root Containers
-    root: { flex: 1, backgroundColor: COLORS.background },
-    rootOverlay: { flex: 1, backgroundColor: theme?.themeType === 'dark' ? "rgba(0, 0, 0, 0.85)" : "rgba(255, 255, 255, 0.92)" },
+    root: {
+      flex: 1,
+      backgroundColor: COLORS.background,
+    },
+    rootOverlay: {
+      flex: 1,
+      backgroundColor: theme?.themeType === 'dark' ? "rgba(0, 0, 0, 0.85)" : "rgba(255, 255, 255, 0.92)",
+      width: "100%",
+    },
     center: { justifyContent: "center", alignItems: "center" },
     backgroundImage: { opacity: 0.15 },
 
@@ -31,12 +41,18 @@ export const createStyles = (theme: AppTheme) => {
       paddingBottom: SIZES.paddingLarge,
       borderBottomWidth: 1,
       borderBottomColor: COLORS.border,
+      width: "100%",
+      maxWidth: isLargeScreen ? MAX_WIDTH : undefined,
+      alignSelf: "center",
     },
     headerFestive: {
       backgroundColor: COLORS.primary,
       paddingTop: Platform.OS === "ios" ? 64 : 54,
       paddingHorizontal: SIZES.paddingMedium,
       paddingBottom: 32,
+      width: "100%",
+      maxWidth: isLargeScreen ? MAX_WIDTH : undefined,
+      alignSelf: "center",
     },
     eyebrow: {
       color: COLORS.secondary,
@@ -79,9 +95,9 @@ export const createStyles = (theme: AppTheme) => {
       lineHeight: 22,
     },
     backButton: {
-      height: 40,
-      paddingHorizontal: 8,
-      borderRadius: 20,
+      height: 36,
+      paddingHorizontal: 12,
+      borderRadius: 18,
       backgroundColor: COLORS.surface,
       alignItems: "center",
       justifyContent: "center",
@@ -96,7 +112,13 @@ export const createStyles = (theme: AppTheme) => {
     },
 
     // Main Content
-    content: { padding: SIZES.paddingMedium, paddingBottom: 120 },
+    content: {
+      padding: SIZES.paddingMedium,
+      paddingBottom: 120,
+      width: "100%",
+      maxWidth: isLargeScreen ? MAX_WIDTH : undefined,
+      alignSelf: "center",
+    },
 
     // Cards (Modern "Sleek" Look)
     card: {
@@ -324,12 +346,17 @@ export const createStyles = (theme: AppTheme) => {
     },
 
     // Metric Components
-    metricGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+    metricGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 10,
+      justifyContent: "space-between"
+    },
     metric: {
       backgroundColor: COLORS.surface,
       borderRadius: 16,
       padding: SIZES.paddingSmall,
-      minWidth: "30%",
+      width: isLargeScreen ? "30%" : "31%",
       flexGrow: 1,
       alignItems: "center",
       borderWidth: 1,
@@ -593,6 +620,9 @@ export const createStyles = (theme: AppTheme) => {
     qrContent: {
       alignItems: "center",
       padding: SIZES.paddingMedium,
+      width: "100%",
+      maxWidth: isLargeScreen ? MAX_WIDTH : undefined,
+      alignSelf: "center",
     },
     qrBox: {
       backgroundColor: COLORS.white,
@@ -633,10 +663,10 @@ export const createStyles = (theme: AppTheme) => {
 
     // Login specific
     loginContainer: {
-      flex: 1,
       padding: SIZES.paddingLarge,
+      paddingTop: 80,
+      paddingBottom: 100,
       backgroundColor: COLORS.background,
-      justifyContent: "center",
     },
     loginLogo: {
       width: 100,
@@ -829,7 +859,7 @@ export const createStyles = (theme: AppTheme) => {
       padding: SIZES.paddingLarge,
       borderRadius: 32,
       alignItems: "center",
-      width: 320,
+      width: isLargeScreen ? 400 : Math.min(width * 0.9, 320),
       borderWidth: 1,
       borderColor: COLORS.border,
     },
@@ -925,9 +955,10 @@ export const createStyles = (theme: AppTheme) => {
 
 export const useStyles = () => {
   const { theme } = useAppTheme();
-  return useMemo(() => createStyles(theme), [theme]);
+  const { width, height } = useWindowDimensions();
+  return useMemo(() => createStyles(theme, width, height), [theme, width, height]);
 };
 
 // Fallback for static imports (deprecated)
-export const styles = createStyles(defaultTheme);
+export const styles = createStyles(defaultTheme, 375, 812);
 export const CARD_COLORS = defaultTheme.cardColors;

@@ -20,6 +20,7 @@ import {
 } from "../constants";
 import { Subscription, FoodMenu, Day, ConfigDay, ReportType, PaymentConfig } from "../types";
 import { BackButton } from "../components/common/BackButton";
+import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
 import { ActionLabel } from "../components/common/ActionLabel";
 
@@ -35,6 +36,7 @@ export function ReportScreen({
   selectedDayId,
   selectedMealType,
   onBack,
+  onHome,
   onShare,
   onLogout,
   onSelectFlat,
@@ -53,6 +55,7 @@ export function ReportScreen({
   selectedDayId: Day;
   selectedMealType: "breakfast" | "lunch" | "dinner";
   onBack: () => void;
+  onHome: () => void;
   onShare: (uri: string, message?: string) => void;
   onLogout: () => void;
   onSelectFlat: (id: string) => void;
@@ -408,20 +411,16 @@ export function ReportScreen({
     <View style={styles.root}>
       <StatusBar style={themeType === "dark" ? "light" : "dark"} />
       <View style={styles.header}>
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: 16,
-          }}
-        >
-          <BackButton onPress={onBack} />
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <BackButton onPress={onBack} />
+            <HomeButton onPress={onHome} />
+          </View>
           <LogoutButton onLogout={onLogout} />
         </View>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
           <Pressable onPress={handleShare} style={{ padding: 8 }}>
-            <Ionicons name="share-social-outline" size={24} color={theme.colors.primary} />
+            <Ionicons name={Platform.OS === 'web' ? "download-outline" : "share-social-outline"} size={24} color={theme.colors.primary} />
           </Pressable>
         </View>
         <Text style={styles.title}>{UI_TEXT.reportTitle}</Text>
@@ -479,7 +478,23 @@ export function ReportScreen({
         </ScrollView>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <View style={{ paddingHorizontal: 20, marginBottom: 8 }}>
+        <Pressable
+          onPress={handleShare}
+          style={[styles.primary, { height: 40, marginTop: 4, borderRadius: 10 }]}
+        >
+          <ActionLabel
+            icon={Platform.OS === "web" ? "download-outline" : "logo-whatsapp"}
+            label={Platform.OS === "web" ? UI_TEXT.downloadReport : UI_TEXT.shareToWhatsApp}
+            color={theme.colors.white}
+          />
+        </Pressable>
+      </View>
+
+      <ScrollView
+        style={{ flex: 1, width: "100%" }}
+        contentContainerStyle={styles.content}
+      >
         {(reportType === "single" || reportType === "notTaken") && (
           <View style={[styles.card, { marginBottom: 24 }]}>
             <Text style={[styles.sectionTitle, { fontSize: 16, marginBottom: 12 }]}>{UI_TEXT.reportFilters}</Text>

@@ -12,6 +12,7 @@ import {
   Platform,
   StatusBar,
   ScrollView,
+  useWindowDimensions,
 } from "react-native";
 import { useStyles } from "../styles";
 import { useAppTheme } from "../theme";
@@ -32,6 +33,8 @@ export function LoginScreen({
 }) {
   const styles = useStyles();
   const { theme, toggleTheme, themeType } = useAppTheme();
+  const { width } = useWindowDimensions();
+  const isLargeScreen = width > 768;
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -68,18 +71,22 @@ export function LoginScreen({
     <View style={styles.root}>
       <StatusBar style={themeType === "dark" ? "light" : "dark"} />
       <View style={{ position: 'absolute', top: Platform.OS === 'ios' ? 60 : 40, left: 20, zIndex: 10 }}>
-        <Pressable onPress={toggleTheme} style={styles.backButton}>
-          <Ionicons name={themeType === "dark" ? "sunny-outline" : "moon-outline"} size={22} color={theme.colors.secondary} />
+        <Pressable onPress={toggleTheme} style={[styles.backButton, { width: 36, height: 36, borderRadius: 18, paddingHorizontal: 0 }]}>
+          <Ionicons name={themeType === "dark" ? "sunny-outline" : "moon-outline"} size={18} color={theme.colors.secondary} />
         </Pressable>
       </View>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-        <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }}>
-          <View style={styles.loginContainer}>
+        <ScrollView
+          style={{ flex: 1, width: "100%" }}
+          contentContainerStyle={{ flexGrow: 1, justifyContent: "center", paddingBottom: 60 }}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={[styles.loginContainer, isLargeScreen && { alignSelf: 'center', width: '100%', maxWidth: 600 }]}>
             <View style={styles.loginLogo}>
-               <Ionicons name="restaurant" size={48} color="#FFF" />
+               <Ionicons name="restaurant" size={48} color={theme.colors.white} />
             </View>
 
             <View style={{ alignItems: "center", marginBottom: 40 }}>
@@ -95,7 +102,7 @@ export function LoginScreen({
                 onChangeText={setUsername}
                 autoCapitalize="none"
                 placeholder="Enter username"
-                placeholderTextColor="#ADB5BD"
+                placeholderTextColor={theme.colors.textMuted}
               />
 
               <Text style={styles.label}>{UI_TEXT.password}</Text>
@@ -107,7 +114,7 @@ export function LoginScreen({
                   secureTextEntry={!showPassword}
                   autoCapitalize="none"
                   placeholder="Enter password"
-                  placeholderTextColor="#ADB5BD"
+                  placeholderTextColor={theme.colors.textMuted}
                 />
                 <Pressable
                   onPress={() => setShowPassword(!showPassword)}
@@ -116,7 +123,7 @@ export function LoginScreen({
                   <Ionicons
                     name={showPassword ? "eye-off-outline" : "eye-outline"}
                     size={22}
-                    color="#6A6E73"
+                    color={theme.colors.textSecondary}
                   />
                 </Pressable>
               </View>

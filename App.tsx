@@ -12,6 +12,7 @@ import {
   LogBox,
   BackHandler,
   ScrollView,
+  Platform,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import * as Sharing from "expo-sharing";
@@ -251,6 +252,7 @@ function AppContent() {
    * Ensures physical back button logic matches in-app navigation flow.
    */
   useEffect(() => {
+    if (Platform.OS === "web") return;
     const subscription = BackHandler.addEventListener("hardwareBackPress", goBack);
     return () => subscription.remove();
   }, [screen, history]);
@@ -369,22 +371,34 @@ function AppContent() {
   };
 
   const shareQr = async (uri: string, message?: string) => {
+    // Standard Web Fallback: Download the image
+    if (Platform.OS === "web") {
+      try {
+        const link = document.createElement("a");
+        link.href = uri;
+        link.download = `Pass-${Date.now()}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        return;
+      } catch (err) {
+        console.error("Web download error:", err);
+        showAlert("Error", "Could not download pass image.");
+        return;
+      }
+    }
+
     if (!(await Sharing.isAvailableAsync())) {
       showAlert("Error", "Sharing is not available on this device");
       return;
     }
 
     try {
-      // For WhatsApp and other apps, sharing the message + image
-      // works differently across OS versions.
       await Sharing.shareAsync(uri, {
         dialogTitle: message || UI_TEXT.shareQrDialog,
         mimeType: 'image/png',
         UTI: 'public.png',
       });
-
-      // If a message is provided, also try to put it in clipboard or share text
-      // as a separate action if needed, but for now the Digital Pass solves it.
     } catch (err) {
       console.error("Share error:", err);
     }
@@ -623,6 +637,7 @@ function AppContent() {
           onCancel={() => {
             goBack();
           }}
+          onHome={() => navigate("home")}
           onSave={updateSubscription}
           onSaveQr={
             editing.flat
@@ -663,6 +678,7 @@ function AppContent() {
           seasonName={seasonName}
           seasonEnabled={seasonEnabled}
           onBack={goBack}
+          onHome={() => navigate("home")}
           onShare={shareQr}
           onPrint={printPass}
           onLogout={handleLogout}
@@ -693,6 +709,7 @@ function AppContent() {
           paymentConfig={paymentConfig}
           onUpdateMenu={handleUpdateMenu}
           onBack={goBack}
+          onHome={() => navigate("home")}
           onLogout={handleLogout}
           showAlert={showAlert}
           guestEnabled={guestEnabled}
@@ -709,6 +726,7 @@ function AppContent() {
           config={dayConfig}
           onEdit={() => navigate("menu")}
           onBack={goBack}
+          onHome={() => navigate("home")}
           onLogout={handleLogout}
           showAlert={showAlert}
           guestEnabled={guestEnabled}
@@ -724,6 +742,7 @@ function AppContent() {
           config={dayConfig}
           onSave={handleUpdateMenu}
           onBack={goBack}
+          onHome={() => navigate("home")}
           onLogout={handleLogout}
           showAlert={showAlert}
           guestEnabled={guestEnabled}
@@ -741,6 +760,7 @@ function AppContent() {
           seasonName={seasonName}
           paymentConfig={paymentConfig}
           onBack={goBack}
+          onHome={() => navigate("home")}
           onShare={shareQr}
           onLogout={handleLogout}
           guestEnabled={guestEnabled}
@@ -773,6 +793,7 @@ function AppContent() {
           guestEnabled={guestEnabled}
           onSave={handleUpdateConfig}
           onBack={goBack}
+          onHome={() => navigate("home")}
           onLogout={handleLogout}
           showAlert={showAlert}
         />
@@ -790,6 +811,7 @@ function AppContent() {
           searchText={subscriptionSearch}
           onSearchChange={setSubscriptionListSearch}
           onBack={goBack}
+          onHome={() => navigate("home")}
           onSelect={(sub) => {
             setSelectedId(sub.id);
             setSelectedRecord(sub);
@@ -810,6 +832,7 @@ function AppContent() {
           paymentConfig={paymentConfig}
           seasonEnabled={seasonEnabled}
           onBack={goBack}
+          onHome={() => navigate("home")}
           onEdit={() => {
             setEditing(selected);
             navigate("form");
@@ -837,8 +860,8 @@ function AppContent() {
               marginBottom: 16,
             }}
           >
-            <Pressable onPress={toggleTheme} style={styles.backButton}>
-               <Ionicons name={themeType === "dark" ? "sunny-outline" : "moon-outline"} size={22} color={theme.colors.secondary} />
+            <Pressable onPress={toggleTheme} style={[styles.backButton, { width: 36, height: 36, borderRadius: 18, paddingHorizontal: 0 }]}>
+               <Ionicons name={themeType === "dark" ? "sunny-outline" : "moon-outline"} size={18} color={theme.colors.secondary} />
             </Pressable>
             <LogoutButton onLogout={handleLogout} />
           </View>
@@ -846,7 +869,10 @@ function AppContent() {
           <Text style={styles.subtitle}>{UI_TEXT.tagline}</Text>
         </View>
 
-        <ScrollView contentContainerStyle={styles.content}>
+        <ScrollView
+          style={{ flex: 1, width: "100%" }}
+          contentContainerStyle={[styles.content, { paddingBottom: 150 }]}
+        >
           {firebaseError ? (
             <View style={styles.firebaseBanner}>
               <Text style={styles.firebaseBannerTitle}>
@@ -862,7 +888,7 @@ function AppContent() {
           >
             <View>
               {seasonName ? (
-                <Text style={[styles.summaryLabel, { marginBottom: 2, color: "#FFB300" }]}>
+                <Text style={[styles.summaryLabel, { marginBottom: 2, color: theme.colors.secondary }]}>
                   {seasonName}
                 </Text>
               ) : null}
@@ -884,13 +910,13 @@ function AppContent() {
               <Pressable
                 accessibilityLabel={UI_TEXT.addFlat}
                 onPress={startNew}
-                style={[styles.compactSecondary, { backgroundColor: "#28A745", borderColor: "#28A745" }]}
+                style={[styles.compactSecondary, { backgroundColor: theme.colors.success, borderColor: theme.colors.success }]}
                 disabled={getActiveDays(dayConfig).length === 0}
               >
                 <ActionLabel
                   icon="add-circle-outline"
                   label={UI_TEXT.addFlat}
-                  color="#FFF"
+                  color={theme.colors.white}
                   size={22}
                   vertical
                 />
@@ -899,12 +925,12 @@ function AppContent() {
             <Pressable
               accessibilityLabel={UI_TEXT.subscriptions}
               onPress={() => navigate("subscriptionList")}
-              style={[styles.compactSecondary, { backgroundColor: "#007BFF", borderColor: "#007BFF" }]}
+              style={[styles.compactSecondary, { backgroundColor: theme.themeType === 'dark' ? "#1E3A8A" : "#007BFF", borderColor: theme.themeType === 'dark' ? "#1E3A8A" : "#007BFF" }]}
             >
               <ActionLabel
                 icon="list-outline"
                 label={UI_TEXT.subscriptions}
-                color="#FFF"
+                color={theme.colors.white}
                 size={22}
                 vertical
               />
@@ -912,12 +938,12 @@ function AppContent() {
             <Pressable
               accessibilityLabel={UI_TEXT.scanQr}
               onPress={() => navigate("scanner")}
-              style={[styles.compactSecondary, { backgroundColor: "#6F42C1", borderColor: "#6F42C1" }]}
+              style={[styles.compactSecondary, { backgroundColor: theme.themeType === 'dark' ? "#4C1D95" : "#6F42C1", borderColor: theme.themeType === 'dark' ? "#4C1D95" : "#6F42C1" }]}
             >
               <ActionLabel
                 icon="scan-outline"
                 label={UI_TEXT.scanQr}
-                color="#FFF"
+                color={theme.colors.white}
                 size={22}
                 vertical
               />
@@ -925,12 +951,12 @@ function AppContent() {
             <Pressable
               accessibilityLabel={UI_TEXT.dashboard}
               onPress={() => navigate("dashboard")}
-              style={[styles.compactSecondary, { backgroundColor: "#FD7E14", borderColor: "#FD7E14" }]}
+              style={[styles.compactSecondary, { backgroundColor: theme.themeType === 'dark' ? "#7C2D12" : "#FD7E14", borderColor: theme.themeType === 'dark' ? "#7C2D12" : "#FD7E14" }]}
             >
               <ActionLabel
                 icon="stats-chart-outline"
                 label={UI_TEXT.dashboard}
-                color="#FFF"
+                color={theme.colors.white}
                 size={22}
                 vertical
               />
@@ -938,12 +964,12 @@ function AppContent() {
             <Pressable
               accessibilityLabel={UI_TEXT.report}
               onPress={() => navigate("report")}
-              style={[styles.compactSecondary, { backgroundColor: "#17A2B8", borderColor: "#17A2B8" }]}
+              style={[styles.compactSecondary, { backgroundColor: theme.themeType === 'dark' ? "#134E4A" : "#17A2B8", borderColor: theme.themeType === 'dark' ? "#134E4A" : "#17A2B8" }]}
             >
               <ActionLabel
                 icon="document-text-outline"
                 label={UI_TEXT.report}
-                color="#FFF"
+                color={theme.colors.white}
                 size={22}
                 vertical
               />
@@ -951,12 +977,12 @@ function AppContent() {
             <Pressable
               accessibilityLabel={UI_TEXT.viewMenu}
               onPress={() => navigate("viewMenu")}
-              style={[styles.compactSecondary, { backgroundColor: "#E31837", borderColor: "#E31837" }]}
+              style={[styles.compactSecondary, { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary }]}
             >
               <ActionLabel
                 icon="restaurant-outline"
                 label={UI_TEXT.viewMenu}
-                color="#FFF"
+                color={theme.colors.white}
                 size={22}
                 vertical
               />
@@ -965,12 +991,12 @@ function AppContent() {
               <Pressable
                 accessibilityLabel="Settings"
                 onPress={() => navigate("settings")}
-                style={[styles.compactSecondary, { backgroundColor: "#6C757D", borderColor: "#6C757D" }]}
+                style={[styles.compactSecondary, { backgroundColor: theme.colors.textMuted, borderColor: theme.colors.textMuted }]}
               >
                 <ActionLabel
                   icon="settings-outline"
                   label="Settings"
-                  color="#FFF"
+                  color={theme.colors.white}
                   size={22}
                   vertical
                 />

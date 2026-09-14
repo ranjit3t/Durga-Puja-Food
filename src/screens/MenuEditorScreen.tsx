@@ -19,6 +19,7 @@ import {
 } from "../constants";
 import { FoodMenu, Day, DayMenu, MealMenu, ConfigDay } from "../types";
 import { BackButton } from "../components/common/BackButton";
+import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
 import { ActionLabel } from "../components/common/ActionLabel";
 import { MealMenuEditor } from "../components/menu/MealMenuEditor";
@@ -29,6 +30,7 @@ export function MenuEditorScreen({
   config,
   onSave,
   onBack,
+  onHome,
   onLogout,
   showAlert,
   guestEnabled,
@@ -38,6 +40,7 @@ export function MenuEditorScreen({
   config: ConfigDay[];
   onSave: (menu: FoodMenu) => Promise<void>;
   onBack: () => void;
+  onHome: () => void;
   onLogout: () => void;
   showAlert: (title: string, message: string, buttons?: AlertButton[]) => void;
   guestEnabled: boolean;
@@ -86,21 +89,18 @@ export function MenuEditorScreen({
     <View style={styles.root}>
       <StatusBar style={themeType === "dark" ? "light" : "dark"} />
       <View style={styles.header}>
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: 16,
-          }}
-        >
-          <BackButton onPress={onBack} />
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <BackButton onPress={onBack} />
+            <HomeButton onPress={onHome} />
+          </View>
           <LogoutButton onLogout={onLogout} />
         </View>
         <Text style={styles.title}>{UI_TEXT.foodMenu}</Text>
         <Text style={styles.subtitle}>{UI_TEXT.menuEditorSubtitle}</Text>
       </View>
       <ScrollView
+        style={{ flex: 1, width: "100%" }}
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
       >
