@@ -175,27 +175,11 @@ const DashboardMealSection = memo(
 
           {/* Guest Total */}
           {guestEnabled && (
-            isBothEnabled ? (
-              <Metric
-                icon="people-circle-outline"
-                label={UI_TEXT.guestTotal}
-                value={guestVeg + guestNonVeg}
-              />
-            ) : (
-              <EditableMetric
-                icon="people-circle-outline"
-                label={UI_TEXT.guestTotal}
-                value={guestVeg + guestNonVeg}
-                onSave={(val) =>
-                  canEdit && isAdmin && onUpdateGuest(day, type, isVegEnabled ? "guestVeg" : "guestNonVeg", val)
-                }
-                validate={(val) =>
-                  val >= (guestVegTaken + guestNonVegTaken) || UI_TEXT.guestTotalError
-                }
-                showAlert={showAlert}
-                disabled={!canEdit || !isAdmin}
-              />
-            )
+            <Metric
+              icon="people-circle-outline"
+              label={UI_TEXT.guestTotal}
+              value={guestVeg + guestNonVeg}
+            />
           )}
 
           {/* Detailed Demand */}
@@ -245,48 +229,28 @@ const DashboardMealSection = memo(
 
               {guestEnabled && (
                 <>
-                  <EditableMetric
+                  <Metric
                     icon="leaf-outline"
                     label={labels.guestVeg}
                     value={guestVeg}
-                    onSave={(val) => canEdit && onUpdateGuest(day, type, "guestVeg", val)}
-                    validate={(val) =>
-                      val >= guestVegTaken || UI_TEXT.guestVegTotalError
-                    }
-                    showAlert={showAlert}
                     color={theme.colors.veg}
-                    disabled={!canEdit}
                   />
-                  <EditableMetric
+                  <Metric
                     icon="flame-outline"
                     label={labels.guestNonVeg}
                     value={guestNonVeg}
-                    onSave={(val) => canEdit && onUpdateGuest(day, type, "guestNonVeg", val)}
-                    validate={(val) =>
-                      val >= guestNonVegTaken || UI_TEXT.guestNonVegTotalError
-                    }
-                    showAlert={showAlert}
                     color={theme.colors.nonVeg}
-                    disabled={!canEdit}
                   />
 
-                  <EditableMetric
+                  <Metric
                     icon="checkbox-outline"
                     label={labels.guestVegTaken}
                     value={guestVegTaken}
-                    onSave={(val) => canEdit && onUpdateGuest(day, type, "guestVegTaken", val)}
-                    validate={(val) => val <= guestVeg || UI_TEXT.guestTakenError}
-                    showAlert={showAlert}
-                    disabled={!canEdit}
                   />
-                  <EditableMetric
+                  <Metric
                     icon="checkbox-outline"
                     label={labels.guestNonVegTaken}
                     value={guestNonVegTaken}
-                    onSave={(val) => canEdit && onUpdateGuest(day, type, "guestNonVegTaken", val)}
-                    validate={(val) => val <= guestNonVeg || UI_TEXT.guestTakenError}
-                    showAlert={showAlert}
-                    disabled={!canEdit}
                   />
                 </>
               )}
@@ -294,24 +258,11 @@ const DashboardMealSection = memo(
           )}
 
           {!isBothEnabled && guestEnabled && (
-            <EditableMetric
+            <Metric
               icon="checkbox-outline"
               label={UI_TEXT.guestTaken}
               value={guestVegTaken + guestNonVegTaken}
-              onSave={(val) =>
-                canEdit && onUpdateGuest(
-                  day,
-                  type,
-                  isVegEnabled ? "guestVegTaken" : "guestNonVegTaken",
-                  val
-                )
-              }
-              validate={(val) =>
-                val <= (guestVeg + guestNonVeg) || UI_TEXT.guestTakenError
-              }
-              showAlert={showAlert}
               color={theme.colors.veg}
-              disabled={!canEdit}
             />
           )}
         </View>

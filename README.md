@@ -27,6 +27,8 @@ A robust Expo React Native application designed for food admins and volunteers t
 - **Live Menu Management**: Admins can update the daily menu for each meal. Items are added one-by-one with specific Veg/Non-Veg indicators.
 - **Adaptive Add Button**: The "Add Item" (+) button in the menu editor dynamically changes color to Green (Veg) or Red (Non-Veg) based on the selected dietary type for instant feedback.
 - **Dedicated Menu View**: A clean, non-editable view for volunteers to see the feast plan.
+- **Guest Management Module**: A dedicated interface for managing extra guest plates. Accessible to both **Admins** and **Vendors** via a sleek "Guest" tile on the home screen.
+- **Smart Data Integrity**: Implements "Reverse Validation"—you cannot decrease guest demand below what has already been collected, and you cannot mark more food as "Taken" than what is planned.
 - **Kitchen Dashboard**: Real-time operational data showing exactly how many plates and parcels are needed, strictly filtered by current festival configuration.
 - **Dashed Interactive Cues**: Editable metrics in the dashboard (like Guest Counts) are highlighted with **bold dashed borders** and **themed background tints**, making them instantly distinguishable from static data.
 - **Role-Based Operational Limits**: Guest plate totals on the dashboard are protected and can only be modified by **Admin** users.

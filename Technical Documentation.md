@@ -46,10 +46,18 @@ The application employs a **Zero-Hardcoding Policy** for UI text. All strings ar
 - **Full-Width ScrollViews**: Every primary container uses `style={{ flex: 1, width: '100%' }}` and `contentContainerStyle={{ flexGrow: 1 }}` to ensure touch events are captured across the entire viewport and content remains scrollable even when vertically centered.
 - **Modern Safe Areas**: Implements generous bottom paddings (up to 150px) to prevent interactive components (Login buttons, FABs, footers) from being obscured by modern OS home indicators.
 
-### G. Data Normalization Layer
+### G. Guest Management & Counter Logic
+- **Module Interface**: The `GuestManagementScreen` provides a high-density matrix for updating guest demand and collections in real-time.
+- **Auto-Calculation**: In dual-diet mode (Veg + Non-Veg), the "Total" and "Taken" metrics are derived values, ensuring the summary always matches the specific counts.
+- **Reverse Validation**: The `CounterInput` enforces strict data integrity using `min` and `max` props:
+    - **Min Demand**: Demand (Veg/Non-Veg) cannot be lowered below the current "Taken" count.
+    - **Max Collection**: "Taken" count cannot exceed the current planned Demand.
+- **Global Sync**: Guest data is stored within the `FoodMenu` object in Firebase, ensuring that Dashboard metrics remain read-only and consistent across all user sessions.
+
+### H. Data Normalization Layer
 Implemented in `src/repository.ts`, `normalizeRecord` ensures that the local matrices (Person x Day x Meal) are always correctly sized and shaped. Renamed `PujaDay` to `EventDay` to support generic event scheduling.
 
-### H. Digital Pass & Reporting
+### I. Digital Pass & Reporting
 - **Image Generation**: Uses `captureRef` from `react-native-view-shot` to convert themed views into PNGs.
 - **Analytics Engine**: Uses `useMemo` hooks to calculate demand splits between Residents vs. Guests for multiple payment modes and dietary choices.
 

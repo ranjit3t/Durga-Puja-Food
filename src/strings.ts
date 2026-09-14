@@ -62,6 +62,8 @@ export const UI_TEXT = {
   totalPeopleLabel: "TOTAL MEMBERS",
   viewMenu: "View Menu",
   dashboard: "Dashboard",
+  guestButton: "Guest",
+  guestManagement: "Guest Management",
   report: "Report",
   scanQr: "Scan QR",
   addFlat: "Add Pass",

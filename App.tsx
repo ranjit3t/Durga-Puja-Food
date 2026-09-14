@@ -53,6 +53,7 @@ import { LoginScreen } from "./src/screens/LoginScreen";
 import { ReportScreen } from "./src/screens/ReportScreen";
 import { SettingsScreen } from "./src/screens/SettingsScreen";
 import { SubscriptionListScreen } from "./src/screens/SubscriptionListScreen";
+import { GuestManagementScreen } from "./src/screens/GuestManagementScreen";
 import { ActionLabel } from "./src/components/common/ActionLabel";
 import { LogoutButton } from "./src/components/common/LogoutButton";
 import { CustomAlert, AlertButton } from "./src/components/common/CustomAlert";
@@ -719,6 +720,20 @@ function AppContent() {
       );
     }
 
+    if (screen === "guestManagement") {
+      return (
+        <GuestManagementScreen
+          menu={foodMenu}
+          config={dayConfig}
+          onUpdateMenu={handleUpdateMenu}
+          onBack={goBack}
+          onHome={() => navigate("home")}
+          onLogout={handleLogout}
+          seasonEnabled={seasonEnabled}
+        />
+      );
+    }
+
     if (screen === "viewMenu") {
       return (
         <ViewMenuScreen
@@ -918,7 +933,22 @@ function AppContent() {
                   icon="add-circle-outline"
                   label={UI_TEXT.addFlat}
                   color={theme.colors.white}
-                  size={22}
+                  size={20}
+                  vertical
+                />
+              </Pressable>
+            ) : null}
+            {guestEnabled ? (
+              <Pressable
+                accessibilityLabel={UI_TEXT.guestButton}
+                onPress={() => navigate("guestManagement")}
+                style={[styles.compactSecondary, { backgroundColor: theme.themeType === 'dark' ? "#064E3B" : "#198754", borderColor: theme.themeType === 'dark' ? "#064E3B" : "#198754" }]}
+              >
+                <ActionLabel
+                  icon="people-circle-outline"
+                  label={UI_TEXT.guestButton}
+                  color={theme.colors.white}
+                  size={20}
                   vertical
                 />
               </Pressable>
@@ -932,7 +962,7 @@ function AppContent() {
                 icon="list-outline"
                 label={UI_TEXT.subscriptions}
                 color={theme.colors.white}
-                size={22}
+                size={20}
                 vertical
               />
             </Pressable>
@@ -945,7 +975,7 @@ function AppContent() {
                 icon="scan-outline"
                 label={UI_TEXT.scanQr}
                 color={theme.colors.white}
-                size={22}
+                size={20}
                 vertical
               />
             </Pressable>
@@ -958,7 +988,7 @@ function AppContent() {
                 icon="stats-chart-outline"
                 label={UI_TEXT.dashboard}
                 color={theme.colors.white}
-                size={22}
+                size={20}
                 vertical
               />
             </Pressable>
@@ -971,7 +1001,7 @@ function AppContent() {
                 icon="document-text-outline"
                 label={UI_TEXT.report}
                 color={theme.colors.white}
-                size={22}
+                size={20}
                 vertical
               />
             </Pressable>
@@ -984,7 +1014,7 @@ function AppContent() {
                 icon="restaurant-outline"
                 label={UI_TEXT.viewMenu}
                 color={theme.colors.white}
-                size={22}
+                size={20}
                 vertical
               />
             </Pressable>
@@ -998,7 +1028,7 @@ function AppContent() {
                   icon="settings-outline"
                   label="Settings"
                   color={theme.colors.white}
-                  size={22}
+                  size={20}
                   vertical
                 />
               </Pressable>

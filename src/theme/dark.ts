@@ -40,7 +40,7 @@ export const darkTheme: AppTheme = {
     paddingLarge: 24,
     paddingMedium: 20,
     paddingSmall: 12,
-    compactActionHeight: 80,
+    compactActionHeight: 72,
   },
   typography: {
     titleSize: 32,

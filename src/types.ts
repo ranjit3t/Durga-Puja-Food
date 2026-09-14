@@ -63,6 +63,7 @@ export type Screen =
   | "report"
   | "settings"
   | "subscriptionList"
+  | "guestManagement"
   | "login";
 
 export type Subscription = SubscriptionRecord;

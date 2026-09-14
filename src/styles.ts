@@ -317,7 +317,7 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
     compactActions: {
       flexDirection: "row",
       flexWrap: "wrap",
-      gap: 12,
+      gap: 10,
     },
 
     // Dashboard Sections
@@ -714,8 +714,8 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
       backgroundColor: COLORS.surface,
       borderColor: COLORS.border,
       borderWidth: 1,
-      borderRadius: 20,
-      padding: SIZES.paddingSmall,
+      borderRadius: 18,
+      padding: 8,
       flexGrow: 1,
       minWidth: "30%",
       height: SIZES.compactActionHeight,

@@ -24,9 +24,11 @@ The project follows a **Modular Layered Architecture**:
     - `DashboardScreen`: Aggregated analytics with a sleek, earthy-toned financial summary (conditional) and real-time operational metrics.
     - `SubscriptionForm`: CRUD interface with role-based field locking and touch-optimized block dropdowns.
     - `SettingsScreen`: Administrative interface for managing festival config, payment rules, and Season Branding.
+    - `GuestManagementScreen`: Operational module for tracking extra guest plates with automated total/taken calculations.
     - `ReportScreen`: High-precision analytics engine with PNG export and compact multi-mode selectors.
 - **Components**: Atomic and reusable UI units.
     - `ActionLabel`: Standardized Icon+Text component supporting both horizontal and vertical layouts.
+    - `CounterInput`: Specialized numeric input with `+/-` controls and automated min/max clamping.
     - `CustomAlert`: A centralized, themed replacement for system dialogs.
     - `Header Controls`: Unified set of components (`BackButton`, `HomeButton`, `LogoutButton`) designed with a consistent **36px circular aesthetic**.
     - `Metric Tiles`: Read-only and interactive tiles for rapid data consumption.
@@ -53,8 +55,8 @@ The project follows a **Modular Layered Architecture**:
 
 ## 4. Security & Permissions Model
 The application implements **Role-Based Access Control (RBAC)**:
-- **Admin**: Full read/write/delete privileges on all modules, including global configuration. Exclusive permission to modify the **Guest Total** plates on the kitchen dashboard.
-- **Vendor**: Operational access. Can mark food as taken and view Reports. Destructive actions, guest count planning, and pass registration are restricted.
+- **Admin**: Full read/write/delete privileges on all modules, including global configuration.
+- **Vendor**: Operational access. Can mark food as taken, manage **Guest counts** (if enabled), and view Reports. Destructive actions, festival rule changes, and pass registration are restricted.
 - **Global Read-Only Enforcement**: When the `seasonEnabled` config flag is false, the application automatically locks all data-modifying components (text inputs, checkboxes, save buttons) across all roles, effectively archiving the season's data.
 
 ## 5. Performance & Synchronization Patterns
