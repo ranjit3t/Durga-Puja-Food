@@ -14,7 +14,6 @@ export const UI_TEXT = {
   pending: "Pending",
   flat: "Flat",
   payment: "Payment",
-  shareToWhatsApp: "Share Report",
   downloadReport: "Download Report",
   reportFilters: "Report Filters",
   selectDay: "Select Day:",

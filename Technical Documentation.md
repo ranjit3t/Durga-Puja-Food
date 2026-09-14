@@ -36,15 +36,20 @@ The application employs a **Zero-Hardcoding Policy** for UI text. All strings ar
 - **History Stack**: A React-state-based array in `App.tsx` tracks navigation depth. `goBack()` pops the stack, while navigating to "home" clears it entirely.
 - **State Hoisting**: Crucial UI states like the `ReportScreen` active tab/filters and the `SubscriptionListScreen` search text are hoisted to the root `App` component. This ensures UI continuity during sub-navigation.
 
-### E. Dynamic Theme Engine
+### E. Dynamic Theme & Responsive Engine
 - **Context System**: Built on React Context API (`ThemeProvider`), facilitating instant styling updates without re-mounting the component tree.
-- **Hook Architecture**: `useAppTheme()` provides the raw theme tokens, while `useStyles()` provides memoized, theme-specific styles generated via `createStyles`.
+- **Hook Architecture**: `useAppTheme()` provides raw theme tokens, while `useStyles()` provides memoized, theme-specific and **dimension-aware** styles generated via `createStyles`.
+- **Responsive Logic**: Integrates `useWindowDimensions` to automatically apply a centered, 600px max-width layout on large displays (>768px), ensuring consistent UI density across mobile, web, and tablet.
 - **Local Persistence**: User-specific preferences (like theme) are decoupled from the Firebase global state and stored using `AsyncStorage`.
 
-### F. Data Normalization Layer
+### F. Layout & Scrollability Optimization
+- **Full-Width ScrollViews**: Every primary container uses `style={{ flex: 1, width: '100%' }}` and `contentContainerStyle={{ flexGrow: 1 }}` to ensure touch events are captured across the entire viewport and content remains scrollable even when vertically centered.
+- **Modern Safe Areas**: Implements generous bottom paddings (up to 150px) to prevent interactive components (Login buttons, FABs, footers) from being obscured by modern OS home indicators.
+
+### G. Data Normalization Layer
 Implemented in `src/repository.ts`, `normalizeRecord` ensures that the local matrices (Person x Day x Meal) are always correctly sized and shaped. Renamed `PujaDay` to `EventDay` to support generic event scheduling.
 
-### D. Digital Pass & Reporting
+### H. Digital Pass & Reporting
 - **Image Generation**: Uses `captureRef` from `react-native-view-shot` to convert themed views into PNGs.
 - **Analytics Engine**: Uses `useMemo` hooks to calculate demand splits between Residents vs. Guests for multiple payment modes and dietary choices.
 

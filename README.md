@@ -51,7 +51,9 @@ A robust Expo React Native application designed for food admins and volunteers t
 - **Veg Only Toggle**: Easily convert a day to "Veg only" mode, which simplifies the entire app UI for that day.
 - **Labels & Abbreviations**: Custom display names and legends are centrally managed.
 
-### 🎨 Polished UI/UX
+### 🎨 Polished & Responsive UI/UX
+- **Fully Responsive Design**: The UI intelligently adapts to all screen sizes, from small mobile phones to large tablets and desktop browsers. On wide screens, content is automatically centered in a professional 600px column to maintain readability.
+- **Optimized for Modern Devices**: Specifically tuned for modern aspect ratios (like iPhone 16). All screens use a `flexGrow` scroll strategy with generous bottom paddings to ensure that interactive elements like the Login button and footer are never clipped by home indicators.
 - **Dynamic Theming (Dark & Light Mode)**: Fully integrated theme system that supports high-contrast Dark Mode and a vibrant Light Mode. Users can toggle themes from both the Login and Home screens.
 - **Persistent User Preference**: Theme selections are saved locally on the device using `AsyncStorage`, ensuring the app launches with the user's preferred aesthetic.
 - **Sleek Navigation Bar**: Unified header design across all screens featuring compact **36px circular icon buttons**.

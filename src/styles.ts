@@ -113,8 +113,9 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
 
     // Main Content
     content: {
+      flexGrow: 1,
       padding: SIZES.paddingMedium,
-      paddingBottom: 120,
+      paddingBottom: 150,
       width: "100%",
       maxWidth: isLargeScreen ? MAX_WIDTH : undefined,
       alignSelf: "center",
@@ -664,8 +665,8 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
     // Login specific
     loginContainer: {
       padding: SIZES.paddingLarge,
-      paddingTop: 80,
-      paddingBottom: 100,
+      paddingTop: 120,
+      paddingBottom: 150,
       backgroundColor: COLORS.background,
     },
     loginLogo: {

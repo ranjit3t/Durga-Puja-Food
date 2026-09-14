@@ -609,7 +609,7 @@ function AppContent() {
       return (
         <ImageBackground
           source={{
-            uri: "https://source.unsplash.com/featured/1200x1800/?durga,puja,festival",
+            uri: "https://picsum.photos/id/1080/1200/1800",
           }}
           style={styles.root}
           imageStyle={styles.backgroundImage}

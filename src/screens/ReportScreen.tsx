@@ -478,19 +478,6 @@ export function ReportScreen({
         </ScrollView>
       </View>
 
-      <View style={{ paddingHorizontal: 20, marginBottom: 8 }}>
-        <Pressable
-          onPress={handleShare}
-          style={[styles.primary, { height: 40, marginTop: 4, borderRadius: 10 }]}
-        >
-          <ActionLabel
-            icon={Platform.OS === "web" ? "download-outline" : "logo-whatsapp"}
-            label={Platform.OS === "web" ? UI_TEXT.downloadReport : UI_TEXT.shareToWhatsApp}
-            color={theme.colors.white}
-          />
-        </Pressable>
-      </View>
-
       <ScrollView
         style={{ flex: 1, width: "100%" }}
         contentContainerStyle={styles.content}

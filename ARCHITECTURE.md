@@ -32,9 +32,10 @@ The project follows a **Modular Layered Architecture**:
     - `Metric Tiles`: Read-only and interactive tiles for rapid data consumption.
 
 ### 📂 Logic & Theme Layer (`src/theme/`, `src/constants.ts`, `src/strings.ts`)
-- **Dynamic Theme Provider (`src/theme/`)**: Implements a React Context-based theme system.
+- **Dynamic Theme & Responsive Provider (`src/theme/`)**: Implements a React Context-based theme and responsiveness system.
     - `ThemeProvider`: Wraps the app and manages `themeType` (Primary/Dark).
-    - `useAppTheme` & `useStyles`: Custom hooks used by all components for dynamic, theme-aware styling.
+    - `useAppTheme` & `useStyles`: Custom hooks used by all components for dynamic, theme-aware and size-aware styling.
+    - **Responsive Engine**: The `useStyles` hook integrates `useWindowDimensions` to provide real-time screen metrics, enabling centered 600px layouts on large screens (Tablets/Browser).
     - Persistence: Uses `AsyncStorage` to remember user's theme choice locally.
 - **Centralized String Resource System (`strings.ts`)**: Every single UI string, label, placeholder, and message is centralized in a constant object. This ensures architectural purity, prevents hardcoded "magic strings," and makes the entire app localization-ready.
 - **AppConfig Schema**: The application consumes a central configuration object:

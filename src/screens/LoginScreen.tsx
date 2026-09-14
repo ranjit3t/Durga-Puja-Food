@@ -81,7 +81,7 @@ export function LoginScreen({
       >
         <ScrollView
           style={{ flex: 1, width: "100%" }}
-          contentContainerStyle={{ flexGrow: 1, justifyContent: "center", paddingBottom: 60 }}
+          contentContainerStyle={{ flexGrow: 1, paddingBottom: 100 }}
           keyboardShouldPersistTaps="handled"
         >
           <View style={[styles.loginContainer, isLargeScreen && { alignSelf: 'center', width: '100%', maxWidth: 600 }]}>
