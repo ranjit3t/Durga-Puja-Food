@@ -29,13 +29,13 @@ A robust Expo React Native application designed for food admins and volunteers t
 - **Dedicated Menu View**: A clean, non-editable view for volunteers to see the feast plan.
 - **Guest Management Module**: A dedicated interface for managing extra guest plates. Accessible to both **Admins** and **Vendors** via a sleek "Guest" tile on the home screen.
 - **Smart Data Integrity**: Implements "Reverse Validation"—you cannot decrease guest demand below what has already been collected, and you cannot mark more food as "Taken" than what is planned.
-- **Kitchen Dashboard**: Real-time operational data showing exactly how many plates and parcels are needed, strictly filtered by current festival configuration.
-- **Dashed Interactive Cues**: Editable metrics in the dashboard (like Guest Counts) are highlighted with **bold dashed borders** and **themed background tints**, making them instantly distinguishable from static data.
-- **Role-Based Operational Limits**: Guest plate totals on the dashboard are protected and can only be modified by **Admin** users.
+- **Kitchen Dashboard**: Real-time operational data showing exactly how many plates and parcels are needed. The main summary card dynamically displays the **Season Name** as its title and intelligently filters out disabled dietary types to keep the interface focused.
+- **Dynamic Guest Metrics**: Guest plate totals on the dashboard are now read-only for all users, automatically synchronized from the data entered in the Guest Management module.
 - **Sleek Financial Overview**: A professional, earthy-toned summary of total collections, visible only when payment integration is enabled.
 
 ### 📊 Advanced Reporting
-- **Multi-View Engine**: Generate reports by Day, Meal, Flat, Payment, or Single Meal Specific.
+- **Multi-View Engine**: Generate reports by Day, Meal, Guest, Flat, Payment, or Single Meal Specific.
+- **Dedicated Guest Report**: A specialized view for tracking extra guest plate collections (Veg/Non-Veg) across all event days, ensuring total operational transparency.
 - **Persistent View State**: The app intelligently remembers your selected report tab, day filter, and meal type. If you navigate to a flat's details and return, you land exactly where you left off.
 - **Payment Summary**: Comprehensive breakdown of UPI, Cash, and Bank Transfer collections.
 - **Space-Saving UI**: Features a horizontal scrollable selection bar for report types and compact selectors for Days and Meals.

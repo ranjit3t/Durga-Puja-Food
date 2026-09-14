@@ -101,6 +101,7 @@ export function ReportScreen({
         const reportTitle =
           reportType === "day" ? UI_TEXT.dayWiseReport :
           reportType === "meal" ? UI_TEXT.mealWiseReport :
+          reportType === "guest" ? UI_TEXT.guestReport :
           reportType === "single" ? `${getDayLabel(selectedDayId, config)} - ${selectedMealType}` :
           reportType === "notTaken" ? UI_TEXT.notTakenReport :
           reportType === "flat" ? UI_TEXT.flatWiseReport :
@@ -437,11 +438,12 @@ export function ReportScreen({
           {[
             { id: "day", label: UI_TEXT.day, icon: "calendar-outline" },
             { id: "meal", label: UI_TEXT.meal, icon: "restaurant-outline" },
+            { id: "guest", label: UI_TEXT.guestSuffix, icon: "people-circle-outline" },
             { id: "single", label: UI_TEXT.split, icon: "fast-food-outline" },
             { id: "notTaken", label: UI_TEXT.pending, icon: "alert-circle-outline" },
             { id: "flat", label: UI_TEXT.flat, icon: "business-outline" },
             { id: "payment", label: UI_TEXT.payment, icon: "card-outline" },
-          ].filter(tab => tab.id !== "payment" || paymentConfig.enabled).map((tab) => (
+          ].filter(tab => (tab.id !== "payment" || paymentConfig.enabled) && (tab.id !== "guest" || guestEnabled)).map((tab) => (
             <Pressable
               key={tab.id}
               onPress={() => onSetReportType(tab.id as ReportType)}
@@ -544,6 +546,7 @@ export function ReportScreen({
                 <Text style={[styles.previewTitle, { color: theme.colors.white, fontSize: 22 }]}>
                   {reportType === "day" && UI_TEXT.dayWiseReport}
                   {reportType === "meal" && UI_TEXT.mealWiseReport}
+                  {reportType === "guest" && UI_TEXT.guestReport}
                   {reportType === "single" && `${getDayLabel(selectedDayId, config)} - ${selectedMealType.charAt(0).toUpperCase() + selectedMealType.slice(1)}`}
                   {reportType === "notTaken" && `${UI_TEXT.notTakenReport}`}
                   {reportType === "flat" && UI_TEXT.flatWiseReport}
@@ -708,6 +711,75 @@ export function ReportScreen({
                   </View>
                 );
               })()}
+            </View>
+          )}
+
+          {reportType === "guest" && (
+            <View style={{ gap: 16 }}>
+              {activeDays.map((dayId, index) => {
+                const dayMenu = menu[dayId];
+                if (!dayMenu) return null;
+                const colorScheme = theme.cardColors[index % theme.cardColors.length];
+
+                const meals = (["breakfast", "lunch", "dinner"] as const).filter(m => isMealEnabled(dayId, m, config));
+                if (meals.length === 0) return null;
+
+                return (
+                  <View key={dayId} style={[styles.dashboardCard, { backgroundColor: colorScheme.bg, borderColor: colorScheme.border, borderWidth: 1.5 }]}>
+                    <View style={[styles.dashboardCardTop, { borderBottomWidth: 1, borderBottomColor: colorScheme.border, paddingBottom: 12, marginBottom: 12 }]}>
+                      <Text style={[styles.dashboardDay, { color: colorScheme.accent }]}>{getDayLabel(dayId, config)}</Text>
+                    </View>
+
+                    <View style={{ gap: 12 }}>
+                      {meals.map((mKey) => {
+                        const gm = dayMenu[mKey];
+                        if (!gm) return null;
+
+                        const vegEnabled = isDietaryEnabled(dayId, mKey, "veg", config);
+                        const nonVegEnabled = isDietaryEnabled(dayId, mKey, "nonVeg", config);
+
+                        const tTotal = (gm.guestVeg || 0) + (gm.guestNonVeg || 0);
+                        const tTaken = (gm.guestVegTaken || 0) + (gm.guestNonVegTaken || 0);
+
+                        return (
+                          <View key={mKey} style={{ backgroundColor: theme.colors.surface, borderRadius: 16, padding: 12, borderWidth: 1, borderColor: theme.colors.border }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                              <Ionicons
+                                name={mKey === "breakfast" ? "sunny-outline" : mKey === "lunch" ? "restaurant-outline" : "moon-outline"}
+                                size={16}
+                                color={theme.colors.primary}
+                              />
+                              <Text style={{ fontSize: 15, fontWeight: '800', color: theme.colors.textPrimary, textTransform: 'capitalize' }}>{mKey}</Text>
+                            </View>
+
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                              <View style={{ gap: 4 }}>
+                                {vegEnabled && (
+                                  <Text style={{ fontSize: 13, fontWeight: '600', color: theme.colors.veg }}>
+                                    {UI_TEXT.veg}: {gm.guestVegTaken || 0} / {gm.guestVeg || 0}
+                                  </Text>
+                                )}
+                                {nonVegEnabled && (
+                                  <Text style={{ fontSize: 13, fontWeight: '600', color: theme.colors.nonVeg }}>
+                                    {UI_TEXT.nonVeg}: {gm.guestNonVegTaken || 0} / {gm.guestNonVeg || 0}
+                                  </Text>
+                                )}
+                              </View>
+
+                              <View style={{ alignItems: 'flex-end' }}>
+                                <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.textSecondary }}>{UI_TEXT.total.toUpperCase()}</Text>
+                                <Text style={{ fontSize: 18, fontWeight: '900', color: theme.colors.primary }}>
+                                  {vegEnabled && nonVegEnabled ? tTaken : (vegEnabled ? gm.guestVegTaken : gm.guestNonVegTaken)} / {vegEnabled && nonVegEnabled ? tTotal : (vegEnabled ? gm.guestVeg : gm.guestNonVeg)}
+                                </Text>
+                              </View>
+                            </View>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  </View>
+                );
+              })}
             </View>
           )}
 

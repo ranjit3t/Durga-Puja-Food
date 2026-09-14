@@ -21,11 +21,11 @@ The project follows a **Modular Layered Architecture**:
     - `LoginScreen`: Gateway for role-based session initialization. Dynamically fetches credentials from `auth_config`.
     - `HomeScreen`: Quick-action dashboard utilizing a grid of sleek interaction tiles.
     - `SubscriptionListScreen`: Dedicated interface for pass management with high-performance search.
-    - `DashboardScreen`: Aggregated analytics with a sleek, earthy-toned financial summary (conditional) and real-time operational metrics.
+    - `DashboardScreen`: Aggregated analytics with a sleek, earthy-toned financial summary (conditional) and real-time operational metrics. Guest plate counts are read-only and derived from the `GuestManagementScreen`.
     - `SubscriptionForm`: CRUD interface with role-based field locking and touch-optimized block dropdowns.
     - `SettingsScreen`: Administrative interface for managing festival config, payment rules, and Season Branding.
     - `GuestManagementScreen`: Operational module for tracking extra guest plates with automated total/taken calculations.
-    - `ReportScreen`: High-precision analytics engine with PNG export and compact multi-mode selectors.
+    - `ReportScreen`: High-precision analytics engine with PNG export and multi-mode selectors (Day, Meal, Guest, Flat, Payment).
 - **Components**: Atomic and reusable UI units.
     - `ActionLabel`: Standardized Icon+Text component supporting both horizontal and vertical layouts.
     - `CounterInput`: Specialized numeric input with `+/-` controls and automated min/max clamping.

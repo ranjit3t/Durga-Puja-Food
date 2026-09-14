@@ -60,6 +60,7 @@ Implemented in `src/repository.ts`, `normalizeRecord` ensures that the local mat
 ### I. Digital Pass & Reporting
 - **Image Generation**: Uses `captureRef` from `react-native-view-shot` to convert themed views into PNGs.
 - **Analytics Engine**: Uses `useMemo` hooks to calculate demand splits between Residents vs. Guests for multiple payment modes and dietary choices.
+- **Guest Report Tab**: Includes a dedicated summary for guest plate counts. This tab is conditionally rendered based on the global `guestEnabled` flag.
 
 ---
 
@@ -104,6 +105,8 @@ Controlled via the `seasonEnabled` config flag. When disabled, the application e
 
 ### Layout Optimization
 - **Sleek Navigation Bar**: Top-level headers utilize a standardized height and icon-only interaction model. Back and Home actions are anchored to the left, while session management (Logout) is anchored to the far right.
+- **Compact Home Grid**: The action grid on the home page features space-saving **72px high tiles** with **20px icons**, optimized for high-density information display.
+- **Dynamic Summary Card**: The dashboard header card automatically uses the global `seasonName` and dynamically hides 0-counts for dietary types that are disabled in the festival configuration.
 - **Colorful Premium Palette**: Primary info boxes use a high-contrast palette of pastel colors (`CARD_COLORS`) defined in `src/theme/` for instant visual segmentation.
 - **Quick-Action Tiles**: Home page grid replaces basic list views for a "sleek" entry experience.
 - **Home Summary Analytics**: Centralized card displaying both **Active Pass Count** and **Total Registered Members** for high-level event monitoring.

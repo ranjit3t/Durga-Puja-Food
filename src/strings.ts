@@ -122,7 +122,6 @@ export const UI_TEXT = {
   dashboardSubtitle: "Daily Kitchen Counts.",
   dailyMealDemand: "Daily Meal Demand",
   dailyDemandSummary: "Demand Summary",
-  editableLegend: "Fields with dashed borders are interactive/editable.",
   guestTotal: "Guest Total",
 
   // Dashboard Metrics
@@ -217,6 +216,7 @@ export const UI_TEXT = {
   reportSubtitle: "Detailed data breakdown and summaries.",
   dayWiseReport: "Day Wise Summary",
   mealWiseReport: "Meal Wise Details",
+  guestReport: "Guest wise Summary",
   singleMealReport: "Single Meal Specific",
   notTakenReport: "Single Meal Not Taken",
   flatWiseReport: "Flat Wise Distribution",

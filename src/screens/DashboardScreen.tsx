@@ -440,14 +440,6 @@ export function DashboardScreen({
           </View>
         </View>
 
-        {/* Legend */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 20, paddingHorizontal: 4 }}>
-           <View style={{ width: 16, height: 16, borderRadius: 4, borderWidth: 1.5, borderColor: theme.colors.textSecondary, borderStyle: 'dashed' }} />
-           <Text style={{ fontSize: 12, color: theme.colors.textSecondary, fontWeight: "600" }}>
-              {UI_TEXT.editableLegend}
-           </Text>
-        </View>
-
         {/* Financial Overview */}
         {paymentConfig.enabled && (
           <>
