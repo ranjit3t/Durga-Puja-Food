@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text } from "react-native";
-import { styles } from "../../styles";
+import { useStyles } from "../../styles";
+import { useAppTheme } from "../../theme";
 import { MealMenu, Day } from "../../types";
 import { isDietaryEnabled } from "../../constants";
 
@@ -20,6 +21,8 @@ export function MealSummaryInline({
   config?: ConfigDay[];
   menu: MealMenu;
 }) {
+  const styles = useStyles();
+  const { theme } = useAppTheme();
   const veg = menu?.veg || [];
   const nonVeg = menu?.nonVeg || [];
 

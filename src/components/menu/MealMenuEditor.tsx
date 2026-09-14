@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { View, Text, TextInput, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { styles } from "../../styles";
+import { useStyles } from "../../styles";
+import { useAppTheme } from "../../theme";
 import { UI_TEXT } from "../../strings";
 import { MealMenu, Day } from "../../types";
 import { isDietaryEnabled } from "../../constants";
@@ -27,6 +28,8 @@ export function MealMenuEditor({
   onChange: (next: MealMenu) => void;
   disabled?: boolean;
 }) {
+  const styles = useStyles();
+  const { theme } = useAppTheme();
   const vegEnabled = isDietaryEnabled(dayId, mealKey, "veg", config);
   const nonVegEnabled = isDietaryEnabled(dayId, mealKey, "nonVeg", config);
 
@@ -65,7 +68,7 @@ export function MealMenuEditor({
           placeholder={
             type === "veg" ? UI_TEXT.addVegItem : UI_TEXT.addNonVegItem
           }
-          placeholderTextColor="#8d8171"
+          placeholderTextColor={theme.colors.textMuted}
           editable={!disabled}
         />
 
@@ -93,7 +96,7 @@ export function MealMenuEditor({
             { borderWidth: 0 } // Ensure no border conflict with choice styles
           ]}
         >
-          <Ionicons name="add" size={20} color="#fff" />
+          <Ionicons name="add" size={20} color={theme.colors.white} />
         </Pressable>
       </View>
 
@@ -103,7 +106,7 @@ export function MealMenuEditor({
             <View style={[styles.dot, styles.vegChoice]} />
             <Text style={styles.itemBadgeText}>{item}</Text>
             <Pressable onPress={() => !disabled && removeItem("veg", i)} disabled={disabled}>
-              <Ionicons name="close-circle" size={14} color="#8d8171" />
+              <Ionicons name="close-circle" size={14} color={theme.colors.textSecondary} />
             </Pressable>
           </View>
         ))}
@@ -113,7 +116,7 @@ export function MealMenuEditor({
             <View style={[styles.dot, styles.nonVegChoice]} />
             <Text style={styles.itemBadgeText}>{item}</Text>
             <Pressable onPress={() => !disabled && removeItem("nonVeg", i)} disabled={disabled}>
-              <Ionicons name="close-circle" size={14} color="#8d8171" />
+              <Ionicons name="close-circle" size={14} color={theme.colors.textSecondary} />
             </Pressable>
           </View>
         ))}

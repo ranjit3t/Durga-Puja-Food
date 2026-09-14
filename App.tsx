@@ -25,7 +25,8 @@ import {
 } from "./src/repository";
 import { firebaseMissingConfig } from "./src/firebase";
 import { UI_TEXT } from "./src/strings";
-import { styles } from "./src/styles";
+import { useStyles } from "./src/styles";
+import { ThemeProvider, useAppTheme } from "./src/theme";
 import {
   getActiveDays,
   emptyMeals,
@@ -69,7 +70,17 @@ LogBox.ignoreLogs([
 ]);
 
 export default function App() {
+  return (
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
+  );
+}
+
+function AppContent() {
   // --- Global State ---
+  const { theme, toggleTheme, themeType } = useAppTheme();
+  const styles = useStyles();
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [screen, setScreen] = useState<Screen>("login");
   const [history, setHistory] = useState<Screen[]>([]);
@@ -571,6 +582,10 @@ export default function App() {
     return { total, upi, cash, bankTransfer };
   }, [subscriptions]);
 
+  const totalPeople = useMemo(() => {
+    return subscriptions.reduce((sum, sub) => sum + (sub.peopleCount || 0), 0);
+  }, [subscriptions]);
+
   const selected = subscriptions.find((s) => s.id === selectedId) || selectedRecord;
 
   // --- Screen Selector ---
@@ -811,17 +826,20 @@ export default function App() {
     // Default: Home Screen
     return (
       <View style={styles.root}>
-        <StatusBar style="dark" />
+        <StatusBar style={themeType === "dark" ? "light" : "dark"} />
         <View style={styles.header}>
           <View
             style={{
               flexDirection: "row",
-              justifyContent: "flex-end",
+              justifyContent: "space-between",
               alignItems: "center",
               height: 40,
               marginBottom: 16,
             }}
           >
+            <Pressable onPress={toggleTheme} style={styles.backButton}>
+               <Ionicons name={themeType === "dark" ? "sunny-outline" : "moon-outline"} size={22} color={theme.colors.secondary} />
+            </Pressable>
             <LogoutButton onLogout={handleLogout} />
           </View>
           <Text style={styles.title}>{UI_TEXT.appName}</Text>
@@ -851,6 +869,11 @@ export default function App() {
               <Text style={styles.summaryLabel}>{UI_TEXT.activePasses}</Text>
               <Text style={styles.summaryNumber}>
                 {subscriptions.length}
+              </Text>
+              <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.2)', marginVertical: 8 }} />
+              <Text style={[styles.summaryLabel, { opacity: 0.8 }]}>{UI_TEXT.totalPeopleLabel}</Text>
+              <Text style={[styles.summaryNumber, { fontSize: 24, marginTop: 2 }]}>
+                {totalPeople}
               </Text>
             </View>
             <Ionicons name="ticket-outline" size={64} color="rgba(255,255,255,0.3)" />

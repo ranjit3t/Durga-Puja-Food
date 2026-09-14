@@ -2,7 +2,7 @@
  * Operational Dashboard for tracking meal demands and collections.
  * Provides aggregated counts for kitchen planning and guest entry management.
  */
-import React, { memo } from "react";
+import React, { memo, useMemo } from "react";
 import {
   View,
   Text,
@@ -12,7 +12,8 @@ import {
   Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { styles, CARD_COLORS } from "../styles";
+import { useStyles } from "../styles";
+import { useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
 import {
   getDayLabel,
@@ -120,17 +121,20 @@ const DashboardMealSection = memo(
 
     const mealLabel = type === "breakfast" ? UI_TEXT.breakfast : type === "lunch" ? UI_TEXT.lunch : UI_TEXT.dinner;
 
+    const styles = useStyles();
+    const { theme, themeType } = useAppTheme();
+
     return (
       <View style={styles.dashboardMealSection}>
         <View style={[styles.mealDisplayHeader, { marginBottom: 12, justifyContent: "space-between" }]}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <Ionicons name={icon} size={22} color="#E31837" />
+            <Ionicons name={icon} size={22} color={theme.colors.primary} />
             <Text style={[styles.sectionTitle, { marginBottom: 0, fontSize: 18 }]}>
               {mealLabel}
             </Text>
           </View>
-          <View style={[styles.pill, { backgroundColor: "#F1F3F5" }]}>
-             <Text style={[styles.pillText, { color: "#6A6E73" }]}>{total} {UI_TEXT.plates}</Text>
+          <View style={[styles.pill, { backgroundColor: theme.colors.surface }]}>
+             <Text style={[styles.pillText, { color: theme.colors.textSecondary }]}>{total} {UI_TEXT.plates}</Text>
           </View>
         </View>
 
@@ -138,7 +142,7 @@ const DashboardMealSection = memo(
         {(vegItems.length > 0 || nonVegItems.length > 0) ? (
           <View style={{ gap: 8, marginBottom: 16 }}>
             {isVegEnabled && vegItems.length > 0 && (
-              <View style={[styles.menuBox, { borderLeftWidth: 4, borderLeftColor: "#28A745", paddingVertical: 8 }]}>
+              <View style={[styles.menuBox, { borderLeftWidth: 4, borderLeftColor: theme.colors.veg, paddingVertical: 8 }]}>
                 <MealSummaryInline
                   label={UI_TEXT.veg}
                   dayId={day}
@@ -150,7 +154,7 @@ const DashboardMealSection = memo(
             )}
             {isNonVegEnabled && nonVegItems.length > 0 && (
                 <View
-                  style={[styles.menuBox, { borderLeftWidth: 4, borderLeftColor: "#DC3545", paddingVertical: 8 }]}
+                  style={[styles.menuBox, { borderLeftWidth: 4, borderLeftColor: theme.colors.nonVeg, paddingVertical: 8 }]}
                 >
                   <MealSummaryInline
                     label={UI_TEXT.nonVeg}
@@ -196,8 +200,8 @@ const DashboardMealSection = memo(
           {/* Detailed Demand */}
           {isBothEnabled && (
             <>
-              <Metric icon="leaf-outline" label={labels.veg} value={veg} color="#28A745" />
-              <Metric icon="flame-outline" label={labels.nonVeg} value={nonVeg} color="#DC3545" />
+              <Metric icon="leaf-outline" label={labels.veg} value={veg} color={theme.colors.veg} />
+              <Metric icon="flame-outline" label={labels.nonVeg} value={nonVeg} color={theme.colors.nonVeg} />
             </>
           )}
 
@@ -208,7 +212,7 @@ const DashboardMealSection = memo(
                 icon="checkmark-circle-outline"
                 label={labels.parcelTaken}
                 value={parcelTaken}
-                color="#E31837"
+                color={theme.colors.primary}
               />
             </>
           )}
@@ -217,25 +221,25 @@ const DashboardMealSection = memo(
             icon="checkmark-done-outline"
             label={UI_TEXT.total + " " + UI_TEXT.taken}
             value={totalMealTaken}
-            color="#28A745"
+            color={theme.colors.veg}
           />
 
           {/* Detailed View */}
           {isBothEnabled && (
             <>
-              <View style={{ width: "100%", height: 1, backgroundColor: "#E9ECEF", marginVertical: 8 }} />
+              <View style={{ width: "100%", height: 1, backgroundColor: theme.colors.border, marginVertical: 8 }} />
 
               <Metric
                 icon="checkmark-done-outline"
                 label={labels.vegTaken}
                 value={totalVegTaken}
-                color="#28A745"
+                color={theme.colors.veg}
               />
               <Metric
                 icon="checkmark-done-outline"
                 label={labels.nonVegTaken}
                 value={totalNonVegTaken}
-                color="#DC3545"
+                color={theme.colors.nonVeg}
               />
 
               {guestEnabled && (
@@ -249,7 +253,7 @@ const DashboardMealSection = memo(
                       val >= guestVegTaken || UI_TEXT.guestVegTotalError
                     }
                     showAlert={showAlert}
-                    color="#28A745"
+                    color={theme.colors.veg}
                     disabled={!canEdit}
                   />
                   <EditableMetric
@@ -261,7 +265,7 @@ const DashboardMealSection = memo(
                       val >= guestNonVegTaken || UI_TEXT.guestNonVegTotalError
                     }
                     showAlert={showAlert}
-                    color="#DC3545"
+                    color={theme.colors.nonVeg}
                     disabled={!canEdit}
                   />
 
@@ -305,7 +309,7 @@ const DashboardMealSection = memo(
                 val <= (guestVeg + guestNonVeg) || UI_TEXT.guestTakenError
               }
               showAlert={showAlert}
-              color="#28A745"
+              color={theme.colors.veg}
               disabled={!canEdit}
             />
           )}
@@ -348,6 +352,8 @@ export function DashboardScreen({
   guestEnabled: boolean;
   seasonEnabled: boolean;
 }) {
+  const styles = useStyles();
+  const { theme, themeType } = useAppTheme();
   const emptyMeal = {
     veg: [],
     nonVeg: [],
@@ -359,6 +365,16 @@ export function DashboardScreen({
   };
 
   const activeDays = config.filter((d) => d.enabled).map((d) => d.id);
+
+  const summaryTotals = useMemo(() => {
+    return data.reduce((acc, day) => {
+      acc.total += (day.breakfast || 0) + (day.lunch || 0) + (day.dinner || 0);
+      acc.veg += (day.breakfastVeg || 0) + (day.lunchVeg || 0) + (day.dinnerVeg || 0);
+      acc.nonVeg += (day.breakfastNonVeg || 0) + (day.lunchNonVeg || 0) + (day.dinnerNonVeg || 0);
+      acc.taken += (day.breakfastTaken || 0) + (day.lunchTaken || 0) + (day.dinnerTaken || 0);
+      return acc;
+    }, { total: 0, veg: 0, nonVeg: 0, taken: 0 });
+  }, [data]);
 
   /**
    * Updates guest count or status in the global Food Menu.
@@ -398,7 +414,7 @@ export function DashboardScreen({
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
     >
-      <StatusBar style="light" />
+      <StatusBar style={themeType === "dark" ? "light" : "dark"} />
       <View style={styles.header}>
         <View
           style={{
@@ -418,13 +434,53 @@ export function DashboardScreen({
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
       >
+        {/* Event Summary Card */}
+        <View style={[styles.card, { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary, elevation: 6, marginBottom: 24 }]}>
+          <View style={styles.previewTop}>
+            <View>
+              <Text style={[styles.previewLabel, { color: "rgba(255,255,255,0.7)" }]}>{UI_TEXT.dailyDemandSummary}</Text>
+              <Text style={[styles.previewTitle, { color: theme.colors.white, fontSize: 24 }]}>
+                {UI_TEXT.totalEventDemand}
+              </Text>
+            </View>
+            <View style={{ alignItems: 'flex-end' }}>
+               <Text style={[styles.previewAmount, { color: theme.colors.white, fontSize: 32 }]}>
+                 {summaryTotals.total}
+               </Text>
+               <Text style={{ color: "rgba(255,255,255,0.8)", fontSize: 12, fontWeight: "700" }}>{UI_TEXT.plates.toUpperCase()}</Text>
+            </View>
+          </View>
+
+          <View style={{ height: 1, backgroundColor: "rgba(255,255,255,0.2)", marginVertical: 12 }} />
+
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text style={[styles.previewMeta, { color: theme.colors.white }]}>
+               {summaryTotals.veg} {UI_TEXT.veg} | {summaryTotals.nonVeg} {UI_TEXT.nonVeg}
+            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+               <Ionicons name="checkmark-done-circle" size={16} color={theme.colors.white} />
+               <Text style={{ color: theme.colors.white, fontWeight: "800", fontSize: 14 }}>
+                 {summaryTotals.taken} {UI_TEXT.taken.toUpperCase()}
+               </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Legend */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 20, paddingHorizontal: 4 }}>
+           <View style={{ width: 16, height: 16, borderRadius: 4, borderWidth: 1.5, borderColor: theme.colors.textSecondary, borderStyle: 'dashed' }} />
+           <Text style={{ fontSize: 12, color: theme.colors.textSecondary, fontWeight: "600" }}>
+              {UI_TEXT.editableLegend}
+           </Text>
+        </View>
+
         {/* Financial Overview */}
         {paymentConfig.enabled && (
           <>
             <Text style={[styles.sectionTitle, { marginBottom: 16 }]}>{UI_TEXT.payment}</Text>
             <View style={styles.collectionCard}>
-              <View style={{ backgroundColor: "#F7F3F0", width: 56, height: 56, borderRadius: 20, alignItems: "center", justifyContent: "center" }}>
-                 <Ionicons name="wallet-outline" size={28} color="#7B5A2D" />
+              <View style={{ backgroundColor: theme.colors.surfaceDark, width: 56, height: 56, borderRadius: 20, alignItems: "center", justifyContent: "center" }}>
+                 <Ionicons name="wallet-outline" size={28} color={theme.colors.primary} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.collectionLabel}>{UI_TEXT.totalCollection}</Text>
@@ -455,7 +511,7 @@ export function DashboardScreen({
             lunch: emptyMeal,
             dinner: emptyMeal,
           };
-          const colorScheme = CARD_COLORS[index % CARD_COLORS.length];
+          const colorScheme = theme.cardColors[index % theme.cardColors.length];
 
           return (
             <View key={day} style={[styles.dashboardCard, { backgroundColor: colorScheme.bg, borderColor: colorScheme.border, borderWidth: 1.5 }]}>

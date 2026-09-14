@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { View, Text, Pressable, StatusBar, StyleSheet } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
-import { styles } from "../styles";
+import { useStyles } from "../styles";
+import { useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
 import { BackButton } from "../components/common/BackButton";
 import { LogoutButton } from "../components/common/LogoutButton";
@@ -13,6 +14,8 @@ export function ScannerScreen({
   onBack: () => void;
   onScanned: (value: string) => Promise<boolean>;
 }) {
+  const styles = useStyles();
+  const { theme, themeType } = useAppTheme();
   const [permission, requestPermission] = useCameraPermissions();
   const [error, setError] = useState("");
   const [locked, setLocked] = useState(false);
@@ -21,7 +24,7 @@ export function ScannerScreen({
   if (!permission.granted) {
     return (
       <View style={styles.root}>
-        <StatusBar style="light" />
+        <StatusBar style={themeType === "dark" ? "light" : "dark"} />
         <View style={styles.header}>
           <BackButton onPress={onBack} />
           <Text style={styles.title}>{UI_TEXT.cameraAccess}</Text>
@@ -38,7 +41,7 @@ export function ScannerScreen({
 
   return (
     <View style={{ flex: 1, backgroundColor: "#000" }}>
-      <StatusBar style="light" />
+      <StatusBar style={themeType === "dark" ? "light" : "dark"} />
 
       {/* 1. Camera fills the screen */}
       <CameraView

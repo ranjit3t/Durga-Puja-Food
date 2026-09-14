@@ -1,7 +1,8 @@
 import React from "react";
 import { View, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { styles } from "../../styles";
+import { useStyles } from "../../styles";
+import { useAppTheme } from "../../theme";
 import { MealMenu, Day } from "../../types";
 import { isDietaryEnabled } from "../../constants";
 
@@ -24,6 +25,8 @@ export function MealDisplay({
   icon: keyof typeof Ionicons.glyphMap;
   menu: MealMenu;
 }) {
+  const styles = useStyles();
+  const { theme } = useAppTheme();
   const veg = menu?.veg || [];
   const nonVeg = menu?.nonVeg || [];
 
@@ -38,7 +41,7 @@ export function MealDisplay({
   return (
     <View style={styles.mealDisplayRow}>
       <View style={styles.mealDisplayHeader}>
-        <Ionicons name={icon} size={18} color="#356044" />
+        <Ionicons name={icon} size={18} color={theme.colors.primary} />
         <Text style={styles.mealDisplayTitle}>{title}</Text>
       </View>
 

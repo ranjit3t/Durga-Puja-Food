@@ -1,13 +1,16 @@
 import React from "react";
 import { Pressable, View, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { styles } from "../../styles";
+import { useStyles } from "../../styles";
+import { useAppTheme } from "../../theme";
 import { UI_TEXT } from "../../strings";
 
 /**
  * Standard back navigation button with icon and text.
  */
 export function BackButton({ onPress }: { onPress: () => void }) {
+  const styles = useStyles();
+  const { theme } = useAppTheme();
   return (
     <Pressable
       accessibilityLabel={UI_TEXT.back}

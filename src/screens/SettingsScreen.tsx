@@ -12,7 +12,8 @@ import {
   TextInput,
   Switch,
 } from "react-native";
-import { styles, CARD_COLORS } from "../styles";
+import { useStyles } from "../styles";
+import { useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
 import { ConfigDay, MealConfig, AppConfig, PaymentConfig } from "../types";
 import { BackButton } from "../components/common/BackButton";
@@ -41,6 +42,8 @@ export function SettingsScreen({
   onLogout: () => void;
   showAlert: (title: string, message: string, buttons?: AlertButton[]) => void;
 }) {
+  const styles = useStyles();
+  const { theme, themeType } = useAppTheme();
   const [localConfig, setLocalConfig] = useState<ConfigDay[]>(
     Array.isArray(config) ? [...config] : []
   );
@@ -157,7 +160,7 @@ export function SettingsScreen({
 
   return (
     <View style={styles.root}>
-      <StatusBar style="dark" />
+      <StatusBar style={themeType === "dark" ? "light" : "dark"} />
       <View style={styles.header}>
         <View
           style={{
@@ -176,107 +179,108 @@ export function SettingsScreen({
 
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         {/* Season & Payment Configuration */}
-        <View style={[styles.dashboardCard, { backgroundColor: CARD_COLORS[1].bg, borderColor: CARD_COLORS[1].border, borderWidth: 1.5 }, !localSeasonEnabled && { opacity: 0.6 }]}>
+        <View style={[styles.dashboardCard, { backgroundColor: theme.cardColors[1].bg, borderColor: theme.cardColors[1].border, borderWidth: 1.5 }, !localSeasonEnabled && { opacity: 0.6 }]}>
            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <View style={{ flex: 1 }}>
-                 <Text style={{ fontSize: 18, fontWeight: '900', color: CARD_COLORS[1].accent }}>{UI_TEXT.seasonNameLabel}</Text>
-                 <Text style={{ fontSize: 11, color: '#6A6E73', fontWeight: '600', marginTop: 2 }}>{UI_TEXT.seasonNameHelper}</Text>
+                 <Text style={{ fontSize: 18, fontWeight: '900', color: theme.cardColors[1].accent }}>{UI_TEXT.seasonNameLabel}</Text>
+                 <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600', marginTop: 2 }}>{UI_TEXT.seasonNameHelper}</Text>
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Switch
                   value={localSeasonEnabled}
                   onValueChange={setLocalSeasonEnabled}
-                  trackColor={{ true: '#E31837' }}
+                  trackColor={{ true: theme.colors.primary }}
                 />
               </View>
            </View>
 
            <TextInput
              style={{
-               backgroundColor: "#F8F9FA",
+               backgroundColor: theme.colors.surface,
                borderWidth: 1,
-               borderColor: "#E9ECEF",
+               borderColor: theme.colors.border,
                borderRadius: 12,
                paddingHorizontal: 16,
                paddingVertical: 14,
                fontSize: 16,
-               color: "#1A1C1E",
+               color: theme.colors.textPrimary,
                fontWeight: "700",
                marginBottom: 20
              }}
              value={localSeasonName}
              onChangeText={setLocalSeasonName}
              placeholder={UI_TEXT.seasonNamePlaceholder}
+             placeholderTextColor={theme.colors.textMuted}
              selectTextOnFocus
            />
 
-           <View style={{ height: 1, backgroundColor: '#E9ECEF', marginBottom: 20 }} />
+           <View style={{ height: 1, backgroundColor: theme.colors.border, marginBottom: 20 }} />
 
            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
               <View>
-                 <Text style={{ fontSize: 16, fontWeight: '800', color: '#1A1C1E' }}>Payment Integration</Text>
-                 <Text style={{ fontSize: 11, color: '#6A6E73', fontWeight: '600' }}>Enable tracking for subscriptions</Text>
+                 <Text style={{ fontSize: 16, fontWeight: '800', color: theme.colors.textPrimary }}>Payment Integration</Text>
+                 <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600' }}>Enable tracking for subscriptions</Text>
               </View>
               <Switch
                 value={localPayment.enabled}
                 onValueChange={(val) => setLocalPayment({ ...localPayment, enabled: val })}
-                trackColor={{ true: '#E31837' }}
+                trackColor={{ true: theme.colors.primary }}
               />
            </View>
 
            {localPayment.enabled && (
-             <View style={{ backgroundColor: '#F8F9FA', borderRadius: 16, padding: 12, gap: 12 }}>
-                <Text style={{ fontSize: 12, fontWeight: '800', color: '#E31837' }}>ENABLED METHODS</Text>
+             <View style={{ backgroundColor: theme.colors.surface, borderRadius: 16, padding: 12, gap: 12 }}>
+                <Text style={{ fontSize: 12, fontWeight: '800', color: theme.colors.primary }}>ENABLED METHODS</Text>
 
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                   <Text style={{ fontSize: 14, fontWeight: '700', color: '#1A1C1E' }}>UPI</Text>
+                   <Text style={{ fontSize: 14, fontWeight: '700', color: theme.colors.textPrimary }}>UPI</Text>
                    <Switch
                      value={localPayment.options.upi}
                      onValueChange={(val) => setLocalPayment({ ...localPayment, options: { ...localPayment.options, upi: val } })}
-                     trackColor={{ true: '#28A745' }}
+                     trackColor={{ true: theme.colors.success }}
                      style={{ transform: [{ scale: 0.8 }] }}
                    />
                 </View>
 
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                   <Text style={{ fontSize: 14, fontWeight: '700', color: '#1A1C1E' }}>Cash</Text>
+                   <Text style={{ fontSize: 14, fontWeight: '700', color: theme.colors.textPrimary }}>Cash</Text>
                    <Switch
                      value={localPayment.options.cash}
                      onValueChange={(val) => setLocalPayment({ ...localPayment, options: { ...localPayment.options, cash: val } })}
-                     trackColor={{ true: '#28A745' }}
+                     trackColor={{ true: theme.colors.success }}
                      style={{ transform: [{ scale: 0.8 }] }}
                    />
                 </View>
 
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                   <Text style={{ fontSize: 14, fontWeight: '700', color: '#1A1C1E' }}>Bank Transfer</Text>
+                   <Text style={{ fontSize: 14, fontWeight: '700', color: theme.colors.textPrimary }}>Bank Transfer</Text>
                    <Switch
                      value={localPayment.options.bankTransfer}
                      onValueChange={(val) => setLocalPayment({ ...localPayment, options: { ...localPayment.options, bankTransfer: val } })}
-                     trackColor={{ true: '#28A745' }}
+                     trackColor={{ true: theme.colors.success }}
                      style={{ transform: [{ scale: 0.8 }] }}
                    />
                 </View>
              </View>
            )}
 
-           <View style={{ height: 1, backgroundColor: '#E9ECEF', marginVertical: 20 }} />
+           <View style={{ height: 1, backgroundColor: theme.colors.border, marginVertical: 20 }} />
 
            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
               <View>
-                 <Text style={{ fontSize: 16, fontWeight: '800', color: '#1A1C1E' }}>{UI_TEXT.guestManagementLabel}</Text>
-                 <Text style={{ fontSize: 11, color: '#6A6E73', fontWeight: '600' }}>{UI_TEXT.guestManagementHelper}</Text>
+                 <Text style={{ fontSize: 16, fontWeight: '800', color: theme.colors.textPrimary }}>{UI_TEXT.guestManagementLabel}</Text>
+                 <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600' }}>{UI_TEXT.guestManagementHelper}</Text>
               </View>
               <Switch
                 value={localGuestEnabled}
                 onValueChange={setLocalGuestEnabled}
-                trackColor={{ true: '#E31837' }}
+                trackColor={{ true: theme.colors.primary }}
               />
            </View>
         </View>
 
         {(localConfig || []).filter(d => d).map((day, index) => {
-          const colorScheme = CARD_COLORS[(index + 2) % CARD_COLORS.length];
+          const colorScheme = theme.cardColors[(index + 2) % theme.cardColors.length];
           return (
             <View key={day.id} style={[styles.dashboardCard, { backgroundColor: colorScheme.bg, borderColor: colorScheme.border, borderWidth: 1.5 }, !day.enabled && { opacity: 0.6 }]}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
@@ -285,49 +289,51 @@ export function SettingsScreen({
                   <Switch
                     value={day.enabled}
                     onValueChange={(val) => updateDay(day.id, { enabled: val })}
-                    trackColor={{ true: '#E31837' }}
+                    trackColor={{ true: theme.colors.primary }}
                   />
                </View>
             </View>
 
             <View style={{ marginBottom: 20 }}>
               <View style={{ marginBottom: 16 }}>
-                <Text style={{ fontSize: 12, color: "#6A6E73", fontWeight: "700", marginBottom: 6, marginLeft: 4 }}>{UI_TEXT.dayNameLabel}</Text>
+                <Text style={{ fontSize: 12, color: theme.colors.textSecondary, fontWeight: "700", marginBottom: 6, marginLeft: 4 }}>{UI_TEXT.dayNameLabel}</Text>
                 <TextInput
                   style={{
-                    backgroundColor: "#F8F9FA",
+                    backgroundColor: theme.colors.surface,
                     borderWidth: 1,
-                    borderColor: "#E9ECEF",
+                    borderColor: theme.colors.border,
                     borderRadius: 12,
                     paddingHorizontal: 16,
                     paddingVertical: 12,
                     fontSize: 16,
-                    color: "#1A1C1E",
+                    color: theme.colors.textPrimary,
                     fontWeight: "700"
                   }}
                   value={day.label}
                   onChangeText={(val) => updateDay(day.id, { label: val })}
                   placeholder={UI_TEXT.dayNamePlaceholder}
+                  placeholderTextColor={theme.colors.textMuted}
                   selectTextOnFocus
                 />
               </View>
               <View>
-                <Text style={{ fontSize: 12, color: "#6A6E73", fontWeight: "700", marginBottom: 6, marginLeft: 4 }}>{UI_TEXT.abbrLabel}</Text>
+                <Text style={{ fontSize: 12, color: theme.colors.textSecondary, fontWeight: "700", marginBottom: 6, marginLeft: 4 }}>{UI_TEXT.abbrLabel}</Text>
                 <TextInput
                   style={{
-                    backgroundColor: "#F8F9FA",
+                    backgroundColor: theme.colors.surface,
                     borderWidth: 1,
-                    borderColor: "#E9ECEF",
+                    borderColor: theme.colors.border,
                     borderRadius: 12,
                     paddingHorizontal: 16,
                     paddingVertical: 12,
                     fontSize: 16,
-                    color: "#E31837",
+                    color: theme.colors.primary,
                     fontWeight: "900"
                   }}
                   value={day.abbr}
                   onChangeText={(val) => updateDay(day.id, { abbr: val.toUpperCase() })}
                   placeholder={UI_TEXT.abbrPlaceholder}
+                  placeholderTextColor={theme.colors.textMuted}
                   maxLength={4}
                   autoCapitalize="characters"
                   selectTextOnFocus
@@ -337,15 +343,15 @@ export function SettingsScreen({
 
             {day.enabled && (
               <View style={{ marginTop: 12 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20, backgroundColor: '#FFF5F5', padding: 12, borderRadius: 16, borderWidth: 1, borderColor: '#FFEBEE' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20, backgroundColor: theme.colors.errorLight, padding: 12, borderRadius: 16, borderWidth: 1, borderColor: theme.colors.border }}>
                   <View style={{ flex: 1 }}>
-                     <Text style={{ fontWeight: '800', color: '#E31837', fontSize: 15 }}>{UI_TEXT.vegOnlyLabel}</Text>
-                     <Text style={{ fontSize: 11, color: '#DC3545', marginTop: 2 }}>{UI_TEXT.vegOnlyHelper}</Text>
+                     <Text style={{ fontWeight: '800', color: theme.colors.primary, fontSize: 15 }}>{UI_TEXT.vegOnlyLabel}</Text>
+                     <Text style={{ fontSize: 11, color: theme.colors.nonVeg, marginTop: 2 }}>{UI_TEXT.vegOnlyHelper}</Text>
                   </View>
                   <Switch
                     value={day.vegOnly || false}
                     onValueChange={(val) => updateDay(day.id, { vegOnly: val })}
-                    trackColor={{ true: '#E31837' }}
+                    trackColor={{ true: theme.colors.primary }}
                   />
                 </View>
 
@@ -357,22 +363,22 @@ export function SettingsScreen({
                     parcel: false,
                   };
                   return (
-                    <View key={mKey} style={[styles.dashboardMealSection, { marginBottom: 12, padding: 12, backgroundColor: "#F8F9FA" }, !m.enabled && { opacity: 0.6 }]}>
+                    <View key={mKey} style={[styles.dashboardMealSection, { marginBottom: 12, padding: 12, backgroundColor: theme.colors.surface }, !m.enabled && { opacity: 0.6 }]}>
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                            <Ionicons
                               name={mKey === "breakfast" ? "sunny-outline" : mKey === "lunch" ? "restaurant-outline" : "moon-outline"}
                               size={18}
-                              color="#1A1C1E"
+                              color={theme.colors.textPrimary}
                            />
-                           <Text style={{ fontWeight: "800", fontSize: 16, color: "#1A1C1E", textTransform: "capitalize" }}>
+                           <Text style={{ fontWeight: "800", fontSize: 16, color: theme.colors.textPrimary, textTransform: "capitalize" }}>
                              {mKey}
                            </Text>
                         </View>
                         <Switch
                            value={m.enabled}
                            onValueChange={(val) => updateMealConfig(day.id, mKey, { enabled: val })}
-                           trackColor={{ true: '#E31837' }}
+                           trackColor={{ true: theme.colors.primary }}
                         />
                       </View>
 
@@ -395,12 +401,12 @@ export function SettingsScreen({
                             </View>
                           )}
 
-                          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#FFF', padding: 10, borderRadius: 12, borderWidth: 1, borderColor: '#E9ECEF' }}>
-                             <Text style={{ fontSize: 12, fontWeight: '800', color: '#6A6E73' }}>{UI_TEXT.parcelSettingsLabel} SUPPORT</Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: theme.colors.background, padding: 10, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border }}>
+                             <Text style={{ fontSize: 12, fontWeight: '800', color: theme.colors.textSecondary }}>{UI_TEXT.parcelSettingsLabel} SUPPORT</Text>
                              <Switch
                                value={m.parcel}
                                onValueChange={(val) => updateMealConfig(day.id, mKey, { parcel: val })}
-                               trackColor={{ true: '#E31837' }}
+                               trackColor={{ true: theme.colors.primary }}
                                style={{ transform: [{ scale: 0.9 }] }}
                              />
                           </View>
@@ -414,7 +420,7 @@ export function SettingsScreen({
                   onPress={() => removeDay(day.id)}
                   style={{ marginTop: 12, alignSelf: 'center', padding: 8 }}
                 >
-                  <Text style={{ color: '#DC3545', fontWeight: '800', fontSize: 13, textDecorationLine: "underline" }}>{UI_TEXT.removeDayLabel}</Text>
+                  <Text style={{ color: theme.colors.nonVeg, fontWeight: '800', fontSize: 13, textDecorationLine: "underline" }}>{UI_TEXT.removeDayLabel}</Text>
                 </Pressable>
               </View>
             )}
@@ -434,7 +440,7 @@ export function SettingsScreen({
           <ActionLabel
             icon="save-outline"
             label={saving ? UI_TEXT.saving : UI_TEXT.updateSettingsButton}
-            color="#fff"
+            color={theme.colors.white}
             size={22}
           />
         </Pressable>

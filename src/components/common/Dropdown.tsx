@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { View, Text, Pressable, Modal, ScrollView } from "react-native";
-import { styles } from "../../styles";
+import { useStyles } from "../../styles";
+import { useAppTheme } from "../../theme";
 import { UI_TEXT } from "../../strings";
 
 /**
@@ -17,6 +18,8 @@ export function Dropdown({
   options: string[];
   onChange: (value: string) => void;
 }) {
+  const styles = useStyles();
+  const { theme } = useAppTheme();
   const [open, setOpen] = useState(false);
 
   return (

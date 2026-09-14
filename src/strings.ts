@@ -14,7 +14,6 @@ export const UI_TEXT = {
   pending: "Pending",
   flat: "Flat",
   payment: "Payment",
-  shareToWhatsApp: "Share Report",
   reportFilters: "Report Filters",
   selectDay: "Select Day:",
   selectMeal: "Select Meal:",
@@ -59,6 +58,7 @@ export const UI_TEXT = {
 
   // Home Screen
   activePasses: "ACTIVE PASSES",
+  totalPeopleLabel: "TOTAL MEMBERS",
   viewMenu: "View Menu",
   dashboard: "Dashboard",
   report: "Report",
@@ -118,6 +118,9 @@ export const UI_TEXT = {
   dashboardTitle: "Food Dashboard",
   dashboardSubtitle: "Daily Kitchen Counts.",
   dailyMealDemand: "Daily Meal Demand",
+  dailyDemandSummary: "DAILY DEMAND SUMMARY",
+  totalEventDemand: "Total Event Demand",
+  editableLegend: "Fields with dashed borders are interactive/editable.",
   guestTotal: "Guest Total",
 
   // Dashboard Metrics

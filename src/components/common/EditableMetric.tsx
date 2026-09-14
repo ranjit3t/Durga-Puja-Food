@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, TextInput, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { styles } from "../../styles";
+import { useStyles } from "../../styles";
+import { useAppTheme } from "../../theme";
 import { UI_TEXT } from "../../strings";
 import { AlertButton } from "./CustomAlert";
 
@@ -29,6 +30,8 @@ export function EditableMetric({
   color = "#E31837",
   disabled = false,
 }: EditableMetricProps) {
+  const styles = useStyles();
+  const { theme } = useAppTheme();
   const [isEditing, setIsEditing] = useState(false);
   const [localValue, setLocalValue] = useState(String(value));
 

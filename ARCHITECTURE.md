@@ -10,7 +10,7 @@ Eternia Food Desk is a mobile application built with **React Native (Expo)** des
 - **Language**: TypeScript (Strict mode)
 - **Backend**: Firebase Realtime Database
 - **Auth**: Hybrid model using Internal Role-based Login and Firebase Anonymous Authentication. Sessions are ephemeral and do not persist across app restarts.
-- **Persistence**: Temporary session tracking via ephemeral state (24-hour auto-logout).
+- **Persistence**: Hybrid model using Firebase for global data and **`AsyncStorage`** for local user preferences (e.g., Theme selection). 
 - **Scanning**: `expo-camera` for QR code processing.
 
 ## 3. High-Level Architecture
@@ -30,7 +30,11 @@ The project follows a **Modular Layered Architecture**:
     - `CustomAlert`: A centralized, themed replacement for system dialogs.
     - `Metric Tiles`: Read-only and interactive tiles for rapid data consumption.
 
-### 📂 Logic & Constants Layer (`src/constants.ts`, `src/strings.ts`)
+### 📂 Logic & Theme Layer (`src/theme/`, `src/constants.ts`, `src/strings.ts`)
+- **Dynamic Theme Provider (`src/theme/`)**: Implements a React Context-based theme system.
+    - `ThemeProvider`: Wraps the app and manages `themeType` (Primary/Dark).
+    - `useAppTheme` & `useStyles`: Custom hooks used by all components for dynamic, theme-aware styling.
+    - Persistence: Uses `AsyncStorage` to remember user's theme choice locally.
 - **Centralized String Resource System (`strings.ts`)**: Every single UI string, label, placeholder, and message is centralized in a constant object. This ensures architectural purity, prevents hardcoded "magic strings," and makes the entire app localization-ready.
 - **AppConfig Schema**: The application consumes a central configuration object:
     - `seasonName`: Global branding string.

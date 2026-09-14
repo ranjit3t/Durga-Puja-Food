@@ -1,7 +1,8 @@
 import React from "react";
 import { View, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { styles } from "../../styles";
+import { useStyles } from "../../styles";
+import { useAppTheme } from "../../theme";
 
 /**
  * Basic read-only metric component with an icon.
@@ -17,6 +18,8 @@ export function Metric({
   value: number;
   color?: string;
 }) {
+  const styles = useStyles();
+  const { theme } = useAppTheme();
   return (
     <View style={styles.metric}>
       <Ionicons name={icon} size={18} color={color} />

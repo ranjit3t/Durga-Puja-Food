@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { View, Text, Pressable, Modal, StyleSheet, Platform } from "react-native";
+import { useAppTheme } from "../../theme";
 
 export type AlertButton = {
   text: string;
@@ -15,17 +16,6 @@ export interface CustomAlertProps {
   onClose: () => void;
 }
 
-const COLORS = {
-  primary: "#E31837",
-  textPrimary: "#1A1C1E",
-  textSecondary: "#6A6E73",
-  white: "#FFFFFF",
-  border: "#E9ECEF",
-  backdrop: "rgba(0, 0, 0, 0.65)",
-  error: "#DC3545",
-  surface: "#F8F9FA",
-};
-
 export function CustomAlert({
   visible,
   title,
@@ -33,6 +23,90 @@ export function CustomAlert({
   buttons = [{ text: "OK" }],
   onClose,
 }: CustomAlertProps) {
+  const { theme } = useAppTheme();
+
+  const styles = useMemo(() => {
+    const COLORS = theme.colors;
+    return StyleSheet.create({
+      backdrop: {
+        flex: 1,
+        backgroundColor: "rgba(0, 0, 0, 0.65)",
+        justifyContent: "center",
+        alignItems: "center",
+        padding: 24,
+      },
+      card: {
+        backgroundColor: COLORS.white === "#FFFFFF" && theme.themeType === 'dark' ? theme.colors.surface : theme.colors.white,
+        borderRadius: 28,
+        width: "100%",
+        maxWidth: 340,
+        padding: 24,
+        ...Platform.select({
+          ios: {
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 12 },
+            shadowOpacity: 0.15,
+            shadowRadius: 16,
+          },
+          android: {
+            elevation: 12,
+          },
+        }),
+      },
+      header: {
+        marginBottom: 10,
+      },
+      title: {
+        fontSize: theme.typography.sectionTitleSize,
+        fontWeight: "900",
+        color: COLORS.textPrimary,
+        letterSpacing: -0.5,
+      },
+      message: {
+        fontSize: 15,
+        color: COLORS.textSecondary,
+        lineHeight: 22,
+        fontWeight: "500",
+        marginBottom: 28,
+      },
+      footer: {
+        flexDirection: "row",
+        justifyContent: "flex-end",
+        alignItems: "center",
+      },
+      button: {
+        paddingVertical: 12,
+        paddingHorizontal: 20,
+        borderRadius: 14,
+        backgroundColor: COLORS.primary,
+        minWidth: 80,
+        alignItems: "center",
+        justifyContent: "center",
+      },
+      buttonText: {
+        fontSize: 15,
+        fontWeight: "800",
+        color: COLORS.white,
+      },
+      destructiveButton: {
+        backgroundColor: theme.themeType === 'dark' ? "#2D1B1B" : "#FFF5F5",
+        borderWidth: 1,
+        borderColor: COLORS.error,
+      },
+      destructiveText: {
+        color: COLORS.error,
+      },
+      cancelButton: {
+        backgroundColor: COLORS.surface,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+      },
+      cancelText: {
+        color: COLORS.textSecondary,
+      },
+    });
+  }, [theme]);
+
   if (!visible) return null;
 
   return (
@@ -80,82 +154,3 @@ export function CustomAlert({
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: COLORS.backdrop,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 24,
-  },
-  card: {
-    backgroundColor: COLORS.white,
-    borderRadius: 28,
-    width: "100%",
-    maxWidth: 340,
-    padding: 24,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 12 },
-        shadowOpacity: 0.15,
-        shadowRadius: 16,
-      },
-      android: {
-        elevation: 12,
-      },
-    }),
-  },
-  header: {
-    marginBottom: 10,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: "900",
-    color: COLORS.textPrimary,
-    letterSpacing: -0.5,
-  },
-  message: {
-    fontSize: 15,
-    color: COLORS.textSecondary,
-    lineHeight: 22,
-    fontWeight: "500",
-    marginBottom: 28,
-  },
-  footer: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    alignItems: "center",
-  },
-  button: {
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 14,
-    backgroundColor: COLORS.primary,
-    minWidth: 80,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  buttonText: {
-    fontSize: 15,
-    fontWeight: "800",
-    color: COLORS.white,
-  },
-  destructiveButton: {
-    backgroundColor: "#FFF5F5",
-    borderWidth: 1,
-    borderColor: COLORS.error,
-  },
-  destructiveText: {
-    color: COLORS.error,
-  },
-  cancelButton: {
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  cancelText: {
-    color: COLORS.textSecondary,
-  },
-});

@@ -2,7 +2,8 @@ import React, { useRef } from "react";
 import { View, Text, Pressable, StatusBar, ScrollView, Platform } from "react-native";
 import { captureRef } from "react-native-view-shot";
 import QRCode from "react-native-qrcode-svg";
-import { styles } from "../styles";
+import { useStyles } from "../styles";
+import { useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
 import { qrValueFor, mealSummary } from "../constants";
 import { Subscription, ConfigDay } from "../types";
@@ -29,6 +30,8 @@ export function QrScreen({
   onLogout: () => void;
   seasonEnabled: boolean;
 }) {
+  const styles = useStyles();
+  const { theme, themeType } = useAppTheme();
   const qrRef = useRef<View>(null);
   const canShare = seasonEnabled;
   const shareImage = async () => {
@@ -39,7 +42,7 @@ export function QrScreen({
   };
   return (
     <View style={styles.root}>
-      <StatusBar style="light" />
+      <StatusBar style={themeType === "dark" ? "light" : "dark"} />
       <View style={styles.header}>
         <View
           style={{

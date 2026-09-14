@@ -14,7 +14,8 @@ import {
   Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { styles, CARD_COLORS } from "../styles";
+import { useStyles } from "../styles";
+import { useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
 import { mealSummary } from "../constants";
 import { Subscription, ConfigDay, PaymentConfig, UserRole } from "../types";
@@ -48,6 +49,8 @@ export function SubscriptionListScreen({
   onLogout: () => void;
   seasonEnabled: boolean;
 }) {
+  const styles = useStyles();
+  const { theme } = useAppTheme();
   const isAdmin = userRole === "admin";
   const canAdd = getActiveDays(config).length > 0 && seasonEnabled;
 
@@ -67,7 +70,7 @@ export function SubscriptionListScreen({
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-        <StatusBar style="dark" />
+        <StatusBar style={theme.themeType === "dark" ? "light" : "dark"} />
         <View style={styles.header}>
           <View
             style={{
@@ -85,12 +88,12 @@ export function SubscriptionListScreen({
         </View>
 
         <View style={[styles.searchBox, { marginHorizontal: 20, marginTop: 20 }]}>
-          <Ionicons name="search-outline" size={22} color="#6A6E73" />
+          <Ionicons name="search-outline" size={22} color={theme.colors.textSecondary} />
           <TextInput
             value={searchText}
             onChangeText={onSearchChange}
             placeholder={UI_TEXT.searchPlaceholder}
-            placeholderTextColor="#ADB5BD"
+            placeholderTextColor={theme.colors.textMuted}
             style={styles.searchInput}
             autoCapitalize="characters"
             clearButtonMode="while-editing"
@@ -119,7 +122,7 @@ export function SubscriptionListScreen({
             </View>
           }
           renderItem={({ item, index }) => {
-            const colorScheme = CARD_COLORS[index % CARD_COLORS.length];
+            const colorScheme = theme.cardColors[index % theme.cardColors.length];
             return (
               <Pressable
                 onPress={() => onSelect(item)}
@@ -135,13 +138,10 @@ export function SubscriptionListScreen({
                 <View style={styles.cardTop}>
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.flatLabel, { color: colorScheme.accent, opacity: 0.8 }]}>{UI_TEXT.block} {item.block}</Text>
-                    <Text style={[styles.flatTitle, { color: "#1A1C1E" }]}>{UI_TEXT.flatUpper} {item.flat}</Text>
-                    <Text style={{ color: "#6A6E73", marginTop: 4, fontWeight: "600" }}>
+                    <Text style={[styles.flatTitle, { color: theme.colors.textPrimary }]}>{UI_TEXT.flatUpper} {item.flat}</Text>
+                    <Text style={{ color: theme.colors.textSecondary, marginTop: 4, fontWeight: "600" }}>
                       {item.peopleCount} {item.peopleCount === 1 ? UI_TEXT.personSuffix : UI_TEXT.personsSuffix}
                     </Text>
-                  </View>
-                  <View style={[styles.pill, { backgroundColor: colorScheme.accent + "20" }]}>
-                    <Text style={[styles.pillText, { color: colorScheme.accent }]}>{mealSummary(item, config) || UI_TEXT.flexibleMeals}</Text>
                   </View>
                 </View>
 
@@ -152,7 +152,7 @@ export function SubscriptionListScreen({
                     {paymentConfig.enabled && (
                       <>
                         <Ionicons name="card-outline" size={16} color={colorScheme.accent} />
-                        <Text style={{ fontWeight: "700", color: "#1A1C1E" }}>{item.paymentMode}</Text>
+                        <Text style={{ fontWeight: "700", color: theme.colors.textPrimary }}>{item.paymentMode}</Text>
                       </>
                     )}
                   </View>
@@ -174,7 +174,7 @@ export function SubscriptionListScreen({
           onPress={onAdd}
           disabled={!canAdd}
         >
-          <Ionicons name="add" size={32} color="#FFF" />
+          <Ionicons name="add" size={32} color={theme.colors.white} />
         </Pressable>
       ) : null}
     </View>

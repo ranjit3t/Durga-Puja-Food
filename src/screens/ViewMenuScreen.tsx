@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text, ScrollView, Pressable, StatusBar } from "react-native";
-import { styles, CARD_COLORS } from "../styles";
+import { useStyles } from "../styles";
+import { useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
 import {
   getDayLabel,
@@ -31,6 +32,8 @@ export function ViewMenuScreen({
   guestEnabled: boolean;
   seasonEnabled: boolean;
 }) {
+  const styles = useStyles();
+  const { theme, themeType } = useAppTheme();
   const emptyMeal = {
     veg: [],
     nonVeg: [],
@@ -45,7 +48,7 @@ export function ViewMenuScreen({
 
   return (
     <View style={styles.root}>
-      <StatusBar style="light" />
+      <StatusBar style={themeType === "dark" ? "light" : "dark"} />
       <View style={styles.header}>
         <View
           style={{
@@ -68,7 +71,7 @@ export function ViewMenuScreen({
             lunch: emptyMeal,
             dinner: emptyMeal,
           };
-          const colorScheme = CARD_COLORS[index % CARD_COLORS.length];
+          const colorScheme = theme.cardColors[index % theme.cardColors.length];
           return (
             <View key={day} style={[styles.menuDayCard, { backgroundColor: colorScheme.bg, borderColor: colorScheme.border, borderWidth: 1.5 }]}>
               <View style={[styles.menuDayHeader, { backgroundColor: colorScheme.accent + "15", borderBottomColor: colorScheme.border }]}>

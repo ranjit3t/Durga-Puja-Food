@@ -6,11 +6,11 @@ A comprehensive technical breakdown of the implementation, data flow, and archit
 The application follows a **Serverless Modular Architecture** built on the **Expo React Native** framework, utilizing **Firebase Realtime Database** for synchronized persistence.
 
 ### High-Level Flow
-1.  **Bootstrapping**: `App.tsx` initializes global state, navigation history stack, and checks for session validity.
-2.  **Authentication**: `LoginScreen` verifies credentials against the `auth_config` DB node in real-time.
+1.  **Bootstrapping**: `App.tsx` initializes the `ThemeProvider` (loading local preferences), global state, navigation history stack, and checks for session validity.
+2.  **Authentication**: `LoginScreen` (with theme toggle) verifies credentials against the `auth_config` DB node in real-time.
 3.  **Hydration**: Upon login or screen transition, the app performs a full fetch of subscriptions, menu, and configuration.
 4.  **Navigation**: Custom history stack management allows predictable back navigation, including Android hardware button support. History is automatically purged upon returning to the root Home screen.
-5.  **Presentation**: UI elements are rendered conditionally based on the global `AppConfig` (Branding, Payment, Day Rules, and Season Status).
+5.  **Presentation**: UI elements are rendered dynamically using the `useStyles` hook, which reacts to theme changes and global `AppConfig` (Branding, Payment, Day Rules, and Season Status).
 
 ---
 
@@ -36,7 +36,12 @@ The application employs a **Zero-Hardcoding Policy** for UI text. All strings ar
 - **History Stack**: A React-state-based array in `App.tsx` tracks navigation depth. `goBack()` pops the stack, while navigating to "home" clears it entirely.
 - **State Hoisting**: Crucial UI states like the `ReportScreen` active tab/filters and the `SubscriptionListScreen` search text are hoisted to the root `App` component. This ensures UI continuity during sub-navigation.
 
-### E. Data Normalization Layer
+### E. Dynamic Theme Engine
+- **Context System**: Built on React Context API (`ThemeProvider`), facilitating instant styling updates without re-mounting the component tree.
+- **Hook Architecture**: `useAppTheme()` provides the raw theme tokens, while `useStyles()` provides memoized, theme-specific styles generated via `createStyles`.
+- **Local Persistence**: User-specific preferences (like theme) are decoupled from the Firebase global state and stored using `AsyncStorage`.
+
+### F. Data Normalization Layer
 Implemented in `src/repository.ts`, `normalizeRecord` ensures that the local matrices (Person x Day x Meal) are always correctly sized and shaped. Renamed `PujaDay` to `EventDay` to support generic event scheduling.
 
 ### D. Digital Pass & Reporting
@@ -83,8 +88,9 @@ Controlled via the `seasonEnabled` config flag. When disabled, the application e
 ## 5. UI/UX Architecture
 
 ### Layout Optimization
-- **Colorful Premium Palette**: Primary info boxes use a high-contrast palette of pastel colors (`CARD_COLORS`) defined in `src/styles.ts` for instant visual segmentation.
+- **Colorful Premium Palette**: Primary info boxes use a high-contrast palette of pastel colors (`CARD_COLORS`) defined in `src/theme/` for instant visual segmentation.
 - **Quick-Action Tiles**: Home page grid replaces basic list views for a "sleek" entry experience.
+- **Home Summary Analytics**: Centralized card displaying both **Active Pass Count** and **Total Registered Members** for high-level event monitoring.
 - **Dedicated Subscription Screen**: Offloads pass management to a standalone screen with high-performance search.
 - **Compact Selectors**: Uses "P1", "P2" for members and 4-char abbreviations for days.
 - **Password Toggle**: Integrated visibility switch in the Login screen.

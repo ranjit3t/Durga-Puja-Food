@@ -13,7 +13,8 @@ import {
   Platform,
   StatusBar,
 } from "react-native";
-import { styles, CARD_COLORS } from "../styles";
+import { useStyles } from "../styles";
+import { useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
 import {
   getActiveDays,
@@ -70,6 +71,8 @@ export function SubscriptionForm({
   lockIdentity?: boolean;
   showAlert: (title: string, message: string, buttons?: AlertButton[]) => void;
 }) {
+  const styles = useStyles();
+  const { theme, themeType } = useAppTheme();
   const isAdmin = userRole === "admin";
   const canEdit = seasonEnabled;
   const activeDays = getActiveDays(config);
@@ -146,7 +149,7 @@ export function SubscriptionForm({
       style={styles.root}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
-      <StatusBar style="dark" />
+      <StatusBar style={themeType === "dark" ? "light" : "dark"} />
       <View style={styles.header}>
         <View
           style={{
@@ -172,16 +175,16 @@ export function SubscriptionForm({
         keyboardDismissMode="on-drag"
       >
         {/* Real-time Summary Card */}
-        <View style={[styles.card, { backgroundColor: "#E31837", borderColor: "#E31837", elevation: 6 }]}>
+        <View style={[styles.card, { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary, elevation: 6 }]}>
           <View style={styles.previewTop}>
             <View>
               <Text style={[styles.previewLabel, { color: "rgba(255,255,255,0.7)" }]}>{UI_TEXT.livePreview}</Text>
-              <Text style={[styles.previewTitle, { color: "#FFF", fontSize: 28 }]}>
+              <Text style={[styles.previewTitle, { color: theme.colors.white, fontSize: 28 }]}>
                 {form.block || "-"}-{form.flat || "-"}
               </Text>
             </View>
             {paymentConfig.enabled && (
-              <Text style={[styles.previewAmount, { color: "#FFF", fontSize: 22 }]}>
+              <Text style={[styles.previewAmount, { color: theme.colors.white, fontSize: 22 }]}>
                 {form.amount ? `${UI_TEXT.rs} ${form.amount}` : ""}
               </Text>
             )}
@@ -189,7 +192,7 @@ export function SubscriptionForm({
 
           <View style={{ height: 1, backgroundColor: "rgba(255,255,255,0.2)", marginVertical: 12 }} />
 
-          <Text style={[styles.previewMeta, { color: "#FFF" }]}>
+          <Text style={[styles.previewMeta, { color: theme.colors.white }]}>
             {form.peopleCount}
             {form.peopleCount === 1
               ? UI_TEXT.personSuffix
@@ -199,8 +202,8 @@ export function SubscriptionForm({
         </View>
 
         {/* Identity Inputs */}
-        <View style={[styles.card, { marginTop: 8, backgroundColor: CARD_COLORS[1].bg, borderColor: CARD_COLORS[1].border }]}>
-           <Text style={[styles.sectionTitle, { fontSize: 18, marginBottom: 12, color: CARD_COLORS[1].accent }]}>{UI_TEXT.blockAndFlat}</Text>
+        <View style={[styles.card, { marginTop: 8, backgroundColor: theme.cardColors[1].bg, borderColor: theme.cardColors[1].border }]}>
+           <Text style={[styles.sectionTitle, { fontSize: 18, marginBottom: 12, color: theme.cardColors[1].accent }]}>{UI_TEXT.blockAndFlat}</Text>
            <View style={styles.row}>
             <View style={styles.fieldHalf}>
               <Text style={styles.label}>{UI_TEXT.blockNo}</Text>
@@ -211,8 +214,8 @@ export function SubscriptionForm({
                   onChange={(block) => set("block", block)}
                 />
               ) : (
-                <View style={[styles.input, { backgroundColor: "#F8F9FA", justifyContent: "center" }]}>
-                  <Text style={{ fontSize: 16, fontWeight: "600" }}>{form.block}</Text>
+                <View style={[styles.input, { backgroundColor: theme.colors.surface, justifyContent: "center" }]}>
+                  <Text style={{ fontSize: 16, fontWeight: "600", color: theme.colors.textPrimary }}>{form.block}</Text>
                 </View>
               )}
             </View>
@@ -222,11 +225,12 @@ export function SubscriptionForm({
                 value={form.flat}
                 onChangeText={(flat) => set("flat", flat.toUpperCase())}
                 placeholder={UI_TEXT.flatNoPlaceholder}
+                placeholderTextColor={theme.colors.textMuted}
                 keyboardType="default"
                 autoCapitalize="characters"
                 editable={isAdmin && !lockIdentity}
                 selectTextOnFocus={isAdmin && !lockIdentity}
-                style={[styles.input, !isAdmin && { backgroundColor: "#F8F9FA" }]}
+                style={[styles.input, !isAdmin && { backgroundColor: theme.colors.surface }]}
               />
             </View>
           </View>
@@ -259,17 +263,18 @@ export function SubscriptionForm({
               });
             }}
             placeholder={UI_TEXT.egPeople}
+            placeholderTextColor={theme.colors.textMuted}
             keyboardType="numeric"
             editable={isAdmin && canEdit}
             selectTextOnFocus={isAdmin && canEdit}
             returnKeyType="done"
-            style={[styles.input, !isAdmin && { backgroundColor: "#F8F9FA" }]}
+            style={[styles.input, !isAdmin && { backgroundColor: theme.colors.surface }]}
           />
         </View>
 
         {/* Selection Matrix */}
-        <View style={[styles.card, { backgroundColor: CARD_COLORS[2].bg, borderColor: CARD_COLORS[2].border }]}>
-          <Text style={[styles.sectionTitle, { fontSize: 18, marginBottom: 4, color: CARD_COLORS[2].accent }]}>{UI_TEXT.foodChoice}</Text>
+        <View style={[styles.card, { backgroundColor: theme.cardColors[2].bg, borderColor: theme.cardColors[2].border }]}>
+          <Text style={[styles.sectionTitle, { fontSize: 18, marginBottom: 4, color: theme.cardColors[2].accent }]}>{UI_TEXT.foodChoice}</Text>
           <Text style={styles.helper}>{UI_TEXT.foodChoiceInstruction}</Text>
 
           <Text style={styles.selectorLabel}>{UI_TEXT.person}</Text>
@@ -344,7 +349,7 @@ export function SubscriptionForm({
 
                 return (
                   <View key={slot} style={{ marginBottom: 16 }}>
-                    <Text style={[styles.label, { marginTop: 0, marginBottom: 8, fontSize: 14, color: '#1A1C1E' }]}>{label}</Text>
+                    <Text style={[styles.label, { marginTop: 0, marginBottom: 8, fontSize: 14, color: theme.colors.textPrimary }]}>{label}</Text>
                     <View style={styles.choiceRow}>
                       {/* Option: None */}
                       <Pressable
@@ -474,7 +479,7 @@ export function SubscriptionForm({
             const choice = form.mealSlots[selectedDay]?.[selectedPerson]?.[s];
             return choice && choice !== "None" && isDietaryEnabled(selectedDay, s, choice === "Veg" ? "veg" : "nonVeg", config);
           }) && (
-            <View style={{ marginTop: 24, borderTopWidth: 1, borderTopColor: "#E9ECEF", paddingTop: 16 }}>
+            <View style={{ marginTop: 24, borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: 16 }}>
               <View style={{ marginBottom: 12 }}>
                 <Text style={[styles.currentChoice, { marginTop: 0, fontSize: 16, marginBottom: 8 }]}>{UI_TEXT.foodTakenByPerson}</Text>
               </View>
@@ -532,8 +537,8 @@ export function SubscriptionForm({
 
         {/* Financials */}
         {paymentConfig.enabled && (
-          <View style={[styles.card, { backgroundColor: CARD_COLORS[3].bg, borderColor: CARD_COLORS[3].border }]}>
-             <Text style={[styles.sectionTitle, { fontSize: 18, marginBottom: 12, color: CARD_COLORS[3].accent }]}>{UI_TEXT.paymentDetails}</Text>
+          <View style={[styles.card, { backgroundColor: theme.cardColors[3].bg, borderColor: theme.cardColors[3].border }]}>
+             <Text style={[styles.sectionTitle, { fontSize: 18, marginBottom: 12, color: theme.cardColors[3].accent }]}>{UI_TEXT.paymentDetails}</Text>
              <View style={styles.row}>
               <View style={styles.fieldHalf}>
                 <Text style={styles.label}>{UI_TEXT.amount}</Text>
@@ -546,7 +551,8 @@ export function SubscriptionForm({
                   returnKeyType="done"
                   blurOnSubmit
                   placeholder="0.00"
-                  style={[styles.input, !isAdmin && { backgroundColor: "#F8F9FA" }]}
+                  placeholderTextColor={theme.colors.textMuted}
+                  style={[styles.input, !isAdmin && { backgroundColor: theme.colors.surface }]}
                 />
               </View>
               <View style={styles.fieldHalf}>
@@ -566,8 +572,8 @@ export function SubscriptionForm({
                     }
                   />
                 ) : (
-                  <View style={[styles.input, { backgroundColor: "#F8F9FA", justifyContent: "center" }]}>
-                    <Text style={{ fontSize: 16, fontWeight: "600" }}>{form.paymentMode}</Text>
+                  <View style={[styles.input, { backgroundColor: theme.colors.surface, justifyContent: "center" }]}>
+                    <Text style={{ fontSize: 16, fontWeight: "600", color: theme.colors.textPrimary }}>{form.paymentMode}</Text>
                   </View>
                 )}
               </View>
@@ -591,7 +597,7 @@ export function SubscriptionForm({
               <ActionLabel
                 icon="checkmark-circle-outline"
                 label={UI_TEXT.saveChanges}
-                color="#fff"
+                color={theme.colors.white}
                 size={24}
               />
             </Pressable>
@@ -611,7 +617,7 @@ export function SubscriptionForm({
                 styles.primary,
                 {
                   marginTop: 16,
-                  backgroundColor: "#E31837",
+                  backgroundColor: theme.colors.primary,
                   shadowOpacity: 0,
                   elevation: 0,
                   shadowRadius: 0,
@@ -623,14 +629,14 @@ export function SubscriptionForm({
               <ActionLabel
                 icon="qr-code-outline"
                 label={UI_TEXT.saveGenerateQr}
-                color="#FFF"
+                color={theme.colors.white}
                 size={22}
               />
             </Pressable>
           ) : null}
 
-          <Pressable onPress={onCancel} style={[styles.secondary, { marginTop: 16, backgroundColor: "#E9ECEF", borderColor: "#6A6E73" }]}>
-             <ActionLabel icon="close-outline" label={UI_TEXT.cancel} color="#6A6E73" />
+          <Pressable onPress={onCancel} style={[styles.secondary, { marginTop: 16, backgroundColor: theme.colors.surfaceDark, borderColor: theme.colors.textSecondary }]}>
+             <ActionLabel icon="close-outline" label={UI_TEXT.cancel} color={theme.colors.textSecondary} />
           </Pressable>
 
           {isAdmin && canEdit && onDelete ? (
@@ -642,7 +648,7 @@ export function SubscriptionForm({
               <ActionLabel
                 icon="trash-outline"
                 label={UI_TEXT.deleteFlatRecord}
-                color="#FFF"
+                color={theme.colors.white}
               />
             </Pressable>
           ) : null}

@@ -13,7 +13,8 @@ import {
   StatusBar,
   ScrollView,
 } from "react-native";
-import { styles } from "../styles";
+import { useStyles } from "../styles";
+import { useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
 import { UserRole } from "../types";
 import { AlertButton } from "../components/common/CustomAlert";
@@ -29,6 +30,8 @@ export function LoginScreen({
   showAlert: (title: string, message: string, buttons?: AlertButton[]) => void;
   repository: SubscriptionRepository;
 }) {
+  const styles = useStyles();
+  const { theme, toggleTheme, themeType } = useAppTheme();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -63,7 +66,12 @@ export function LoginScreen({
 
   return (
     <View style={styles.root}>
-      <StatusBar style="dark" />
+      <StatusBar style={themeType === "dark" ? "light" : "dark"} />
+      <View style={{ position: 'absolute', top: Platform.OS === 'ios' ? 60 : 40, left: 20, zIndex: 10 }}>
+        <Pressable onPress={toggleTheme} style={styles.backButton}>
+          <Ionicons name={themeType === "dark" ? "sunny-outline" : "moon-outline"} size={22} color={theme.colors.secondary} />
+        </Pressable>
+      </View>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}

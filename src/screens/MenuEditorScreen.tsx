@@ -10,7 +10,8 @@ import {
   Pressable,
   StatusBar,
 } from "react-native";
-import { styles, CARD_COLORS } from "../styles";
+import { useStyles } from "../styles";
+import { useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
 import {
   getDayLabel,
@@ -42,6 +43,8 @@ export function MenuEditorScreen({
   guestEnabled: boolean;
   seasonEnabled: boolean;
 }) {
+  const styles = useStyles();
+  const { theme, themeType } = useAppTheme();
   const [localMenu, setLocalMenu] = useState(menu);
   const [saving, setSaving] = useState(false);
   const canEdit = seasonEnabled;
@@ -81,7 +84,7 @@ export function MenuEditorScreen({
 
   return (
     <View style={styles.root}>
-      <StatusBar style="light" />
+      <StatusBar style={themeType === "dark" ? "light" : "dark"} />
       <View style={styles.header}>
         <View
           style={{
@@ -108,7 +111,7 @@ export function MenuEditorScreen({
             lunch: emptyMeal,
             dinner: emptyMeal,
           };
-          const colorScheme = CARD_COLORS[index % CARD_COLORS.length];
+          const colorScheme = theme.cardColors[index % theme.cardColors.length];
           return (
             <View key={day} style={[styles.dashboardCard, { backgroundColor: colorScheme.bg, borderColor: colorScheme.border, borderWidth: 1.5 }]}>
               <Text style={[styles.dashboardDay, { color: colorScheme.accent, marginBottom: 12 }]}>{getDayLabel(day, config)}</Text>

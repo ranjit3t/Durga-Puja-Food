@@ -52,7 +52,10 @@ A robust Expo React Native application designed for food admins and volunteers t
 - **Labels & Abbreviations**: Custom display names and legends are centrally managed.
 
 ### 🎨 Polished UI/UX
+- **Dynamic Theming (Dark & Light Mode)**: Fully integrated theme system that supports high-contrast Dark Mode and a vibrant Light Mode. Users can toggle themes from both the Login and Home screens.
+- **Persistent User Preference**: Theme selections are saved locally on the device using `AsyncStorage`, ensuring the app launches with the user's preferred aesthetic.
 - **Colorful Premium Palette**: Primary information boxes and daily menu cards use a vibrant, high-contrast palette of pastel colors (Red, Blue, Green, Orange, Purple, Cyan) for a modern and energetic aesthetic.
+- **Real-Time Summary Card**: The Home screen summary card displays both the total number of **Active Passes** and the **Total Members** registered across all flats for instant operational overview.
 - **Navigation History Stack**: Implemented a robust history stack that ensures the "Back" button always takes you to the previous screen. Returning to the **Home** screen automatically clears the history for a fresh start.
 - **Visual Feedback**: Disabling a configuration section (Season or Day) in settings triggers a smooth **opacity-based fade-out**, providing clear visual confirmation of the inactive state.
 - **Quick-Action Dashboard**: The Home page features a sleek, tile-based grid for fast access to core modules like Subscriptions, Scan QR, and Reports.
