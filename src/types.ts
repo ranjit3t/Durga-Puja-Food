@@ -48,8 +48,8 @@ export type AppConfig = {
 };
 
 export type Day = string;
-export type ReportType = "day" | "meal" | "flat" | "payment" | "single" | "notTaken" | "guest";
-export type PaymentMode = "UPI" | "Cash";
+export type ReportType = "day" | "meal" | "guest" | "parcel" | "flat" | "payment" | "single" | "notTaken";
+export type PaymentMode = "UPI" | "Cash" | "Bank Transfer";
 export type UserRole = "admin" | "vendor";
 export type Screen =
   | "home"

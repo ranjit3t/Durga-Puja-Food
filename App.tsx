@@ -421,10 +421,11 @@ function AppContent() {
     if (match) {
       setSelectedId(match.id);
       setSelectedRecord(match);
-      navigate("details");
+      setEditing(match);
+      navigate("form");
+      return true;
     } else {
-      showAlert(UI_TEXT.error, UI_TEXT.scanError);
-      navigate("home");
+      return false;
     }
   };
 
@@ -592,7 +593,7 @@ function AppContent() {
       total += amt;
       if (item.paymentMode === "UPI") upi += amt;
       else if (item.paymentMode === "Cash") cash += amt;
-      else if (item.paymentMode === "Bank transfer") bankTransfer += amt;
+      else if (item.paymentMode === "Bank Transfer") bankTransfer += amt;
     });
     return { total, upi, cash, bankTransfer };
   }, [subscriptions]);
@@ -636,7 +637,12 @@ function AppContent() {
           paymentConfig={paymentConfig}
           seasonEnabled={seasonEnabled}
           onCancel={() => {
-            goBack();
+            if (editing.flat) {
+              setScreen("details");
+              setHistory((h) => h.slice(0, -1));
+            } else {
+              goBack();
+            }
           }}
           onHome={() => navigate("home")}
           onSave={updateSubscription}
@@ -725,6 +731,7 @@ function AppContent() {
         <GuestManagementScreen
           menu={foodMenu}
           config={dayConfig}
+          userRole={userRole || "vendor"}
           onUpdateMenu={handleUpdateMenu}
           onBack={goBack}
           onHome={() => navigate("home")}
@@ -847,7 +854,7 @@ function AppContent() {
           config={dayConfig}
           paymentConfig={paymentConfig}
           seasonEnabled={seasonEnabled}
-          onBack={goBack}
+          onBack={() => navigate("home")}
           onHome={() => navigate("home")}
           onEdit={() => {
             setEditing(selected);

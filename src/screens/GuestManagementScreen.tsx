@@ -5,7 +5,7 @@ import { useStyles } from "../styles";
 import { useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
 import { getDayLabel, isMealEnabled, isDietaryEnabled } from "../constants";
-import { FoodMenu, MealMenu, ConfigDay } from "../types";
+import { FoodMenu, MealMenu, ConfigDay, UserRole } from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
@@ -17,6 +17,7 @@ interface GuestMealCardProps {
   menu: MealMenu;
   config: ConfigDay[];
   disabled: boolean;
+  isAdmin: boolean;
   onUpdate: (
     day: string,
     type: "breakfast" | "lunch" | "dinner",
@@ -25,7 +26,7 @@ interface GuestMealCardProps {
   ) => void;
 }
 
-const GuestMealCard = memo(({ dayId, type, menu, config, disabled, onUpdate }: GuestMealCardProps) => {
+const GuestMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, onUpdate }: GuestMealCardProps) => {
   const styles = useStyles();
   const { theme } = useAppTheme();
 
@@ -61,7 +62,7 @@ const GuestMealCard = memo(({ dayId, type, menu, config, disabled, onUpdate }: G
                 value={guestVeg}
                 min={guestVegTaken}
                 onChange={(val) => onUpdate(dayId, type, "guestVeg", val)}
-                disabled={disabled}
+                disabled={disabled || !isAdmin}
               />
             </View>
             <View style={{ width: '47%' }}>
@@ -70,7 +71,7 @@ const GuestMealCard = memo(({ dayId, type, menu, config, disabled, onUpdate }: G
                 value={guestNonVeg}
                 min={guestNonVegTaken}
                 onChange={(val) => onUpdate(dayId, type, "guestNonVeg", val)}
-                disabled={disabled}
+                disabled={disabled || !isAdmin}
               />
             </View>
             <View style={{ width: '47%' }}>
@@ -111,7 +112,7 @@ const GuestMealCard = memo(({ dayId, type, menu, config, disabled, onUpdate }: G
                 value={guestTotal}
                 min={guestTaken}
                 onChange={(val) => onUpdate(dayId, type, isVegEnabled ? "guestVeg" : "guestNonVeg", val)}
-                disabled={disabled}
+                disabled={disabled || !isAdmin}
               />
             </View>
             <View style={{ width: '47%' }}>
@@ -134,6 +135,7 @@ const GuestMealCard = memo(({ dayId, type, menu, config, disabled, onUpdate }: G
 export function GuestManagementScreen({
   menu,
   config,
+  userRole,
   onUpdateMenu,
   onBack,
   onHome,
@@ -142,6 +144,7 @@ export function GuestManagementScreen({
 }: {
   menu: FoodMenu;
   config: ConfigDay[];
+  userRole: UserRole;
   onUpdateMenu: (menu: FoodMenu) => Promise<void>;
   onBack: () => void;
   onHome: () => void;
@@ -151,6 +154,7 @@ export function GuestManagementScreen({
   const styles = useStyles();
   const { theme, themeType } = useAppTheme();
   const activeDays = config.filter((d) => d.enabled).map((d) => d.id);
+  const isAdmin = userRole === "admin";
 
   const handleUpdate = (
     day: string,
@@ -219,6 +223,7 @@ export function GuestManagementScreen({
                   config={config}
                   onUpdate={handleUpdate}
                   disabled={!seasonEnabled}
+                  isAdmin={isAdmin}
                 />
               )}
               {isMealEnabled(day, "lunch", config) && (
@@ -229,6 +234,7 @@ export function GuestManagementScreen({
                   config={config}
                   onUpdate={handleUpdate}
                   disabled={!seasonEnabled}
+                  isAdmin={isAdmin}
                 />
               )}
               {isMealEnabled(day, "dinner", config) && (
@@ -239,6 +245,7 @@ export function GuestManagementScreen({
                   config={config}
                   onUpdate={handleUpdate}
                   disabled={!seasonEnabled}
+                  isAdmin={isAdmin}
                 />
               )}
             </View>

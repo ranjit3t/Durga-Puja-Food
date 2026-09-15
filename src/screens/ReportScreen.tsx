@@ -89,6 +89,26 @@ export function ReportScreen({
 
   const reportRef = useRef<View>(null);
 
+  const { isVegEnabledGlobally, isNonVegEnabledGlobally, isParcelEnabledGlobally } = useMemo(() => {
+    return {
+      isVegEnabledGlobally: config.some(d => d.enabled && (
+        (d.breakfast.enabled && d.breakfast.veg) ||
+        (d.lunch.enabled && d.lunch.veg) ||
+        (d.dinner.enabled && d.dinner.veg)
+      )),
+      isNonVegEnabledGlobally: config.some(d => d.enabled && (
+        (d.breakfast.enabled && d.breakfast.nonVeg) ||
+        (d.lunch.enabled && d.lunch.nonVeg) ||
+        (d.dinner.enabled && d.dinner.nonVeg)
+      )),
+      isParcelEnabledGlobally: config.some(d => d.enabled && (
+        (d.breakfast.enabled && d.breakfast.parcel) ||
+        (d.lunch.enabled && d.lunch.parcel) ||
+        (d.dinner.enabled && d.dinner.parcel)
+      ))
+    };
+  }, [config]);
+
   const handleShare = async () => {
     if (reportRef.current) {
       try {
@@ -102,6 +122,7 @@ export function ReportScreen({
           reportType === "day" ? UI_TEXT.dayWiseReport :
           reportType === "meal" ? UI_TEXT.mealWiseReport :
           reportType === "guest" ? UI_TEXT.guestReport :
+          reportType === "parcel" ? UI_TEXT.parcelReport :
           reportType === "single" ? `${getDayLabel(selectedDayId, config)} - ${selectedMealType}` :
           reportType === "notTaken" ? UI_TEXT.notTakenReport :
           reportType === "flat" ? UI_TEXT.flatWiseReport :
@@ -351,7 +372,7 @@ export function ReportScreen({
     const summary: Record<string, { count: number; total: number }> = {
       UPI: { count: 0, total: 0 },
       Cash: { count: 0, total: 0 },
-      "Bank transfer": { count: 0, total: 0 },
+      "Bank Transfer": { count: 0, total: 0 },
     };
 
     subscriptions.forEach((sub) => {
@@ -366,7 +387,7 @@ export function ReportScreen({
     const enabledMethods = [];
     if (paymentConfig.options.upi) enabledMethods.push({ mode: "UPI", ...summary.UPI });
     if (paymentConfig.options.cash) enabledMethods.push({ mode: "Cash", ...summary.Cash });
-    if (paymentConfig.options.bankTransfer) enabledMethods.push({ mode: "Bank transfer", ...summary["Bank transfer"] });
+    if (paymentConfig.options.bankTransfer) enabledMethods.push({ mode: "Bank Transfer", ...summary["Bank Transfer"] });
 
     return enabledMethods;
   }, [subscriptions, paymentConfig]);
@@ -439,11 +460,16 @@ export function ReportScreen({
             { id: "day", label: UI_TEXT.day, icon: "calendar-outline" },
             { id: "meal", label: UI_TEXT.meal, icon: "restaurant-outline" },
             { id: "guest", label: UI_TEXT.guestSuffix, icon: "people-circle-outline" },
+            { id: "parcel", label: UI_TEXT.parcels, icon: "cube-outline" },
             { id: "single", label: UI_TEXT.split, icon: "fast-food-outline" },
             { id: "notTaken", label: UI_TEXT.pending, icon: "alert-circle-outline" },
             { id: "flat", label: UI_TEXT.flat, icon: "business-outline" },
             { id: "payment", label: UI_TEXT.payment, icon: "card-outline" },
-          ].filter(tab => (tab.id !== "payment" || paymentConfig.enabled) && (tab.id !== "guest" || guestEnabled)).map((tab) => (
+          ].filter(tab =>
+            (tab.id !== "payment" || paymentConfig.enabled) &&
+            (tab.id !== "guest" || guestEnabled) &&
+            (tab.id !== "parcel" || isParcelEnabledGlobally)
+          ).map((tab) => (
             <Pressable
               key={tab.id}
               onPress={() => onSetReportType(tab.id as ReportType)}
@@ -547,6 +573,7 @@ export function ReportScreen({
                   {reportType === "day" && UI_TEXT.dayWiseReport}
                   {reportType === "meal" && UI_TEXT.mealWiseReport}
                   {reportType === "guest" && UI_TEXT.guestReport}
+                  {reportType === "parcel" && UI_TEXT.parcelReport}
                   {reportType === "single" && `${getDayLabel(selectedDayId, config)} - ${selectedMealType.charAt(0).toUpperCase() + selectedMealType.slice(1)}`}
                   {reportType === "notTaken" && `${UI_TEXT.notTakenReport}`}
                   {reportType === "flat" && UI_TEXT.flatWiseReport}

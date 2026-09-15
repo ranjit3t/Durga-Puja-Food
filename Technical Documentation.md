@@ -48,6 +48,9 @@ The application employs a **Zero-Hardcoding Policy** for UI text. All strings ar
 
 ### G. Guest Management & Counter Logic
 - **Module Interface**: The `GuestManagementScreen` provides a high-density matrix for updating guest demand and collections in real-time.
+- **Permission Mapping**:
+    - `guestVeg`, `guestNonVeg`, `guestTotal`: Editable by **Admin** only.
+    - `guestVegTaken`, `guestNonVegTaken`, `guestTaken`: Editable by **Admin** and **Vendor**.
 - **Auto-Calculation**: In dual-diet mode (Veg + Non-Veg), the "Total" and "Taken" metrics are derived values, ensuring the summary always matches the specific counts.
 - **Reverse Validation**: The `CounterInput` enforces strict data integrity using `min` and `max` props:
     - **Min Demand**: Demand (Veg/Non-Veg) cannot be lowered below the current "Taken" count.
@@ -60,7 +63,7 @@ Implemented in `src/repository.ts`, `normalizeRecord` ensures that the local mat
 ### I. Digital Pass & Reporting
 - **Image Generation**: Uses `captureRef` from `react-native-view-shot` to convert themed views into PNGs.
 - **Analytics Engine**: Uses `useMemo` hooks to calculate demand splits between Residents vs. Guests for multiple payment modes and dietary choices.
-- **Guest Report Tab**: Includes a dedicated summary for guest plate counts. This tab is conditionally rendered based on the global `guestEnabled` flag.
+- **Guest & Parcel Report Tabs**: Features specialized summaries for extra guest plates and meal-wise parcel requirements. These tabs are conditionally rendered based on the global `guestEnabled` flag and the `isParcelEnabled` setting within the festival configuration.
 
 ---
 

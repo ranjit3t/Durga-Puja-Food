@@ -28,15 +28,17 @@ A robust Expo React Native application designed for food admins and volunteers t
 - **Adaptive Add Button**: The "Add Item" (+) button in the menu editor dynamically changes color to Green (Veg) or Red (Non-Veg) based on the selected dietary type for instant feedback.
 - **Dedicated Menu View**: A clean, non-editable view for volunteers to see the feast plan.
 - **Guest Management Module**: A dedicated interface for managing extra guest plates. Accessible to both **Admins** and **Vendors** via a sleek "Guest" tile on the home screen.
+- **Role-Based Guest Editing**: Only **Admins** can set the guest demand (Total, Veg, Non-Veg). **Vendors** are restricted to updating the collection counts (Taken) only.
 - **Smart Data Integrity**: Implements "Reverse Validation"—you cannot decrease guest demand below what has already been collected, and you cannot mark more food as "Taken" than what is planned.
 - **Kitchen Dashboard**: Real-time operational data showing exactly how many plates and parcels are needed. The main summary card dynamically displays the **Season Name** as its title and intelligently filters out disabled dietary types to keep the interface focused.
 - **Dynamic Guest Metrics**: Guest plate totals on the dashboard are now read-only for all users, automatically synchronized from the data entered in the Guest Management module.
 - **Sleek Financial Overview**: A professional, earthy-toned summary of total collections, visible only when payment integration is enabled.
 
 ### 📊 Advanced Reporting
-- **Multi-View Engine**: Generate reports by Day, Meal, Guest, Flat, Payment, or Single Meal Specific.
-- **Dedicated Guest Report**: A specialized view for tracking extra guest plate collections (Veg/Non-Veg) across all event days, ensuring total operational transparency.
-- **Persistent View State**: The app intelligently remembers your selected report tab, day filter, and meal type. If you navigate to a flat's details and return, you land exactly where you left off.
+- **Multi-View Engine**: Generate reports by Day, Meal, Guest, Parcel, Flat, Payment, or Single Meal Specific.
+- **Dedicated Guest Report**: A specialized view for tracking extra guest plate collections (Veg/Non-Veg) across all event days.
+- **Parcel-Wise Summary**: A detailed report tracking the total number of parcels needed per meal, categorized by dietary type (Veg/Non-Veg).
+- **Conditional Reporting**: The "Guest" and "Parcel" tabs are intelligently hidden if those features are not enabled in the current season's configuration, ensuring a streamlined interface.
 - **Payment Summary**: Comprehensive breakdown of UPI, Cash, and Bank Transfer collections.
 - **Space-Saving UI**: Features a horizontal scrollable selection bar for report types and compact selectors for Days and Meals.
 - **Color-Coded Data**: All dietary text is intuitively color-coded (Green for Veg, Red for Non-Veg) for rapid scanning.

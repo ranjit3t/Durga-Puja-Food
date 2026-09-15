@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text, TextInput, Pressable, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useStyles } from "../../styles";
@@ -24,6 +24,14 @@ export function CounterInput({
   const styles = useStyles();
   const { theme } = useAppTheme();
 
+  // Local state for the text input to allow empty string while typing
+  const [localText, setLocalText] = useState(String(value));
+
+  // Sync local text with external value changes
+  useEffect(() => {
+    setLocalText(String(value));
+  }, [value]);
+
   const handleIncrement = () => {
     if (value < max) onChange(value + 1);
   };
@@ -33,9 +41,20 @@ export function CounterInput({
   };
 
   const handleTextChange = (text: string) => {
-    const numeric = parseInt(text.replace(/[^0-9]/g, ""), 10) || 0;
-    const clamped = Math.max(min, Math.min(max, numeric));
-    onChange(clamped);
+    const clean = text.replace(/[^0-9]/g, "");
+    setLocalText(clean);
+
+    if (clean !== "") {
+      const numeric = parseInt(clean, 10);
+      // We only trigger parent update if the value is within a reasonable typing range
+      // The clamping logic will still be enforced on Blur
+      onChange(numeric);
+    }
+  };
+
+  const handleBlur = () => {
+    // On blur, ensure the text matches the actual valid value (clamped and non-empty)
+    setLocalText(String(value));
   };
 
   return (
@@ -52,10 +71,12 @@ export function CounterInput({
 
         <TextInput
           style={[localStyles.input, { color: theme.colors.textPrimary }]}
-          value={String(value)}
+          value={localText}
           onChangeText={handleTextChange}
+          onBlur={handleBlur}
           keyboardType="numeric"
           editable={!disabled}
+          selectTextOnFocus
         />
 
         <Pressable

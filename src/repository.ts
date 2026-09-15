@@ -9,7 +9,7 @@ import { ConfigDay, AppConfig } from "./types";
 // --- Domain Types ---
 
 export type EventDay = string;
-export type PaymentMode = "UPI" | "Cash" | "Bank transfer";
+export type PaymentMode = "UPI" | "Cash" | "Bank Transfer";
 
 export type MealAllocation = { veg: number; nonVeg: number };
 export type MealChoice = "Veg" | "Non-veg" | "None";
