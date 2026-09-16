@@ -135,10 +135,10 @@ const DashboardMealSection = memo(
         isCurrent && { borderColor: theme.colors.primary, borderWidth: 1.5, backgroundColor: theme.colors.primary + "08" },
         isDone && { opacity: 0.5 }
       ]}>
-        <View style={[styles.mealDisplayHeader, { marginBottom: 12, justifyContent: "space-between" }]}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+        <View style={[styles.mealDisplayHeader, { marginBottom: 12, justifyContent: "space-between", flexWrap: 'wrap', gap: 8 }]}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1, minWidth: '60%' }}>
             <Ionicons name={icon} size={22} color={isCurrent ? theme.colors.primary : theme.colors.textSecondary} />
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap', flex: 1 }}>
                <Text style={[styles.sectionTitle, { marginBottom: 0, fontSize: 18, color: isCurrent ? theme.colors.primary : theme.colors.textPrimary }]}>
                  {mealLabel}
                </Text>
@@ -147,9 +147,17 @@ const DashboardMealSection = memo(
                     <Text style={{ color: theme.colors.white, fontSize: 10, fontWeight: "900" }}>{UI_TEXT.live.toUpperCase()}</Text>
                  </View>
                )}
+               {!isBothEnabled && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: isVegEnabled ? theme.colors.veg + "15" : theme.colors.nonVeg + "15", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: 0.5, borderColor: isVegEnabled ? theme.colors.veg : theme.colors.nonVeg }}>
+                    <Ionicons name={isVegEnabled ? "leaf" : "flame"} size={10} color={isVegEnabled ? theme.colors.veg : theme.colors.nonVeg} />
+                    <Text style={{ color: isVegEnabled ? theme.colors.veg : theme.colors.nonVeg, fontSize: 10, fontWeight: "800" }}>
+                      {(isVegEnabled ? UI_TEXT.vegOnly : UI_TEXT.nonVegOnly).toUpperCase()}
+                    </Text>
+                  </View>
+               )}
             </View>
           </View>
-          <View style={[styles.pill, { backgroundColor: isCurrent ? theme.colors.primary + "15" : theme.colors.surface }]}>
+          <View style={[styles.pill, { backgroundColor: isCurrent ? theme.colors.primary + "15" : theme.colors.surface, alignSelf: 'center' }]}>
              <Text style={[styles.pillText, { color: isCurrent ? theme.colors.primary : theme.colors.textSecondary }]}>{total} {UI_TEXT.plates}</Text>
           </View>
         </View>
@@ -430,8 +438,8 @@ export function DashboardScreen() {
             pressed && { opacity: 0.8 }
           ]}
         >
-          <View style={styles.previewTop}>
-            <View style={{ flex: 1, paddingRight: 10 }}>
+          <View style={[styles.previewTop, { flexWrap: 'wrap', gap: 8 }]}>
+            <View style={{ flex: 1, paddingRight: 10, minWidth: '60%' }}>
               <Text style={[styles.previewLabel, { color: theme.colors.white, opacity: 0.7 }]}>{UI_TEXT.dailyDemandSummary}</Text>
               {!!seasonName && (
                 <Text style={[styles.previewTitle, { color: theme.colors.white, fontSize: 22 }]} numberOfLines={2}>
@@ -439,7 +447,7 @@ export function DashboardScreen() {
                 </Text>
               )}
             </View>
-            <View style={{ alignItems: 'flex-end' }}>
+            <View style={{ alignItems: 'flex-end', justifyContent: 'center' }}>
                <Text style={[styles.previewAmount, { color: theme.colors.white, fontSize: 32 }]}>
                  {summaryTotals.total}
                </Text>
@@ -449,8 +457,8 @@ export function DashboardScreen() {
 
           <View style={{ height: 1, backgroundColor: theme.colors.white, opacity: 0.2, marginVertical: 12 }} />
 
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Text style={[styles.previewMeta, { color: theme.colors.white }]}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+            <Text style={[styles.previewMeta, { color: theme.colors.white, flexShrink: 1 }]}>
                {(() => {
                  if (isVegEnabledGlobally && isNonVegEnabledGlobally) {
                     return `${summaryTotals.veg} ${UI_TEXT.veg} | ${summaryTotals.nonVeg} ${UI_TEXT.nonVeg}`;
@@ -469,28 +477,47 @@ export function DashboardScreen() {
           {currentMealSummary && (
             <>
               <View style={{ height: 1, backgroundColor: theme.colors.white, opacity: 0.2, marginVertical: 12 }} />
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                 <View>
+              <View style={{ gap: 10 }}>
+                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                     <Text style={{ color: theme.colors.white, fontSize: 11, fontWeight: '800', opacity: 0.8, textTransform: 'uppercase' }}>
                        {currentMealSummary.dayLabel} - {currentMealSummary.mealLabel}
                     </Text>
-                    <Text style={{ color: theme.colors.white, fontSize: 15, fontWeight: '900', marginTop: 2 }}>
-                       {currentMealSummary.total} {UI_TEXT.plates.toUpperCase()}
-                    </Text>
-                 </View>
-                 <View style={{ alignItems: 'flex-end' }}>
-                    {currentMealSummary.isVegEnabled && currentMealSummary.isNonVegEnabled && (
-                      <Text style={{ color: theme.colors.white, fontSize: 13, fontWeight: '700', opacity: 0.9 }}>
-                         {currentMealSummary.veg} V | {currentMealSummary.nonVeg} NV
-                      </Text>
+                    {(!currentMealSummary.isVegEnabled || !currentMealSummary.isNonVegEnabled) && (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: theme.colors.white + "33", paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4 }}>
+                        <Ionicons name={currentMealSummary.isVegEnabled ? "leaf" : "flame"} size={8} color={theme.colors.white} />
+                        <Text style={{ color: theme.colors.white, fontSize: 8, fontWeight: "900" }}>
+                          {(currentMealSummary.isVegEnabled ? UI_TEXT.vegOnly : UI_TEXT.nonVegOnly).toUpperCase()}
+                        </Text>
+                      </View>
                     )}
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                       <Ionicons name="checkmark-circle" size={12} color={theme.colors.white} />
-                       <Text style={{ color: theme.colors.white, fontSize: 13, fontWeight: '800' }}>
-                          {currentMealSummary.taken} {UI_TEXT.taken.toUpperCase()}
+                 </View>
+
+                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
+                      <Text style={{ color: theme.colors.white, fontSize: 18, fontWeight: '900' }}>
+                         {currentMealSummary.total}
+                      </Text>
+                      <Text style={{ color: theme.colors.white, fontSize: 11, fontWeight: '700', opacity: 0.8 }}>
+                         {UI_TEXT.plates.toUpperCase()}
+                      </Text>
+                    </View>
+
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                       <Ionicons name="checkmark-done-circle" size={16} color={theme.colors.white} />
+                       <Text style={{ color: theme.colors.white, fontSize: 16, fontWeight: '900' }}>
+                          {currentMealSummary.taken}
+                       </Text>
+                       <Text style={{ color: theme.colors.white, fontSize: 11, fontWeight: '700', opacity: 0.8 }}>
+                          {UI_TEXT.taken.toUpperCase()}
                        </Text>
                     </View>
                  </View>
+
+                 {currentMealSummary.isVegEnabled && currentMealSummary.isNonVegEnabled && (
+                    <Text style={{ color: theme.colors.white, fontSize: 12, fontWeight: '700', opacity: 0.9 }}>
+                       {currentMealSummary.veg} {UI_TEXT.veg} | {currentMealSummary.nonVeg} {UI_TEXT.nonVeg}
+                    </Text>
+                 )}
               </View>
             </>
           )}

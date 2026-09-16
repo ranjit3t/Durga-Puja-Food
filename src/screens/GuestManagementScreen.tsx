@@ -65,6 +65,14 @@ const GuestMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, onUp
                   <Text style={{ color: theme.colors.white, fontSize: 10, fontWeight: "900" }}>{UI_TEXT.live.toUpperCase()}</Text>
                </View>
             )}
+            {!showDetailed && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: isVegEnabled ? theme.colors.veg + "15" : theme.colors.nonVeg + "15", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: 0.5, borderColor: isVegEnabled ? theme.colors.veg : theme.colors.nonVeg }}>
+                <Ionicons name={isVegEnabled ? "leaf" : "flame"} size={10} color={isVegEnabled ? theme.colors.veg : theme.colors.nonVeg} />
+                <Text style={{ color: isVegEnabled ? theme.colors.veg : theme.colors.nonVeg, fontSize: 10, fontWeight: "800" }}>
+                  {(isVegEnabled ? UI_TEXT.vegOnly : UI_TEXT.nonVegOnly).toUpperCase()}
+                </Text>
+              </View>
+            )}
           </View>
         </View>
         {isDone && (
@@ -112,6 +120,17 @@ const GuestMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, onUp
                 onChange={(val) => onUpdate(dayId, type, "guestNonVegTaken", val)}
                 disabled={disabled || isDone}
               />
+            </View>
+
+            <View style={{ width: '100%', flexDirection: 'row', gap: 16, marginTop: 4 }}>
+               <View style={{ flex: 1, backgroundColor: theme.colors.surface, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border }}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.textSecondary }}>{UI_TEXT.guestTotal.toUpperCase()}</Text>
+                  <Text style={{ fontSize: 20, fontWeight: '900', color: theme.colors.textPrimary, marginTop: 4 }}>{guestTotal}</Text>
+               </View>
+               <View style={{ flex: 1, backgroundColor: theme.colors.surface, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border }}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.textSecondary }}>{UI_TEXT.guestTaken.toUpperCase()}</Text>
+                  <Text style={{ fontSize: 20, fontWeight: '900', color: theme.colors.success, marginTop: 4 }}>{guestTaken}</Text>
+               </View>
             </View>
           </>
         ) : (
