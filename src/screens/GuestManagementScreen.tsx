@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useStyles } from "../styles";
 import { useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
-import { getDayLabel, isMealEnabled, isMealDone, getSortedMealKeys, isDietaryEnabled } from "../constants";
+import { getDayLabel, isMealEnabled, isMealDone, getSortedMealKeys, isDietaryEnabled, isMealCurrent } from "../constants";
 import { MealMenu, ConfigDay, UserRole, MealType, DietType, AppScreen } from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
@@ -33,6 +33,7 @@ const GuestMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, onUp
   const isVegEnabled = isDietaryEnabled(dayId, type, DietType.VEG, config);
   const isNonVegEnabled = isDietaryEnabled(dayId, type, DietType.NON_VEG, config);
   const isDone = isMealDone(dayId, type, config);
+  const isCurrent = isMealCurrent(dayId, type, config);
   const showDetailed = isVegEnabled && isNonVegEnabled;
 
   const mealLabel = type === MealType.BREAKFAST ? UI_TEXT.breakfast : type === MealType.LUNCH ? UI_TEXT.lunch : UI_TEXT.dinner;
@@ -48,11 +49,23 @@ const GuestMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, onUp
   const guestTaken = showDetailed ? (guestVegTaken + guestNonVegTaken) : (menu.guestVegTaken || 0);
 
   return (
-    <View style={[styles.dashboardMealSection, { marginBottom: 20 }, isDone && { opacity: 0.6 }]}>
+    <View style={[
+      styles.dashboardMealSection,
+      { marginBottom: 20, borderWidth: 1, borderColor: theme.colors.border },
+      isCurrent && { borderColor: theme.colors.primary, borderWidth: 1.5, backgroundColor: theme.colors.primary + "08" },
+      isDone && { opacity: 0.6 }
+    ]}>
       <View style={[styles.mealDisplayHeader, { marginBottom: 16, justifyContent: "space-between" }]}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-          <Ionicons name={icon} size={22} color={theme.colors.primary} />
-          <Text style={[styles.sectionTitle, { marginBottom: 0, fontSize: 18 }]}>{mealLabel}</Text>
+          <Ionicons name={icon} size={22} color={isCurrent ? theme.colors.primary : theme.colors.textSecondary} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Text style={[styles.sectionTitle, { marginBottom: 0, fontSize: 18, color: isCurrent ? theme.colors.primary : theme.colors.textPrimary }]}>{mealLabel}</Text>
+            {isCurrent && (
+               <View style={{ backgroundColor: theme.colors.primary, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                  <Text style={{ color: theme.colors.white, fontSize: 10, fontWeight: "900" }}>{UI_TEXT.live.toUpperCase()}</Text>
+               </View>
+            )}
+          </View>
         </View>
         {isDone && (
           <View style={[styles.pill, { backgroundColor: theme.colors.successLight }]}>
@@ -61,10 +74,10 @@ const GuestMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, onUp
         )}
       </View>
 
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 16 }}>
+      <View style={{ gap: 16 }}>
         {showDetailed ? (
           <>
-            <View style={{ width: '47%' }}>
+            <View style={{ width: '100%' }}>
               <CounterInput
                 label={UI_TEXT.guestVeg}
                 value={guestVeg}
@@ -73,7 +86,7 @@ const GuestMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, onUp
                 disabled={disabled || !isAdmin || isDone}
               />
             </View>
-            <View style={{ width: '47%' }}>
+            <View style={{ width: '100%' }}>
               <CounterInput
                 label={UI_TEXT.guestNonVeg}
                 value={guestNonVeg}
@@ -82,7 +95,7 @@ const GuestMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, onUp
                 disabled={disabled || !isAdmin || isDone}
               />
             </View>
-            <View style={{ width: '47%' }}>
+            <View style={{ width: '100%' }}>
               <CounterInput
                 label={UI_TEXT.guestVegTaken}
                 value={guestVegTaken}
@@ -91,7 +104,7 @@ const GuestMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, onUp
                 disabled={disabled || isDone}
               />
             </View>
-            <View style={{ width: '47%' }}>
+            <View style={{ width: '100%' }}>
               <CounterInput
                 label={UI_TEXT.guestNonVegTaken}
                 value={guestNonVegTaken}
@@ -100,21 +113,10 @@ const GuestMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, onUp
                 disabled={disabled || isDone}
               />
             </View>
-
-            <View style={{ width: '100%', flexDirection: 'row', gap: 16, marginTop: 4 }}>
-               <View style={{ flex: 1, backgroundColor: theme.colors.surface, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border }}>
-                  <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.textSecondary }}>{UI_TEXT.guestTotal.toUpperCase()}</Text>
-                  <Text style={{ fontSize: 20, fontWeight: '900', color: theme.colors.textPrimary, marginTop: 4 }}>{guestTotal}</Text>
-               </View>
-               <View style={{ flex: 1, backgroundColor: theme.colors.surface, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border }}>
-                  <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.textSecondary }}>{UI_TEXT.guestTaken.toUpperCase()}</Text>
-                  <Text style={{ fontSize: 20, fontWeight: '900', color: theme.colors.success, marginTop: 4 }}>{guestTaken}</Text>
-               </View>
-            </View>
           </>
         ) : (
           <>
-            <View style={{ width: '47%' }}>
+            <View style={{ width: '100%' }}>
               <CounterInput
                 label={UI_TEXT.guestTotal}
                 value={guestTotal}
@@ -123,7 +125,7 @@ const GuestMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, onUp
                 disabled={disabled || !isAdmin || isDone}
               />
             </View>
-            <View style={{ width: '47%' }}>
+            <View style={{ width: '100%' }}>
               <CounterInput
                 label={UI_TEXT.guestTaken}
                 value={guestTaken}
@@ -153,7 +155,18 @@ export function GuestManagementScreen() {
 
   const styles = useStyles();
   const { theme, themeType } = useAppTheme();
-  const activeDays = dayConfig.filter((d) => d.enabled).map((d) => d.id);
+
+  const activeDays = React.useMemo(() => {
+    const active = dayConfig.filter((d) => d.enabled).map((d) => d.id);
+    return [...active].sort((a, b) => {
+      const aHasCurrent = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].some(m => isMealCurrent(a, m, dayConfig));
+      const bHasCurrent = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].some(m => isMealCurrent(b, m, dayConfig));
+      if (aHasCurrent && !bHasCurrent) return -1;
+      if (!aHasCurrent && bHasCurrent) return 1;
+      return 0;
+    });
+  }, [dayConfig]);
+
   const isAdmin = userRole === UserRole.ADMIN;
 
   const handleUpdate = (

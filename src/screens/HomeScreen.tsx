@@ -9,7 +9,7 @@ import { useDatabase } from "../context/DatabaseContext";
 import { useUI } from "../context/UIContext";
 import { useAppNavigation } from "../context/NavigationContext";
 import { AppScreen, UserRole, MealType } from "../types";
-import { getActiveDays, isSeasonDone, isMealCurrent, getDayLabel } from "../constants";
+import { getActiveDays, isSeasonDone, isMealCurrent, getDayLabel, isMealEnabled } from "../constants";
 import { ActionLabel } from "../components/common/ActionLabel";
 import { LogoutButton } from "../components/common/LogoutButton";
 
@@ -37,7 +37,7 @@ export function HomeScreen() {
     const active = getActiveDays(dayConfig);
     for (const dId of active) {
       for (const mType of [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER]) {
-        if (isMealCurrent(dId, mType, dayConfig)) {
+        if (isMealCurrent(dId, mType, dayConfig) && isMealEnabled(dId, mType, dayConfig)) {
           const mLabel = mType === MealType.BREAKFAST ? UI_TEXT.breakfast : mType === MealType.LUNCH ? UI_TEXT.lunch : UI_TEXT.dinner;
           return { dayLabel: getDayLabel(dId, dayConfig), mealLabel: mLabel };
         }

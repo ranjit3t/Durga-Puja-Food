@@ -18,6 +18,7 @@ import { UI_TEXT } from "../strings";
 import {
   getDayLabel,
   isMealEnabled,
+  isMealDone,
   isDietaryEnabled,
   isParcelEnabled,
   isMealCurrent,
@@ -121,12 +122,18 @@ const DashboardMealSection = memo(
 
     const mealLabel = type === MealType.BREAKFAST ? UI_TEXT.breakfast : type === MealType.LUNCH ? UI_TEXT.lunch : UI_TEXT.dinner;
     const isCurrent = isMealCurrent(day, type, config);
+    const isDone = isMealDone(day, type, config);
 
     const styles = useStyles();
     const { theme } = useAppTheme();
 
     return (
-      <View style={[styles.dashboardMealSection, isCurrent && { borderColor: theme.colors.primary, borderWidth: 1.5, backgroundColor: theme.colors.primary + "08" }]}>
+      <View style={[
+        styles.dashboardMealSection,
+        { borderWidth: 1, borderColor: theme.colors.border },
+        isCurrent && { borderColor: theme.colors.primary, borderWidth: 1.5, backgroundColor: theme.colors.primary + "08" },
+        isDone && { opacity: 0.5 }
+      ]}>
         <View style={[styles.mealDisplayHeader, { marginBottom: 12, justifyContent: "space-between" }]}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <Ionicons name={icon} size={22} color={isCurrent ? theme.colors.primary : theme.colors.textSecondary} />
@@ -209,13 +216,6 @@ const DashboardMealSection = memo(
             </>
           )}
 
-          <Metric
-            icon="checkmark-done-outline"
-            label={UI_TEXT.total + " " + UI_TEXT.taken}
-            value={totalMealTaken}
-            color={theme.colors.veg}
-          />
-
           {/* Detailed View */}
           {isBothEnabled && (
             <>
@@ -272,6 +272,13 @@ const DashboardMealSection = memo(
               color={theme.colors.veg}
             />
           )}
+
+          <Metric
+            icon="checkmark-done-outline"
+            label={UI_TEXT.total + " " + UI_TEXT.taken}
+            value={totalMealTaken}
+            color={theme.colors.veg}
+          />
         </View>
       </View>
     );
@@ -316,6 +323,54 @@ export function DashboardScreen() {
       return acc;
     }, { total: 0, veg: 0, nonVeg: 0, taken: 0 });
   }, [dashboardData]);
+
+  const currentMealSummary = useMemo(() => {
+    const active = dayConfig.filter((d) => d.enabled);
+    for (const d of active) {
+      for (const mType of [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER]) {
+        if (isMealCurrent(d.id, mType, dayConfig) && isMealEnabled(d.id, mType, dayConfig)) {
+          const item = dashboardData.find(dashDay => dashDay.dayId === d.id);
+          if (!item) return null;
+
+          const mLabel = mType === MealType.BREAKFAST ? UI_TEXT.breakfast : mType === MealType.LUNCH ? UI_TEXT.lunch : UI_TEXT.dinner;
+
+          let total = 0, veg = 0, nonVeg = 0, taken = 0;
+          if (mType === MealType.BREAKFAST) {
+            total = item.breakfast || 0;
+            veg = item.breakfastVeg || 0;
+            nonVeg = item.breakfastNonVeg || 0;
+            taken = item.breakfastTaken || 0;
+          } else if (mType === MealType.LUNCH) {
+            total = item.lunch || 0;
+            veg = item.lunchVeg || 0;
+            nonVeg = item.lunchNonVeg || 0;
+            taken = item.lunchTaken || 0;
+          } else {
+            total = item.dinner || 0;
+            veg = item.dinnerVeg || 0;
+            nonVeg = item.dinnerNonVeg || 0;
+            taken = item.dinnerTaken || 0;
+          }
+
+          const mConf = d[mType];
+          const isVeg = d.vegOnly || mConf.veg;
+          const isNonVeg = !d.vegOnly && mConf.nonVeg;
+
+          return {
+            dayLabel: getDayLabel(d.id, dayConfig),
+            mealLabel: mLabel,
+            total,
+            veg,
+            nonVeg,
+            taken,
+            isVegEnabled: isVeg,
+            isNonVegEnabled: isNonVeg
+          };
+        }
+      }
+    }
+    return null;
+  }, [dayConfig, dashboardData]);
 
   const { isVegEnabledGlobally, isNonVegEnabledGlobally } = useMemo(() => {
     return {
@@ -389,10 +444,10 @@ export function DashboardScreen() {
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <Text style={[styles.previewMeta, { color: theme.colors.white }]}>
                {(() => {
-                 const parts = [];
-                 if (isVegEnabledGlobally) parts.push(`${summaryTotals.veg} ${UI_TEXT.veg}`);
-                 if (isNonVegEnabledGlobally) parts.push(`${summaryTotals.nonVeg} ${UI_TEXT.nonVeg}`);
-                 return parts.length > 0 ? parts.join(" | ") : UI_TEXT.none;
+                 if (isVegEnabledGlobally && isNonVegEnabledGlobally) {
+                    return `${summaryTotals.veg} ${UI_TEXT.veg} | ${summaryTotals.nonVeg} ${UI_TEXT.nonVeg}`;
+                 }
+                 return "";
                })()}
             </Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
@@ -402,6 +457,35 @@ export function DashboardScreen() {
                </Text>
             </View>
           </View>
+
+          {currentMealSummary && (
+            <>
+              <View style={{ height: 1, backgroundColor: theme.colors.white, opacity: 0.2, marginVertical: 12 }} />
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                 <View>
+                    <Text style={{ color: theme.colors.white, fontSize: 11, fontWeight: '800', opacity: 0.8, textTransform: 'uppercase' }}>
+                       {currentMealSummary.dayLabel} - {currentMealSummary.mealLabel}
+                    </Text>
+                    <Text style={{ color: theme.colors.white, fontSize: 15, fontWeight: '900', marginTop: 2 }}>
+                       {currentMealSummary.total} {UI_TEXT.plates.toUpperCase()}
+                    </Text>
+                 </View>
+                 <View style={{ alignItems: 'flex-end' }}>
+                    {currentMealSummary.isVegEnabled && currentMealSummary.isNonVegEnabled && (
+                      <Text style={{ color: theme.colors.white, fontSize: 13, fontWeight: '700', opacity: 0.9 }}>
+                         {currentMealSummary.veg} V | {currentMealSummary.nonVeg} NV
+                      </Text>
+                    )}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                       <Ionicons name="checkmark-circle" size={12} color={theme.colors.white} />
+                       <Text style={{ color: theme.colors.white, fontSize: 13, fontWeight: '800' }}>
+                          {currentMealSummary.taken} {UI_TEXT.taken.toUpperCase()}
+                       </Text>
+                    </View>
+                 </View>
+              </View>
+            </>
+          )}
         </View>
 
         <Text style={[styles.sectionTitle, { marginBottom: 16 }]}>{UI_TEXT.dailyMealDemand}</Text>

@@ -50,26 +50,36 @@ export function SettingsScreen() {
   const [localFoodPriceEnabled, setLocalFoodPriceEnabled] = useState(false);
   const [localWhatsappCountryCode, setLocalWhatsappCountryCode] = useState("91");
   const [saving, setSaving] = useState(false);
+  const [initialized, setInitialized] = useState(false);
 
-  // Sync local state when database config is loaded
+  // Sync local state when database config is loaded (Once only or when saved)
   React.useEffect(() => {
-    if (config) {
-      setLocalConfig(Array.isArray(config) ? [...config] : []);
+    if (config && !initialized) {
+      setLocalConfig(Array.isArray(config) ? JSON.parse(JSON.stringify(config)) : []);
       setLocalSeasonName(seasonName || "");
       setLocalSeasonEnabled(seasonEnabled);
-      if (payment) setLocalPayment(payment);
+      if (payment) setLocalPayment(JSON.parse(JSON.stringify(payment)));
       setLocalGuestEnabled(guestEnabled);
       setLocalMobileEnabled(mobileEnabled);
       setLocalFoodPriceEnabled(foodPriceEnabled);
       setLocalWhatsappCountryCode(whatsappCountryCode || "91");
+      setInitialized(true);
     }
-  }, [config, seasonName, seasonEnabled, payment, guestEnabled, mobileEnabled, foodPriceEnabled, whatsappCountryCode]);
+  }, [config, seasonName, seasonEnabled, payment, guestEnabled, mobileEnabled, foodPriceEnabled, whatsappCountryCode, initialized]);
 
   const updateDay = (id: string, next: Partial<ConfigDay>) => {
     setLocalConfig((current) =>
       (current || []).map((d) => {
         if (d && d.id === id) {
           const updated = { ...d, ...next };
+
+          // If day is disabled, no meal can be current
+          if (next.enabled === false) {
+            updated.breakfast = { ...updated.breakfast, current: false };
+            updated.lunch = { ...updated.lunch, current: false };
+            updated.dinner = { ...updated.dinner, current: false };
+          }
+
           if (next.hasOwnProperty("vegOnly")) {
             if (next.vegOnly) {
               updated.breakfast = { ...updated.breakfast, veg: true, nonVeg: false };
@@ -106,9 +116,16 @@ export function SettingsScreen() {
 
       return updatedConfig.map((d) => {
         if (d.id === dayId) {
+          const mealConfig = { ...d[meal], ...next };
+
+          // If meal is disabled or marked as done, it cannot be the current meal
+          if (mealConfig.enabled === false || mealConfig.done === true) {
+            mealConfig.current = false;
+          }
+
           return {
             ...d,
-            [meal]: { ...d[meal], ...next },
+            [meal]: mealConfig,
           };
         }
         return d;
@@ -161,6 +178,7 @@ export function SettingsScreen() {
         foodPriceEnabled: localFoodPriceEnabled,
         whatsappCountryCode: localWhatsappCountryCode,
       });
+      setInitialized(false); // Allow re-syncing from DB
       showAlert(UI_TEXT.success, UI_TEXT.settingsUpdated);
     } catch (err) {
       console.error("Save settings error:", err);
