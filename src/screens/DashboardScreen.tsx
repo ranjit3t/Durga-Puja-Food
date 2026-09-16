@@ -10,6 +10,7 @@ import {
   StatusBar,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useStyles } from "../styles";
@@ -421,7 +422,14 @@ export function DashboardScreen() {
         keyboardShouldPersistTaps="handled"
       >
         {/* Event Summary Card */}
-        <View style={[styles.card, { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary, elevation: 6, marginBottom: 24 }]}>
+        <Pressable
+          onPress={() => navigate(AppScreen.REPORT)}
+          style={({ pressed }) => [
+            styles.card,
+            { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary, elevation: 6, marginBottom: 24 },
+            pressed && { opacity: 0.8 }
+          ]}
+        >
           <View style={styles.previewTop}>
             <View style={{ flex: 1, paddingRight: 10 }}>
               <Text style={[styles.previewLabel, { color: theme.colors.white, opacity: 0.7 }]}>{UI_TEXT.dailyDemandSummary}</Text>
@@ -486,7 +494,7 @@ export function DashboardScreen() {
               </View>
             </>
           )}
-        </View>
+        </Pressable>
 
         <Text style={[styles.sectionTitle, { marginBottom: 16 }]}>{UI_TEXT.dailyMealDemand}</Text>
 
