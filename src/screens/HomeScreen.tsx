@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, ScrollView, Pressable, StatusBar } from "react-native";
+import { View, Text, ScrollView, Pressable, StatusBar, useWindowDimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useStyles } from "../styles";
 import { useAppTheme } from "../theme";
@@ -8,8 +8,8 @@ import { useAuth } from "../context/AuthContext";
 import { useDatabase } from "../context/DatabaseContext";
 import { useUI } from "../context/UIContext";
 import { useAppNavigation } from "../context/NavigationContext";
-import { AppScreen, UserRole } from "../types";
-import { getActiveDays, isSeasonDone } from "../constants";
+import { AppScreen, UserRole, MealType } from "../types";
+import { getActiveDays, isSeasonDone, isMealCurrent, getDayLabel } from "../constants";
 import { ActionLabel } from "../components/common/ActionLabel";
 import { LogoutButton } from "../components/common/LogoutButton";
 
@@ -22,6 +22,29 @@ export function HomeScreen() {
   } = useDatabase();
   const { navigate, startNew } = useAppNavigation();
   const { showGlobalError } = useUI();
+  const { width } = useWindowDimensions();
+
+  const isNarrow = width < 400;
+  const cardPadding = isNarrow ? 22 : 30;
+  const cardMinHeight = isNarrow ? 120 : 160;
+  const mainFontSize = isNarrow ? 24 : 32;
+  const secondaryFontSize = isNarrow ? 20 : 26;
+  const labelFontSize = isNarrow ? 11 : 13;
+  const rowGap = isNarrow ? 12 : 18;
+
+  // Find if there is an active current meal going on right now
+  const currentMealInfo = React.useMemo(() => {
+    const active = getActiveDays(dayConfig);
+    for (const dId of active) {
+      for (const mType of [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER]) {
+        if (isMealCurrent(dId, mType, dayConfig)) {
+          const mLabel = mType === MealType.BREAKFAST ? UI_TEXT.breakfast : mType === MealType.LUNCH ? UI_TEXT.lunch : UI_TEXT.dinner;
+          return { dayLabel: getDayLabel(dId, dayConfig), mealLabel: mLabel };
+        }
+      }
+    }
+    return null;
+  }, [dayConfig]);
 
   return (
     <View style={styles.root}>
@@ -45,23 +68,47 @@ export function HomeScreen() {
           </Pressable>
         ) : null}
 
-        <Pressable onPress={() => navigate(AppScreen.SUBSCRIPTION_LIST)} style={styles.summary}>
-          <View>
-            {!!seasonName && <Text style={[styles.summaryLabel, { marginBottom: 2, color: theme.colors.secondary }]}>{seasonName}</Text>}
-            <Text style={styles.summaryLabel}>{UI_TEXT.activePasses}</Text>
-            <Text style={styles.summaryNumber}>{subscriptions.length}</Text>
-            <View style={{ height: 1, backgroundColor: theme.colors.white, opacity: 0.2, marginVertical: 8 }} />
-            <Text style={[styles.summaryLabel, { opacity: 0.8 }]}>{UI_TEXT.totalPeopleLabel}</Text>
-            <Text style={[styles.summaryNumber, { fontSize: 24, marginTop: 2 }]}>{totalPeople}</Text>
-            {paymentConfig?.enabled && (
-              <>
-                <View style={{ height: 1, backgroundColor: theme.colors.white, opacity: 0.2, marginVertical: 8 }} />
-                <Text style={[styles.summaryLabel, { opacity: 0.8 }]}>{UI_TEXT.totalCollection}</Text>
-                <Text style={[styles.summaryNumber, { fontSize: 24, marginTop: 2 }]}>{UI_TEXT.rs} {collections.total.toLocaleString()}</Text>
-              </>
-            )}
+        <Pressable onPress={navigate.bind(null, AppScreen.SUBSCRIPTION_LIST)} style={[styles.summary, { padding: cardPadding, marginBottom: 16, overflow: 'hidden', minHeight: cardMinHeight }]}>
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center', opacity: 0.08 }}>
+            <Ionicons name="ticket-outline" size={isNarrow ? 140 : 180} color={theme.colors.white} />
           </View>
-          <Ionicons name="ticket-outline" size={64} color={theme.colors.white} style={{ opacity: 0.3 }} />
+
+          <View style={{ flex: 1, justifyContent: 'center' }}>
+            {!!seasonName && <Text style={[styles.summaryLabel, { marginBottom: isNarrow ? 10 : 16, color: theme.colors.secondary, fontSize: isNarrow ? 9 : 11 }]}>{seasonName}</Text>}
+
+            <View style={{ gap: rowGap }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flexWrap: 'wrap' }}>
+                <Text style={[styles.summaryLabel, { fontSize: labelFontSize }]}>{UI_TEXT.activePasses}:</Text>
+                <Text style={[styles.summaryNumber, { fontSize: mainFontSize, marginTop: 0, lineHeight: mainFontSize + 4 }]}>{subscriptions.length}</Text>
+              </View>
+
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flexWrap: 'wrap' }}>
+                <Text style={[styles.summaryLabel, { opacity: 0.8, fontSize: labelFontSize }]}>{UI_TEXT.totalPeopleLabel}:</Text>
+                <Text style={[styles.summaryNumber, { fontSize: secondaryFontSize, marginTop: 0, lineHeight: secondaryFontSize + 4 }]}>{totalPeople}</Text>
+              </View>
+
+              {paymentConfig?.enabled && (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flexWrap: 'wrap' }}>
+                  <Text style={[styles.summaryLabel, { opacity: 0.8, fontSize: labelFontSize }]}>{UI_TEXT.totalCollection}:</Text>
+                  <Text style={[styles.summaryNumber, { fontSize: secondaryFontSize, marginTop: 0, lineHeight: secondaryFontSize + 4 }]}>{UI_TEXT.rs} {collections.total.toLocaleString()}</Text>
+                </View>
+              )}
+            </View>
+          </View>
+
+          <View style={{ position: 'absolute', top: cardPadding, right: cardPadding }}>
+            {currentMealInfo ? (
+              <Pressable
+                onPress={() => navigate(AppScreen.DASHBOARD)}
+                style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: theme.colors.white + "33", paddingHorizontal: isNarrow ? 8 : 10, paddingVertical: 5, borderRadius: 8 }}
+              >
+                <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: theme.colors.success }} />
+                <Text style={{ fontSize: isNarrow ? 9 : 10, fontWeight: "900", color: theme.colors.white }}>
+                  {currentMealInfo.mealLabel.toUpperCase()} {UI_TEXT.live || "LIVE"}
+                </Text>
+              </Pressable>
+            ) : null}
+          </View>
         </Pressable>
 
         <View style={styles.compactActions}>

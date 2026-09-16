@@ -20,7 +20,7 @@ The project follows a **Modular Layered Architecture**:
 ### 📂 Presentation Layer (`src/screens`, `src/components`)
 - **Screens**: Discrete full-page views.
     - `LoginScreen`: Gateway for role-based session initialization. Dynamically fetches credentials from `auth_config`.
-    - `HomeScreen`: Quick-action dashboard utilizing a grid of sleek interaction tiles.
+    - `HomeScreen`: Quick-action dashboard utilizing a grid of sleek interaction tiles and a space-saving, high-density dashboard header card with deep-linked live service shortcut attributes.
     - `SubscriptionListScreen`: Dedicated interface for pass management with high-performance search.
     - `DashboardScreen`: Aggregated analytics with a sleek, earthy-toned financial summary (conditional) and real-time operational metrics. Guest plate counts are read-only and derived from the `GuestManagementScreen`.
     - `SubscriptionForm`: CRUD interface with role-based field locking and touch-optimized block dropdowns. Features **Automated Food Pricing** that calculates costs in real-time as meal choices are modified.

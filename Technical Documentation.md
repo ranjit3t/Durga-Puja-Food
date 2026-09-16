@@ -72,7 +72,9 @@ The application employs a **Zero-Hardcoding Policy** for UI text and Domain enti
 ### H. Data Normalization Layer
 Implemented in `src/repository.ts`, `normalizeRecord` ensures that the local matrices (Person x Day x Meal) are always correctly sized and shaped. It also manages the **Legacy Payment Migration**, automatically converting single-field amount/mode data into the new multi-payment `payments[]` array. Renamed `PujaDay` to `EventDay` to support generic event scheduling.
 
-### I. Digital Pass & Reporting
+### I. Digital Pass, Analytics & Home Layout
+- **High-Density Home Card**: The primary home page action summary tile leverages a high-density horizontal layout scheme. It shifts pass and member counts into parallel side-by-side matrices and introduces a micro-partition divider for payment aggregation data, compressing card dimensions and increasing vertical space for action grids.
+- **Live Service Deep-Linking**: Integrates a `Pressable` shortcut layout within the card structure. If a specific event meal is globally marked as active, volunteers can tap the live status indicator badge to route straight to the kitchen metrics layout.
 - **Modular Component Architecture**: The reporting system is broken down into specialized components (e.g., `DayWiseReport`, `PaymentSummaryReport`) located in `src/components/report/`. This modularity allows for clean, focused rendering of complex data sets.
 - **Headless Analytics (`useReportData`)**: All data aggregation logic is encapsulated in the `useReportData` custom hook. It calculates dietary splits, taken counts, and financial summaries synchronously from the global subscription state.
 - **Image Generation**: Uses `captureRef` from `react-native-view-shot` to convert themed views into PNGs.

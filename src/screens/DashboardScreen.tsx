@@ -404,33 +404,6 @@ export function DashboardScreen() {
           </View>
         </View>
 
-        {/* Financial Overview */}
-        {paymentConfig.enabled && (
-          <>
-            <Text style={[styles.sectionTitle, { marginBottom: 16 }]}>{UI_TEXT.payment}</Text>
-            <View style={styles.collectionCard}>
-              <View style={{ backgroundColor: theme.colors.surfaceDark, width: 56, height: 56, borderRadius: 20, alignItems: "center", justifyContent: "center" }}>
-                 <Ionicons name="wallet-outline" size={28} color={theme.colors.primary} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.collectionLabel}>{UI_TEXT.totalCollection}</Text>
-                <Text style={styles.collectionAmount}>
-                  {UI_TEXT.rs} {collections.total.toFixed(0)}
-                </Text>
-                <Text style={styles.collectionBreakdown}>
-                  {(() => {
-                     const parts = [];
-                     if (paymentConfig.options.upi) parts.push(`${getPaymentModeLabel(PaymentMode.UPI)} ${collections.upi.toFixed(0)}`);
-                     if (paymentConfig.options.cash) parts.push(`${getPaymentModeLabel(PaymentMode.CASH)} ${collections.cash.toFixed(0)}`);
-                     if (paymentConfig.options.bankTransfer) parts.push(`${getPaymentModeLabel(PaymentMode.BANK_TRANSFER)} ${collections.bankTransfer.toFixed(0)}`);
-                     return parts.join(" • ");
-                  })()}
-                </Text>
-              </View>
-            </View>
-          </>
-        )}
-
         <Text style={[styles.sectionTitle, { marginBottom: 16 }]}>{UI_TEXT.dailyMealDemand}</Text>
 
         {/* Daily Demand Matrices */}
