@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import { View, Text, Pressable, Modal, StyleSheet, Platform } from "react-native";
 import { useAppTheme } from "../../theme";
+import { UI_TEXT } from "../../strings";
 
 export type AlertButton = {
   text: string;
@@ -20,7 +21,7 @@ export function CustomAlert({
   visible,
   title,
   message,
-  buttons = [{ text: "OK" }],
+  buttons = [{ text: UI_TEXT.ok }],
   onClose,
 }: CustomAlertProps) {
   const { theme } = useAppTheme();
@@ -30,20 +31,20 @@ export function CustomAlert({
     return StyleSheet.create({
       backdrop: {
         flex: 1,
-        backgroundColor: "rgba(0, 0, 0, 0.65)",
+        backgroundColor: COLORS.shadow + "A6",
         justifyContent: "center",
         alignItems: "center",
         padding: 24,
       },
       card: {
-        backgroundColor: COLORS.white === "#FFFFFF" && theme.themeType === 'dark' ? theme.colors.surface : theme.colors.white,
+        backgroundColor: theme.themeType === 'dark' ? COLORS.surface : COLORS.white,
         borderRadius: 28,
         width: "100%",
         maxWidth: 340,
         padding: 24,
         ...Platform.select({
           ios: {
-            shadowColor: "#000",
+            shadowColor: COLORS.shadow,
             shadowOffset: { width: 0, height: 12 },
             shadowOpacity: 0.15,
             shadowRadius: 16,
@@ -89,7 +90,7 @@ export function CustomAlert({
         color: COLORS.white,
       },
       destructiveButton: {
-        backgroundColor: theme.themeType === 'dark' ? "#2D1B1B" : "#FFF5F5",
+        backgroundColor: COLORS.errorLight,
         borderWidth: 1,
         borderColor: COLORS.error,
       },

@@ -17,54 +17,47 @@ import { Ionicons } from "@expo/vector-icons";
 import { useStyles } from "../styles";
 import { useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
-import { mealSummary } from "../constants";
-import { Subscription, ConfigDay, PaymentConfig, UserRole } from "../types";
+import { useAuth } from "../context/AuthContext";
+import { useDatabase } from "../context/DatabaseContext";
+import { useAppNavigation } from "../context/NavigationContext";
+import { getActiveDays, getPaymentModeLabel } from "../constants";
+import { AppScreen, Subscription, PaymentMode, UserRole } from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
-import { ActionLabel } from "../components/common/ActionLabel";
-import { getActiveDays } from "../constants";
 
-export function SubscriptionListScreen({
-  subscriptions,
-  config,
-  paymentConfig,
-  userRole,
-  searchText,
-  onSearchChange,
-  onBack,
-  onHome,
-  onSelect,
-  onAdd,
-  onLogout,
-  seasonEnabled,
-}: {
-  subscriptions: Subscription[];
-  config: ConfigDay[];
-  paymentConfig: PaymentConfig;
-  userRole: UserRole;
-  searchText: string;
-  onSearchChange: (text: string) => void;
-  onBack: () => void;
-  onHome: () => void;
-  onSelect: (sub: Subscription) => void;
-  onAdd: () => void;
-  onLogout: () => void;
-  seasonEnabled: boolean;
-}) {
+export function SubscriptionListScreen() {
+  const { userRole, handleLogout } = useAuth();
+  const {
+    subscriptions, dayConfig, paymentConfig, seasonEnabled
+  } = useDatabase();
+
+  const {
+    subscriptionSearch, setSubscriptionSearch, navigate, goBack, startNew,
+    setSelectedId, setSelectedRecord
+  } = useAppNavigation();
+
+  const onSelect = (sub: Subscription) => {
+    setSelectedId(sub.id);
+    setSelectedRecord(sub);
+    navigate(AppScreen.DETAILS);
+  };
+
+  const onAdd = () => startNew(dayConfig, "", paymentConfig, true, true, seasonEnabled);
+
   const styles = useStyles();
   const { theme } = useAppTheme();
-  const isAdmin = userRole === "admin";
-  const canAdd = getActiveDays(config).length > 0 && seasonEnabled;
+  const isAdmin = userRole === UserRole.ADMIN;
+  const canAdd = getActiveDays(dayConfig).length > 0 && seasonEnabled;
 
   const visibleSubscriptions = useMemo(() => {
-    if (!searchText) return subscriptions;
+    if (!subscriptionSearch) return subscriptions;
     return subscriptions.filter(
       (s) =>
-        s.flat.toLowerCase().includes(searchText.toLowerCase()) ||
-        s.block.toLowerCase().includes(searchText.toLowerCase())
+        s.flat.toLowerCase().includes(subscriptionSearch.toLowerCase()) ||
+        s.block.toLowerCase().includes(subscriptionSearch.toLowerCase())
     );
-  }, [subscriptions, searchText]);
+  }, [subscriptions, subscriptionSearch]);
 
 
   return (
@@ -77,10 +70,10 @@ export function SubscriptionListScreen({
         <View style={styles.header}>
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <BackButton onPress={onBack} />
-              <HomeButton onPress={onHome} />
+              <BackButton onPress={goBack} />
+              <HomeButton onPress={() => navigate(AppScreen.HOME)} />
             </View>
-            <LogoutButton onLogout={onLogout} />
+            <LogoutButton onLogout={handleLogout} />
           </View>
           <Text style={styles.title}>{UI_TEXT.subscriptions}</Text>
           <Text style={styles.subtitle}>{UI_TEXT.activePasses}: {subscriptions.length}</Text>
@@ -89,8 +82,8 @@ export function SubscriptionListScreen({
         <View style={[styles.searchBox, { marginHorizontal: 20, marginTop: 20 }]}>
           <Ionicons name="search-outline" size={22} color={theme.colors.textSecondary} />
           <TextInput
-            value={searchText}
-            onChangeText={onSearchChange}
+            value={subscriptionSearch}
+            onChangeText={setSubscriptionSearch}
             placeholder={UI_TEXT.searchPlaceholder}
             placeholderTextColor={theme.colors.textMuted}
             style={styles.searchInput}
@@ -147,18 +140,18 @@ export function SubscriptionListScreen({
 
                 <View style={{ height: 1, backgroundColor: colorScheme.border, marginVertical: 16 }} />
 
-                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                  <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                     {paymentConfig.enabled && (
                       <>
                         <Ionicons name="card-outline" size={16} color={colorScheme.accent} />
-                        <Text style={{ fontWeight: "700", color: theme.colors.textPrimary }}>{item.paymentMode}</Text>
+                        <Text style={{ fontWeight: "700", color: theme.colors.textPrimary }}>{getPaymentModeLabel(item.payments && item.payments.length > 0 ? item.payments[0].mode : (item.paymentMode as PaymentMode || PaymentMode.CASH))}</Text>
                       </>
                     )}
                   </View>
                   {paymentConfig.enabled && (
                     <Text style={{ fontSize: 18, fontWeight: "900", color: colorScheme.accent }}>
-                      {UI_TEXT.rs} {item.amount || "0"}
+                      {UI_TEXT.rs} {item.amount || (item.payments && item.payments.reduce((sum: number, p: any) => sum + (parseFloat(p.amount) || 0), 0)) || "0"}
                     </Text>
                   )}
                 </View>

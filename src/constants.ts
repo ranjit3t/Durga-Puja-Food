@@ -1,8 +1,9 @@
 /**
  * Shared Application Constants and Logic Helpers
  */
-import { Day, Subscription, FoodMenu, ConfigDay, AppConfig } from "./types";
+import { Day, Subscription, FoodMenu, ConfigDay, AppConfig, MealType, DietType, DietaryOption, PaymentMode } from "./types";
 import { UI_TEXT } from "./strings";
+import { MealAllocation } from "./domain";
 
 /**
  * Returns the enabled days from the config.
@@ -28,12 +29,68 @@ export const getDayAbbr = (dayId: string, config: ConfigDay[]) =>
  */
 export const isMealEnabled = (
   dayId: string,
-  meal: "breakfast" | "lunch" | "dinner",
+  meal: MealType,
   config: ConfigDay[]
 ) => {
   const dayConfig = (config || []).find((d) => d.id === dayId);
   if (!dayConfig || !dayConfig.enabled) return false;
   return dayConfig[meal]?.enabled || false;
+};
+
+/**
+ * Checks if a specific meal slot (breakfast/lunch/dinner) is marked as DONE for a day.
+ */
+export const isMealDone = (
+  dayId: string,
+  meal: MealType,
+  config: ConfigDay[]
+) => {
+  const dayConfig = (config || []).find((d) => d.id === dayId);
+  if (!dayConfig || !dayConfig.enabled) return false;
+  return dayConfig[meal]?.done || false;
+};
+
+/**
+ * Checks if a specific meal slot is marked as CURRENT.
+ */
+export const isMealCurrent = (
+  dayId: string,
+  meal: MealType,
+  config: ConfigDay[]
+) => {
+  const dayConfig = (config || []).find((d) => d.id === dayId);
+  if (!dayConfig || !dayConfig.enabled) return false;
+  return dayConfig[meal]?.current || false;
+};
+
+/**
+ * Checks if all enabled meals across all active days are marked as DONE.
+ */
+export const isSeasonDone = (config: ConfigDay[]) => {
+  const activeDays = (config || []).filter((d) => d && d.enabled);
+  if (activeDays.length === 0) return true;
+
+  return activeDays.every((day) => {
+    const meals = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER];
+    return meals.every((mKey) => {
+      const m = day[mKey];
+      return !m.enabled || m.done;
+    });
+  });
+};
+
+/**
+ * Returns sorted meal keys, putting the "Current" meal first if it exists.
+ */
+export const getSortedMealKeys = (dayId: string, config: ConfigDay[]) => {
+  const keys: MealType[] = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER];
+  return [...keys].sort((a, b) => {
+    const aCurrent = isMealCurrent(dayId, a, config);
+    const bCurrent = isMealCurrent(dayId, b, config);
+    if (aCurrent && !bCurrent) return -1;
+    if (!aCurrent && bCurrent) return 1;
+    return 0;
+  });
 };
 
 /**
@@ -50,8 +107,8 @@ export const isVegOnlyDay = (dayId: string, config: ConfigDay[]) => {
  */
 export const isDietaryEnabled = (
   dayId: string,
-  meal: "breakfast" | "lunch" | "dinner",
-  diet: "veg" | "nonVeg",
+  meal: MealType,
+  diet: DietType,
   config: ConfigDay[]
 ) => {
   const dayConfig = (config || []).find((d) => d.id === dayId);
@@ -64,7 +121,7 @@ export const isDietaryEnabled = (
  */
 export const isDietaryEnabledForDay = (
   dayId: string,
-  diet: "veg" | "nonVeg",
+  diet: DietType,
   config: ConfigDay[]
 ) => {
   const dayConfig = (config || []).find((d) => d.id === dayId);
@@ -83,7 +140,7 @@ export const isDietaryEnabledForDay = (
  */
 export const isParcelEnabled = (
   dayId: string,
-  meal: "breakfast" | "lunch" | "dinner",
+  meal: MealType,
   config: ConfigDay[]
 ) => {
   const dayConfig = (config || []).find((d) => d.id === dayId);
@@ -107,23 +164,35 @@ export const isPaymentEnabled = (config: AppConfig) => {
  * Returns list of enabled payment methods.
  */
 export const getEnabledPaymentMethods = (config: AppConfig) => {
-  if (!config.payment || !config.payment.enabled) return ["UPI", "Cash"];
-  const methods: string[] = [];
-  if (config.payment.options.upi) methods.push(UI_TEXT.upi);
-  if (config.payment.options.cash) methods.push(UI_TEXT.cash);
-  if (config.payment.options.bankTransfer) methods.push(UI_TEXT.bankTransfer);
+  if (!config.payment || !config.payment.enabled) return [PaymentMode.UPI, PaymentMode.CASH];
+  const methods: PaymentMode[] = [];
+  if (config.payment.options.upi) methods.push(PaymentMode.UPI);
+  if (config.payment.options.cash) methods.push(PaymentMode.CASH);
+  if (config.payment.options.bankTransfer) methods.push(PaymentMode.BANK_TRANSFER);
   return methods;
 };
 
-export const paymentOptions: Subscription["paymentMode"][] = [UI_TEXT.upi, UI_TEXT.cash];
+/**
+ * Returns localized label for a payment mode.
+ */
+export const getPaymentModeLabel = (mode: PaymentMode) => {
+  switch (mode) {
+    case PaymentMode.UPI: return UI_TEXT.upi;
+    case PaymentMode.CASH: return UI_TEXT.cash;
+    case PaymentMode.BANK_TRANSFER: return UI_TEXT.bankTransfer;
+    default: return String(mode);
+  }
+};
+
+export const paymentOptions: PaymentMode[] = [PaymentMode.UPI, PaymentMode.CASH, PaymentMode.BANK_TRANSFER];
 
 /**
  * Returns an empty meal allocation for all days.
  */
 export const emptyMeals = (config: ConfigDay[]) =>
   Object.fromEntries(
-    getActiveDays(config).map((day) => [day, { veg: 0, nonVeg: 0 }])
-  ) as Record<string, { veg: number; nonVeg: number }>;
+    getActiveDays(config).map((day) => [day, { [DietType.VEG]: 0, [DietType.NON_VEG]: 0 }])
+  ) as Record<string, MealAllocation>;
 
 /**
  * Derives individual meal choices (Veg/Non-veg/None) based on allocation counts.
@@ -137,11 +206,11 @@ export const mealChoicesFromMeals = (
     getActiveDays(config).map((day) => [
       day,
       Array.from({ length: count }, (_, index) =>
-        index < meals[day]?.veg
-          ? "Veg"
-          : index < (meals[day]?.veg || 0) + (meals[day]?.nonVeg || 0)
-          ? "Non-veg"
-          : "None"
+        index < meals[day]?.[DietType.VEG]
+          ? DietaryOption.VEG
+          : index < (meals[day]?.[DietType.VEG] || 0) + (meals[day]?.[DietType.NON_VEG] || 0)
+          ? DietaryOption.NON_VEG
+          : DietaryOption.NONE
       ),
     ])
   ) as Subscription["mealByPerson"];
@@ -159,9 +228,9 @@ export const mealSlotsFromChoices = (
       day,
       Array.from({ length: count }, () => {
         return {
-          breakfast: "None",
-          lunch: "None",
-          dinner: "None",
+          [MealType.BREAKFAST]: DietaryOption.NONE,
+          [MealType.LUNCH]: DietaryOption.NONE,
+          [MealType.DINNER]: DietaryOption.NONE,
           breakfastParcel: false,
           lunchParcel: false,
           dinnerParcel: false,
@@ -181,29 +250,29 @@ export const mealsFromChoices = (
   Object.fromEntries(
     getActiveDays(config).map((day) => {
       const slots = mealSlots[day] || [];
-      const meals = ["breakfast", "lunch", "dinner"] as const;
+      const meals = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER];
 
       const vegCount = slots.filter((s) =>
         meals.some(
           (m) =>
-            s[m] === "Veg" &&
-            isDietaryEnabled(day, m, "veg", config)
+            s[m] === DietaryOption.VEG &&
+            isDietaryEnabled(day, m, DietType.VEG, config)
         )
       ).length;
 
       const nonVegCount = slots.filter((s) =>
         meals.some(
           (m) =>
-            s[m] === "Non-veg" &&
-            isDietaryEnabled(day, m, "nonVeg", config)
+            s[m] === DietaryOption.NON_VEG &&
+            isDietaryEnabled(day, m, DietType.NON_VEG, config)
         )
       ).length;
 
       return [
         day,
         {
-          veg: vegCount,
-          nonVeg: nonVegCount,
+          [DietType.VEG]: vegCount,
+          [DietType.NON_VEG]: nonVegCount,
         },
       ];
     })
@@ -222,7 +291,7 @@ export const resizeMealChoices = (
       day,
       Array.from(
         { length: count },
-        (_, index) => mealByPerson[day]?.[index] ?? "None"
+        (_, index) => mealByPerson[day]?.[index] ?? DietaryOption.NONE
       ),
     ])
   ) as Subscription["mealByPerson"];
@@ -241,9 +310,9 @@ export const resizeMealSlots = (
       Array.from({ length: count }, (_, index) => {
         const s = mealSlots[day]?.[index];
         return {
-          breakfast: s?.breakfast || "None",
-          lunch: s?.lunch || "None",
-          dinner: s?.dinner || "None",
+          [MealType.BREAKFAST]: s?.breakfast || DietaryOption.NONE,
+          [MealType.LUNCH]: s?.lunch || DietaryOption.NONE,
+          [MealType.DINNER]: s?.dinner || DietaryOption.NONE,
           breakfastParcel: Boolean(s?.breakfastParcel),
           lunchParcel: Boolean(s?.lunchParcel),
           dinnerParcel: Boolean(s?.dinnerParcel),
@@ -260,9 +329,9 @@ export const emptyTaken = (count: number, config: ConfigDay[]) =>
     getActiveDays(config).map((day) => [
       day,
       Array.from({ length: count }, () => ({
-        breakfast: false,
-        lunch: false,
-        dinner: false,
+        [MealType.BREAKFAST]: false,
+        [MealType.LUNCH]: false,
+        [MealType.DINNER]: false,
       })),
     ])
   ) as Subscription["takenByPerson"];
@@ -284,9 +353,9 @@ export const emptyFoodMenu = (config: ConfigDay[]): FoodMenu => {
     getActiveDays(config).map((day) => [
       day,
       {
-        breakfast: emptyMeal(),
-        lunch: emptyMeal(),
-        dinner: emptyMeal(),
+        [MealType.BREAKFAST]: emptyMeal(),
+        [MealType.LUNCH]: emptyMeal(),
+        [MealType.DINNER]: emptyMeal(),
       },
     ])
   ) as FoodMenu;
@@ -301,17 +370,17 @@ export const qrValueFor = (id: string) =>
 export const mealSummary = (subscription: Subscription, config: ConfigDay[]) =>
   getActiveDays(config)
     .filter((day) => {
-      const v = subscription?.meals?.[day]?.veg || 0;
-      const nv = subscription?.meals?.[day]?.nonVeg || 0;
+      const v = subscription?.meals?.[day]?.[DietType.VEG] || 0;
+      const nv = subscription?.meals?.[day]?.[DietType.NON_VEG] || 0;
       return v + nv > 0;
     })
     .map((day) => {
-      const v = subscription?.meals?.[day]?.veg || 0;
-      const nv = subscription?.meals?.[day]?.nonVeg || 0;
+      const v = subscription?.meals?.[day]?.[DietType.VEG] || 0;
+      const nv = subscription?.meals?.[day]?.[DietType.NON_VEG] || 0;
 
       const parts = [];
-      if (isDietaryEnabledForDay(day, "veg", config) && v > 0) parts.push(`${v} ${UI_TEXT.veg}`);
-      if (isDietaryEnabledForDay(day, "nonVeg", config) && nv > 0) parts.push(`${nv} ${UI_TEXT.nonVeg}`);
+      if (isDietaryEnabledForDay(day, DietType.VEG, config) && v > 0) parts.push(`${v} ${UI_TEXT.veg}`);
+      if (isDietaryEnabledForDay(day, DietType.NON_VEG, config) && nv > 0) parts.push(`${nv} ${UI_TEXT.nonVeg}`);
 
       return `${getDayAbbr(day, config)} ${parts.join("/")}`;
     })
@@ -331,9 +400,9 @@ export const resizeTaken = (
       Array.from({ length: count }, (_, index) => {
         const t = takenByPerson[day]?.[index];
         return {
-          breakfast: Boolean(t?.breakfast),
-          lunch: Boolean(t?.lunch),
-          dinner: Boolean(t?.dinner),
+          [MealType.BREAKFAST]: Boolean(t?.breakfast),
+          [MealType.LUNCH]: Boolean(t?.lunch),
+          [MealType.DINNER]: Boolean(t?.dinner),
         };
       }),
     ])
@@ -349,10 +418,10 @@ export const capMeals = (
 ) =>
   Object.fromEntries(
     getActiveDays(config).map((day) => {
-      const m = meals[day] || { veg: 0, nonVeg: 0 };
-      const total = m.veg + m.nonVeg;
+      const m = meals[day] || { [DietType.VEG]: 0, [DietType.NON_VEG]: 0 };
+      const total = m[DietType.VEG] + m[DietType.NON_VEG];
       if (total <= count) return [day, m];
-      const veg = Math.min(m.veg, count);
-      return [day, { veg, nonVeg: Math.max(0, count - veg) }];
+      const veg = Math.min(m[DietType.VEG], count);
+      return [day, { [DietType.VEG]: veg, [DietType.NON_VEG]: Math.max(0, count - veg) }];
     })
   ) as Subscription["meals"];

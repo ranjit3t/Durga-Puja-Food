@@ -20,19 +20,25 @@ import {
   isMealEnabled,
   isDietaryEnabled,
   isParcelEnabled,
+  isMealCurrent,
+  getSortedMealKeys,
+  getPaymentModeLabel,
 } from "../constants";
-import { FoodMenu, MealMenu, UserRole, ConfigDay } from "../types";
+import { MealMenu, UserRole, ConfigDay, MealType, DietType, AppScreen, PaymentMode } from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
 import { MealSummaryInline } from "../components/menu/MealSummaryInline";
 import { Metric } from "../components/common/Metric";
-import { EditableMetric } from "../components/common/EditableMetric";
-import { AlertButton } from "../components/common/CustomAlert";
+
+import { useAuth } from "../context/AuthContext";
+import { useDatabase } from "../context/DatabaseContext";
+import { useUI } from "../context/UIContext";
+import { useAppNavigation } from "../context/NavigationContext";
 
 interface MealSectionProps {
   day: string;
-  type: "breakfast" | "lunch" | "dinner";
+  type: MealType;
   icon: keyof typeof Ionicons.glyphMap;
   total: number;
   veg: number;
@@ -51,7 +57,7 @@ interface MealSectionProps {
   config: ConfigDay[];
   onUpdateGuest: (
     day: string,
-    type: "breakfast" | "lunch" | "dinner",
+    type: MealType,
     field:
       | "guestVeg"
       | "guestNonVeg"
@@ -60,7 +66,6 @@ interface MealSectionProps {
       | "guestNonVegTaken",
     value: number
   ) => void;
-  showAlert: (title: string, message: string, buttons?: AlertButton[]) => void;
   guestEnabled: boolean;
   seasonEnabled: boolean;
   labels: {
@@ -99,50 +104,52 @@ const DashboardMealSection = memo(
     guestVegTaken,
     guestNonVegTaken,
     menu,
-    userRole,
     config,
-    onUpdateGuest,
-    showAlert,
     guestEnabled,
-    seasonEnabled,
     labels,
   }: MealSectionProps) => {
     const vegItems = menu?.veg || [];
     const nonVegItems = menu?.nonVeg || [];
-    const isAdmin = userRole === "admin";
-    const canEdit = seasonEnabled;
 
-    const isVegEnabled = isDietaryEnabled(day, type, "veg", config);
-    const isNonVegEnabled = isDietaryEnabled(day, type, "nonVeg", config);
+    const isVegEnabled = isDietaryEnabled(day, type, DietType.VEG, config);
+    const isNonVegEnabled = isDietaryEnabled(day, type, DietType.NON_VEG, config);
     const isBothEnabled = isVegEnabled && isNonVegEnabled;
 
     const totalVegTaken = flatVegTaken + guestVegTaken;
     const totalNonVegTaken = flatNonVegTaken + guestNonVegTaken;
     const totalMealTaken = totalVegTaken + totalNonVegTaken;
 
-    const mealLabel = type === "breakfast" ? UI_TEXT.breakfast : type === "lunch" ? UI_TEXT.lunch : UI_TEXT.dinner;
+    const mealLabel = type === MealType.BREAKFAST ? UI_TEXT.breakfast : type === MealType.LUNCH ? UI_TEXT.lunch : UI_TEXT.dinner;
+    const isCurrent = isMealCurrent(day, type, config);
 
     const styles = useStyles();
-    const { theme, themeType } = useAppTheme();
+    const { theme } = useAppTheme();
 
     return (
-      <View style={styles.dashboardMealSection}>
+      <View style={[styles.dashboardMealSection, isCurrent && { borderColor: theme.colors.primary, borderWidth: 1.5, backgroundColor: theme.colors.primary + "08" }]}>
         <View style={[styles.mealDisplayHeader, { marginBottom: 12, justifyContent: "space-between" }]}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <Ionicons name={icon} size={22} color={theme.colors.primary} />
-            <Text style={[styles.sectionTitle, { marginBottom: 0, fontSize: 18 }]}>
-              {mealLabel}
-            </Text>
+            <Ionicons name={icon} size={22} color={isCurrent ? theme.colors.primary : theme.colors.textSecondary} />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+               <Text style={[styles.sectionTitle, { marginBottom: 0, fontSize: 18, color: isCurrent ? theme.colors.primary : theme.colors.textPrimary }]}>
+                 {mealLabel}
+               </Text>
+               {isCurrent && (
+                 <View style={{ backgroundColor: theme.colors.primary, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                    <Text style={{ color: theme.colors.white, fontSize: 10, fontWeight: "900" }}>{UI_TEXT.live.toUpperCase()}</Text>
+                 </View>
+               )}
+            </View>
           </View>
-          <View style={[styles.pill, { backgroundColor: theme.colors.surface }]}>
-             <Text style={[styles.pillText, { color: theme.colors.textSecondary }]}>{total} {UI_TEXT.plates}</Text>
+          <View style={[styles.pill, { backgroundColor: isCurrent ? theme.colors.primary + "15" : theme.colors.surface }]}>
+             <Text style={[styles.pillText, { color: isCurrent ? theme.colors.primary : theme.colors.textSecondary }]}>{total} {UI_TEXT.plates}</Text>
           </View>
         </View>
 
         {/* Menu Quick-View */}
         {(vegItems.length > 0 || nonVegItems.length > 0) ? (
           <View style={{ gap: 8, marginBottom: 16 }}>
-            {isVegEnabled && vegItems.length > 0 && (
+            {isVegEnabled && vegItems.length > 0 ? (
               <View style={[styles.menuBox, { borderLeftWidth: 4, borderLeftColor: theme.colors.veg, paddingVertical: 8 }]}>
                 <MealSummaryInline
                   label={UI_TEXT.veg}
@@ -152,8 +159,8 @@ const DashboardMealSection = memo(
                   menu={{ veg: vegItems, nonVeg: [] }}
                 />
               </View>
-            )}
-            {isNonVegEnabled && nonVegItems.length > 0 && (
+            ) : null}
+            {isNonVegEnabled && nonVegItems.length > 0 ? (
                 <View
                   style={[styles.menuBox, { borderLeftWidth: 4, borderLeftColor: theme.colors.nonVeg, paddingVertical: 8 }]}
                 >
@@ -165,7 +172,7 @@ const DashboardMealSection = memo(
                     menu={{ veg: [], nonVeg: nonVegItems }}
                   />
                 </View>
-              )}
+              ) : null}
           </View>
         ) : null}
 
@@ -271,45 +278,60 @@ const DashboardMealSection = memo(
   }
 );
 
-export function DashboardScreen({
-  data,
-  userRole,
-  menu,
-  config,
-  paymentConfig,
-  seasonName,
-  totalCollection,
-  upiCollection,
-  cashCollection,
-  bankTransferCollection,
-  onUpdateMenu,
-  onBack,
-  onHome,
-  onLogout,
-  showAlert,
-  guestEnabled,
-  seasonEnabled,
-}: {
-  data: Array<any>;
-  userRole: UserRole;
-  totalCollection: number;
-  upiCollection: number;
-  cashCollection: number;
-  bankTransferCollection: number;
-  menu: FoodMenu;
-  config: ConfigDay[];
-  paymentConfig: PaymentConfig;
-  seasonName: string;
-  onUpdateMenu: (menu: FoodMenu) => Promise<void>;
-  onBack: () => void;
-  onHome: () => void;
-  onLogout: () => void;
-  showAlert: (title: string, message: string, buttons?: AlertButton[]) => void;
-  guestEnabled: boolean;
-  seasonEnabled: boolean;
-}) {
+export function DashboardScreen() {
+  const { userRole, handleLogout } = useAuth();
+  const {
+    foodMenu, dayConfig, seasonName, paymentConfig, guestEnabled, seasonEnabled,
+    dashboardData, collections, updateGuestCount
+  } = useDatabase();
+
+  const { navigate, goBack } = useAppNavigation();
+  const { showAlert } = useUI();
+
   const styles = useStyles();
   const { theme, themeType } = useAppTheme();
+
+  const sortedActiveDays = useMemo(() => {
+    const active = dayConfig.filter((d) => d.enabled).map((d) => d.id);
+    return [...active].sort((a, b) => {
+      const aHasCurrent = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].some(m => isMealCurrent(a, m, dayConfig));
+      const bHasCurrent = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].some(m => isMealCurrent(b, m, dayConfig));
+
+      if (aHasCurrent && !bHasCurrent) return -1;
+      if (!aHasCurrent && bHasCurrent) return 1;
+
+      // If neither or both (shouldn't happen) have current, maintain original config order
+      const aIdx = dayConfig.findIndex(d => d.id === a);
+      const bIdx = dayConfig.findIndex(d => d.id === b);
+      return aIdx - bIdx;
+    });
+  }, [dayConfig]);
+
+  const summaryTotals = useMemo(() => {
+    return dashboardData.reduce((acc, day) => {
+      acc.total += (day.breakfast || 0) + (day.lunch || 0) + (day.dinner || 0);
+      acc.veg += (day.breakfastVeg || 0) + (day.lunchVeg || 0) + (day.dinnerVeg || 0);
+      acc.nonVeg += (day.breakfastNonVeg || 0) + (day.lunchNonVeg || 0) + (day.dinnerNonVeg || 0);
+      acc.taken += (day.breakfastTaken || 0) + (day.lunchTaken || 0) + (day.dinnerTaken || 0);
+      return acc;
+    }, { total: 0, veg: 0, nonVeg: 0, taken: 0 });
+  }, [dashboardData]);
+
+  const { isVegEnabledGlobally, isNonVegEnabledGlobally } = useMemo(() => {
+    return {
+      isVegEnabledGlobally: dayConfig.some(d => d.enabled && (
+        (d[MealType.BREAKFAST].enabled && d[MealType.BREAKFAST].veg) ||
+        (d[MealType.LUNCH].enabled && d[MealType.LUNCH].veg) ||
+        (d[MealType.DINNER].enabled && d[MealType.DINNER].veg)
+      )),
+      isNonVegEnabledGlobally: dayConfig.some(d => d.enabled && (
+        (d[MealType.BREAKFAST].enabled && d[MealType.BREAKFAST].nonVeg) ||
+        (d[MealType.LUNCH].enabled && d[MealType.LUNCH].nonVeg) ||
+        (d[MealType.DINNER].enabled && d[MealType.DINNER].nonVeg)
+      ))
+    };
+  }, [dayConfig]);
+
   const emptyMeal = {
     veg: [],
     nonVeg: [],
@@ -318,65 +340,6 @@ export function DashboardScreen({
     guestTaken: 0,
     guestVegTaken: 0,
     guestNonVegTaken: 0,
-  };
-
-  const activeDays = config.filter((d) => d.enabled).map((d) => d.id);
-
-  const summaryTotals = useMemo(() => {
-    return data.reduce((acc, day) => {
-      acc.total += (day.breakfast || 0) + (day.lunch || 0) + (day.dinner || 0);
-      acc.veg += (day.breakfastVeg || 0) + (day.lunchVeg || 0) + (day.dinnerVeg || 0);
-      acc.nonVeg += (day.breakfastNonVeg || 0) + (day.lunchNonVeg || 0) + (day.dinnerNonVeg || 0);
-      acc.taken += (day.breakfastTaken || 0) + (day.lunchTaken || 0) + (day.dinnerTaken || 0);
-      return acc;
-    }, { total: 0, veg: 0, nonVeg: 0, taken: 0 });
-  }, [data]);
-
-  const { isVegEnabledGlobally, isNonVegEnabledGlobally } = useMemo(() => {
-    return {
-      isVegEnabledGlobally: config.some(d => d.enabled && (
-        (d.breakfast.enabled && d.breakfast.veg) ||
-        (d.lunch.enabled && d.lunch.veg) ||
-        (d.dinner.enabled && d.dinner.veg)
-      )),
-      isNonVegEnabledGlobally: config.some(d => d.enabled && (
-        (d.breakfast.enabled && d.breakfast.nonVeg) ||
-        (d.lunch.enabled && d.lunch.nonVeg) ||
-        (d.dinner.enabled && d.dinner.nonVeg)
-      ))
-    };
-  }, [config]);
-
-  /**
-   * Updates guest count or status in the global Food Menu.
-   */
-  const onUpdateGuest = (
-    day: string,
-    type: "breakfast" | "lunch" | "dinner",
-    field:
-      | "guestVeg"
-      | "guestNonVeg"
-      | "guestTaken"
-      | "guestVegTaken"
-      | "guestNonVegTaken",
-    value: number
-  ) => {
-    const updatedMenu = { ...menu };
-    const updatedDay = { ...updatedMenu[day as any] };
-    const updatedMeal = { ...updatedDay[type] };
-
-    // Update the specific field
-    updatedMeal[field] = value;
-
-    // Maintain guestTaken as summation of Veg and Non-veg taken
-    if (field === "guestVegTaken" || field === "guestNonVegTaken") {
-      updatedMeal.guestTaken =
-        (updatedMeal.guestVegTaken || 0) + (updatedMeal.guestNonVegTaken || 0);
-    }
-
-    updatedDay[type] = updatedMeal;
-    updatedMenu[day as any] = updatedDay;
-    onUpdateMenu(updatedMenu);
   };
 
   return (
@@ -389,10 +352,10 @@ export function DashboardScreen({
       <View style={styles.header}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <BackButton onPress={onBack} />
-            <HomeButton onPress={onHome} />
+            <BackButton onPress={goBack} />
+            <HomeButton onPress={() => navigate(AppScreen.HOME)} />
           </View>
-          <LogoutButton onLogout={onLogout} />
+          <LogoutButton onLogout={handleLogout} />
         </View>
         <Text style={styles.title}>{UI_TEXT.dashboardTitle}</Text>
         <Text style={styles.subtitle}>{UI_TEXT.dashboardSubtitle}</Text>
@@ -406,21 +369,22 @@ export function DashboardScreen({
         <View style={[styles.card, { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary, elevation: 6, marginBottom: 24 }]}>
           <View style={styles.previewTop}>
             <View style={{ flex: 1, paddingRight: 10 }}>
-              <Text style={[styles.previewLabel, { color: "rgba(255,255,255,0.7)" }]}>{UI_TEXT.dailyDemandSummary}</Text>
-              {seasonName && <Text style={[styles.previewTitle, { color: theme.colors.white, fontSize: 22 }]} numberOfLines={2}>
+              <Text style={[styles.previewLabel, { color: theme.colors.white, opacity: 0.7 }]}>{UI_TEXT.dailyDemandSummary}</Text>
+              {!!seasonName && (
+                <Text style={[styles.previewTitle, { color: theme.colors.white, fontSize: 22 }]} numberOfLines={2}>
                   {seasonName}
                 </Text>
-              }
+              )}
             </View>
             <View style={{ alignItems: 'flex-end' }}>
                <Text style={[styles.previewAmount, { color: theme.colors.white, fontSize: 32 }]}>
                  {summaryTotals.total}
                </Text>
-               <Text style={{ color: "rgba(255,255,255,0.8)", fontSize: 12, fontWeight: "700" }}>{UI_TEXT.plates.toUpperCase()}</Text>
+               <Text style={{ color: theme.colors.white, opacity: 0.8, fontSize: 12, fontWeight: "700" }}>{UI_TEXT.plates.toUpperCase()}</Text>
             </View>
           </View>
 
-          <View style={{ height: 1, backgroundColor: "rgba(255,255,255,0.2)", marginVertical: 12 }} />
+          <View style={{ height: 1, backgroundColor: theme.colors.white, opacity: 0.2, marginVertical: 12 }} />
 
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <Text style={[styles.previewMeta, { color: theme.colors.white }]}>
@@ -451,14 +415,14 @@ export function DashboardScreen({
               <View style={{ flex: 1 }}>
                 <Text style={styles.collectionLabel}>{UI_TEXT.totalCollection}</Text>
                 <Text style={styles.collectionAmount}>
-                  {UI_TEXT.rs} {totalCollection.toFixed(0)}
+                  {UI_TEXT.rs} {collections.total.toFixed(0)}
                 </Text>
                 <Text style={styles.collectionBreakdown}>
                   {(() => {
                      const parts = [];
-                     if (paymentConfig.options.upi) parts.push(`${UI_TEXT.upi} ${upiCollection.toFixed(0)}`);
-                     if (paymentConfig.options.cash) parts.push(`${UI_TEXT.cash} ${cashCollection.toFixed(0)}`);
-                     if (paymentConfig.options.bankTransfer) parts.push(`${UI_TEXT.bankTransfer} ${bankTransferCollection.toFixed(0)}`);
+                     if (paymentConfig.options.upi) parts.push(`${getPaymentModeLabel(PaymentMode.UPI)} ${collections.upi.toFixed(0)}`);
+                     if (paymentConfig.options.cash) parts.push(`${getPaymentModeLabel(PaymentMode.CASH)} ${collections.cash.toFixed(0)}`);
+                     if (paymentConfig.options.bankTransfer) parts.push(`${getPaymentModeLabel(PaymentMode.BANK_TRANSFER)} ${collections.bankTransfer.toFixed(0)}`);
                      return parts.join(" • ");
                   })()}
                 </Text>
@@ -470,45 +434,40 @@ export function DashboardScreen({
         <Text style={[styles.sectionTitle, { marginBottom: 16 }]}>{UI_TEXT.dailyMealDemand}</Text>
 
         {/* Daily Demand Matrices */}
-        {activeDays.map((day, index) => {
-          const item = data[index] || {};
-          const dayMenu = menu[day] || {
-            breakfast: emptyMeal,
-            lunch: emptyMeal,
-            dinner: emptyMeal,
+        {sortedActiveDays.map((day, index) => {
+          const item = dashboardData.find(d => d.dayId === day) || {};
+          const dayMenu = foodMenu[day] || {
+            [MealType.BREAKFAST]: emptyMeal,
+            [MealType.LUNCH]: emptyMeal,
+            [MealType.DINNER]: emptyMeal,
           };
           const colorScheme = theme.cardColors[index % theme.cardColors.length];
+          const sortedMeals = getSortedMealKeys(day, dayConfig);
 
           return (
             <View key={day} style={[styles.dashboardCard, { backgroundColor: colorScheme.bg, borderColor: colorScheme.border, borderWidth: 1.5 }]}>
               <View style={[styles.dashboardCardTop, { marginBottom: 16 }]}>
-                <Text style={[styles.dashboardDay, { color: colorScheme.accent }]}>{getDayLabel(day, config)}</Text>
+                <Text style={[styles.dashboardDay, { color: colorScheme.accent }]}>{getDayLabel(day, dayConfig)}</Text>
               </View>
 
-              {isMealEnabled(day, "breakfast", config) && (
-                <DashboardMealSection
-                  day={day}
-                  type="breakfast"
-                  icon="sunny-outline"
-                  total={item.breakfast || 0}
-                  veg={item.breakfastVeg || 0}
-                  nonVeg={item.breakfastNonVeg || 0}
-                  parcel={item.breakfastParcel || 0}
-                  parcelTaken={item.breakfastParcelTaken || 0}
-                  taken={item.breakfastTaken || 0}
-                  flatVegTaken={item.breakfastFlatVegTaken || 0}
-                  flatNonVegTaken={item.breakfastFlatNonVegTaken || 0}
-                  guestVeg={item.breakfastGuestVeg || 0}
-                  guestNonVeg={item.breakfastGuestNonVeg || 0}
-                  guestVegTaken={item.breakfastGuestVegTaken || 0}
-                  guestNonVegTaken={item.breakfastGuestNonVegTaken || 0}
-                  menu={dayMenu.breakfast}
-                  userRole={userRole}
-                  config={config}
-                  onUpdateGuest={onUpdateGuest}
-                  showAlert={showAlert}
-                  guestEnabled={guestEnabled} seasonEnabled={seasonEnabled}
-                  labels={{
+              {sortedMeals.map((mKey) => {
+                if (!isMealEnabled(day, mKey, dayConfig)) return null;
+
+                const mealProps = mKey === MealType.BREAKFAST ? {
+                  total: item.breakfast || 0,
+                  veg: item.breakfastVeg || 0,
+                  nonVeg: item.breakfastNonVeg || 0,
+                  parcel: item.breakfastParcel || 0,
+                  parcelTaken: item.breakfastParcelTaken || 0,
+                  taken: item.breakfastTaken || 0,
+                  flatVegTaken: item.breakfastFlatVegTaken || 0,
+                  flatNonVegTaken: item.breakfastFlatNonVegTaken || 0,
+                  guestVeg: item.breakfastGuestVeg || 0,
+                  guestNonVeg: item.breakfastGuestNonVeg || 0,
+                  guestVegTaken: item.breakfastGuestVegTaken || 0,
+                  guestNonVegTaken: item.breakfastGuestNonVegTaken || 0,
+                  icon: "sunny-outline" as const,
+                  labels: {
                     veg: UI_TEXT.bVeg,
                     nonVeg: UI_TEXT.bNonVeg,
                     parcel: UI_TEXT.bParcel,
@@ -520,34 +479,22 @@ export function DashboardScreen({
                     guestNonVegTaken: UI_TEXT.guestNonVegTaken,
                     vegTaken: UI_TEXT.vegTaken,
                     nonVegTaken: UI_TEXT.nonVegTaken,
-                  }}
-                />
-              )}
-
-              {isMealEnabled(day, "lunch", config) && (
-                <DashboardMealSection
-                  day={day}
-                  type="lunch"
-                  icon="restaurant-outline"
-                  total={item.lunch || 0}
-                  veg={item.lunchVeg || 0}
-                  nonVeg={item.lunchNonVeg || 0}
-                  parcel={item.lunchParcel || 0}
-                  parcelTaken={item.lunchParcelTaken || 0}
-                  taken={item.lunchTaken || 0}
-                  flatVegTaken={item.lunchFlatVegTaken || 0}
-                  flatNonVegTaken={item.lunchFlatNonVegTaken || 0}
-                  guestVeg={item.lunchGuestVeg || 0}
-                  guestNonVeg={item.lunchGuestNonVeg || 0}
-                  guestVegTaken={item.lunchGuestVegTaken || 0}
-                  guestNonVegTaken={item.lunchGuestNonVegTaken || 0}
-                  menu={dayMenu.lunch}
-                  userRole={userRole}
-                  config={config}
-                  onUpdateGuest={onUpdateGuest}
-                  showAlert={showAlert}
-                  guestEnabled={guestEnabled} seasonEnabled={seasonEnabled}
-                  labels={{
+                  }
+                } : mKey === MealType.LUNCH ? {
+                  total: item.lunch || 0,
+                  veg: item.lunchVeg || 0,
+                  nonVeg: item.lunchNonVeg || 0,
+                  parcel: item.lunchParcel || 0,
+                  parcelTaken: item.lunchParcelTaken || 0,
+                  taken: item.lunchTaken || 0,
+                  flatVegTaken: item.lunchFlatVegTaken || 0,
+                  flatNonVegTaken: item.lunchFlatNonVegTaken || 0,
+                  guestVeg: item.lunchGuestVeg || 0,
+                  guestNonVeg: item.lunchGuestNonVeg || 0,
+                  guestVegTaken: item.lunchGuestVegTaken || 0,
+                  guestNonVegTaken: item.lunchGuestNonVegTaken || 0,
+                  icon: "restaurant-outline" as const,
+                  labels: {
                     veg: UI_TEXT.lVeg,
                     nonVeg: UI_TEXT.lNonVeg,
                     parcel: UI_TEXT.lParcel,
@@ -559,34 +506,22 @@ export function DashboardScreen({
                     guestNonVegTaken: UI_TEXT.guestNonVegTaken,
                     vegTaken: UI_TEXT.vegTaken,
                     nonVegTaken: UI_TEXT.nonVegTaken,
-                  }}
-                />
-              )}
-
-              {isMealEnabled(day, "dinner", config) && (
-                <DashboardMealSection
-                  day={day}
-                  type="dinner"
-                  icon="moon-outline"
-                  total={item.dinner || 0}
-                  veg={item.dinnerVeg || 0}
-                  nonVeg={item.dinnerNonVeg || 0}
-                  parcel={item.dinnerParcel || 0}
-                  parcelTaken={item.dinnerParcelTaken || 0}
-                  taken={item.dinnerTaken || 0}
-                  flatVegTaken={item.dinnerFlatVegTaken || 0}
-                  flatNonVegTaken={item.dinnerFlatNonVegTaken || 0}
-                  guestVeg={item.dinnerGuestVeg || 0}
-                  guestNonVeg={item.dinnerGuestNonVeg || 0}
-                  guestVegTaken={item.dinnerGuestVegTaken || 0}
-                  guestNonVegTaken={item.dinnerGuestNonVegTaken || 0}
-                  menu={dayMenu.dinner}
-                  userRole={userRole}
-                  config={config}
-                  onUpdateGuest={onUpdateGuest}
-                  showAlert={showAlert}
-                  guestEnabled={guestEnabled} seasonEnabled={seasonEnabled}
-                  labels={{
+                  }
+                } : {
+                  total: item.dinner || 0,
+                  veg: item.dinnerVeg || 0,
+                  nonVeg: item.dinnerNonVeg || 0,
+                  parcel: item.dinnerParcel || 0,
+                  parcelTaken: item.dinnerParcelTaken || 0,
+                  taken: item.dinnerTaken || 0,
+                  flatVegTaken: item.dinnerFlatVegTaken || 0,
+                  flatNonVegTaken: item.dinnerFlatNonVegTaken || 0,
+                  guestVeg: item.dinnerGuestVeg || 0,
+                  guestNonVeg: item.dinnerGuestNonVeg || 0,
+                  guestVegTaken: item.dinnerGuestVegTaken || 0,
+                  guestNonVegTaken: item.dinnerGuestNonVegTaken || 0,
+                  icon: "moon-outline" as const,
+                  labels: {
                     veg: UI_TEXT.dVeg,
                     nonVeg: UI_TEXT.dNonVeg,
                     parcel: UI_TEXT.dParcel,
@@ -598,9 +533,37 @@ export function DashboardScreen({
                     guestNonVegTaken: UI_TEXT.guestNonVegTaken,
                     vegTaken: UI_TEXT.vegTaken,
                     nonVegTaken: UI_TEXT.nonVegTaken,
-                  }}
-                />
-              )}
+                  }
+                };
+
+                return (
+                  <DashboardMealSection
+                    key={mKey}
+                    day={day}
+                    type={mKey}
+                    icon={mealProps.icon}
+                    total={mealProps.total}
+                    veg={mealProps.veg}
+                    nonVeg={mealProps.nonVeg}
+                    parcel={mealProps.parcel}
+                    parcelTaken={mealProps.parcelTaken}
+                    taken={mealProps.taken}
+                    flatVegTaken={mealProps.flatVegTaken}
+                    flatNonVegTaken={mealProps.flatNonVegTaken}
+                    guestVeg={mealProps.guestVeg}
+                    guestNonVeg={mealProps.guestNonVeg}
+                    guestVegTaken={mealProps.guestVegTaken}
+                    guestNonVegTaken={mealProps.guestNonVegTaken}
+                    menu={dayMenu[mKey]}
+                    userRole={userRole || UserRole.VENDOR}
+                    config={dayConfig}
+                    onUpdateGuest={updateGuestCount}
+                    guestEnabled={guestEnabled}
+                    seasonEnabled={seasonEnabled}
+                    labels={mealProps.labels}
+                  />
+                );
+              })}
             </View>
           );
         })}

@@ -1,49 +1,46 @@
 import React, { useRef } from "react";
-import { View, Text, Pressable, StatusBar, ScrollView, Platform, useWindowDimensions } from "react-native";
+import { View, Text, Pressable, StatusBar, ScrollView, Platform, useWindowDimensions, Linking } from "react-native";
 import { captureRef } from "react-native-view-shot";
 import QRCode from "react-native-qrcode-svg";
 import { useStyles } from "../styles";
 import { useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
-import { qrValueFor, mealSummary } from "../constants";
-import { Subscription, ConfigDay } from "../types";
+import { qrValueFor } from "../constants";
+import { AppScreen } from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
 import { ActionLabel } from "../components/common/ActionLabel";
 
-export function QrScreen({
-  subscription,
-  config,
-  seasonName,
-  onBack,
-  onHome,
-  onShare,
-  onPrint,
-  onLogout,
-  seasonEnabled,
-}: {
-  subscription: Subscription;
-  config: ConfigDay[];
-  seasonName: string;
-  onBack: () => void;
-  onHome: () => void;
-  onShare: (uri: string, message?: string) => void;
-  onPrint: () => void;
-  onLogout: () => void;
-  seasonEnabled: boolean;
-}) {
+import { useAuth } from "../context/AuthContext";
+import { useDatabase } from "../context/DatabaseContext";
+import { useUI } from "../context/UIContext";
+import { useAppNavigation } from "../context/NavigationContext";
+
+export function QrScreen() {
+  const { userRole, handleLogout } = useAuth();
+  const {
+    dayConfig, seasonName, seasonEnabled, mobileEnabled, subscriptions, whatsappCountryCode
+  } = useDatabase();
+  const { shareQr } = useUI();
+  const { selectedId, selectedRecord, goBack, navigate } = useAppNavigation();
+
+  const subscription = subscriptions.find(s => s.id === selectedId) || selectedRecord;
+  if (!subscription) return null;
+
   const styles = useStyles();
   const { theme, themeType } = useAppTheme();
   const { width } = useWindowDimensions();
   const qrRef = useRef<View>(null);
 
   const qrSize = width > 768 ? 220 : Math.min(width * 0.5, 180);
-  const canShare = seasonEnabled;
+  const canShare = seasonEnabled && userRole === "admin";
+
   const shareImage = async () => {
     if (qrRef.current && canShare) {
       const uri = await captureRef(qrRef, { format: "png", quality: 1 });
-      onShare(uri, `${seasonName || UI_TEXT.headerTitle} - Digital Pass`);
+      // Share only the image for the generic share button
+      shareQr(uri);
     }
   };
   return (
@@ -52,10 +49,10 @@ export function QrScreen({
       <View style={styles.header}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <BackButton onPress={onBack} />
-            <HomeButton onPress={onHome} />
+            <BackButton onPress={goBack} />
+            <HomeButton onPress={() => navigate(AppScreen.HOME)} />
           </View>
-          <LogoutButton onLogout={onLogout} />
+          <LogoutButton onLogout={handleLogout} />
         </View>
         <Text style={styles.title}>{UI_TEXT.foodPass}</Text>
         <Text style={styles.subtitle}>{UI_TEXT.qrIdentityStay}</Text>
@@ -71,12 +68,12 @@ export function QrScreen({
             <QRCode
               value={qrValueFor(subscription.id)}
               size={qrSize}
-              color="#000"
-              backgroundColor="#fff"
+              color={theme.colors.shadow}
+              backgroundColor={theme.colors.white}
             />
 
             <View style={styles.qrPassDetails}>
-              <Text style={styles.qrPassFlat}>{subscription.block}-{subscription.flat}</Text>
+              <Text style={styles.qrPassFlat}>{subscription.block}{UI_TEXT.hyphen}{subscription.flat}</Text>
               <Text style={styles.qrPassPeople}>
                 {subscription.peopleCount} {subscription.peopleCount === 1 ? UI_TEXT.personSuffix : UI_TEXT.personsSuffix}
               </Text>
@@ -92,13 +89,37 @@ export function QrScreen({
             </View>
           </View>
           
-          <View style={{ width: "100%" }}>
+          <View style={{ width: "100%", marginTop: 15 }}>
+            {canShare && mobileEnabled && subscription.mobile ? (
+              <Pressable
+                onPress={async () => {
+                  const message = `*${seasonName || UI_TEXT.headerTitle}*\n*${UI_TEXT.flatUpper}:* ${subscription.block}${UI_TEXT.hyphen}${subscription.flat}\n*${UI_TEXT.passIdLabel}:* ${subscription.id}\n\n${UI_TEXT.passInstruction}`;
+                  const url = `https://wa.me/${whatsappCountryCode}${subscription.mobile}?text=${encodeURIComponent(message)}`;
+
+                  try {
+                    await Linking.openURL(url);
+                  } catch (err) {
+                    console.error("WhatsApp API error:", err);
+                    // Fallback to image sharing if the URL fails
+                    shareImage();
+                  }
+                }}
+                style={[styles.secondary, { borderColor: theme.colors.whatsapp }]}
+              >
+                <ActionLabel
+                  icon="logo-whatsapp"
+                  label={`${UI_TEXT.sendToWhatsApp}`}
+                  color={theme.colors.whatsapp}
+                />
+              </Pressable>
+            ) : null}
+            
             {canShare && (
               <Pressable onPress={shareImage} style={styles.primary}>
                 <ActionLabel
-                  icon={Platform.OS === "web" ? "download-outline" : "logo-whatsapp"}
-                  label={Platform.OS === "web" ? UI_TEXT.downloadPass : UI_TEXT.shareWhatsApp}
-                  color="#fff"
+                  icon={Platform.OS === "web" ? "download-outline" : "share-social-outline"}
+                  label={Platform.OS === "web" ? UI_TEXT.downloadPass : UI_TEXT.shareQrDialog}
+                  color={theme.colors.white}
                 />
               </Pressable>
             )}

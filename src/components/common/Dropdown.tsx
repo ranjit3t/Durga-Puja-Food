@@ -28,7 +28,7 @@ export function Dropdown({
 
       <Pressable onPress={() => setOpen(true)} style={styles.dropdownButton}>
         <Text style={styles.dropdownValue}>
-          {value || `Select ${(label ?? "option").toLowerCase()}`}
+          {value || `${UI_TEXT.selectPrefix} ${(label ?? UI_TEXT.optionDefault).toLowerCase()}`}
         </Text>
         <Text style={styles.dropdownChevron}>▼</Text>
       </Pressable>
@@ -42,7 +42,7 @@ export function Dropdown({
         <View style={styles.dropdownModalBackdrop}>
           <View style={styles.dropdownModalCard}>
             <Text style={styles.dropdownModalTitle}>
-              Select {label ?? "option"}
+              {UI_TEXT.selectPrefix} {label ?? UI_TEXT.optionDefault}
             </Text>
 
             <ScrollView

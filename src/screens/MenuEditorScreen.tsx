@@ -2,7 +2,7 @@
  * Administrative tool for managing the global festival food menu.
  * Allows adding and removing items from Breakfast, Lunch, and Dinner slots.
  */
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -16,41 +16,38 @@ import { UI_TEXT } from "../strings";
 import {
   getDayLabel,
   isMealEnabled,
+  isMealDone,
+  isMealCurrent,
+  getSortedMealKeys,
 } from "../constants";
-import { FoodMenu, Day, DayMenu, MealMenu, ConfigDay } from "../types";
+import { Day, DayMenu, MealMenu, ConfigDay, MealType, AppScreen } from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
 import { ActionLabel } from "../components/common/ActionLabel";
 import { MealMenuEditor } from "../components/menu/MealMenuEditor";
-import { AlertButton } from "../components/common/CustomAlert";
 
-export function MenuEditorScreen({
-  menu,
-  config,
-  onSave,
-  onBack,
-  onHome,
-  onLogout,
-  showAlert,
-  guestEnabled,
-  seasonEnabled,
-}: {
-  menu: FoodMenu;
-  config: ConfigDay[];
-  onSave: (menu: FoodMenu) => Promise<void>;
-  onBack: () => void;
-  onHome: () => void;
-  onLogout: () => void;
-  showAlert: (title: string, message: string, buttons?: AlertButton[]) => void;
-  guestEnabled: boolean;
-  seasonEnabled: boolean;
-}) {
+import { useAuth } from "../context/AuthContext";
+import { useDatabase } from "../context/DatabaseContext";
+import { useAppNavigation } from "../context/NavigationContext";
+import { useUI } from "../context/UIContext";
+
+export function MenuEditorScreen() {
+  const { handleLogout } = useAuth();
+  const {
+    foodMenu: menu, dayConfig: config, seasonEnabled, foodPriceEnabled, updateMenu
+  } = useDatabase();
+  const { showAlert } = useUI();
+  const { navigate, goBack } = useAppNavigation();
+
   const styles = useStyles();
   const { theme, themeType } = useAppTheme();
   const [localMenu, setLocalMenu] = useState(menu);
   const [saving, setSaving] = useState(false);
   const canEdit = seasonEnabled;
+
+  const onSave = updateMenu;
+
   const emptyMeal = {
     veg: [],
     nonVeg: [],
@@ -61,16 +58,25 @@ export function MenuEditorScreen({
     guestNonVegTaken: 0
   };
 
-  const activeDays = config.filter((d) => d.enabled).map((d) => d.id);
+  const sortedActiveDays = useMemo(() => {
+    const active = config.filter((d) => d.enabled).map((d) => d.id);
+    return [...active].sort((a, b) => {
+      const aHasCurrent = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].some(m => isMealCurrent(a, m, config));
+      const bHasCurrent = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].some(m => isMealCurrent(b, m, config));
+      if (aHasCurrent && !bHasCurrent) return -1;
+      if (!aHasCurrent && bHasCurrent) return 1;
+      return 0;
+    });
+  }, [config]);
 
   /**
    * Local update handler for meal slot items.
    */
   const updateMeal = (day: Day, meal: keyof DayMenu, next: MealMenu) => {
     const dayData = localMenu[day] || {
-      breakfast: emptyMeal,
-      lunch: emptyMeal,
-      dinner: emptyMeal,
+      [MealType.BREAKFAST]: emptyMeal,
+      [MealType.LUNCH]: emptyMeal,
+      [MealType.DINNER]: emptyMeal,
     };
     setLocalMenu({ ...localMenu, [day]: { ...dayData, [meal]: next } });
   };
@@ -91,10 +97,10 @@ export function MenuEditorScreen({
       <View style={styles.header}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <BackButton onPress={onBack} />
-            <HomeButton onPress={onHome} />
+            <BackButton onPress={goBack} />
+            <HomeButton onPress={() => navigate(AppScreen.HOME)} />
           </View>
-          <LogoutButton onLogout={onLogout} />
+          <LogoutButton onLogout={handleLogout} />
         </View>
         <Text style={styles.title}>{UI_TEXT.foodMenu}</Text>
         <Text style={styles.subtitle}>{UI_TEXT.menuEditorSubtitle}</Text>
@@ -105,49 +111,34 @@ export function MenuEditorScreen({
         keyboardShouldPersistTaps="handled"
       >
         {/* Daily meal editors */}
-        {activeDays.map((day, index) => {
+        {sortedActiveDays.map((day, index) => {
           const dayMenu = localMenu[day] || {
-            breakfast: emptyMeal,
-            lunch: emptyMeal,
-            dinner: emptyMeal,
+            [MealType.BREAKFAST]: emptyMeal,
+            [MealType.LUNCH]: emptyMeal,
+            [MealType.DINNER]: emptyMeal,
           };
           const colorScheme = theme.cardColors[index % theme.cardColors.length];
           return (
             <View key={day} style={[styles.dashboardCard, { backgroundColor: colorScheme.bg, borderColor: colorScheme.border, borderWidth: 1.5 }]}>
               <Text style={[styles.dashboardDay, { color: colorScheme.accent, marginBottom: 12 }]}>{getDayLabel(day, config)}</Text>
-              {isMealEnabled(day, "breakfast", config) && (
-                <MealMenuEditor
-                  title={UI_TEXT.breakfast}
-                  mealKey="breakfast"
-                  dayId={day}
-                  config={config}
-                  value={dayMenu.breakfast || emptyMeal}
-                  onChange={(next) => updateMeal(day, "breakfast", next)}
-                  disabled={!canEdit}
-                />
-              )}
-              {isMealEnabled(day, "lunch", config) && (
-                <MealMenuEditor
-                  title={UI_TEXT.lunch}
-                  mealKey="lunch"
-                  dayId={day}
-                  config={config}
-                  value={dayMenu.lunch || emptyMeal}
-                  onChange={(next) => updateMeal(day, "lunch", next)}
-                  disabled={!canEdit}
-                />
-              )}
-              {isMealEnabled(day, "dinner", config) && (
-                <MealMenuEditor
-                  title={UI_TEXT.dinner}
-                  mealKey="dinner"
-                  dayId={day}
-                  config={config}
-                  value={dayMenu.dinner || emptyMeal}
-                  onChange={(next) => updateMeal(day, "dinner", next)}
-                  disabled={!canEdit}
-                />
-              )}
+              {getSortedMealKeys(day, config)
+                .filter((mKey) => isMealEnabled(day, mKey, config))
+                .map((mKey) => {
+                  const isDone = isMealDone(day, mKey, config);
+                  return (
+                    <MealMenuEditor
+                      key={mKey}
+                      title={mKey === MealType.BREAKFAST ? UI_TEXT.breakfast : mKey === MealType.LUNCH ? UI_TEXT.lunch : UI_TEXT.dinner}
+                      mealKey={mKey}
+                      dayId={day}
+                      config={config}
+                      value={dayMenu[mKey] || emptyMeal}
+                      onChange={(next) => updateMeal(day, mKey, next)}
+                      disabled={!canEdit || isDone}
+                      foodPriceEnabled={foodPriceEnabled}
+                    />
+                  );
+                })}
             </View>
           );
         })}
@@ -162,7 +153,7 @@ export function MenuEditorScreen({
             <ActionLabel
               icon="save-outline"
               label={saving ? UI_TEXT.saving : UI_TEXT.saveMenu}
-              color="#fff"
+              color={theme.colors.white}
             />
           </Pressable>
         )}

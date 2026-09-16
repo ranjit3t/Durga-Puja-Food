@@ -11,7 +11,7 @@ export function Metric({
   icon,
   label,
   value,
-  color = "#E31837",
+  color,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
@@ -20,10 +20,11 @@ export function Metric({
 }) {
   const styles = useStyles();
   const { theme } = useAppTheme();
+  const finalColor = color || theme.colors.primary;
   return (
     <View style={styles.metric}>
-      <Ionicons name={icon} size={18} color={color} />
-      <Text style={[styles.metricValue, { color }]}>{value}</Text>
+      <Ionicons name={icon} size={18} color={finalColor} />
+      <Text style={[styles.metricValue, { color: finalColor }]}>{value}</Text>
       <Text style={styles.metricLabel}>{label}</Text>
     </View>
   );

@@ -10,13 +10,27 @@ import {
   MealChoice,
   MealSlot,
   TakenState,
-} from "./repository";
+  MealType,
+  DietaryOption,
+  DietType,
+  AppScreen,
+  ReportType,
+  PaymentMode,
+  UserRole,
+  PaymentEntry,
+} from "./domain";
 
 export type MealConfig = {
   enabled: boolean;
   veg: boolean;
   nonVeg: boolean;
   parcel: boolean;
+  done?: boolean;
+  current?: boolean;
+  vegPrice?: string;
+  nonVegPrice?: string;
+  vegParcelPrice?: string;
+  nonVegParcelPrice?: string;
 };
 
 export type ConfigDay = {
@@ -25,10 +39,7 @@ export type ConfigDay = {
   abbr: string;
   enabled: boolean;
   vegOnly?: boolean;
-  breakfast: MealConfig;
-  lunch: MealConfig;
-  dinner: MealConfig;
-};
+} & Record<MealType, MealConfig>;
 
 export type PaymentConfig = {
   enabled: boolean;
@@ -44,27 +55,14 @@ export type AppConfig = {
   days: ConfigDay[];
   payment?: PaymentConfig;
   guestEnabled?: boolean;
+  mobileEnabled?: boolean;
+  foodPriceEnabled?: boolean;
   seasonEnabled?: boolean;
+  whatsappCountryCode?: string;
 };
 
 export type Day = string;
-export type ReportType = "day" | "meal" | "guest" | "parcel" | "flat" | "payment" | "single" | "notTaken";
-export type PaymentMode = "UPI" | "Cash" | "Bank Transfer";
-export type UserRole = "admin" | "vendor";
-export type Screen =
-  | "home"
-  | "form"
-  | "details"
-  | "qr"
-  | "scanner"
-  | "dashboard"
-  | "menu"
-  | "viewMenu"
-  | "report"
-  | "settings"
-  | "subscriptionList"
-  | "guestManagement"
-  | "login";
+export type Screen = AppScreen;
 
 export type Subscription = SubscriptionRecord;
 
@@ -76,4 +74,12 @@ export {
   MealChoice,
   MealSlot,
   TakenState,
+  MealType,
+  DietaryOption,
+  DietType,
+  AppScreen,
+  ReportType,
+  UserRole,
+  PaymentMode,
+  PaymentEntry,
 };

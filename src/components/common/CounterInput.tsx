@@ -60,7 +60,7 @@ export function CounterInput({
   return (
     <View style={{ marginBottom: 16 }}>
       <Text style={[styles.label, { marginTop: 0, marginBottom: 8, fontSize: 13 }]}>{label}</Text>
-      <View style={localStyles.container}>
+      <View style={[localStyles.container, { backgroundColor: theme.colors.surfaceDark, borderColor: theme.colors.border }]}>
         <Pressable
           onPress={handleDecrement}
           style={[localStyles.button, disabled && { opacity: 0.5 }, { borderRightWidth: 1, borderRightColor: theme.colors.border }]}
@@ -95,12 +95,10 @@ const localStyles = StyleSheet.create({
   container: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.03)",
     borderRadius: 12,
     overflow: "hidden",
     height: 48,
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.1)",
   },
   button: {
     width: 48,

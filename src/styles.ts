@@ -27,7 +27,7 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
     },
     rootOverlay: {
       flex: 1,
-      backgroundColor: theme?.themeType === 'dark' ? "rgba(0, 0, 0, 0.85)" : "rgba(255, 255, 255, 0.92)",
+      backgroundColor: theme?.themeType === 'dark' ? COLORS.shadow + "D9" : COLORS.white + "EB",
       width: "100%",
     },
     center: { justifyContent: "center", alignItems: "center" },
@@ -35,7 +35,7 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
 
     // Header & Navigation
     header: {
-      backgroundColor: COLORS.white === "#FFFFFF" && theme?.themeType === 'dark' ? COLORS.surface : COLORS.white,
+      backgroundColor: theme?.themeType === 'dark' ? COLORS.surface : COLORS.white,
       paddingTop: Platform.OS === "ios" ? 64 : 54,
       paddingHorizontal: SIZES.paddingMedium,
       paddingBottom: SIZES.paddingLarge,
@@ -62,7 +62,7 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
       textTransform: "uppercase",
     },
     eyebrowLight: {
-      color: "rgba(255, 255, 255, 0.8)",
+      color: COLORS.white + "CC",
       fontSize: 12,
       fontWeight: "700",
       letterSpacing: 2,
@@ -89,7 +89,7 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
       lineHeight: 22,
     },
     subtitleLight: {
-      color: "rgba(255, 255, 255, 0.85)",
+      color: COLORS.white + "D9",
       fontSize: TYPOGRAPHY.subtitleSize,
       marginTop: 6,
       lineHeight: 22,
@@ -106,7 +106,7 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
       height: 40,
       paddingHorizontal: 8,
       borderRadius: 20,
-      backgroundColor: "rgba(255, 255, 255, 0.2)",
+      backgroundColor: COLORS.white + "33",
       alignItems: "center",
       justifyContent: "center",
     },
@@ -220,7 +220,7 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
       }),
     },
     summaryLabel: {
-      color: "rgba(255, 255, 255, 0.8)",
+      color: COLORS.white + "CC",
       fontSize: 12,
       fontWeight: "800",
       letterSpacing: 1.5,
@@ -634,7 +634,7 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
       justifyContent: "center",
       ...Platform.select({
         ios: {
-          shadowColor: "#000",
+          shadowColor: COLORS.shadow,
           shadowOffset: { width: 0, height: 10 },
           shadowOpacity: 0.1,
           shadowRadius: 20,
@@ -723,7 +723,7 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
       justifyContent: "center",
       ...Platform.select({
         ios: {
-          shadowColor: "#000",
+          shadowColor: COLORS.shadow,
           shadowOffset: { width: 0, height: 4 },
           shadowOpacity: 0.05,
           shadowRadius: 8,
@@ -747,7 +747,7 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
     // Modal
     dropdownModalBackdrop: {
       flex: 1,
-      backgroundColor: "rgba(0, 0, 0, 0.6)",
+      backgroundColor: COLORS.shadow + "99",
       justifyContent: "flex-end",
     },
     dropdownModalCard: {

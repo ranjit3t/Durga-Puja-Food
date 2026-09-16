@@ -27,11 +27,12 @@ export function EditableMetric({
   onSave,
   validate,
   showAlert,
-  color = "#E31837",
+  color,
   disabled = false,
 }: EditableMetricProps) {
   const styles = useStyles();
   const { theme } = useAppTheme();
+  const finalColor = color || theme.colors.primary;
   const [isEditing, setIsEditing] = useState(false);
   const [localValue, setLocalValue] = useState(String(value));
 
@@ -63,11 +64,11 @@ export function EditableMetric({
 
   if (isEditing) {
     return (
-      <View style={[styles.metric, { borderColor: color, borderStyle: "dashed", borderWidth: 2 }]}>
+      <View style={[styles.metric, { borderColor: finalColor, borderStyle: "dashed", borderWidth: 2 }]}>
         <TextInput
           style={[
             styles.metricValue,
-            { marginTop: 0, padding: 0, textAlign: "center", width: "100%", color },
+            { marginTop: 0, padding: 0, textAlign: "center", width: "100%", color: finalColor },
           ]}
           value={localValue}
           onChangeText={(text) => setLocalValue(text.replace(/[^0-9]/g, ""))}
@@ -81,7 +82,7 @@ export function EditableMetric({
         <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
           <Text style={styles.metricLabel}>{label}</Text>
           <Pressable onPress={handleSave}>
-            <Ionicons name="checkmark-circle" size={12} color={color} />
+            <Ionicons name="checkmark-circle" size={12} color={finalColor} />
           </Pressable>
         </View>
       </View>
@@ -94,16 +95,16 @@ export function EditableMetric({
         styles.metric,
         !disabled && {
           borderWidth: 2,
-          borderColor: color,
+          borderColor: finalColor,
           borderStyle: "dashed",
-          backgroundColor: color + "15"
+          backgroundColor: finalColor + "15"
         }
       ]}
       onPress={() => !disabled && setIsEditing(true)}
       disabled={disabled}
     >
-      <Ionicons name={icon} size={18} color={color} />
-      <Text style={[styles.metricValue, { color }]}>{value}</Text>
+      <Ionicons name={icon} size={18} color={finalColor} />
+      <Text style={[styles.metricValue, { color: finalColor }]}>{value}</Text>
       <Text style={styles.metricLabel}>{label}</Text>
     </Pressable>
   );

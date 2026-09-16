@@ -20,23 +20,33 @@ The application follows a **Serverless Modular Architecture** built on the **Exp
 The entire application is strictly **Config-Driven**. The `AppConfig` object controls:
 - **Branding**: `seasonName` updates all shared Digital Pass headers and Report captions.
 - **Financial Visibility**: The `payment` node toggles the display of all "Amount" and "Payment Mode" fields across the app.
-- **Functional Rules**: `days[]` controls enabled meals, dietary options, and parcel support per slot.
+- **Automated Food Pricing**: When `foodPriceEnabled` is active, the app looks up configured `vegPrice`, `nonVegPrice`, and optional **Parcel Prices** for each selected meal. It then aggregates these for all members to pre-populate the registration amount, minimizing manual entry errors.
+- **Multi-Payment Support**: Subscriptions now support up to 3 separate payment entries per flat. Each entry tracks amount, mode (UPI, Cash, Bank Transfer), and optional Transaction ID. The system automatically migrates legacy single-payment records into the new array-based structure.
+- **Functional Rules**: `days[]` controls enabled meals, dietary options, parcel support per slot, the **Done** lifecycle status, individual meal prices, and the **Current** active meal prioritization. **Only 1 Current Meal is allowed per season**, and toggling it ON in settings automatically deactivates others across all days.
+- **Smart Change Detection**: Employs a `pristine` state snapshot to detect modifications. Buttons are only enabled if the live form differs from the initial load, accounting for data normalization.
+- **Global Feature Toggles**: Controlled by `guestEnabled` and `mobileEnabled` flags to streamline the UI based on event needs.
+- **WhatsApp Country Code**: `whatsappCountryCode` defines the default country code prefix appended to registered mobile numbers during direct pass distribution via WhatsApp, ensuring seamless messaging across global regions without manual formatting.
 
-### B. Centralized UI String Management
-The application employs a **Zero-Hardcoding Policy** for UI text. All strings are defined in `src/strings.ts`. 
-- **Consistency**: Prevents terminology drift (e.g., mixing "Veg" and "Vegetarian").
-- **Scalability**: Allows for instant global updates to labels or placeholders.
+### B. Centralized UI String & Type Management
+The application employs a **Zero-Hardcoding Policy** for UI text and Domain entities.
+- **Strings**: All text is defined in `src/strings.ts`. 
+- **Enums**: Utilizes TypeScript `enum` for `MealType`, `DietType`, `DietaryOption`, `AppScreen`, `ReportType`, and `PaymentMode` to ensure type safety and eliminate string-based errors during navigation and logic evaluation.
 - **Localization Ready**: The infrastructure is in place to support multiple languages by swapping the `UI_TEXT` object.
 
 ### C. Real-Time Synchronization Strategy
+- **Granular Deep-Path Updates**: To optimize performance, the system avoids sending large JSON objects to Firebase. Instead, it utilizes deep-path references (e.g., `menu/dayId/mealKey/field`) for operational updates like guest count increments or marking food as taken.
 - **Transition-Based Sync**: Triggers a silent fetch whenever the `screen` state changes.
 - **Periodic Background Refresh**: Runs every 10 seconds. This is critical for synchronizing "Food Taken" counts and "Guest Demand" in a multi-user environment.
 
 ### D. Navigation & View State Management
-- **History Stack**: A React-state-based array in `App.tsx` tracks navigation depth. `goBack()` pops the stack, while navigating to "home" clears it entirely.
-- **State Hoisting**: Crucial UI states like the `ReportScreen` active tab/filters and the `SubscriptionListScreen` search text are hoisted to the root `App` component. This ensures UI continuity during sub-navigation.
+- **History Stack**: A React-state-based array in `NavigationContext.tsx` tracks navigation depth using the `AppScreen` enum. `goBack()` pops the stack, while navigating to "home" clears it entirely.
+- **State Hoisting**: Crucial UI states like the `ReportScreen` active tab/filters and the `SubscriptionListScreen` search text are hoisted to the `NavigationContext`. This ensures UI continuity during sub-navigation.
 
-### E. Dynamic Theme & Responsive Engine
+### E. Global Error Handling Infrastructure
+- **UI Error Interceptor**: Integrates `showGlobalError()` within `UIContext.tsx`. This headless layer translates runtime database synchronization warnings (`firebaseError`) into interactive modal cards that inherit high-contrast text and layout padding variants depending on active theme states.
+- **Interactive Banners**: Provides pressable error summary strips on primary dashboards that toggle detail windows upon tap discoverability events.
+
+### F. Dynamic Theme & Responsive Engine
 - **Context System**: Built on React Context API (`ThemeProvider`), facilitating instant styling updates without re-mounting the component tree.
 - **Hook Architecture**: `useAppTheme()` provides raw theme tokens, while `useStyles()` provides memoized, theme-specific and **dimension-aware** styles generated via `createStyles`.
 - **Responsive Logic**: Integrates `useWindowDimensions` to automatically apply a centered, 600px max-width layout on large displays (>768px), ensuring consistent UI density across mobile, web, and tablet.
@@ -48,6 +58,8 @@ The application employs a **Zero-Hardcoding Policy** for UI text. All strings ar
 
 ### G. Guest Management & Counter Logic
 - **Module Interface**: The `GuestManagementScreen` provides a high-density matrix for updating guest demand and collections in real-time.
+- **Current Meal Flow**: Prioritizes the active "Current Meal" at the top of the list for rapid entry during peak hours.
+- **Interactive People Counter**: The registration form utilizes the `CounterInput` for headcount management, enforcing a minimum of 1 member and automatically synchronizing with the person-wise dietary choice matrix.
 - **Permission Mapping**:
     - `guestVeg`, `guestNonVeg`, `guestTotal`: Editable by **Admin** only.
     - `guestVegTaken`, `guestNonVegTaken`, `guestTaken`: Editable by **Admin** and **Vendor**.
@@ -58,12 +70,20 @@ The application employs a **Zero-Hardcoding Policy** for UI text. All strings ar
 - **Global Sync**: Guest data is stored within the `FoodMenu` object in Firebase, ensuring that Dashboard metrics remain read-only and consistent across all user sessions.
 
 ### H. Data Normalization Layer
-Implemented in `src/repository.ts`, `normalizeRecord` ensures that the local matrices (Person x Day x Meal) are always correctly sized and shaped. Renamed `PujaDay` to `EventDay` to support generic event scheduling.
+Implemented in `src/repository.ts`, `normalizeRecord` ensures that the local matrices (Person x Day x Meal) are always correctly sized and shaped. It also manages the **Legacy Payment Migration**, automatically converting single-field amount/mode data into the new multi-payment `payments[]` array. Renamed `PujaDay` to `EventDay` to support generic event scheduling.
 
 ### I. Digital Pass & Reporting
+- **Modular Component Architecture**: The reporting system is broken down into specialized components (e.g., `DayWiseReport`, `PaymentSummaryReport`) located in `src/components/report/`. This modularity allows for clean, focused rendering of complex data sets.
+- **Headless Analytics (`useReportData`)**: All data aggregation logic is encapsulated in the `useReportData` custom hook. It calculates dietary splits, taken counts, and financial summaries synchronously from the global subscription state.
 - **Image Generation**: Uses `captureRef` from `react-native-view-shot` to convert themed views into PNGs.
-- **Analytics Engine**: Uses `useMemo` hooks to calculate demand splits between Residents vs. Guests for multiple payment modes and dietary choices.
+- **Detailed Transaction Audit**: The Payment Report features a dedicated section listing every flat with a breakdown of their individual part-payments, modes, member headcounts, and Transaction IDs, facilitating easier reconciliation and direct navigation to detailed pass information.
+- **Enhanced Sharing**: On mobile, the app uses the `Share` API to attach generated PNGs. **Admin-only** access is enforced for pass sharing to maintain operational security.
+- **WhatsApp API Integration**: Utilizes the `Linking` API with `wa.me` for direct, targeted chat initialization. Supports pre-populated formatted messages for Digital Pass distribution.
+- **Contact Selection**: Integrates `expo-contacts` to allow admins to pick registration numbers directly from the device's address book, with automatic normalization of country codes (+91) and special characters.
 - **Guest & Parcel Report Tabs**: Features specialized summaries for extra guest plates and meal-wise parcel requirements. These tabs are conditionally rendered based on the global `guestEnabled` flag and the `isParcelEnabled` setting within the festival configuration.
+- **Financial Breakdown Logic**: The collection report implements a **"Parcel-First"** attribution logic: `Food Collection = Actual Total Paid - Calculated Parcel Price` (clamped at zero). This treats parcel surcharges as fixed hard costs, providing a conservative audit of food revenue.
+- **Strongly Typed Payments**: Uses the `PaymentMode` enum for all financial logic. UI display mapping is handled by the `getPaymentModeLabel` helper to maintain localization consistency.
+- **Scanner Workflow**: Employs a `ref`-based synchronous lock to prevent duplicate scans. Invalid QR codes trigger a blocking alert that redirects to the Subscriptions list for manual intervention.
 
 ---
 

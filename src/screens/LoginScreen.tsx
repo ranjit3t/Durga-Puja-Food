@@ -18,19 +18,16 @@ import { useStyles } from "../styles";
 import { useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
 import { UserRole } from "../types";
-import { AlertButton } from "../components/common/CustomAlert";
 import { Ionicons } from "@expo/vector-icons";
-import { SubscriptionRepository } from "../repository";
 
-export function LoginScreen({
-  onLogin,
-  showAlert,
-  repository,
-}: {
-  onLogin: (role: UserRole) => void;
-  showAlert: (title: string, message: string, buttons?: AlertButton[]) => void;
-  repository: SubscriptionRepository;
-}) {
+import { useAuth } from "../context/AuthContext";
+import { useDatabase } from "../context/DatabaseContext";
+import { useUI } from "../context/UIContext";
+
+export function LoginScreen() {
+  const { handleLogin } = useAuth();
+  const { getAuthConfig } = useDatabase();
+  const { showAlert } = useUI();
   const styles = useStyles();
   const { theme, toggleTheme, themeType } = useAppTheme();
   const { width } = useWindowDimensions();
@@ -40,13 +37,12 @@ export function LoginScreen({
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = async () => {
+  const onLoginSubmit = async () => {
     setLoading(true);
     try {
-      const authConfig = await repository.getAuthConfig();
-
+      const authConfig = await getAuthConfig();
       if (!authConfig || !Array.isArray(authConfig.users)) {
-        showAlert(UI_TEXT.error, "Internal Error: Auth config missing in database.");
+        showAlert(UI_TEXT.error, UI_TEXT.authConfigError);
         return;
       }
 
@@ -55,13 +51,13 @@ export function LoginScreen({
       );
 
       if (user) {
-        onLogin(user.role as UserRole);
+        handleLogin(user.role as UserRole);
       } else {
         showAlert(UI_TEXT.error, UI_TEXT.invalidCredentials);
       }
     } catch (err) {
       console.error("Login fetch error:", err);
-      showAlert(UI_TEXT.error, "Could not connect to authentication server.");
+      showAlert(UI_TEXT.error, UI_TEXT.authServerError);
     } finally {
       setLoading(false);
     }
@@ -101,7 +97,7 @@ export function LoginScreen({
                 value={username}
                 onChangeText={setUsername}
                 autoCapitalize="none"
-                placeholder="Enter username"
+                placeholder={UI_TEXT.usernamePlaceholder}
                 placeholderTextColor={theme.colors.textMuted}
               />
 
@@ -113,7 +109,7 @@ export function LoginScreen({
                   onChangeText={setPassword}
                   secureTextEntry={!showPassword}
                   autoCapitalize="none"
-                  placeholder="Enter password"
+                  placeholder={UI_TEXT.passwordPlaceholder}
                   placeholderTextColor={theme.colors.textMuted}
                 />
                 <Pressable
@@ -130,7 +126,7 @@ export function LoginScreen({
 
               <Pressable
                 style={[styles.primary, (!username || !password || loading) && { opacity: 0.5 }, { marginTop: 40 }]}
-                onPress={handleLogin}
+                onPress={onLoginSubmit}
                 disabled={!username || !password || loading}
               >
                 <Text style={styles.primaryText}>{loading ? UI_TEXT.loading : UI_TEXT.loginButton}</Text>

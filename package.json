@@ -3,10 +3,12 @@
   "version": "1.0.0",
   "main": "index.ts",
   "dependencies": {
+    "@expo/metro-runtime": "~4.0.0",
     "@expo/vector-icons": "^15.0.2",
     "@react-native-async-storage/async-storage": "2.2.0",
     "expo": "~57.0.22",
     "expo-camera": "~57.0.5",
+    "expo-contacts": "~57.0.5",
     "expo-font": "~57.0.4",
     "expo-linking": "~57.0.10",
     "expo-print": "~57.0.2",
@@ -16,11 +18,10 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-native": "0.86.3",
-    "react-native-web": "~0.19.13",
-    "@expo/metro-runtime": "~4.0.0",
     "react-native-qrcode-svg": "^6.3.23",
     "react-native-svg": "^15.15.4",
-    "react-native-view-shot": "5.1.0"
+    "react-native-view-shot": "5.1.0",
+    "react-native-web": "~0.19.13"
   },
   "devDependencies": {
     "@types/react": "~19.2.2",
@@ -36,8 +37,8 @@
   },
   "overrides": {
     "react-native-web": {
-      "react": "$react",
-      "react-dom": "$react-dom"
+      "react": "19.2.3",
+      "react-dom": "19.2.3"
     }
   },
   "private": true

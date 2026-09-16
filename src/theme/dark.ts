@@ -20,6 +20,7 @@ export const darkTheme: AppTheme = {
     shadow: "#000000",
     veg: "#34D399",
     nonVeg: "#F87171",
+    whatsapp: "#25D366",
   },
   cardColors: [
     { bg: "#2D1B1B", border: "#4A2626", accent: "#FF4D6D" }, // Deep Red

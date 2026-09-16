@@ -16,6 +16,7 @@ export interface ThemeColors {
   shadow: string;
   veg: string;
   nonVeg: string;
+  whatsapp: string;
 }
 
 export interface CardColor {

@@ -2,8 +2,9 @@ import React from "react";
 import { View, Text } from "react-native";
 import { useStyles } from "../../styles";
 import { useAppTheme } from "../../theme";
-import { MealMenu, Day } from "../../types";
+import { MealMenu, Day, ConfigDay, MealType, DietType } from "../../types";
 import { isDietaryEnabled } from "../../constants";
+import { UI_TEXT } from "../../strings";
 
 /**
  * A compact, inline version of the food menu for list views.
@@ -17,7 +18,7 @@ export function MealSummaryInline({
 }: {
   label: string;
   dayId?: Day;
-  mealKey?: "breakfast" | "lunch" | "dinner";
+  mealKey?: MealType;
   config?: ConfigDay[];
   menu: MealMenu;
 }) {
@@ -28,16 +29,16 @@ export function MealSummaryInline({
 
   const vegEnabled =
     dayId && mealKey && config
-      ? isDietaryEnabled(dayId, mealKey, "veg", config)
+      ? isDietaryEnabled(dayId, mealKey, DietType.VEG, config)
       : true;
   const nonVegEnabled =
     dayId && mealKey && config
-      ? isDietaryEnabled(dayId, mealKey, "nonVeg", config)
+      ? isDietaryEnabled(dayId, mealKey, DietType.NON_VEG, config)
       : true;
 
   return (
     <View style={styles.mealSummaryRow}>
-      {label ? <Text style={styles.menuSummaryLabel}>{label}:</Text> : null}
+      {label ? <Text style={styles.menuSummaryLabel}>{label}{UI_TEXT.colon}</Text> : null}
 
       {vegEnabled && veg.length > 0 && (
         <View style={styles.inlineItemList}>

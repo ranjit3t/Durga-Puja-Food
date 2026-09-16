@@ -20,6 +20,7 @@ export const primaryTheme: AppTheme = {
     shadow: "#000000",
     veg: "#28A745",
     nonVeg: "#DC3545",
+    whatsapp: "#25D366",
   },
   cardColors: [
     { bg: "#FFF5F5", border: "#FFE3E3", accent: "#E31837" }, // Red

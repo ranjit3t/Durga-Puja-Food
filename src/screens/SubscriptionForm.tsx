@@ -2,7 +2,7 @@
  * Form screen for adding or editing a flat's subscription.
  * Handles headcounts, daily meal choices, and payment information.
  */
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
   Platform,
   StatusBar,
 } from "react-native";
+import * as Contacts from "expo-contacts/legacy";
 import { useStyles } from "../styles";
 import { useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
@@ -25,88 +26,238 @@ import {
   resizeTaken,
   getDayLabel,
   isMealEnabled,
+  isMealDone,
+  getSortedMealKeys,
+  getEnabledPaymentMethods,
   isDietaryEnabled,
   isParcelEnabled,
   isVegOnlyDay,
+  isMealCurrent,
 } from "../constants";
 import {
   Subscription,
   Day,
   MealChoice,
   MealSlot,
-  TakenState,
   UserRole,
-  PaymentConfig,
+  MealType,
+  DietType,
+  DietaryOption,
+  PaymentEntry,
+  AppScreen,
+  PaymentMode,
 } from "../types";
 import { ActionLabel } from "../components/common/ActionLabel";
 import { Dropdown } from "../components/common/Dropdown";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
-import { AlertButton } from "../components/common/CustomAlert";
+import { CounterInput } from "../components/common/CounterInput";
+import { Ionicons } from "@expo/vector-icons";
 
-export function SubscriptionForm({
-  value,
-  userRole,
-  config,
-  paymentConfig,
-  seasonEnabled,
-  onCancel,
-  onSave,
-  onHome,
-  onSaveQr,
-  onDelete,
-  onLogout,
-  lockIdentity = false,
-  showAlert,
-}: {
-  value: Subscription;
-  userRole: UserRole;
-  config: ConfigDay[];
-  paymentConfig: PaymentConfig;
-  seasonEnabled: boolean;
-  onCancel: () => void;
-  onSave: (value: Subscription) => void;
-  onHome: () => void;
-  onSaveQr?: (value: Subscription) => void;
-  onDelete?: () => void;
-  onLogout: () => void;
-  lockIdentity?: boolean;
-  showAlert: (title: string, message: string, buttons?: AlertButton[]) => void;
-}) {
+import { useAuth } from "../context/AuthContext";
+import { useDatabase } from "../context/DatabaseContext";
+import { useUI } from "../context/UIContext";
+import { useAppNavigation } from "../context/NavigationContext";
+
+export function SubscriptionForm() {
+  const { userRole, handleLogout } = useAuth();
+  const {
+    dayConfig, paymentConfig, seasonEnabled, foodPriceEnabled, foodMenu, mobileEnabled,
+    upsertSubscription, deleteSubscription
+  } = useDatabase();
+  const { showAlert: showGlobalAlert } = useUI();
+  const {
+    editing: value, navigate, goBack, setSelectedId, setSelectedRecord
+  } = useAppNavigation();
+
+  if (!value) return null;
+
   const styles = useStyles();
   const { theme, themeType } = useAppTheme();
-  const isAdmin = userRole === "admin";
+  const isAdmin = userRole === UserRole.ADMIN;
   const canEdit = seasonEnabled;
-  const activeDays = getActiveDays(config);
+  const activeDays = getActiveDays(dayConfig);
 
-  const [form, setForm] = useState(value);
-  const [peopleCountInput, setPeopleCountInput] = useState(
-    String(value.peopleCount)
+  const sortedActiveDays = useMemo(() => {
+    return [...activeDays].sort((a, b) => {
+      const aHasCurrent = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].some(m => isMealCurrent(a, m, dayConfig));
+      const bHasCurrent = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].some(m => isMealCurrent(b, m, dayConfig));
+      if (aHasCurrent && !bHasCurrent) return -1;
+      if (!aHasCurrent && bHasCurrent) return 1;
+      return 0;
+    });
+  }, [activeDays, dayConfig]);
+
+  const currentDayId = activeDays.find(day =>
+    [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].some(m => isMealCurrent(day, m, dayConfig))
   );
+
+  const onCancel = goBack;
+  const onHome = () => navigate(AppScreen.HOME);
+  const onSave = async (next: Subscription) => {
+    try {
+      if (await upsertSubscription(next)) {
+        goBack();
+      }
+    } catch (err) {
+      console.error("Save error:", err);
+    }
+  };
+  const lockIdentity = Boolean(value.flat);
+
+  const onSaveQr = async (next: Subscription) => {
+    try {
+      if (await upsertSubscription(next)) {
+        setSelectedId(next.id);
+        setSelectedRecord(next);
+        navigate(AppScreen.QR);
+      }
+    } catch (err) {
+      console.error("Save QR error:", err);
+    }
+  };
+
+  const onDelete = lockIdentity ? () => showGlobalAlert(UI_TEXT.deleteConfirmTitle, `${UI_TEXT.deleteConfirmMessage}${value.id}${UI_TEXT.deleteConfirmMessageSuffix}`, [
+    { text: UI_TEXT.cancel, style: "cancel" },
+    { text: UI_TEXT.deleteButton, style: "destructive", onPress: () => void deleteSubscription(value.id).then(() => navigate(AppScreen.HOME)) },
+  ]) : undefined;
+
+  const enabledMethods = getEnabledPaymentMethods({
+    seasonName: "",
+    days: dayConfig,
+    payment: paymentConfig,
+    guestEnabled: true,
+    mobileEnabled: true,
+    seasonEnabled: true
+  });
+
+  const [form, setForm] = useState(() => {
+    // If we're editing an existing record, ensure the payment mode is still valid/enabled
+    if (enabledMethods.length > 0 && !enabledMethods.includes(value.paymentMode)) {
+      return { ...value, paymentMode: enabledMethods[0] as any };
+    }
+    return value;
+  });
+
+  const [mobileInput, setMobileInput] = useState(form.mobile ? String(form.mobile) : "");
   const [selectedPerson, setSelectedPerson] = useState(0);
-  const [selectedDay, setSelectedDay] = useState<Day>(activeDays[0]);
+  const [selectedDay, setSelectedDay] = useState<Day>(currentDayId || activeDays[0]);
+  const [isManualAmount, setIsManualAmount] = useState(lockIdentity);
+
+  // Payment State (supporting up to 3 payments)
+  const [payments, setPayments] = useState<PaymentEntry[]>(() => {
+    if (form.payments && form.payments.length > 0) return form.payments;
+    const fallback = [{ amount: form.amount || UI_TEXT.zero, mode: form.paymentMode || enabledMethods[0], transactionId: form.transactionId }];
+    return fallback;
+  });
+
+  // Helper to ensure stable and normalized JSON comparison.
+  // This removes undefined/null values and trims strings.
+  const normalizeForComparison = React.useCallback((obj: any) => {
+    return JSON.stringify(obj, (key, value) => {
+      if (value === undefined || value === null) return undefined;
+      if (typeof value === 'string') return value.trim();
+      return value;
+    });
+  }, []);
+
+  // Capture the truly initial state after all state initializers have run.
+  // We use a ref to ensure this "snapshot" never changes during the component lifecycle.
+  const pristine = React.useRef({
+    block: form.block,
+    flat: form.flat.trim(),
+    mobile: mobileInput.trim(),
+    peopleCount: form.peopleCount,
+    mealSlots: normalizeForComparison(form.mealSlots),
+    takenByPerson: normalizeForComparison(form.takenByPerson),
+    payments: normalizeForComparison(payments)
+  });
+
+  const hasChanged = useMemo(() => {
+    // 1. Basic Identity & Headcount
+    if (form.block !== pristine.current.block) return true;
+    if (form.flat.trim() !== pristine.current.flat) return true;
+    if (mobileInput.trim() !== pristine.current.mobile) return true;
+    if (form.peopleCount !== pristine.current.peopleCount) return true;
+
+    // 2. Complex Matrices
+    if (normalizeForComparison(form.mealSlots) !== pristine.current.mealSlots) return true;
+    if (normalizeForComparison(form.takenByPerson) !== pristine.current.takenByPerson) return true;
+
+    // 3. Payments
+    if (normalizeForComparison(payments) !== pristine.current.payments) return true;
+
+    return false;
+  }, [form.block, form.flat, form.peopleCount, form.mealSlots, form.takenByPerson, mobileInput, payments, normalizeForComparison]);
+
+  const totalAmount = payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
 
   const set = <K extends keyof Subscription>(key: K, next: Subscription[K]) =>
     setForm({ ...form, [key]: next });
 
+  /**
+   * Opens the device contact picker and populates the mobile field.
+   */
+  const pickContact = async () => {
+    try {
+      const { status } = await Contacts.requestPermissionsAsync();
+      if (status === 'granted') {
+        const contact = await Contacts.presentContactPickerAsync();
+        if (contact && contact.phoneNumbers && contact.phoneNumbers.length > 0) {
+          // Find the first mobile number or just the first number available
+          const mobileNum = contact.phoneNumbers.find(p => p.label === 'mobile') || contact.phoneNumbers[0];
+          if (mobileNum && mobileNum.number) {
+            // Strip non-digits and cap at 10 digits (handling +91 etc)
+            let digits = mobileNum.number.replace(/[^0-9]/g, "");
+            if (digits.length > 10) {
+              // If it starts with 91 and is 12 digits, strip the 91
+              if (digits.length === 12 && digits.startsWith('91')) {
+                digits = digits.slice(2);
+              } else {
+                // Otherwise just take the last 10
+                digits = digits.slice(-10);
+              }
+            }
+            setMobileInput(digits);
+          }
+        }
+      } else {
+        showGlobalAlert(UI_TEXT.error, UI_TEXT.contactPermissionError);
+      }
+    } catch (err) {
+      console.error("Contact picker error:", err);
+      showGlobalAlert(UI_TEXT.error, UI_TEXT.contactPickerError);
+    }
+  };
+
   // Prepare data for saving, ensuring normalized IDs and aggregated counts
-  const prepared = {
+  // We filter out undefined values because Firebase set() does not allow them
+  const prepared: Subscription = {
     ...form,
+    mobile: mobileInput ? Number(mobileInput) : undefined,
     flat: form.flat.trim().toUpperCase(),
     id: lockIdentity
       ? value.id
       : `${form.block}-${form.flat.trim().toUpperCase()}`,
-    takenByPerson: resizeTaken(form.takenByPerson, form.peopleCount, config),
-    mealSlots: resizeMealSlots(form.mealSlots, form.peopleCount, config),
-    meals: mealsFromChoices(form.mealSlots, config),
+    takenByPerson: resizeTaken(form.takenByPerson, form.peopleCount, dayConfig),
+    mealSlots: resizeMealSlots(form.mealSlots, form.peopleCount, dayConfig),
+    meals: mealsFromChoices(form.mealSlots, dayConfig),
+    payments: payments,
+    amount: totalAmount.toFixed(0),
+    paymentMode: payments[0]?.mode || PaymentMode.CASH,
+    transactionId: payments[0]?.transactionId || "",
   };
+
+  if (prepared.mobile === undefined) {
+    delete prepared.mobile;
+  }
 
   /**
    * Sets the dietary choice for a specific meal slot.
    */
   const setMealSlotChoice = (
-    slot: "breakfast" | "lunch" | "dinner",
+    slot: MealType,
     choice: MealChoice
   ) => {
     setForm({
@@ -118,12 +269,13 @@ export function SubscriptionForm({
         ),
       },
     });
+    setIsManualAmount(false);
   };
 
   /**
    * Toggles a specific meal slot parcel for a person.
    */
-  const setMealParcel = (slot: "breakfast" | "lunch" | "dinner", enabled: boolean) => {
+  const setMealParcel = (slot: MealType, enabled: boolean) => {
     const parcelKey = `${slot}Parcel` as keyof MealSlot;
     setForm({
       ...form,
@@ -134,18 +286,105 @@ export function SubscriptionForm({
         ),
       },
     });
+    setIsManualAmount(false);
   };
 
   /**
    * Toggles whether a specific meal has been 'taken' (collected) by the person.
    */
-  const setTakenChoice = (slot: keyof TakenState, taken: boolean) =>
+  const setTakenChoice = (slot: MealType, taken: boolean) =>
     set("takenByPerson", {
       ...form.takenByPerson,
       [selectedDay]: form.takenByPerson[selectedDay].map((item, index) =>
         index === selectedPerson ? { ...item, [slot]: taken } : item
       ),
     });
+
+  const addPayment = () => {
+    if (payments.length < 3) {
+      setPayments([...payments, { amount: UI_TEXT.zero, mode: enabledMethods[0] as any }]);
+    }
+  };
+
+  const removePayment = (index: number) => {
+    if (payments.length > 1) {
+      setPayments(payments.filter((_, i) => i !== index));
+    }
+  };
+
+  const updatePayment = (index: number, next: Partial<PaymentEntry>, isManual = false) => {
+    const updated = [...payments];
+    updated[index] = { ...updated[index], ...next };
+    setPayments(updated);
+    if (isManual) setIsManualAmount(true);
+  };
+
+  // Auto-calculation of total based on food prices
+  useEffect(() => {
+    if (!foodPriceEnabled || !paymentConfig.enabled) return;
+
+    let total = 0;
+    const dayIds = Object.keys(form.mealSlots);
+
+    dayIds.forEach((dayId) => {
+      const dayConf = dayConfig.find((d) => d.id === dayId);
+      if (!dayConf || !dayConf.enabled) return;
+
+      const dayMenu = foodMenu[dayId];
+
+      const slots = form.mealSlots[dayId] || [];
+      slots.forEach((personSlot) => {
+        // Breakfast
+        if (personSlot[MealType.BREAKFAST] === DietaryOption.VEG) {
+          total += Number(dayMenu?.[MealType.BREAKFAST]?.vegPrice || dayConf[MealType.BREAKFAST]?.vegPrice || 0);
+          if (personSlot.breakfastParcel) {
+            total += Number(dayMenu?.[MealType.BREAKFAST]?.vegParcelPrice || dayConf[MealType.BREAKFAST]?.vegParcelPrice || 0);
+          }
+        } else if (personSlot[MealType.BREAKFAST] === DietaryOption.NON_VEG) {
+          total += Number(dayMenu?.[MealType.BREAKFAST]?.nonVegPrice || dayConf[MealType.BREAKFAST]?.nonVegPrice || 0);
+          if (personSlot.breakfastParcel) {
+            total += Number(dayMenu?.[MealType.BREAKFAST]?.nonVegParcelPrice || dayConf[MealType.BREAKFAST]?.nonVegParcelPrice || 0);
+          }
+        }
+
+        // Lunch
+        if (personSlot[MealType.LUNCH] === DietaryOption.VEG) {
+          total += Number(dayMenu?.[MealType.LUNCH]?.vegPrice || dayConf[MealType.LUNCH]?.vegPrice || 0);
+          if (personSlot.lunchParcel) {
+            total += Number(dayMenu?.[MealType.LUNCH]?.vegParcelPrice || dayConf[MealType.LUNCH]?.vegParcelPrice || 0);
+          }
+        } else if (personSlot[MealType.LUNCH] === DietaryOption.NON_VEG) {
+          total += Number(dayMenu?.[MealType.LUNCH]?.nonVegPrice || dayConf[MealType.LUNCH]?.nonVegPrice || 0);
+          if (personSlot.lunchParcel) {
+            total += Number(dayMenu?.[MealType.LUNCH]?.nonVegParcelPrice || dayConf[MealType.LUNCH]?.nonVegParcelPrice || 0);
+          }
+        }
+
+        // Dinner
+        if (personSlot[MealType.DINNER] === DietaryOption.VEG) {
+          total += Number(dayMenu?.[MealType.DINNER]?.vegPrice || dayConf[MealType.DINNER]?.vegPrice || 0);
+          if (personSlot.dinnerParcel) {
+            total += Number(dayMenu?.[MealType.DINNER]?.vegParcelPrice || dayConf[MealType.DINNER]?.vegParcelPrice || 0);
+          }
+        } else if (personSlot[MealType.DINNER] === DietaryOption.NON_VEG) {
+          total += Number(dayMenu?.[MealType.DINNER]?.nonVegPrice || dayConf[MealType.DINNER]?.nonVegPrice || 0);
+          if (personSlot.dinnerParcel) {
+            total += Number(dayMenu?.[MealType.DINNER]?.nonVegParcelPrice || dayConf[MealType.DINNER]?.nonVegParcelPrice || 0);
+          }
+        }
+      });
+    });
+
+    // Only update if we have a single payment entry and it's either a new pass
+    // or the user hasn't manually edited the price yet.
+    if (payments.length === 1 && (!lockIdentity || !isManualAmount)) {
+      const currentVal = payments[0].amount || UI_TEXT.zero;
+      if (currentVal !== String(total)) {
+        // Direct set to ensure immediate UI update
+        setPayments([{ ...payments[0], amount: String(total) }]);
+      }
+    }
+  }, [form.mealSlots, foodPriceEnabled, dayConfig, isManualAmount, paymentConfig.enabled, payments.length]);
 
   return (
     <KeyboardAvoidingView
@@ -159,7 +398,7 @@ export function SubscriptionForm({
             <BackButton onPress={onCancel} />
             <HomeButton onPress={onHome} />
           </View>
-          <LogoutButton onLogout={onLogout} />
+          <LogoutButton onLogout={handleLogout} />
         </View>
         <Text style={styles.title}>
           {lockIdentity ? UI_TEXT.editFlat : UI_TEXT.addFlatTitle}
@@ -178,26 +417,26 @@ export function SubscriptionForm({
         <View style={[styles.card, { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary, elevation: 6 }]}>
           <View style={styles.previewTop}>
             <View>
-              <Text style={[styles.previewLabel, { color: "rgba(255,255,255,0.7)" }]}>{UI_TEXT.livePreview}</Text>
+              <Text style={[styles.previewLabel, { color: theme.colors.white, opacity: 0.7 }]}>{UI_TEXT.livePreview}</Text>
               <Text style={[styles.previewTitle, { color: theme.colors.white, fontSize: 28 }]}>
                 {form.block || "-"}-{form.flat || "-"}
               </Text>
             </View>
             {paymentConfig.enabled && (
               <Text style={[styles.previewAmount, { color: theme.colors.white, fontSize: 22 }]}>
-                {form.amount ? `${UI_TEXT.rs} ${form.amount}` : ""}
+                {`${UI_TEXT.rs} ${totalAmount.toFixed(0)}`}
               </Text>
             )}
           </View>
 
-          <View style={{ height: 1, backgroundColor: "rgba(255,255,255,0.2)", marginVertical: 12 }} />
+          <View style={{ height: 1, backgroundColor: theme.colors.white, opacity: 0.2, marginVertical: 12 }} />
 
           <Text style={[styles.previewMeta, { color: theme.colors.white }]}>
             {form.peopleCount}
             {form.peopleCount === 1
               ? UI_TEXT.personSuffix
               : UI_TEXT.personsSuffix}
-            {paymentConfig.enabled && ` | ${form.paymentMode || UI_TEXT.paymentModeNotSet}`}
+            {paymentConfig.enabled && ` | ${payments[0]?.mode || UI_TEXT.paymentModeNotSet}`}
           </Text>
         </View>
 
@@ -235,40 +474,61 @@ export function SubscriptionForm({
             </View>
           </View>
 
-          <Text style={styles.label}>{UI_TEXT.peopleCount}</Text>
-          <TextInput
-            value={peopleCountInput}
-            onChangeText={(peopleCount) => {
-              const digits = peopleCount.replace(/[^0-9]/g, "");
-              setPeopleCountInput(peopleCount);
-              if (digits === "") {
-                setSelectedPerson(0);
-                setForm({
-                  ...form,
-                  peopleCount: 0,
-                  mealByPerson: resizeMealChoices(form.mealByPerson, 0, config),
-                  mealSlots: resizeMealSlots(form.mealSlots, 0, config),
-                });
-                return;
-              }
-              const count = Number(digits);
+          {mobileEnabled && (
+            <>
+              <Text style={styles.label}>{UI_TEXT.mobileNo}</Text>
+              <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
+                <TextInput
+                  value={mobileInput}
+                  onChangeText={(text) => {
+                    const digits = text.replace(/[^0-9]/g, "").slice(0, 10);
+                    setMobileInput(digits);
+                  }}
+                  placeholder={UI_TEXT.mobileNoPlaceholder}
+                  placeholderTextColor={theme.colors.textMuted}
+                  keyboardType="phone-pad"
+                  editable={isAdmin && canEdit}
+                  selectTextOnFocus={isAdmin && canEdit}
+                  style={[styles.input, { flex: 1 }, !isAdmin && { backgroundColor: theme.colors.surface }]}
+                />
+                {Platform.OS !== 'web' && isAdmin && canEdit && (
+                  <Pressable
+                    onPress={pickContact}
+                    style={{
+                      backgroundColor: theme.colors.surfaceDark,
+                      height: 56,
+                      width: 56,
+                      borderRadius: 14,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderWidth: 1,
+                      borderColor: theme.colors.border
+                    }}
+                  >
+                    <Ionicons name="person-add-outline" size={24} color={theme.colors.primary} />
+                  </Pressable>
+                )}
+              </View>
+            </>
+          )}
+
+          <CounterInput
+            label={UI_TEXT.peopleCount}
+            value={form.peopleCount}
+            min={1}
+            onChange={(count) => {
               setSelectedPerson((current) =>
                 Math.min(current, Math.max(0, count - 1))
               );
               setForm({
                 ...form,
                 peopleCount: count,
-                mealByPerson: resizeMealChoices(form.mealByPerson, count, config),
-                mealSlots: resizeMealSlots(form.mealSlots, count, config),
+                mealByPerson: resizeMealChoices(form.mealByPerson, count, dayConfig),
+                mealSlots: resizeMealSlots(form.mealSlots, count, dayConfig),
               });
+              setIsManualAmount(false);
             }}
-            placeholder={UI_TEXT.egPeople}
-            placeholderTextColor={theme.colors.textMuted}
-            keyboardType="numeric"
-            editable={isAdmin && canEdit}
-            selectTextOnFocus={isAdmin && canEdit}
-            returnKeyType="done"
-            style={[styles.input, !isAdmin && { backgroundColor: theme.colors.surface }]}
+            disabled={!isAdmin || !canEdit}
           />
         </View>
 
@@ -306,7 +566,7 @@ export function SubscriptionForm({
           <Text style={styles.selectorLabel}>{UI_TEXT.day}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
             <View style={styles.selectorRow}>
-              {activeDays.map((day) => (
+              {sortedActiveDays.map((day) => (
                 <Pressable
                   key={day}
                   onPress={() => setSelectedDay(day)}
@@ -321,7 +581,7 @@ export function SubscriptionForm({
                       selectedDay === day && styles.selectorTextOn,
                     ]}
                   >
-                    {getDayLabel(day, config)}
+                    {getDayLabel(day, dayConfig)}
                   </Text>
                 </Pressable>
               ))}
@@ -334,37 +594,41 @@ export function SubscriptionForm({
               <Text style={[styles.currentChoice, { marginTop: 0, fontSize: 16, marginBottom: 8 }]}>{UI_TEXT.foodPlan}</Text>
             </View>
 
-            {(["breakfast", "lunch", "dinner"] as const)
-              .filter((slot) => isMealEnabled(selectedDay, slot, config))
+            {getSortedMealKeys(selectedDay, dayConfig)
+              .filter((slot) => isMealEnabled(selectedDay, slot, dayConfig))
               .map((slot) => {
                 const label =
-                  slot === "breakfast"
+                  slot === MealType.BREAKFAST
                     ? UI_TEXT.breakfastTitle
-                    : slot === "lunch"
+                    : slot === MealType.LUNCH
                     ? UI_TEXT.lunchTitle
                     : UI_TEXT.dinnerTitle;
                 const currentSlotChoice =
-                  form.mealSlots[selectedDay]?.[selectedPerson]?.[slot] || "None";
-                const isVegOnly = isVegOnlyDay(selectedDay, config);
+                  form.mealSlots[selectedDay]?.[selectedPerson]?.[slot] || DietaryOption.NONE;
+                const isVegOnly = isVegOnlyDay(selectedDay, dayConfig);
+                const isDone = isMealDone(selectedDay, slot, dayConfig);
 
                 return (
-                  <View key={slot} style={{ marginBottom: 16 }}>
-                    <Text style={[styles.label, { marginTop: 0, marginBottom: 8, fontSize: 14, color: theme.colors.textPrimary }]}>{label}</Text>
+                  <View key={slot} style={[{ marginBottom: 16 }, isDone && { opacity: 0.5 }]}>
+                    <Text style={[styles.label, { marginTop: 0, marginBottom: 8, fontSize: 14, color: theme.colors.textPrimary }]}>
+                      {label} {isDone && `(${UI_TEXT.mealDoneLabel})`}
+                    </Text>
                     <View style={styles.choiceRow}>
                       {/* Option: None */}
                       <Pressable
-                        onPress={() => isAdmin && canEdit && setMealSlotChoice(slot, "None")}
+                        onPress={() => isAdmin && canEdit && !isDone && setMealSlotChoice(slot, DietaryOption.NONE)}
                         style={[
                           styles.choice,
-                          currentSlotChoice === "None" ? styles.slotSelected : styles.noneChoice,
-                          !isAdmin && { opacity: currentSlotChoice === "None" ? 1 : 0.3 },
+                          currentSlotChoice === DietaryOption.NONE ? styles.slotSelected : styles.noneChoice,
+                          (!isAdmin || isDone) && { opacity: currentSlotChoice === DietaryOption.NONE ? 1 : 0.3 },
                           { paddingVertical: 12, paddingHorizontal: 4 }
                         ]}
+                        disabled={!isAdmin || !canEdit || isDone}
                       >
                         <Text
                           style={[
                             styles.choiceText,
-                            currentSlotChoice === "None" && styles.choiceTextOn,
+                            currentSlotChoice === DietaryOption.NONE && styles.choiceTextOn,
                             { fontSize: 12 }
                           ]}
                         >
@@ -373,20 +637,21 @@ export function SubscriptionForm({
                       </Pressable>
 
                       {/* Option: Veg */}
-                      {isDietaryEnabled(selectedDay, slot, "veg", config) && (
+                      {isDietaryEnabled(selectedDay, slot, DietType.VEG, dayConfig) && (
                         <Pressable
-                          onPress={() => isAdmin && canEdit && setMealSlotChoice(slot, "Veg")}
+                          onPress={() => isAdmin && canEdit && !isDone && setMealSlotChoice(slot, DietaryOption.VEG)}
                           style={[
                             styles.choice,
-                            currentSlotChoice === "Veg" ? styles.vegChoice : styles.noneChoice,
-                            !isAdmin && { opacity: currentSlotChoice === "Veg" ? 1 : 0.3 },
+                            currentSlotChoice === DietaryOption.VEG ? styles.vegChoice : styles.noneChoice,
+                            (!isAdmin || isDone) && { opacity: currentSlotChoice === DietaryOption.VEG ? 1 : 0.3 },
                             { paddingVertical: 12, paddingHorizontal: 4 }
                           ]}
+                          disabled={!isAdmin || !canEdit || isDone}
                         >
                           <Text
                             style={[
                               styles.choiceText,
-                              currentSlotChoice === "Veg" && styles.choiceTextOn,
+                              currentSlotChoice === DietaryOption.VEG && styles.choiceTextOn,
                               { fontSize: 12 }
                             ]}
                           >
@@ -395,21 +660,22 @@ export function SubscriptionForm({
                         </Pressable>
                       )}
 
-                      {/* Option: Non-veg */}
-                      {!isVegOnly && isDietaryEnabled(selectedDay, slot, "nonVeg", config) && (
+                      {/* Option: Non-Veg */}
+                      {!isVegOnly && isDietaryEnabled(selectedDay, slot, DietType.NON_VEG, dayConfig) && (
                         <Pressable
-                          onPress={() => isAdmin && canEdit && setMealSlotChoice(slot, "Non-veg")}
+                          onPress={() => isAdmin && canEdit && !isDone && setMealSlotChoice(slot, DietaryOption.NON_VEG)}
                           style={[
                             styles.choice,
-                            currentSlotChoice === "Non-veg" ? styles.nonVegChoice : styles.noneChoice,
-                            !isAdmin && { opacity: currentSlotChoice === "Non-veg" ? 1 : 0.3 },
+                            currentSlotChoice === DietaryOption.NON_VEG ? styles.nonVegChoice : styles.noneChoice,
+                            (!isAdmin || isDone) && { opacity: currentSlotChoice === DietaryOption.NON_VEG ? 1 : 0.3 },
                             { paddingVertical: 12, paddingHorizontal: 4 }
                           ]}
+                          disabled={!isAdmin || !canEdit || isDone}
                         >
                           <Text
                             style={[
                               styles.choiceText,
-                              currentSlotChoice === "Non-veg" && styles.choiceTextOn,
+                              currentSlotChoice === DietaryOption.NON_VEG && styles.choiceTextOn,
                               { fontSize: 12 }
                             ]}
                           >
@@ -425,8 +691,8 @@ export function SubscriptionForm({
 
           {/* SECTION 2: Parcels */}
           {(() => {
-            const parcelSlots = (["breakfast", "lunch", "dinner"] as const).filter(
-              (slot) => isMealEnabled(selectedDay, slot, config) && isParcelEnabled(selectedDay, slot, config)
+            const parcelSlots = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].filter(
+              (slot) => isMealEnabled(selectedDay, slot, dayConfig) && isParcelEnabled(selectedDay, slot, dayConfig)
             );
 
             if (parcelSlots.length === 0) return null;
@@ -438,22 +704,25 @@ export function SubscriptionForm({
                 </View>
 
                 <View style={styles.choiceRow}>
-                  {parcelSlots.map((slot) => {
-                    const currentChoice = form.mealSlots[selectedDay]?.[selectedPerson]?.[slot] || "None";
+                  {getSortedMealKeys(selectedDay, dayConfig)
+                    .filter((slot) => isMealEnabled(selectedDay, slot, dayConfig) && isParcelEnabled(selectedDay, slot, dayConfig))
+                    .map((slot) => {
+                      const currentChoice = form.mealSlots[selectedDay]?.[selectedPerson]?.[slot] || DietaryOption.NONE;
                     const isParcel = !!form.mealSlots[selectedDay]?.[selectedPerson]?.[`${slot}Parcel` as keyof MealSlot];
-                    const label = slot === "breakfast" ? UI_TEXT.breakfastTitle : slot === "lunch" ? UI_TEXT.lunchTitle : UI_TEXT.dinnerTitle;
+                    const label = slot === MealType.BREAKFAST ? UI_TEXT.breakfastTitle : slot === MealType.LUNCH ? UI_TEXT.lunchTitle : UI_TEXT.dinnerTitle;
+                    const isDone = isMealDone(selectedDay, slot, dayConfig);
 
                     return (
                       <Pressable
                         key={slot}
-                        disabled={currentChoice === "None"}
-                        onPress={() => canEdit && setMealParcel(slot, !isParcel)}
+                        disabled={currentChoice === UI_TEXT.none || isDone}
+                        onPress={() => canEdit && !isDone && setMealParcel(slot, !isParcel)}
                         style={[
                           styles.choice,
                           isParcel
-                            ? (currentChoice === "Non-veg" ? styles.nonVegChoice : styles.vegChoice)
+                            ? (currentChoice === UI_TEXT.nonVeg ? styles.nonVegChoice : styles.vegChoice)
                             : styles.noneChoice,
-                          currentChoice === "None" && { opacity: 0.2 },
+                          (currentChoice === UI_TEXT.none || isDone) && { opacity: 0.2 },
                           { paddingVertical: 12, paddingHorizontal: 4 }
                         ]}
                       >
@@ -475,48 +744,51 @@ export function SubscriptionForm({
           })()}
 
           {/* SECTION 3: Food Collection */}
-          {lockIdentity && (["breakfast", "lunch", "dinner"] as const).some(s => {
+          {lockIdentity && [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].some(s => {
             const choice = form.mealSlots[selectedDay]?.[selectedPerson]?.[s];
-            return choice && choice !== "None" && isDietaryEnabled(selectedDay, s, choice === "Veg" ? "veg" : "nonVeg", config);
+            return choice && choice !== DietaryOption.NONE && isDietaryEnabled(selectedDay, s, choice === DietaryOption.VEG ? DietType.VEG : DietType.NON_VEG, dayConfig);
           }) && (
             <View style={{ marginTop: 24, borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: 16 }}>
               <View style={{ marginBottom: 12 }}>
                 <Text style={[styles.currentChoice, { marginTop: 0, fontSize: 16, marginBottom: 8 }]}>{UI_TEXT.foodTakenByPerson}</Text>
               </View>
               <View style={styles.choiceRow}>
-                {(["breakfast", "lunch", "dinner"] as const)
-                  .filter((slot) => isMealEnabled(selectedDay, slot, config))
+                {getSortedMealKeys(selectedDay, dayConfig)
+                  .filter((slot) => isMealEnabled(selectedDay, slot, dayConfig))
                   .map((slot) => {
                     const choice =
                       form.mealSlots[selectedDay]?.[selectedPerson]?.[slot];
-                    if (!choice || choice === "None") return null;
+                    if (!choice || choice === DietaryOption.NONE) return null;
 
-                    const dietKey = choice === "Veg" ? "veg" : "nonVeg";
-                    if (!isDietaryEnabled(selectedDay, slot, dietKey, config))
+                    const dietKey = choice === DietaryOption.VEG ? DietType.VEG : DietType.NON_VEG;
+                    if (!isDietaryEnabled(selectedDay, slot, dietKey, dayConfig))
                       return null;
 
                     const isTaken =
                       !!form.takenByPerson[selectedDay]?.[selectedPerson]?.[slot];
                     const slotColorStyle =
-                      choice === "Veg"
+                      choice === DietaryOption.VEG
                         ? styles.vegChoice
                         : styles.nonVegChoice;
 
                     const label =
-                      slot === "breakfast"
+                      slot === MealType.BREAKFAST
                         ? UI_TEXT.breakfastTitle
-                        : slot === "lunch"
+                        : slot === MealType.LUNCH
                         ? UI_TEXT.lunchTitle
                         : UI_TEXT.dinnerTitle;
+                    const isDone = isMealDone(selectedDay, slot, dayConfig);
                     return (
                       <Pressable
                         key={slot}
-                        onPress={() => canEdit && setTakenChoice(slot, !isTaken)}
+                        onPress={() => canEdit && !isDone && setTakenChoice(slot, !isTaken)}
                         style={[
                           styles.choice,
                           isTaken ? slotColorStyle : styles.noneChoice,
+                          isDone && { opacity: 0.5 },
                           { paddingVertical: 12, paddingHorizontal: 4 }
                         ]}
+                        disabled={isDone}
                       >
                         <Text
                           style={[
@@ -538,46 +810,80 @@ export function SubscriptionForm({
         {/* Financials */}
         {paymentConfig.enabled && (
           <View style={[styles.card, { backgroundColor: theme.cardColors[3].bg, borderColor: theme.cardColors[3].border }]}>
-             <Text style={[styles.sectionTitle, { fontSize: 18, marginBottom: 12, color: theme.cardColors[3].accent }]}>{UI_TEXT.paymentDetails}</Text>
-             <View style={styles.row}>
-              <View style={styles.fieldHalf}>
-                <Text style={styles.label}>{UI_TEXT.amount}</Text>
-                <TextInput
-                  value={form.amount}
-                  onChangeText={(amount) => set("amount", amount)}
-                  keyboardType="decimal-pad"
-                  inputMode="decimal"
-                  editable={isAdmin && canEdit}
-                  returnKeyType="done"
-                  blurOnSubmit
-                  placeholder="0.00"
-                  placeholderTextColor={theme.colors.textMuted}
-                  style={[styles.input, !isAdmin && { backgroundColor: theme.colors.surface }]}
-                />
-              </View>
-              <View style={styles.fieldHalf}>
-                <Text style={styles.label}>{UI_TEXT.paymentMode}</Text>
-                {isAdmin ? (
-                  <Dropdown
-                    value={form.paymentMode}
-                    options={(() => {
-                       const opts = [];
-                       if (paymentConfig.options.upi) opts.push(UI_TEXT.upi);
-                       if (paymentConfig.options.cash) opts.push(UI_TEXT.cash);
-                       if (paymentConfig.options.bankTransfer) opts.push(UI_TEXT.bankTransfer);
-                       return opts;
-                    })()}
-                    onChange={(paymentMode) =>
-                      set("paymentMode", paymentMode as any)
-                    }
-                  />
-                ) : (
-                  <View style={[styles.input, { backgroundColor: theme.colors.surface, justifyContent: "center" }]}>
-                    <Text style={{ fontSize: 16, fontWeight: "600", color: theme.colors.textPrimary }}>{form.paymentMode}</Text>
+             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <Text style={[styles.sectionTitle, { fontSize: 18, marginBottom: 0, color: theme.cardColors[3].accent }]}>{UI_TEXT.paymentDetails}</Text>
+                <View style={[styles.pill, { backgroundColor: theme.cardColors[3].accent + "20" }]}>
+                   <Text style={[styles.pillText, { color: theme.cardColors[3].accent }]}>{UI_TEXT.rs} {totalAmount.toFixed(0)}</Text>
+                </View>
+             </View>
+
+             {payments.map((p, idx) => (
+               <View key={idx} style={{ marginBottom: idx === payments.length - 1 ? 0 : 24, borderTopWidth: idx === 0 ? 0 : 1, borderTopColor: theme.colors.border, paddingTop: idx === 0 ? 0 : 20 }}>
+                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                    <Text style={{ fontSize: 12, fontWeight: '800', color: theme.colors.textSecondary }}>{UI_TEXT.paymentNumber}{idx + 1}</Text>
+                    {idx > 0 && isAdmin && canEdit && (
+                      <Pressable onPress={() => removePayment(idx)}>
+                        <Ionicons name="trash-outline" size={18} color={theme.colors.error} />
+                      </Pressable>
+                    )}
+                 </View>
+
+                 <View style={styles.row}>
+                    <View style={styles.fieldHalf}>
+                      <Text style={styles.label}>{UI_TEXT.amount}</Text>
+                      <TextInput
+                        value={p.amount}
+                        onChangeText={(amount) => updatePayment(idx, { amount }, true)}
+                        keyboardType="decimal-pad"
+                        inputMode="decimal"
+                        editable={isAdmin && canEdit}
+                        returnKeyType="done"
+                        placeholder={UI_TEXT.zero}
+                        placeholderTextColor={theme.colors.textMuted}
+                        style={[styles.input, !isAdmin && { backgroundColor: theme.colors.surface }]}
+                      />
+                    </View>
+                    <View style={styles.fieldHalf}>
+                      <Text style={styles.label}>{UI_TEXT.paymentMode}</Text>
+                      {isAdmin ? (
+                        <Dropdown
+                          value={p.mode}
+                          options={enabledMethods}
+                          onChange={(mode) => updatePayment(idx, { mode: mode as any })}
+                        />
+                      ) : (
+                        <View style={[styles.input, { backgroundColor: theme.colors.surface, justifyContent: "center" }]}>
+                          <Text style={{ fontSize: 16, fontWeight: "600", color: theme.colors.textPrimary }}>{p.mode}</Text>
+                        </View>
+                      )}
+                    </View>
                   </View>
-                )}
-              </View>
-            </View>
+
+                  {(p.mode === PaymentMode.UPI || p.mode === PaymentMode.BANK_TRANSFER) && (
+                    <View style={{ marginTop: 16 }}>
+                      <Text style={styles.label}>{UI_TEXT.transactionIdLabel}</Text>
+                      <TextInput
+                        value={p.transactionId || ""}
+                        onChangeText={(txnId) => updatePayment(idx, { transactionId: txnId })}
+                        placeholder={UI_TEXT.transactionIdPlaceholder}
+                        placeholderTextColor={theme.colors.textMuted}
+                        editable={isAdmin && canEdit}
+                        autoCapitalize="characters"
+                        style={[styles.input, !isAdmin && { backgroundColor: theme.colors.surface }]}
+                      />
+                    </View>
+                  )}
+               </View>
+             ))}
+
+             {isAdmin && canEdit && payments.length < 3 && (
+               <Pressable
+                 onPress={addPayment}
+                 style={[styles.secondary, { borderStyle: 'dashed', marginTop: 20, height: 48, borderColor: theme.cardColors[3].accent }]}
+               >
+                 <ActionLabel icon="add-circle-outline" label={UI_TEXT.addAnotherPayment} color={theme.cardColors[3].accent} />
+               </Pressable>
+             )}
           </View>
         )}
 
@@ -587,12 +893,17 @@ export function SubscriptionForm({
             <Pressable
               onPress={() => {
                 if (!prepared.flat.trim()) {
-                  showAlert(UI_TEXT.error, UI_TEXT.flatNoRequired);
+                  showGlobalAlert(UI_TEXT.error, UI_TEXT.flatNoRequired);
+                  return;
+                }
+                if (mobileInput && mobileInput.length !== 10) {
+                  showGlobalAlert(UI_TEXT.error, UI_TEXT.mobileInvalid);
                   return;
                 }
                 onSave(prepared);
               }}
-              style={[styles.primary, !prepared.flat.trim() && { opacity: 0.5 }]}
+              style={[styles.primary, (!prepared.flat.trim() || !hasChanged) && { opacity: 0.5 }]}
+              disabled={!prepared.flat.trim() || !hasChanged}
             >
               <ActionLabel
                 icon="checkmark-circle-outline"
@@ -608,7 +919,11 @@ export function SubscriptionForm({
               accessibilityLabel={UI_TEXT.saveGenerateQr}
               onPress={() => {
                 if (!prepared.flat.trim()) {
-                  showAlert(UI_TEXT.error, UI_TEXT.flatNoRequired);
+                  showGlobalAlert(UI_TEXT.error, UI_TEXT.flatNoRequired);
+                  return;
+                }
+                if (mobileInput && mobileInput.length !== 10) {
+                  showGlobalAlert(UI_TEXT.error, UI_TEXT.mobileInvalid);
                   return;
                 }
                 onSaveQr(prepared);
@@ -623,8 +938,9 @@ export function SubscriptionForm({
                   shadowRadius: 0,
                   shadowOffset: { width: 0, height: 0 }
                 },
-                !prepared.flat.trim() && { opacity: 0.5 },
+                (!prepared.flat.trim() || !hasChanged) && { opacity: 0.5 },
               ]}
+              disabled={!prepared.flat.trim() || !hasChanged}
             >
               <ActionLabel
                 icon="qr-code-outline"

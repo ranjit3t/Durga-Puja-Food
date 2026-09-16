@@ -5,23 +5,25 @@ import { useStyles } from "../styles";
 import { useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
 import { BackButton } from "../components/common/BackButton";
-import { LogoutButton } from "../components/common/LogoutButton";
 
-export function ScannerScreen({
-  onBack,
-  onScanned,
-}: {
-  onBack: () => void;
-  onScanned: (value: string) => Promise<boolean>;
-}) {
+import { useAppNavigation } from "../context/NavigationContext";
+import { useDatabase } from "../context/DatabaseContext";
+import { useUI } from "../context/UIContext";
+import { AppScreen } from "../types";
+
+export function ScannerScreen() {
   const styles = useStyles();
   const { theme, themeType } = useAppTheme();
   const { width } = useWindowDimensions();
   const [permission, requestPermission] = useCameraPermissions();
 
+  const { openScannedValue, goBack, navigate } = useAppNavigation();
+  const { subscriptions } = useDatabase();
+  const { showAlert } = useUI();
+
   const scanSize = Math.min(width * 0.7, 260);
   const [error, setError] = useState("");
-  const [locked, setLocked] = useState(false);
+  const isScanning = React.useRef(false);
 
   if (!permission) return <View style={styles.root} />;
   if (!permission.granted) {
@@ -29,7 +31,7 @@ export function ScannerScreen({
       <View style={styles.root}>
         <StatusBar style={themeType === "dark" ? "light" : "dark"} />
         <View style={styles.header}>
-          <BackButton onPress={onBack} />
+          <BackButton onPress={goBack} />
           <Text style={styles.title}>{UI_TEXT.cameraAccess}</Text>
           <Text style={styles.subtitle}>{UI_TEXT.cameraAccessSubtitle}</Text>
         </View>
@@ -43,7 +45,7 @@ export function ScannerScreen({
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#000" }}>
+    <View style={{ flex: 1, backgroundColor: theme.colors.shadow }}>
       <StatusBar style={themeType === "dark" ? "light" : "dark"} />
 
       {/* 1. Camera fills the screen */}
@@ -52,18 +54,26 @@ export function ScannerScreen({
         style={StyleSheet.absoluteFill}
         facing="back"
         barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
-        onBarcodeScanned={
-          locked
-            ? undefined
-            : async ({ data }) => {
-                setLocked(true);
-                const found = await onScanned(data);
-                if (!found) {
-                  setError(UI_TEXT.scanError);
-                  setLocked(false);
-                }
-              }
-        }
+        onBarcodeScanned={async ({ data }) => {
+          if (isScanning.current) return;
+          isScanning.current = true;
+
+          const found = openScannedValue(data, subscriptions);
+          if (!found) {
+            setError(UI_TEXT.scanError);
+            showAlert(UI_TEXT.error, UI_TEXT.scanError, [
+              {
+                text: UI_TEXT.ok,
+                onPress: () => {
+                  navigate(AppScreen.SUBSCRIPTION_LIST);
+                  // We don't reset isScanning here because we're navigating away
+                },
+              },
+            ]);
+            // If we were staying on screen, we'd reset isScanning.current = false here
+            // but we're showing an alert that navigates away.
+          }
+        }}
       />
 
       {/* 2. UI Overlay on top of camera */}
@@ -82,7 +92,7 @@ export function ScannerScreen({
             zIndex: 999,
           }}
         >
-          <BackButton onPress={onBack} />
+          <BackButton onPress={goBack} />
         </View>
 
         {/* Center Target Box */}
@@ -99,7 +109,7 @@ export function ScannerScreen({
               width: scanSize,
               height: scanSize,
               borderWidth: 2,
-              borderColor: "#f0c977",
+              borderColor: theme.colors.secondary,
               borderRadius: 30
             }}
           />
@@ -118,10 +128,10 @@ export function ScannerScreen({
         >
           <Text
             style={{
-              color: "#fff",
+              color: theme.colors.white,
               fontSize: 16,
               fontWeight: "700",
-              textShadowColor: 'rgba(0,0,0,0.8)',
+              textShadowColor: theme.colors.shadow + "CC",
               textShadowOffset: { width: 0, height: 1 },
               textShadowRadius: 4
             }}
@@ -129,7 +139,7 @@ export function ScannerScreen({
             {UI_TEXT.scanFrameHint}
           </Text>
           {error ? (
-            <Text style={{ color: "#ffb09c", fontWeight: "700", marginTop: 10 }}>
+            <Text style={{ color: theme.colors.error, fontWeight: "700", marginTop: 10 }}>
               {error}
             </Text>
           ) : null}
