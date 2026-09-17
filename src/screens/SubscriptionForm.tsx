@@ -191,6 +191,16 @@ export function SubscriptionForm() {
     return false;
   }, [form.block, form.flat, form.peopleCount, form.mealSlots, form.takenByPerson, mobileInput, payments, normalizeForComparison]);
 
+  const hasAnyMealSelected = useMemo(() => {
+    return Object.values(form.mealSlots).some(personSlots =>
+      personSlots.some(slot =>
+        slot[MealType.BREAKFAST] !== DietaryOption.NONE ||
+        slot[MealType.LUNCH] !== DietaryOption.NONE ||
+        slot[MealType.DINNER] !== DietaryOption.NONE
+      )
+    );
+  }, [form.mealSlots]);
+
   const totalAmount = payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
 
   const set = <K extends keyof Subscription>(key: K, next: Subscription[K]) =>
@@ -902,8 +912,8 @@ export function SubscriptionForm() {
                 }
                 onSave(prepared);
               }}
-              style={[styles.primary, (!prepared.flat.trim() || !hasChanged) && { opacity: 0.5 }]}
-              disabled={!prepared.flat.trim() || !hasChanged}
+              style={[styles.primary, (!prepared.flat.trim() || !hasChanged || !hasAnyMealSelected) && { opacity: 0.5 }]}
+              disabled={!prepared.flat.trim() || !hasChanged || !hasAnyMealSelected}
             >
               <ActionLabel
                 icon="checkmark-circle-outline"
@@ -938,9 +948,9 @@ export function SubscriptionForm() {
                   shadowRadius: 0,
                   shadowOffset: { width: 0, height: 0 }
                 },
-                (!prepared.flat.trim() || !hasChanged) && { opacity: 0.5 },
+                (!prepared.flat.trim() || !hasChanged || !hasAnyMealSelected) && { opacity: 0.5 },
               ]}
-              disabled={!prepared.flat.trim() || !hasChanged}
+              disabled={!prepared.flat.trim() || !hasChanged || !hasAnyMealSelected}
             >
               <ActionLabel
                 icon="qr-code-outline"

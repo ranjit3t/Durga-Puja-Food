@@ -95,7 +95,7 @@ export const UI_TEXT = {
   personSuffix: " person",
   personsSuffix: " persons",
   rs: "Rs.",
-  mealSubscriberMarker: "Meal Subscribed",
+  mealSubscriberMarker: "Current Meal",
 
   // Details Screen
   flatIdPrefix: "FLAT ",

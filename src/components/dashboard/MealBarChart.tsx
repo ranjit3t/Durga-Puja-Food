@@ -11,7 +11,7 @@ import { isParcelEnabled } from "../../constants";
 export function MealBarChart(props: MealMetricProps) {
   const { theme } = useAppTheme();
   const {
-    day, type, total, veg, nonVeg, parcel, totalVegTaken, totalNonVegTaken,
+    day, type, total, veg, nonVeg, parcel, parcelTaken, totalVegTaken, totalNonVegTaken,
     guestVeg, guestNonVeg, guestVegTaken, guestNonVegTaken, config, guestEnabled, isBothEnabled
   } = props;
 
@@ -48,7 +48,9 @@ export function MealBarChart(props: MealMetricProps) {
             </View>
           )}
         </View>
-        <Text style={{ fontSize: 9, fontWeight: '700', color: theme.colors.textMuted, marginTop: 8, textAlign: 'center' }}>{label.toUpperCase()}</Text>
+        <Text style={{ fontSize: 9, fontWeight: '700', color: theme.colors.textMuted, marginTop: 8, textAlign: 'center' }}>
+          {(label || "").toUpperCase()}
+        </Text>
       </View>
     );
   };
@@ -75,18 +77,23 @@ export function MealBarChart(props: MealMetricProps) {
         )}
 
         {isParcelEnabled(day, type, config) && parcel > 0 && (
-          <Bar label={UI_TEXT.parcel} value={parcel} color={theme.colors.warning || theme.colors.primary} />
+          <Bar
+            label={UI_TEXT.parcels}
+            value={parcel}
+            color={theme.colors.warning || theme.colors.primary}
+            secondaryValue={parcelTaken}
+          />
         )}
       </View>
 
       {/* Legend */}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 16, paddingTop: 12, borderTopWidth: 1, borderTopColor: theme.colors.border }}>
          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <View style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: theme.colors.textSecondary + "40" }} />
+            <View style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: "#99999930" }} />
             <Text style={{ fontSize: 10, fontWeight: '600', color: theme.colors.textSecondary }}>{UI_TEXT.planned || "Planned"}</Text>
          </View>
          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <View style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: theme.colors.textPrimary }} />
+            <View style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: "#999999" }} />
             <Text style={{ fontSize: 10, fontWeight: '600', color: theme.colors.textSecondary }}>{UI_TEXT.taken || "Taken"}</Text>
          </View>
       </View>

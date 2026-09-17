@@ -65,10 +65,21 @@ export function SubscriptionListScreen() {
 
   const [filterMode, setFilterMode] = useState<"all" | "subscribed">("all");
 
+  const hasAnySubscribed = useMemo(() => {
+    if (!currentMealInfo) return false;
+    return subscriptions.some((sub) =>
+      (sub.mealSlots?.[currentMealInfo.dayId] || []).some(
+        (slot) =>
+          slot[currentMealInfo.type] === DietaryOption.VEG ||
+          slot[currentMealInfo.type] === DietaryOption.NON_VEG
+      )
+    );
+  }, [subscriptions, currentMealInfo]);
+
   const visibleSubscriptions = useMemo(() => {
     let filtered = subscriptions;
 
-    if (currentMealInfo && filterMode === "subscribed") {
+    if (currentMealInfo && hasAnySubscribed && filterMode === "subscribed") {
       filtered = filtered.filter((sub) =>
         (sub.mealSlots?.[currentMealInfo.dayId] || []).some(
           (slot) =>
@@ -106,36 +117,73 @@ export function SubscriptionListScreen() {
           <Text style={styles.subtitle}>{UI_TEXT.activePasses}: {subscriptions.length}</Text>
         </View>
 
-        {currentMealInfo && (
-          <View style={{ flexDirection: 'row', gap: 12, paddingHorizontal: 20, marginTop: 20 }}>
+        {currentMealInfo && hasAnySubscribed && (
+          <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 20, marginTop: 20 }}>
             <Pressable
               onPress={() => setFilterMode("all")}
-              style={[
-                styles.selector,
-                { flex: 1, marginBottom: 0 },
-                filterMode === "all" && styles.selectorOn
+              style={({ pressed }) => [
+                {
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 6,
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                  borderRadius: 20,
+                  borderWidth: 1,
+                  borderColor: filterMode === "all" ? theme.colors.primary : theme.colors.border,
+                  backgroundColor: filterMode === "all" ? theme.colors.primary + "15" : theme.colors.surface
+                },
+                pressed && { opacity: 0.7 }
               ]}
             >
-              <Text style={[styles.selectorText, filterMode === "all" && styles.selectorTextOn]}>
-                {UI_TEXT.all || "All"}
+              <Ionicons
+                name={filterMode === "all" ? "layers" : "layers-outline"}
+                size={16}
+                color={filterMode === "all" ? theme.colors.primary : theme.colors.textSecondary}
+              />
+              <Text style={{
+                fontSize: 13,
+                fontWeight: "700",
+                color: filterMode === "all" ? theme.colors.primary : theme.colors.textSecondary
+              }}>
+                {UI_TEXT.all}
               </Text>
             </Pressable>
+
             <Pressable
               onPress={() => setFilterMode("subscribed")}
-              style={[
-                styles.selector,
-                { flex: 1, marginBottom: 0 },
-                filterMode === "subscribed" && styles.selectorOn
+              style={({ pressed }) => [
+                {
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 6,
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                  borderRadius: 20,
+                  borderWidth: 1,
+                  borderColor: filterMode === "subscribed" ? theme.colors.success : theme.colors.border,
+                  backgroundColor: filterMode === "subscribed" ? theme.colors.success + "15" : theme.colors.surface
+                },
+                pressed && { opacity: 0.7 }
               ]}
             >
-              <Text style={[styles.selectorText, filterMode === "subscribed" && styles.selectorTextOn]}>
+              <Ionicons
+                name={filterMode === "subscribed" ? "restaurant" : "restaurant-outline"}
+                size={14}
+                color={filterMode === "subscribed" ? theme.colors.success : theme.colors.textSecondary}
+              />
+              <Text style={{
+                fontSize: 13,
+                fontWeight: "700",
+                color: filterMode === "subscribed" ? theme.colors.success : theme.colors.textSecondary
+              }}>
                 {UI_TEXT.mealSubscriberMarker}
               </Text>
             </Pressable>
           </View>
         )}
 
-        <View style={[styles.searchBox, { marginHorizontal: 20, marginTop: currentMealInfo ? 12 : 20 }]}>
+        <View style={[styles.searchBox, { marginHorizontal: 20, marginTop: (currentMealInfo && hasAnySubscribed) ? 12 : 20 }]}>
           <Ionicons name="search-outline" size={22} color={theme.colors.textSecondary} />
           <TextInput
             value={subscriptionSearch}
@@ -195,9 +243,8 @@ export function SubscriptionListScreen() {
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                       <Text style={[styles.flatLabel, { color: colorScheme.accent, opacity: 0.8 }]}>{UI_TEXT.block} {item.block}</Text>
                       {hasCurrentMeal && (
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: theme.colors.success + "20", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: theme.colors.success + "40" }}>
-                          <Ionicons name="restaurant" size={12} color={theme.colors.success} />
-                          <Text style={{ color: theme.colors.success, fontSize: 10, fontWeight: "900", textTransform: 'uppercase' }}>{UI_TEXT.mealSubscriberMarker}</Text>
+                        <View style={{ backgroundColor: theme.colors.success + "20", padding: 6, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.success + "40" }}>
+                          <Ionicons name="restaurant" size={14} color={theme.colors.success} />
                         </View>
                       )}
                     </View>
