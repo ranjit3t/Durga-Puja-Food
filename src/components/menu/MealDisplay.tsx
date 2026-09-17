@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useStyles } from "../../styles";
 import { useAppTheme } from "../../theme";
 import { MealMenu, Day, ConfigDay, MealType, DietType } from "../../types";
-import { isDietaryEnabled } from "../../constants";
+import { isDietaryEnabled, isMealCurrent } from "../../constants";
 import { UI_TEXT } from "../../strings";
 
 /**
@@ -38,6 +38,8 @@ export function MealDisplay({
 
   const vegEnabled = isDietaryEnabled(dayId, mealKey, DietType.VEG, config);
   const nonVegEnabled = isDietaryEnabled(dayId, mealKey, DietType.NON_VEG, config);
+  const isBothEnabled = vegEnabled && nonVegEnabled;
+  const isCurrent = isMealCurrent(dayId, mealKey, config);
 
   const hasItems =
     (vegEnabled && veg.length > 0) || (nonVegEnabled && nonVeg.length > 0);
@@ -46,9 +48,26 @@ export function MealDisplay({
 
   return (
     <View style={styles.mealDisplayRow}>
-      <View style={styles.mealDisplayHeader}>
-        <Ionicons name={icon} size={18} color={theme.colors.primary} />
-        <Text style={styles.mealDisplayTitle}>{title}</Text>
+      <View style={[styles.mealDisplayHeader, { flexWrap: 'wrap', gap: 8, justifyContent: 'space-between' }]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Ionicons name={icon} size={18} color={isCurrent ? theme.colors.primary : theme.colors.textSecondary} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <Text style={[styles.mealDisplayTitle, { color: isCurrent ? theme.colors.primary : theme.colors.textPrimary }]}>{title}</Text>
+            {isCurrent && (
+              <View style={{ backgroundColor: theme.colors.primary, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                <Text style={{ color: theme.colors.white, fontSize: 10, fontWeight: "900" }}>{UI_TEXT.live.toUpperCase()}</Text>
+              </View>
+            )}
+            {!isBothEnabled && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: vegEnabled ? theme.colors.veg + "15" : theme.colors.nonVeg + "15", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: 0.5, borderColor: vegEnabled ? theme.colors.veg : theme.colors.nonVeg }}>
+                <Ionicons name={vegEnabled ? "leaf" : "flame"} size={10} color={vegEnabled ? theme.colors.veg : theme.colors.nonVeg} />
+                <Text style={{ color: vegEnabled ? theme.colors.veg : theme.colors.nonVeg, fontSize: 10, fontWeight: "800" }}>
+                  {(vegEnabled ? UI_TEXT.vegOnly : UI_TEXT.nonVegOnly).toUpperCase()}
+                </Text>
+              </View>
+            )}
+          </View>
+        </View>
       </View>
 
       <View style={styles.mealItemsContainer}>

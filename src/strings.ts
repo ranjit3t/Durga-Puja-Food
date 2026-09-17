@@ -87,11 +87,13 @@ export const UI_TEXT = {
   noRecords: "No flat records found.",
   noMatches: "No matching flats.",
   flexibleMeals: "Flexible meals",
+  all: "All",
   vegOnly: "Veg Only",
   nonVegOnly: "Non-Veg Only",
   personSuffix: " person",
   personsSuffix: " persons",
   rs: "Rs.",
+  mealSubscriberMarker: "Meal Subscribed",
 
   // Details Screen
   flatIdPrefix: "FLAT ",

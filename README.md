@@ -14,7 +14,7 @@ A robust Expo React Native application designed for food admins and volunteers t
 - **Global Logout**: Quick-access logout button available in the header of every screen for secure session management.
 
 ### 📋 Subscription & Pass Management
-- **Dedicated Pass List**: A standalone **Subscriptions** screen centralizes pass discovery with high-performance search and filtering.
+- **Dedicated Pass List**: A standalone **Subscriptions** screen centralizes pass discovery with high-performance search and filtering. When a meal service is active, the screen provides **Quick Filters** (All / Meal Subscribed) to narrow down the list to relevant recipients. Pass cards also dynamically display a **"Meal Subscribed"** marker with a restaurant icon for rapid verification during distribution.
 - **Digital Registration**: Register flats with block number, flat number, and headcount. **Flat Number is a mandatory field**. Supports optional **Mobile Number** registration with a native **Contact Picker** for fast entry. Features **Automated Food Pricing** that pre-calculates the subscription amount based on member choices and **Additional Parcel Surcharges**. Includes an **Interactive People Counter** for quick headcount adjustments with a safe minimum of 1. Supports zero-payment entries.
 - **Smart Change Detection**: The Save buttons remain disabled until a meaningful change is detected in the form, preventing redundant updates.
 - **Direct WhatsApp Integration**: Send professional "Digital Pass" images directly to a person's WhatsApp with a single tap. The system automatically opens a chat with the registered number and attaches the pass details as a formatted caption. **Restricted to Admin only**.
@@ -28,9 +28,9 @@ A robust Expo React Native application designed for food admins and volunteers t
 - **Professional Digital Pass**: Generates a branded "Digital Pass" image containing the Season Name, Flat ID, Headcount, and Instructions. Specifically excludes volatile meal details to ensure pass longevity.
 
 ### 🍛 Daily Menu & Operations
-- **Live Menu Management**: Admins can update the daily menu for each meal. Items are added one-by-one with specific Veg/Non-Veg indicators.
+- **Live Menu Management**: Admins can update the daily menu for each meal. Items are added one-by-one with specific Veg/Non-Veg indicators. The editor automatically prioritizes the **Current Meal** and displays a "LIVE" badge along with dietary tags (Veg/Non-Veg Only) for instant context.
 - **Adaptive Add Button**: The "Add Item" (+) button in the menu editor dynamically changes color to Green (Veg) or Red (Non-Veg) based on the selected dietary type for instant feedback.
-- **Dedicated Menu View**: A clean, non-editable view for volunteers to see the feast plan.
+- **Dedicated Menu View**: A clean, non-editable view for volunteers to see the feast plan. Features the same "LIVE" badge and dietary tags (Veg/Non-Veg Only) for operational consistency.
 - **Guest Management Module**: A dedicated interface for managing extra guest plates. Accessible to both **Admins** and **Vendors** via a sleek "Guest" tile on the home screen. Features a vertically-stacked, touch-optimized input layout for maximum entry speed. Automatically prioritizes the **Current Meal** and **Current Day** at the top with a high-visibility **"LIVE" badge** and themed highlighting for active service. Dual-diet meals (Veg + Non-Veg) automatically display aggregated **Guest Total** and **Guest Taken** summary fields, while single-diet service windows feature descriptive "Veg Only" or "Non-Veg Only" visual indicators for instant administrative clarity.
 - **Role-Based Guest Editing**: Only **Admins** can set the guest demand (Total, Veg, Non-Veg). **Vendors** are restricted to updating the collection counts (Taken) only.
 - **Smart Data Integrity**: Implements "Reverse Validation"—you cannot decrease guest demand below what has already been collected, and you cannot mark more food as "Taken" than what is planned.

@@ -5,7 +5,7 @@ import { useStyles } from "../../styles";
 import { useAppTheme } from "../../theme";
 import { UI_TEXT } from "../../strings";
 import { MealMenu, Day, ConfigDay, MealType, DietType } from "../../types";
-import { isDietaryEnabled } from "../../constants";
+import { isDietaryEnabled, isMealCurrent } from "../../constants";
 
 /**
  * Interactive editor for a single meal's items.
@@ -34,6 +34,8 @@ export function MealMenuEditor({
   const { theme } = useAppTheme();
   const vegEnabled = isDietaryEnabled(dayId, mealKey, DietType.VEG, config);
   const nonVegEnabled = isDietaryEnabled(dayId, mealKey, DietType.NON_VEG, config);
+  const isBothEnabled = vegEnabled && nonVegEnabled;
+  const isCurrent = isMealCurrent(dayId, mealKey, config);
 
   const dayConf = config.find(d => d.id === dayId);
   const mConf = dayConf ? dayConf[mealKey] : null;
@@ -63,8 +65,23 @@ export function MealMenuEditor({
 
   return (
     <View style={[styles.mealEditor, disabled && { opacity: 0.6 }]}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <Text style={[styles.mealEditorTitle, { marginBottom: 0 }]}>{title}</Text>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap', flex: 1 }}>
+          <Text style={[styles.mealEditorTitle, { marginBottom: 0, color: isCurrent ? theme.colors.primary : theme.colors.textSecondary }]}>{title}</Text>
+          {isCurrent && (
+            <View style={{ backgroundColor: theme.colors.primary, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+              <Text style={{ color: theme.colors.white, fontSize: 10, fontWeight: "900" }}>{UI_TEXT.live.toUpperCase()}</Text>
+            </View>
+          )}
+          {!isBothEnabled && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: vegEnabled ? theme.colors.veg + "15" : theme.colors.nonVeg + "15", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: 0.5, borderColor: vegEnabled ? theme.colors.veg : theme.colors.nonVeg }}>
+              <Ionicons name={vegEnabled ? "leaf" : "flame"} size={10} color={vegEnabled ? theme.colors.veg : theme.colors.nonVeg} />
+              <Text style={{ color: vegEnabled ? theme.colors.veg : theme.colors.nonVeg, fontSize: 10, fontWeight: "800" }}>
+                {(vegEnabled ? UI_TEXT.vegOnly : UI_TEXT.nonVegOnly).toUpperCase()}
+              </Text>
+            </View>
+          )}
+        </View>
       </View>
 
       {foodPriceEnabled && (
