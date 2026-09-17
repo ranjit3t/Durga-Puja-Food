@@ -2,7 +2,7 @@
  * Operational Dashboard for tracking meal demands and collections.
  * Provides aggregated counts for kitchen planning and guest entry management.
  */
-import React, { memo, useMemo } from "react";
+import React, { memo, useMemo, useRef } from "react";
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   Platform,
   Pressable,
 } from "react-native";
+import { captureRef } from "react-native-view-shot";
 import { Ionicons } from "@expo/vector-icons";
 import { useStyles } from "../styles";
 import { useAppTheme } from "../theme";
@@ -31,7 +32,8 @@ import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
 import { MealSummaryInline } from "../components/menu/MealSummaryInline";
-import { Metric } from "../components/common/Metric";
+import { MealMetricGrid } from "../components/dashboard/MealMetricGrid";
+import { MealBarChart } from "../components/dashboard/MealBarChart";
 
 import { useAuth } from "../context/AuthContext";
 import { useDatabase } from "../context/DatabaseContext";
@@ -70,6 +72,7 @@ interface MealSectionProps {
   ) => void;
   guestEnabled: boolean;
   seasonEnabled: boolean;
+  seasonName: string;
   labels: {
     veg: string;
     nonVeg: string;
@@ -83,6 +86,7 @@ interface MealSectionProps {
     vegTaken: string;
     nonVegTaken: string;
   };
+  onFocus?: () => void;
 }
 
 /**
@@ -109,8 +113,18 @@ const DashboardMealSection = memo(
     config,
     guestEnabled,
     labels,
+    seasonName,
+    onFocus,
   }: MealSectionProps) => {
+    const [showChart, setShowChart] = React.useState(false);
+    const [contentHeight, setContentHeight] = React.useState<number | null>(null);
     const vegItems = menu?.veg || [];
+
+    const toggleChart = (val: boolean) => {
+      setShowChart(val);
+      // Removed automatic scrolling to top to maintain user's current scroll position
+      // and focus on the action area at the bottom of the card.
+    };
     const nonVegItems = menu?.nonVeg || [];
 
     const isVegEnabled = isDietaryEnabled(day, type, DietType.VEG, config);
@@ -127,167 +141,179 @@ const DashboardMealSection = memo(
 
     const styles = useStyles();
     const { theme } = useAppTheme();
+    const { shareQr } = useUI();
+    const mealRef = useRef<View>(null);
+
+    /**
+     * Captures the current meal section as a PNG and shares it via WhatsApp.
+     * Includes seasonal branding and localized operational summary captions.
+     */
+    const handleShare = async () => {
+      if (mealRef.current) {
+        try {
+          const uri = await captureRef(mealRef, {
+            format: "png",
+            quality: 1,
+            result: "tmpfile",
+          });
+          const message = `${seasonName || UI_TEXT.headerTitle}\n${getDayLabel(day, config)} - ${mealLabel} ${UI_TEXT.operationalSummary}\n${UI_TEXT.total}: ${total} | ${UI_TEXT.taken}: ${totalMealTaken}`;
+          await shareQr(uri, message);
+        } catch (err) {
+          console.error("Meal share error:", err);
+        }
+      }
+    };
 
     return (
-      <View style={[
-        styles.dashboardMealSection,
-        { borderWidth: 1, borderColor: theme.colors.border },
-        isCurrent && { borderColor: theme.colors.primary, borderWidth: 1.5, backgroundColor: theme.colors.primary + "08" },
-        isDone && { opacity: 0.5 }
-      ]}>
-        <View style={[styles.mealDisplayHeader, { marginBottom: 12, justifyContent: "space-between", flexWrap: 'wrap', gap: 8 }]}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1, minWidth: '60%' }}>
-            <Ionicons name={icon} size={22} color={isCurrent ? theme.colors.primary : theme.colors.textSecondary} />
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap', flex: 1 }}>
-               <Text style={[styles.sectionTitle, { marginBottom: 0, fontSize: 18, color: isCurrent ? theme.colors.primary : theme.colors.textPrimary }]}>
-                 {mealLabel}
-               </Text>
-               {isCurrent && (
-                 <View style={{ backgroundColor: theme.colors.primary, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
-                    <Text style={{ color: theme.colors.white, fontSize: 10, fontWeight: "900" }}>{UI_TEXT.live.toUpperCase()}</Text>
-                 </View>
-               )}
-               {!isBothEnabled && (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: isVegEnabled ? theme.colors.veg + "15" : theme.colors.nonVeg + "15", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: 0.5, borderColor: isVegEnabled ? theme.colors.veg : theme.colors.nonVeg }}>
-                    <Ionicons name={isVegEnabled ? "leaf" : "flame"} size={10} color={isVegEnabled ? theme.colors.veg : theme.colors.nonVeg} />
-                    <Text style={{ color: isVegEnabled ? theme.colors.veg : theme.colors.nonVeg, fontSize: 10, fontWeight: "800" }}>
-                      {(isVegEnabled ? UI_TEXT.vegOnly : UI_TEXT.nonVegOnly).toUpperCase()}
-                    </Text>
+      <View
+        style={[
+          styles.dashboardMealSection,
+          { borderWidth: 1, borderColor: theme.colors.border, padding: 0, overflow: 'hidden' },
+          isCurrent && { borderColor: theme.colors.primary, borderWidth: 1.5 },
+          isDone && { opacity: 0.5 }
+        ]}
+      >
+        <View
+          ref={mealRef}
+          collapsable={false}
+          style={{ padding: 16, backgroundColor: theme.colors.surface }}
+        >
+          <View style={[styles.mealDisplayHeader, { marginBottom: 12, justifyContent: "space-between", flexWrap: 'wrap', gap: 8 }]}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1, minWidth: '60%' }}>
+              <Ionicons name={icon} size={22} color={isCurrent ? theme.colors.primary : theme.colors.textSecondary} />
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap', flex: 1 }}>
+                <Text style={[styles.sectionTitle, { marginBottom: 0, fontSize: 18, color: isCurrent ? theme.colors.primary : theme.colors.textPrimary }]}>
+                  {mealLabel}
+                </Text>
+                {isCurrent && (
+                  <View style={{ backgroundColor: theme.colors.primary, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                      <Text style={{ color: theme.colors.white, fontSize: 10, fontWeight: "900" }}>{UI_TEXT.live.toUpperCase()}</Text>
                   </View>
-               )}
+                )}
+                {!isBothEnabled && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: isVegEnabled ? theme.colors.veg + "15" : theme.colors.nonVeg + "15", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: 0.5, borderColor: isVegEnabled ? theme.colors.veg : theme.colors.nonVeg }}>
+                      <Ionicons name={isVegEnabled ? "leaf" : "flame"} size={10} color={isVegEnabled ? theme.colors.veg : theme.colors.nonVeg} />
+                      <Text style={{ color: isVegEnabled ? theme.colors.veg : theme.colors.nonVeg, fontSize: 10, fontWeight: "800" }}>
+                        {(isVegEnabled ? UI_TEXT.vegOnly : UI_TEXT.nonVegOnly).toUpperCase()}
+                      </Text>
+                    </View>
+                )}
+              </View>
+            </View>
+            <View style={[styles.pill, { backgroundColor: isCurrent ? theme.colors.primary + "15" : theme.colors.surface, alignSelf: 'center' }]}>
+              <Text style={[styles.pillText, { color: isCurrent ? theme.colors.primary : theme.colors.textSecondary }]}>{total} {UI_TEXT.plates}</Text>
             </View>
           </View>
-          <View style={[styles.pill, { backgroundColor: isCurrent ? theme.colors.primary + "15" : theme.colors.surface, alignSelf: 'center' }]}>
-             <Text style={[styles.pillText, { color: isCurrent ? theme.colors.primary : theme.colors.textSecondary }]}>{total} {UI_TEXT.plates}</Text>
-          </View>
-        </View>
 
-        {/* Menu Quick-View */}
-        {(vegItems.length > 0 || nonVegItems.length > 0) ? (
-          <View style={{ gap: 8, marginBottom: 16 }}>
-            {isVegEnabled && vegItems.length > 0 ? (
-              <View style={[styles.menuBox, { borderLeftWidth: 4, borderLeftColor: theme.colors.veg, paddingVertical: 8 }]}>
-                <MealSummaryInline
-                  label={UI_TEXT.veg}
-                  dayId={day}
-                  mealKey={type}
-                  config={config}
-                  menu={{ veg: vegItems, nonVeg: [] }}
-                />
-              </View>
-            ) : null}
-            {isNonVegEnabled && nonVegItems.length > 0 ? (
-                <View
-                  style={[styles.menuBox, { borderLeftWidth: 4, borderLeftColor: theme.colors.nonVeg, paddingVertical: 8 }]}
-                >
+          {/* Menu Quick-View */}
+          {(vegItems.length > 0 || nonVegItems.length > 0) ? (
+            <View style={{ gap: 8, marginBottom: 16 }}>
+              {isVegEnabled && vegItems.length > 0 ? (
+                <View style={[styles.menuBox, { borderLeftWidth: 4, borderLeftColor: theme.colors.veg, paddingVertical: 8 }]}>
                   <MealSummaryInline
-                    label={UI_TEXT.nonVeg}
+                    label={UI_TEXT.veg}
                     dayId={day}
                     mealKey={type}
                     config={config}
-                    menu={{ veg: [], nonVeg: nonVegItems }}
+                    menu={{ veg: vegItems, nonVeg: [] }}
                   />
                 </View>
               ) : null}
+              {isNonVegEnabled && nonVegItems.length > 0 ? (
+                  <View
+                    style={[styles.menuBox, { borderLeftWidth: 4, borderLeftColor: theme.colors.nonVeg, paddingVertical: 8 }]}
+                  >
+                    <MealSummaryInline
+                      label={UI_TEXT.nonVeg}
+                      dayId={day}
+                      mealKey={type}
+                      config={config}
+                      menu={{ veg: [], nonVeg: nonVegItems }}
+                    />
+                  </View>
+                ) : null}
+            </View>
+          ) : null}
+
+          {/* Aggregated Demand Metrics / Chart */}
+          <View
+            style={[
+              { minHeight: contentHeight || undefined, justifyContent: 'flex-end' },
+              showChart && { paddingBottom: 10 }
+            ]}
+            onLayout={(e) => {
+              // Only update contentHeight if we are in Grid mode (standard view)
+              // this provides the baseline height to prevent flicker.
+              if (!showChart) {
+                setContentHeight(e.nativeEvent.layout.height);
+              }
+            }}
+          >
+            {showChart ? (
+              <MealBarChart
+                day={day} type={type} total={total} veg={veg} nonVeg={nonVeg}
+                parcel={parcel} parcelTaken={parcelTaken} totalVegTaken={totalVegTaken}
+                totalNonVegTaken={totalNonVegTaken} guestVeg={guestVeg} guestNonVeg={guestNonVeg}
+                guestVegTaken={guestVegTaken} guestNonVegTaken={guestNonVegTaken}
+                totalMealTaken={totalMealTaken} config={config} guestEnabled={guestEnabled}
+                isBothEnabled={isBothEnabled} labels={labels}
+              />
+            ) : (
+              <MealMetricGrid
+                day={day} type={type} total={total} veg={veg} nonVeg={nonVeg}
+                parcel={parcel} parcelTaken={parcelTaken} totalVegTaken={totalVegTaken}
+                totalNonVegTaken={totalNonVegTaken} guestVeg={guestVeg} guestNonVeg={guestNonVeg}
+                guestVegTaken={guestVegTaken} guestNonVegTaken={guestNonVegTaken}
+                totalMealTaken={totalMealTaken} config={config} guestEnabled={guestEnabled}
+                isBothEnabled={isBothEnabled} labels={labels}
+              />
+            )}
           </View>
-        ) : null}
+        </View>
 
-        {/* Aggregated Demand Metrics */}
-        <View style={styles.metricGrid}>
-          <Metric icon="people-outline" label={UI_TEXT.total} value={total} />
+        {/* Action Bar - Positioned at bottom of card, below the captured area */}
+        <View style={{
+          borderTopWidth: 1,
+          borderTopColor: theme.colors.border,
+          padding: 8,
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          backgroundColor: theme.colors.surfaceDark
+        }}>
+          <View>
+            {!showChart ? (
+              <Pressable
+                onPress={() => toggleChart(true)}
+                style={({ pressed }) => [
+                  { padding: 8, borderRadius: 20, backgroundColor: theme.colors.primary + "15" },
+                  pressed && { opacity: 0.7 }
+                ]}
+              >
+                <Ionicons name="bar-chart-outline" size={18} color={theme.colors.primary} />
+              </Pressable>
+            ) : (
+              <Pressable
+                onPress={() => toggleChart(false)}
+                style={({ pressed }) => [
+                  { padding: 8, borderRadius: 20, backgroundColor: theme.colors.textMuted + "15" },
+                  pressed && { opacity: 0.7 }
+                ]}
+              >
+                <Ionicons name="grid-outline" size={18} color={theme.colors.textMuted} />
+              </Pressable>
+            )}
+          </View>
 
-          {/* Guest Total */}
-          {guestEnabled && (
-            <Metric
-              icon="people-circle-outline"
-              label={UI_TEXT.guestTotal}
-              value={guestVeg + guestNonVeg}
-            />
-          )}
-
-          {/* Detailed Demand */}
-          {isBothEnabled && (
-            <>
-              <Metric icon="leaf-outline" label={labels.veg} value={veg} color={theme.colors.veg} />
-              <Metric icon="flame-outline" label={labels.nonVeg} value={nonVeg} color={theme.colors.nonVeg} />
-            </>
-          )}
-
-          {isParcelEnabled(day, type, config) && (
-            <>
-              <Metric icon="cube-outline" label={labels.parcel} value={parcel} />
-              <Metric
-                icon="checkmark-circle-outline"
-                label={labels.parcelTaken}
-                value={parcelTaken}
-                color={theme.colors.primary}
-              />
-            </>
-          )}
-
-          {/* Detailed View */}
-          {isBothEnabled && (
-            <>
-              <View style={{ width: "100%", height: 1, backgroundColor: theme.colors.border, marginVertical: 8 }} />
-
-              <Metric
-                icon="checkmark-done-outline"
-                label={labels.vegTaken}
-                value={totalVegTaken}
-                color={theme.colors.veg}
-              />
-              <Metric
-                icon="checkmark-done-outline"
-                label={labels.nonVegTaken}
-                value={totalNonVegTaken}
-                color={theme.colors.nonVeg}
-              />
-
-              {guestEnabled && (
-                <>
-                  <Metric
-                    icon="leaf-outline"
-                    label={labels.guestVeg}
-                    value={guestVeg}
-                    color={theme.colors.veg}
-                  />
-                  <Metric
-                    icon="flame-outline"
-                    label={labels.guestNonVeg}
-                    value={guestNonVeg}
-                    color={theme.colors.nonVeg}
-                  />
-
-                  <Metric
-                    icon="checkbox-outline"
-                    label={labels.guestVegTaken}
-                    value={guestVegTaken}
-                  />
-                  <Metric
-                    icon="checkbox-outline"
-                    label={labels.guestNonVegTaken}
-                    value={guestNonVegTaken}
-                  />
-                </>
-              )}
-            </>
-          )}
-
-          {!isBothEnabled && guestEnabled && (
-            <Metric
-              icon="checkbox-outline"
-              label={UI_TEXT.guestTaken}
-              value={guestVegTaken + guestNonVegTaken}
-              color={theme.colors.veg}
-            />
-          )}
-
-          <Metric
-            icon="checkmark-done-outline"
-            label={UI_TEXT.total + " " + UI_TEXT.taken}
-            value={totalMealTaken}
-            color={theme.colors.veg}
-          />
+          <Pressable
+            onPress={handleShare}
+            style={({ pressed }) => [
+              { padding: 8, borderRadius: 20, backgroundColor: theme.colors.success + "15" },
+              pressed && { opacity: 0.7 }
+            ]}
+          >
+            <Ionicons name="logo-whatsapp" size={18} color={theme.colors.success} />
+          </Pressable>
         </View>
       </View>
     );
@@ -306,6 +332,15 @@ export function DashboardScreen() {
 
   const styles = useStyles();
   const { theme, themeType } = useAppTheme();
+  const scrollRef = useRef<ScrollView>(null);
+  const sectionRefs = useRef<Record<string, number>>({});
+
+  const focusSection = (key: string) => {
+    const y = sectionRefs.current[key];
+    if (y !== undefined && scrollRef.current) {
+      scrollRef.current.scrollTo({ y: y - 20, animated: true });
+    }
+  };
 
   const sortedActiveDays = useMemo(() => {
     const active = dayConfig.filter((d) => d.enabled).map((d) => d.id);
@@ -425,6 +460,7 @@ export function DashboardScreen() {
         <Text style={styles.subtitle}>{UI_TEXT.dashboardSubtitle}</Text>
       </View>
       <ScrollView
+        ref={scrollRef}
         style={{ flex: 1, width: "100%" }}
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
@@ -537,7 +573,13 @@ export function DashboardScreen() {
           const sortedMeals = getSortedMealKeys(day, dayConfig);
 
           return (
-            <View key={day} style={[styles.dashboardCard, { backgroundColor: colorScheme.bg, borderColor: colorScheme.border, borderWidth: 1.5 }]}>
+            <View
+              key={day}
+              style={[styles.dashboardCard, { backgroundColor: colorScheme.bg, borderColor: colorScheme.border, borderWidth: 1.5 }]}
+              onLayout={(e) => {
+                sectionRefs.current[day] = e.nativeEvent.layout.y;
+              }}
+            >
               <View style={[styles.dashboardCardTop, { marginBottom: 16 }]}>
                 <Text style={[styles.dashboardDay, { color: colorScheme.accent }]}>{getDayLabel(day, dayConfig)}</Text>
               </View>
@@ -545,6 +587,7 @@ export function DashboardScreen() {
               {sortedMeals.map((mKey) => {
                 if (!isMealEnabled(day, mKey, dayConfig)) return null;
 
+                const mealKey = `${day}-${mKey}`;
                 const mealProps = mKey === MealType.BREAKFAST ? {
                   total: item.breakfast || 0,
                   veg: item.breakfastVeg || 0,
@@ -629,31 +672,40 @@ export function DashboardScreen() {
                 };
 
                 return (
-                  <DashboardMealSection
+                  <View
                     key={mKey}
-                    day={day}
-                    type={mKey}
-                    icon={mealProps.icon}
-                    total={mealProps.total}
-                    veg={mealProps.veg}
-                    nonVeg={mealProps.nonVeg}
-                    parcel={mealProps.parcel}
-                    parcelTaken={mealProps.parcelTaken}
-                    taken={mealProps.taken}
-                    flatVegTaken={mealProps.flatVegTaken}
-                    flatNonVegTaken={mealProps.flatNonVegTaken}
-                    guestVeg={mealProps.guestVeg}
-                    guestNonVeg={mealProps.guestNonVeg}
-                    guestVegTaken={mealProps.guestVegTaken}
-                    guestNonVegTaken={mealProps.guestNonVegTaken}
-                    menu={dayMenu[mKey]}
-                    userRole={userRole || UserRole.VENDOR}
-                    config={dayConfig}
-                    onUpdateGuest={updateGuestCount}
-                    guestEnabled={guestEnabled}
-                    seasonEnabled={seasonEnabled}
-                    labels={mealProps.labels}
-                  />
+                    onLayout={(e) => {
+                      const dayY = sectionRefs.current[day] || 0;
+                      sectionRefs.current[`${day}-${mKey}`] = dayY + e.nativeEvent.layout.y + 40;
+                    }}
+                  >
+                    <DashboardMealSection
+                      day={day}
+                      type={mKey}
+                      icon={mealProps.icon}
+                      total={mealProps.total}
+                      veg={mealProps.veg}
+                      nonVeg={mealProps.nonVeg}
+                      parcel={mealProps.parcel}
+                      parcelTaken={mealProps.parcelTaken}
+                      taken={mealProps.taken}
+                      flatVegTaken={mealProps.flatVegTaken}
+                      flatNonVegTaken={mealProps.flatNonVegTaken}
+                      guestVeg={mealProps.guestVeg}
+                      guestNonVeg={mealProps.guestNonVeg}
+                      guestVegTaken={mealProps.guestVegTaken}
+                      guestNonVegTaken={mealProps.guestNonVegTaken}
+                      menu={dayMenu[mKey]}
+                      userRole={userRole || UserRole.VENDOR}
+                      config={dayConfig}
+                      onUpdateGuest={updateGuestCount}
+                      guestEnabled={guestEnabled}
+                      seasonEnabled={seasonEnabled}
+                      labels={mealProps.labels}
+                      seasonName={seasonName}
+                      onFocus={() => focusSection(`${day}-${mKey}`)}
+                    />
+                  </View>
                 );
               })}
             </View>

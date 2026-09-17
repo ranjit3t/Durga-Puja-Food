@@ -9,6 +9,7 @@ import {
   ScrollView,
   Pressable,
   StatusBar,
+  Linking,
 } from "react-native";
 import { useStyles } from "../styles";
 import { useAppTheme } from "../theme";
@@ -40,7 +41,7 @@ export function DetailsScreen() {
   const { userRole, handleLogout } = useAuth();
   const {
     subscriptions, dayConfig, paymentConfig, seasonEnabled, foodMenu, mobileEnabled,
-    deleteSubscription
+    deleteSubscription, whatsappCountryCode
   } = useDatabase();
   const { showAlert: showGlobalAlert } = useUI();
   const {
@@ -106,6 +107,33 @@ export function DetailsScreen() {
             {paymentConfig.enabled && ` | ${UI_TEXT.rs} ${subscription.amount || UI_TEXT.zero}`}
             {mobileEnabled && subscription.mobile && ` | ${subscription.mobile}`}
           </Text>
+
+          {subscription.mobile && (
+            <>
+              <View style={{ height: 1, backgroundColor: theme.colors.white, opacity: 0.2, marginVertical: 12 }} />
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Pressable
+                  onPress={() => Linking.openURL(`https://wa.me/${whatsappCountryCode || "91"}${subscription.mobile}`)}
+                  style={({ pressed }) => [
+                    { padding: 8, borderRadius: 20, backgroundColor: theme.colors.white + "20" },
+                    pressed && { opacity: 0.7 }
+                  ]}
+                >
+                  <Ionicons name="logo-whatsapp" size={22} color={theme.colors.white} />
+                </Pressable>
+
+                <Pressable
+                  onPress={() => Linking.openURL(`tel:${subscription.mobile}`)}
+                  style={({ pressed }) => [
+                    { padding: 8, borderRadius: 20, backgroundColor: theme.colors.white + "20" },
+                    pressed && { opacity: 0.7 }
+                  ]}
+                >
+                  <Ionicons name="call" size={22} color={theme.colors.white} />
+                </Pressable>
+              </View>
+            </>
+          )}
         </View>
         {/* Quick Overview Card */}
         <View style={[styles.card, { backgroundColor: theme.cardColors[4].bg, borderColor: theme.cardColors[4].border }]}>

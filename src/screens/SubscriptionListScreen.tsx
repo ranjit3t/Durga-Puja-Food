@@ -12,6 +12,7 @@ import {
   StatusBar,
   KeyboardAvoidingView,
   Platform,
+  Linking,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useStyles } from "../styles";
@@ -29,7 +30,7 @@ import { LogoutButton } from "../components/common/LogoutButton";
 export function SubscriptionListScreen() {
   const { userRole, handleLogout } = useAuth();
   const {
-    subscriptions, dayConfig, paymentConfig, seasonEnabled
+    subscriptions, dayConfig, paymentConfig, seasonEnabled, whatsappCountryCode
   } = useDatabase();
 
   const {
@@ -224,6 +225,33 @@ export function SubscriptionListScreen() {
                     </Text>
                   )}
                 </View>
+
+                {item.mobile && (
+                  <>
+                    <View style={{ height: 1, backgroundColor: colorScheme.border, marginVertical: 12, opacity: 0.5 }} />
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Pressable
+                        onPress={() => Linking.openURL(`https://wa.me/${whatsappCountryCode || "91"}${item.mobile}`)}
+                        style={({ pressed }) => [
+                          { padding: 6, borderRadius: 20, backgroundColor: theme.colors.success + "10" },
+                          pressed && { opacity: 0.7 }
+                        ]}
+                      >
+                        <Ionicons name="logo-whatsapp" size={20} color={theme.colors.success} />
+                      </Pressable>
+
+                      <Pressable
+                        onPress={() => Linking.openURL(`tel:${item.mobile}`)}
+                        style={({ pressed }) => [
+                          { padding: 6, borderRadius: 20, backgroundColor: theme.colors.primary + "10" },
+                          pressed && { opacity: 0.7 }
+                        ]}
+                      >
+                        <Ionicons name="call" size={20} color={theme.colors.primary} />
+                      </Pressable>
+                    </View>
+                  </>
+                )}
               </Pressable>
             );
           }}

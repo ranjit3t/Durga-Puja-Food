@@ -1,0 +1,95 @@
+import React from "react";
+import { View, Text } from "react-native";
+import { useAppTheme } from "../../theme";
+import { UI_TEXT } from "../../strings";
+import { MealMetricProps } from "./MealMetricGrid";
+import { isParcelEnabled } from "../../constants";
+
+/**
+ * A compact bar chart component for visualizing meal demand vs collections.
+ */
+export function MealBarChart(props: MealMetricProps) {
+  const { theme } = useAppTheme();
+  const {
+    day, type, total, veg, nonVeg, parcel, totalVegTaken, totalNonVegTaken,
+    guestVeg, guestNonVeg, guestVegTaken, guestNonVegTaken, config, guestEnabled, isBothEnabled
+  } = props;
+
+  const chartHeight = 160;
+  const barContainerHeight = chartHeight - 40;
+
+  const dataValues = [
+    total, veg, nonVeg, parcel,
+    totalVegTaken, totalNonVegTaken,
+    guestVeg + guestNonVeg,
+    guestVegTaken + guestNonVegTaken
+  ];
+  const maxVal = Math.max(...dataValues, 1);
+
+  const Bar = ({ label, value, color, secondaryValue }: { label: string, value: number, color: string, secondaryValue?: number }) => {
+    const height = (value / maxVal) * (barContainerHeight - 20);
+    const secHeight = secondaryValue !== undefined ? (secondaryValue / maxVal) * (barContainerHeight - 20) : 0;
+
+    return (
+      <View style={{ alignItems: 'center', flex: 1 }}>
+        <View style={{ height: barContainerHeight, width: '100%', alignItems: 'flex-end', justifyContent: 'center', flexDirection: 'row', gap: 4 }}>
+          {secondaryValue !== undefined ? (
+             <>
+               <View style={{ width: 14, height: Math.max(height, 2), backgroundColor: color + "30", borderRadius: 4, position: 'relative' }}>
+                  <Text style={{ position: 'absolute', top: -16, width: 40, left: -13, textAlign: 'center', fontSize: 9, fontWeight: '800', color: theme.colors.textSecondary }}>{value}</Text>
+               </View>
+               <View style={{ width: 14, height: Math.max(secHeight, 2), backgroundColor: color, borderRadius: 4, position: 'relative' }}>
+                  <Text style={{ position: 'absolute', top: -16, width: 40, left: -13, textAlign: 'center', fontSize: 9, fontWeight: '900', color: color }}>{secondaryValue}</Text>
+               </View>
+             </>
+          ) : (
+            <View style={{ width: 24, height: Math.max(height, 2), backgroundColor: color, borderRadius: 4, position: 'relative' }}>
+               <Text style={{ position: 'absolute', top: -16, width: 40, left: -8, textAlign: 'center', fontSize: 10, fontWeight: '900', color: color }}>{value}</Text>
+            </View>
+          )}
+        </View>
+        <Text style={{ fontSize: 9, fontWeight: '700', color: theme.colors.textMuted, marginTop: 8, textAlign: 'center' }}>{label.toUpperCase()}</Text>
+      </View>
+    );
+  };
+
+  return (
+    <View style={{ paddingVertical: 10 }}>
+      <View style={{ flexDirection: 'row', height: chartHeight, alignItems: 'flex-end', gap: 12 }}>
+        {isBothEnabled ? (
+          <>
+            <Bar label={UI_TEXT.veg} value={veg} color={theme.colors.veg} secondaryValue={totalVegTaken} />
+            <Bar label={UI_TEXT.nonVeg} value={nonVeg} color={theme.colors.nonVeg} secondaryValue={totalNonVegTaken} />
+          </>
+        ) : (
+          <Bar label={UI_TEXT.total} value={total} color={theme.colors.primary} secondaryValue={totalVegTaken + totalNonVegTaken} />
+        )}
+
+        {guestEnabled && (guestVeg + guestNonVeg > 0) && (
+          <Bar
+            label={UI_TEXT.guest}
+            value={guestVeg + guestNonVeg}
+            color={theme.colors.info || theme.colors.secondary}
+            secondaryValue={guestVegTaken + guestNonVegTaken}
+          />
+        )}
+
+        {isParcelEnabled(day, type, config) && parcel > 0 && (
+          <Bar label={UI_TEXT.parcel} value={parcel} color={theme.colors.warning || theme.colors.primary} />
+        )}
+      </View>
+
+      {/* Legend */}
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 16, paddingTop: 12, borderTopWidth: 1, borderTopColor: theme.colors.border }}>
+         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <View style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: theme.colors.textSecondary + "40" }} />
+            <Text style={{ fontSize: 10, fontWeight: '600', color: theme.colors.textSecondary }}>{UI_TEXT.planned || "Planned"}</Text>
+         </View>
+         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <View style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: theme.colors.textPrimary }} />
+            <Text style={{ fontSize: 10, fontWeight: '600', color: theme.colors.textSecondary }}>{UI_TEXT.taken || "Taken"}</Text>
+         </View>
+      </View>
+    </View>
+  );
+}
