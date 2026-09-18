@@ -391,6 +391,9 @@ export const emptyTaken = (count: number, config: ConfigDay[]) =>
         [MealType.BREAKFAST]: false,
         [MealType.LUNCH]: false,
         [MealType.DINNER]: false,
+        breakfastParcel: false,
+        lunchParcel: false,
+        dinnerParcel: false,
       })),
     ])
   ) as Subscription["takenByPerson"];
@@ -488,6 +491,9 @@ export const resizeTaken = (
         [MealType.BREAKFAST]: false,
         [MealType.LUNCH]: false,
         [MealType.DINNER]: false,
+        breakfastParcel: false,
+        lunchParcel: false,
+        dinnerParcel: false,
       };
 
       const newAdults = Array.from({ length: newAdultCount }, (_, i) => oldAdults[i] ?? { ...emptyTakenState });

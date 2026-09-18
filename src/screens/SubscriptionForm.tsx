@@ -279,8 +279,6 @@ export function SubscriptionForm() {
     id: lockIdentity
       ? value.id
       : `${form.block}-${form.flat.trim().toUpperCase()}`,
-    takenByPerson: resizeTaken(form.takenByPerson, pristine.current.peopleCount, form.peopleCount, pristine.current.kidsCount, form.kidsCount || 0, dayConfig),
-    mealSlots: resizeMealSlots(form.mealSlots, pristine.current.peopleCount, form.peopleCount, pristine.current.kidsCount, form.kidsCount || 0, dayConfig),
     meals: mealsFromChoices(form.mealSlots, dayConfig, form.peopleCount, !!kidsEnabled),
     payments: payments,
     amount: totalAmount.toFixed(0),
@@ -567,6 +565,7 @@ export function SubscriptionForm() {
                   ...form,
                   peopleCount: count,
                   mealSlots: resizeMealSlots(form.mealSlots, oldPeople, count, kids, kids, dayConfig),
+                  takenByPerson: resizeTaken(form.takenByPerson, oldPeople, count, kids, kids, dayConfig),
                 });
                 setIsManualAmount(false);
               }}
@@ -589,6 +588,7 @@ export function SubscriptionForm() {
                   ...form,
                   kidsCount: count,
                   mealSlots: resizeMealSlots(form.mealSlots, adults, adults, oldKids, count, dayConfig),
+                  takenByPerson: resizeTaken(form.takenByPerson, adults, adults, oldKids, count, dayConfig),
                 });
                 setIsManualAmount(false);
               }}

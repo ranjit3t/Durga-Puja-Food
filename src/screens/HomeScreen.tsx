@@ -8,8 +8,8 @@ import { useAuth } from "../context/AuthContext";
 import { useDatabase } from "../context/DatabaseContext";
 import { useUI } from "../context/UIContext";
 import { useAppNavigation } from "../context/NavigationContext";
-import { AppScreen, UserRole, MealType, AppThemeMode } from "../types";
-import { getActiveDays, isSeasonDone, isMealCurrent, getDayLabel, isMealEnabled } from "../constants";
+import { AppScreen, UserRole, MealType, AppThemeMode, DietaryOption, DietType } from "../types";
+import { getActiveDays, isSeasonDone, isMealCurrent, getDayLabel, isMealEnabled, isDietaryEnabled } from "../constants";
 import { ActionLabel } from "../components/common/ActionLabel";
 import { LogoutButton } from "../components/common/LogoutButton";
 
@@ -34,12 +34,67 @@ export function HomeScreen() {
 
   // Find if there is an active current meal going on right now
   const summaryCounts = React.useMemo(() => {
-    return subscriptions.reduce((acc, sub) => {
-      acc.adults += (sub.peopleCount || 0);
-      acc.kids += (sub.kidsCount || 0);
-      return acc;
-    }, { adults: 0, kids: 0 });
-  }, [subscriptions]);
+    let adults = 0;
+    let kids = 0;
+    let vegPlates = 0;
+    let nonVegPlates = 0;
+
+    const activeDays = getActiveDays(dayConfig);
+
+    subscriptions.forEach((sub) => {
+      adults += (sub.peopleCount || 0);
+      kids += (sub.kidsCount || 0);
+
+      activeDays.forEach(dayId => {
+        const slots = sub.mealSlots[dayId] || [];
+        slots.forEach((slot, index) => {
+          [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].forEach(mType => {
+            if (!isMealEnabled(dayId, mType, dayConfig)) return;
+
+            const choice = slot[mType];
+            if (choice === DietaryOption.VEG && isDietaryEnabled(dayId, mType, DietType.VEG, dayConfig)) {
+              vegPlates++;
+            } else if (choice === DietaryOption.NON_VEG && isDietaryEnabled(dayId, mType, DietType.NON_VEG, dayConfig)) {
+              nonVegPlates++;
+            }
+          });
+        });
+      });
+    });
+
+    // Add Guest counts if enabled
+    if (guestEnabled) {
+      Object.keys(foodMenu).forEach(dayId => {
+        if (!activeDays.includes(dayId)) return;
+        const dayMenu = foodMenu[dayId];
+        [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].forEach(mType => {
+          if (!isMealEnabled(dayId, mType, dayConfig)) return;
+          const meal = dayMenu[mType];
+          if (meal) {
+            vegPlates += (meal.guestVeg || 0);
+            nonVegPlates += (meal.guestNonVeg || 0);
+          }
+        });
+      });
+    }
+
+    return { adults, kids, vegPlates, nonVegPlates, totalPlates: vegPlates + nonVegPlates };
+  }, [subscriptions, dayConfig, foodMenu, guestEnabled]);
+
+  const { isVegEnabledGlobally, isNonVegEnabledGlobally } = React.useMemo(() => {
+    return {
+      isVegEnabledGlobally: dayConfig.some(d => d.enabled && (
+        (d[MealType.BREAKFAST].enabled && d[MealType.BREAKFAST].veg) ||
+        (d[MealType.LUNCH].enabled && d[MealType.LUNCH].veg) ||
+        (d[MealType.DINNER].enabled && d[MealType.DINNER].veg)
+      )),
+      isNonVegEnabledGlobally: dayConfig.some(d => d.enabled && (
+        (d[MealType.BREAKFAST].enabled && d[MealType.BREAKFAST].nonVeg) ||
+        (d[MealType.LUNCH].enabled && d[MealType.LUNCH].nonVeg) ||
+        (d[MealType.DINNER].enabled && d[MealType.DINNER].nonVeg)
+      ))
+    };
+  }, [dayConfig]);
 
   const guestSummary = React.useMemo(() => {
     let seasonTotal = 0;
@@ -130,17 +185,28 @@ export function HomeScreen() {
 
               {guestEnabled && (
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flexWrap: 'wrap' }}>
-                  <Text style={[styles.summaryLabel, { opacity: 0.8, fontSize: labelFontSize }]}>{UI_TEXT.guest}{UI_TEXT.colon}</Text>
+                  <Text style={[styles.summaryLabel, { opacity: 0.8, fontSize: labelFontSize }]}>{UI_TEXT.totalGuests}{UI_TEXT.colon}</Text>
                   <Text style={[styles.summaryNumber, { fontSize: secondaryFontSize, marginTop: 0, lineHeight: secondaryFontSize + 4 }]}>
                     {guestSummary.seasonTotal}
                   </Text>
-                  {guestSummary.currentMealTotal > 0 && (
-                    <Text style={{ fontSize: labelFontSize, color: theme.colors.white, opacity: 0.7, fontWeight: '700', marginLeft: -4 }}>
-                      {UI_TEXT.openParen}{guestSummary.currentMealTotal}{UI_TEXT.space}{UI_TEXT.live}{UI_TEXT.closeParen}
-                    </Text>
-                  )}
                 </View>
               )}
+
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flexWrap: 'wrap' }}>
+                <Text style={[styles.summaryLabel, { opacity: 0.8, fontSize: labelFontSize }]}>{UI_TEXT.totalPlates.toUpperCase()}:</Text>
+                <Text style={[styles.summaryNumber, { fontSize: secondaryFontSize, marginTop: 0, lineHeight: secondaryFontSize + 4 }]}>
+                  {summaryCounts.totalPlates}
+                </Text>
+                {isVegEnabledGlobally && isNonVegEnabledGlobally && (
+                  <Text style={{ fontSize: labelFontSize, color: theme.colors.white, opacity: 0.7, fontWeight: '700', marginLeft: -4 }}>
+                    {UI_TEXT.openParen}
+                    {summaryCounts.vegPlates}{UI_TEXT.space}{UI_TEXT.vegLabel}
+                    {UI_TEXT.pipe}
+                    {summaryCounts.nonVegPlates}{UI_TEXT.space}{UI_TEXT.nonVegLabel}
+                    {UI_TEXT.closeParen}
+                  </Text>
+                )}
+              </View>
 
               {paymentConfig?.enabled && (
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flexWrap: 'wrap' }}>
