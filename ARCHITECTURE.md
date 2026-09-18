@@ -35,7 +35,7 @@ The project follows a **Modular Layered Architecture**:
     - `CustomAlert`: A centralized, themed replacement for system dialogs.
     - `Global Error View`: A component wrapper layer that safely intercepts database connection and runtime exceptions, formatting them contextually within high-visibility premium alert overlays.
     - `Header Controls`: Unified set of components (`BackButton`, `HomeButton`, `LogoutButton`) designed with a consistent **36px circular aesthetic**.
-    - `Metric Tiles`: Read-only and interactive tiles for rapid data consumption.
+    - `Metric Tiles`: Read-only and interactive tiles for rapid data consumption. Dashboard metrics utilize a **High-Density Grouped Pattern**, placing related demand and collection values in adjacent cells to facilitate instant physical reconciliation.
 
 ### 📂 Logic & Theme Layer (`src/theme/`, `src/constants.ts`, `src/strings.ts`)
 - **Dynamic Theme & Responsive Provider (`src/theme/`)**: Implements a React Context-based theme and responsiveness system.

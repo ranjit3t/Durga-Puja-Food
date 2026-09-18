@@ -119,7 +119,11 @@ export function HomeScreen() {
                 </Text>
                 {kidsEnabled && (
                   <Text style={{ fontSize: labelFontSize, color: theme.colors.white, opacity: 0.7, fontWeight: '700', marginLeft: -4 }}>
-                    {UI_TEXT.openParen}{summaryCounts.adults}{UI_TEXT.adultAbbrLabel}{UI_TEXT.plus}{summaryCounts.kids}{UI_TEXT.kidsAbbrLabel}{UI_TEXT.closeParen}
+                    {UI_TEXT.openParen}
+                    {summaryCounts.adults}{UI_TEXT.space}{summaryCounts.adults === 1 ? UI_TEXT.adult : UI_TEXT.adults}
+                    {UI_TEXT.plus}
+                    {summaryCounts.kids}{UI_TEXT.space}{summaryCounts.kids === 1 ? UI_TEXT.kid : UI_TEXT.kids}
+                    {UI_TEXT.closeParen}
                   </Text>
                 )}
               </View>
