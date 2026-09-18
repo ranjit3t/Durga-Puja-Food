@@ -105,13 +105,13 @@ export function MealMetricGrid(props: MealMetricProps) {
           <View style={{ width: "100%", height: 1, backgroundColor: theme.colors.border, marginVertical: 4, opacity: 0.5 }} />
           <Metric
             icon={veg > 0 ? "leaf-outline" : "flame-outline"}
-            label={veg > 0 ? labels.veg : labels.nonVeg}
+            label={kidsEnabled ? UI_TEXT.adults : UI_TEXT.members}
             value={veg + nonVeg}
             color={theme.colors.primary}
           />
           <Metric
             icon="checkmark-done-outline"
-            label={veg > 0 ? labels.vegTaken : labels.nonVegTaken}
+            label={`${kidsEnabled ? UI_TEXT.adults : UI_TEXT.members}${UI_TEXT.space}${UI_TEXT.taken}`}
             value={totalMealTaken - kidsTaken - (guestEnabled ? (guestVegTaken + guestNonVegTaken) : 0)}
             color={theme.colors.veg}
           />
