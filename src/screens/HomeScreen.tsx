@@ -155,7 +155,7 @@ export function HomeScreen() {
               >
                 <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: theme.colors.success }} />
                 <Text style={{ fontSize: isNarrow ? 9 : 10, fontWeight: "900", color: theme.colors.white }}>
-                  {currentMealInfo.mealLabel.toUpperCase()}
+                  {currentMealInfo.dayLabel.toUpperCase()}{UI_TEXT.space}{currentMealInfo.mealLabel.toUpperCase()}
                 </Text>
               </Pressable>
             ) : null}
