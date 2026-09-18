@@ -70,7 +70,7 @@ A robust Expo React Native application designed for food admins and volunteers t
 - **WhatsApp Country Code Config**: Allows admins to define a default country code prefix (e.g., 91) globally so that the direct WhatsApp pass sharing API works seamlessly regardless of how individual mobile numbers are saved.
 - **Dynamic Payment Rules**: Toggle global payment status and select enabled payment methods (UPI/Cash/Bank Transfer). Hides all financial fields globally if payments are disabled.
 - **Automated Food Pricing**: Admins can set individual Veg/Non-Veg prices per meal slot. When enabled, the registration form automatically calculates and pre-populates the total payment amount based on person-wise selections.
-- **Smart Save Logic**: The "Update All Settings" button intelligently detects changes and remains disabled until modifications exist.
+- **Configuration Safety Guard**: Implements a protective logic where disabling any enabled setting (global toggles, day status, meal availability) triggers a confirmation dialog if at least one subscription exists. This prevents accidental data inconsistency during active event phases.
 - **Meal Lifecycle Management**: Admins can "Mark as Done" individual meal slots (e.g. Saturday Lunch). Once marked as done, the system locks all associated data for that meal—preventing any further additions, edits, or collection updates across all screens. Marking a meal as done also automatically removes its "Current Meal" status.
 - **Automatic Menu Cleanup**: Deleting an event day from settings automatically scrubs all associated menu data from the database.
 - **Veg Only Toggle**: Easily convert a day to "Veg only" mode, which simplifies the entire app UI for that day.

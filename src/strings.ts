@@ -74,6 +74,10 @@ export const UI_TEXT = {
   optionDefault: "option",
   contactPermissionError: "Contact permission is required to select a number.",
   contactPickerError: "Could not open contacts.",
+  confirmDisableTitle: "Confirm Action",
+  confirmDisableMessage: "Disabling the toggle may require some manual adjustments to be made in the application. Do you want to proceed?",
+  yes: "Yes",
+  no: "No",
 
   // Data Values (Matches Database)
   veg: "Veg",

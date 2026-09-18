@@ -31,7 +31,7 @@ export function SettingsScreen() {
   const { handleLogout } = useAuth();
   const {
     dayConfig: config, seasonName, seasonEnabled, paymentConfig: payment, guestEnabled, mobileEnabled, foodPriceEnabled,
-    whatsappCountryCode, updateConfig, kidsEnabled
+    whatsappCountryCode, updateConfig, kidsEnabled, subscriptions
   } = useDatabase();
   const { showAlert } = useUI();
   const { navigate, goBack } = useAppNavigation();
@@ -53,6 +53,17 @@ export function SettingsScreen() {
   const [localWhatsappCountryCode, setLocalWhatsappCountryCode] = useState("91");
   const [saving, setSaving] = useState(false);
   const [initialized, setInitialized] = useState(false);
+
+  const withConfirm = (currentValue: boolean, newValue: boolean, onConfirm: () => void) => {
+    if (currentValue && !newValue && (subscriptions || []).length > 0) {
+      showAlert(UI_TEXT.confirmDisableTitle, UI_TEXT.confirmDisableMessage, [
+        { text: UI_TEXT.no, style: "cancel" },
+        { text: UI_TEXT.yes, style: "destructive", onPress: onConfirm }
+      ]);
+    } else {
+      onConfirm();
+    }
+  };
 
   // Sync local state when database config is loaded (Once only or when saved)
   React.useEffect(() => {
@@ -227,7 +238,7 @@ export function SettingsScreen() {
                  <Text style={{ fontSize: 18, fontWeight: '900', color: theme.cardColors[1].accent }}>{UI_TEXT.seasonNameLabel}</Text>
                  <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600', marginTop: 2 }}>{UI_TEXT.seasonNameHelper}</Text>
               </View>
-              <Switch value={localSeasonEnabled} onValueChange={setLocalSeasonEnabled} trackColor={{ true: theme.colors.primary }} />
+              <Switch value={localSeasonEnabled} onValueChange={(val) => withConfirm(localSeasonEnabled, val, () => setLocalSeasonEnabled(val))} trackColor={{ true: theme.colors.primary }} />
            </View>
            <TextInput style={styles.input} value={localSeasonName} onChangeText={setLocalSeasonName} placeholder={UI_TEXT.seasonNamePlaceholder} placeholderTextColor={theme.colors.textMuted} selectTextOnFocus />
            <View style={{ height: 1, backgroundColor: theme.colors.border, marginVertical: 20 }} />
@@ -236,7 +247,7 @@ export function SettingsScreen() {
                  <Text style={{ fontSize: 16, fontWeight: '800', color: theme.colors.textPrimary }}>{UI_TEXT.paymentIntegration}</Text>
                  <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600' }}>{UI_TEXT.paymentIntegrationHelper}</Text>
               </View>
-              <Switch value={localPayment.enabled} onValueChange={(val) => setLocalPayment({ ...localPayment, enabled: val })} trackColor={{ true: theme.colors.primary }} />
+              <Switch value={localPayment.enabled} onValueChange={(val) => withConfirm(localPayment.enabled, val, () => setLocalPayment({ ...localPayment, enabled: val }))} trackColor={{ true: theme.colors.primary }} />
            </View>
            {localPayment.enabled && (
              <View style={{ backgroundColor: theme.colors.surface, borderRadius: 16, padding: 12, gap: 12 }}>
@@ -244,7 +255,7 @@ export function SettingsScreen() {
                 {([['upi', PaymentMode.UPI], ['cash', PaymentMode.CASH], ['bankTransfer', PaymentMode.BANK_TRANSFER]] as const).map(([key, mode]) => (
                   <View key={key} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                      <Text style={{ fontSize: 14, fontWeight: '700', color: theme.colors.textPrimary }}>{getPaymentModeLabel(mode)}</Text>
-                     <Switch value={localPayment.options[key]} onValueChange={(val) => setLocalPayment({ ...localPayment, options: { ...localPayment.options, [key]: val } })} trackColor={{ true: theme.colors.success }} style={{ transform: [{ scale: 0.8 }] }} />
+                     <Switch value={localPayment.options[key]} onValueChange={(val) => withConfirm(localPayment.options[key], val, () => setLocalPayment({ ...localPayment, options: { ...localPayment.options, [key]: val } }))} trackColor={{ true: theme.colors.success }} style={{ transform: [{ scale: 0.8 }] }} />
                   </View>
                 ))}
              </View>
@@ -255,7 +266,7 @@ export function SettingsScreen() {
                  <Text style={{ fontSize: 16, fontWeight: '800', color: theme.colors.textPrimary }}>{UI_TEXT.enableKidsSupport}</Text>
                  <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600' }}>{UI_TEXT.enableKidsSupportHelper}</Text>
               </View>
-              <Switch value={localKidsEnabled} onValueChange={setLocalKidsEnabled} trackColor={{ true: theme.colors.primary }} />
+              <Switch value={localKidsEnabled} onValueChange={(val) => withConfirm(localKidsEnabled, val, () => setLocalKidsEnabled(val))} trackColor={{ true: theme.colors.primary }} />
            </View>
            <View style={{ height: 1, backgroundColor: theme.colors.border, marginVertical: 20 }} />
            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -263,7 +274,7 @@ export function SettingsScreen() {
                  <Text style={{ fontSize: 16, fontWeight: '800', color: theme.colors.textPrimary }}>{UI_TEXT.guestManagementLabel}</Text>
                  <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600' }}>{UI_TEXT.guestManagementHelper}</Text>
               </View>
-              <Switch value={localGuestEnabled} onValueChange={setLocalGuestEnabled} trackColor={{ true: theme.colors.primary }} />
+              <Switch value={localGuestEnabled} onValueChange={(val) => withConfirm(localGuestEnabled, val, () => setLocalGuestEnabled(val))} trackColor={{ true: theme.colors.primary }} />
            </View>
            <View style={{ height: 1, backgroundColor: theme.colors.border, marginVertical: 20 }} />
            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -271,7 +282,7 @@ export function SettingsScreen() {
                  <Text style={{ fontSize: 16, fontWeight: '800', color: theme.colors.textPrimary }}>{UI_TEXT.addMobileInPass}</Text>
                  <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600' }}>{UI_TEXT.addMobileInPassHelper}</Text>
               </View>
-              <Switch value={localMobileEnabled} onValueChange={setLocalMobileEnabled} trackColor={{ true: theme.colors.primary }} />
+              <Switch value={localMobileEnabled} onValueChange={(val) => withConfirm(localMobileEnabled, val, () => setLocalMobileEnabled(val))} trackColor={{ true: theme.colors.primary }} />
            </View>
            {localMobileEnabled && (
              <View style={{ marginTop: 20 }}>
@@ -286,7 +297,7 @@ export function SettingsScreen() {
                    <Text style={{ fontSize: 16, fontWeight: '800', color: theme.colors.textPrimary }}>{UI_TEXT.enableFoodPrice}</Text>
                    <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600' }}>{UI_TEXT.enableFoodPriceHelper}</Text>
                 </View>
-                <Switch value={localFoodPriceEnabled} onValueChange={setLocalFoodPriceEnabled} trackColor={{ true: theme.colors.primary }} />
+                <Switch value={localFoodPriceEnabled} onValueChange={(val) => withConfirm(localFoodPriceEnabled, val, () => setLocalFoodPriceEnabled(val))} trackColor={{ true: theme.colors.primary }} />
              </View>
            )}
 
@@ -305,7 +316,7 @@ export function SettingsScreen() {
             <View key={day.id} style={[styles.dashboardCard, { backgroundColor: colorScheme.bg, borderColor: colorScheme.border, borderWidth: 1.5 }, !day.enabled && { opacity: 0.6 }]}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                  <Text style={{ fontSize: 18, fontWeight: '900', color: colorScheme.accent }}>{UI_TEXT.dayConfigTitle}</Text>
-                 <Switch value={day.enabled} onValueChange={(val) => updateDay(day.id, { enabled: val })} trackColor={{ true: theme.colors.primary }} />
+                 <Switch value={day.enabled} onValueChange={(val) => withConfirm(day.enabled, val, () => updateDay(day.id, { enabled: val }))} trackColor={{ true: theme.colors.primary }} />
               </View>
               <View style={{ gap: 16, marginBottom: 20 }}>
                 <TextInput style={styles.input} value={day.label} onChangeText={(val) => updateDay(day.id, { label: val })} placeholder={UI_TEXT.dayNamePlaceholder} selectTextOnFocus />
@@ -318,7 +329,7 @@ export function SettingsScreen() {
                        <Text style={{ fontWeight: '800', color: theme.colors.primary, fontSize: 15 }}>{UI_TEXT.vegOnlyLabel}</Text>
                        <Text style={{ fontSize: 11, color: theme.colors.nonVeg, marginTop: 2 }}>{UI_TEXT.vegOnlyHelper}</Text>
                     </View>
-                    <Switch value={day.vegOnly || false} onValueChange={(val) => updateDay(day.id, { vegOnly: val })} trackColor={{ true: theme.colors.primary }} />
+                    <Switch value={day.vegOnly || false} onValueChange={(val) => withConfirm(day.vegOnly || false, val, () => updateDay(day.id, { vegOnly: val }))} trackColor={{ true: theme.colors.primary }} />
                   </View>
                   {(['breakfast', 'lunch', 'dinner'] as const).map((mKey) => {
                     const m = day[mKey] || { enabled: false, veg: true, nonVeg: true, parcel: false };
@@ -329,7 +340,7 @@ export function SettingsScreen() {
                              <Ionicons name={mKey === "breakfast" ? "sunny-outline" : mKey === "lunch" ? "restaurant-outline" : "moon-outline"} size={18} color={theme.colors.textPrimary} />
                              <Text style={{ fontWeight: "800", fontSize: 16, color: theme.colors.textPrimary, textTransform: "capitalize" }}>{getMealLabel(mKey)}</Text>
                           </View>
-                          <Switch value={m.enabled} onValueChange={(val) => updateMealConfig(day.id, mKey, { enabled: val })} trackColor={{ true: theme.colors.primary }} />
+                          <Switch value={m.enabled} onValueChange={(val) => withConfirm(m.enabled, val, () => updateMealConfig(day.id, mKey, { enabled: val }))} trackColor={{ true: theme.colors.primary }} />
                         </View>
                         {m.enabled && (
                           <View style={{ gap: 12 }}>
@@ -345,14 +356,14 @@ export function SettingsScreen() {
                             )}
                             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: theme.colors.background, padding: 10, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border }}>
                                <Text style={{ fontSize: 12, fontWeight: '800', color: theme.colors.textSecondary }}>{UI_TEXT.parcelSupportLabel.toUpperCase()}</Text>
-                               <Switch value={m.parcel} onValueChange={(val) => updateMealConfig(day.id, mKey, { parcel: val })} trackColor={{ true: theme.colors.primary }} style={{ transform: [{ scale: 0.8 }] }} />
+                               <Switch value={m.parcel} onValueChange={(val) => withConfirm(m.parcel, val, () => updateMealConfig(day.id, mKey, { parcel: val }))} trackColor={{ true: theme.colors.primary }} style={{ transform: [{ scale: 0.8 }] }} />
                             </View>
                             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: theme.colors.background, padding: 10, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border }}>
                                <View>
                                   <Text style={{ fontSize: 12, fontWeight: '800', color: theme.colors.textSecondary }}>{UI_TEXT.markDoneLabel.toUpperCase()}</Text>
                                   <Text style={{ fontSize: 9, fontWeight: '600', color: theme.colors.textMuted }}>{UI_TEXT.markDoneHelper}</Text>
                                </View>
-                               <Switch value={m.done || false} onValueChange={(val) => updateMealConfig(day.id, mKey, { done: val, current: val ? false : m.current })} trackColor={{ true: theme.colors.success }} style={{ transform: [{ scale: 0.8 }] }} />
+                               <Switch value={m.done || false} onValueChange={(val) => withConfirm(m.done || false, val, () => updateMealConfig(day.id, mKey, { done: val, current: val ? false : m.current }))} trackColor={{ true: theme.colors.success }} style={{ transform: [{ scale: 0.8 }] }} />
                             </View>
                             {!m.done && (
                                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: theme.colors.background, padding: 10, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border }}>
@@ -360,7 +371,7 @@ export function SettingsScreen() {
                                      <Text style={{ fontSize: 12, fontWeight: '800', color: theme.colors.textSecondary }}>{UI_TEXT.currentMealLabel.toUpperCase()}</Text>
                                      <Text style={{ fontSize: 9, fontWeight: '600', color: theme.colors.textMuted }}>{UI_TEXT.currentMealHelper}</Text>
                                   </View>
-                                  <Switch value={m.current || false} onValueChange={(val) => updateMealConfig(day.id, mKey, { current: val })} trackColor={{ true: theme.colors.primary }} style={{ transform: [{ scale: 0.8 }] }} />
+                                  <Switch value={m.current || false} onValueChange={(val) => withConfirm(m.current || false, val, () => updateMealConfig(day.id, mKey, { current: val }))} trackColor={{ true: theme.colors.primary }} style={{ transform: [{ scale: 0.8 }] }} />
                                </View>
                             )}
                           </View>
