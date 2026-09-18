@@ -30,6 +30,7 @@ export enum FilterMode {
   SUBSCRIBED = "subscribed",
   KIDS = "kids",
   PARCEL = "parcel",
+  VEG_ONLY = "vegOnly",
 }
 
 export type MealConfig = {

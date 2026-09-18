@@ -151,7 +151,6 @@ export function ViewMenuScreen() {
                       config={dayConfig}
                       icon={mKey === MealType.BREAKFAST ? "sunny-outline" : mKey === MealType.LUNCH ? "restaurant-outline" : "moon-outline"}
                       menu={dayMenu[mKey] || emptyMeal}
-                      guestEnabled={guestEnabled}
                       foodPriceEnabled={foodPriceEnabled && isPaymentEnabled}
                       kidsEnabled={!!kidsEnabled}
                     />

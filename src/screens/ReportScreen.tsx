@@ -34,6 +34,7 @@ import { SingleMealReport } from "../components/report/SingleMealReport";
 import { PendingReport } from "../components/report/PendingReport";
 import { FlatWiseReport } from "../components/report/FlatWiseReport";
 import { PaymentSummaryReport } from "../components/report/PaymentSummaryReport";
+import { KidsReport } from "../components/report/KidsReport";
 
 // Custom Hook
 import { useReportData } from "../hooks/useReportData";
@@ -55,7 +56,7 @@ export function ReportScreen() {
   } = useAppNavigation();
 
   const {
-    sortedActiveDays, activeDays, dayWiseData, mealWiseData, flatWiseData, paymentData, getNotTakenData
+    sortedActiveDays, activeDays, dayWiseData, mealWiseData, flatWiseData, paymentData, getNotTakenData, getKidsMealData
   } = useReportData(subscriptions, foodMenu, dayConfig, guestEnabled, paymentConfig, !!kidsEnabled);
 
   const styles = useStyles();
@@ -114,6 +115,7 @@ export function ReportScreen() {
           reportType === ReportType.DAY ? UI_TEXT.dayWiseReport :
           reportType === ReportType.MEAL ? UI_TEXT.mealWiseReport :
           reportType === ReportType.GUEST ? UI_TEXT.guestReport :
+          reportType === ReportType.KIDS_MEAL ? UI_TEXT.kidsMealReport :
           reportType === ReportType.PARCEL ? UI_TEXT.parcelReport :
           reportType === ReportType.SINGLE ? `${getDayLabel(selectedDayId, dayConfig)} - ${getMealLabel(selectedMealType)}` :
           reportType === ReportType.NOT_TAKEN ? UI_TEXT.notTakenReport :
@@ -164,6 +166,7 @@ export function ReportScreen() {
             { id: ReportType.DAY, label: UI_TEXT.day, icon: "calendar-outline" },
             { id: ReportType.MEAL, label: UI_TEXT.meal, icon: "restaurant-outline" },
             { id: ReportType.GUEST, label: UI_TEXT.guestSuffix, icon: "people-circle-outline" },
+            { id: ReportType.KIDS_MEAL, label: UI_TEXT.kidsAbbr, icon: "happy-outline" },
             { id: ReportType.PARCEL, label: UI_TEXT.parcels, icon: "cube-outline" },
             { id: ReportType.SINGLE, label: UI_TEXT.split, icon: "fast-food-outline" },
             {id: ReportType.NOT_TAKEN, label: UI_TEXT.pending, icon: "alert-circle-outline"},
@@ -172,7 +175,8 @@ export function ReportScreen() {
           ].filter(tab =>
             (tab.id !== ReportType.PAYMENT || paymentConfig.enabled) &&
             (tab.id !== ReportType.GUEST || guestEnabled) &&
-            (tab.id !== ReportType.PARCEL || isParcelEnabledGlobally)
+            (tab.id !== ReportType.PARCEL || isParcelEnabledGlobally) &&
+            (tab.id !== ReportType.KIDS_MEAL || kidsEnabled)
           ).map((tab) => (
             <Pressable
               key={tab.id}
@@ -203,7 +207,7 @@ export function ReportScreen() {
         style={{ flex: 1, width: "100%" }}
         contentContainerStyle={styles.content}
       >
-        {(reportType === ReportType.SINGLE || reportType === ReportType.NOT_TAKEN) && (
+        {(reportType === ReportType.SINGLE || reportType === ReportType.NOT_TAKEN || reportType === ReportType.KIDS_MEAL) && (
           <View style={[styles.card, { marginBottom: 24 }]}>
             <Text style={[styles.sectionTitle, { fontSize: 16, marginBottom: 12 }]}>{UI_TEXT.reportFilters}</Text>
 
@@ -268,6 +272,7 @@ export function ReportScreen() {
                   {reportType === ReportType.GUEST && UI_TEXT.guestReport}
                   {reportType === ReportType.PARCEL && UI_TEXT.parcelReport}
                   {reportType === ReportType.SINGLE && `${getDayLabel(selectedDayId, dayConfig)}${UI_TEXT.space}${UI_TEXT.hyphen}${UI_TEXT.space}${getMealLabel(selectedMealType)}`}
+                  {reportType === ReportType.KIDS_MEAL && UI_TEXT.kidsMealReport}
                   {reportType === ReportType.NOT_TAKEN && `${UI_TEXT.notTakenReport}`}
                   {reportType === ReportType.FLAT && UI_TEXT.flatWiseReport}
                   {reportType === ReportType.PAYMENT && UI_TEXT.paymentReport}
@@ -312,6 +317,16 @@ export function ReportScreen() {
               dayConfig={dayConfig}
               guestEnabled={guestEnabled}
               kidsEnabled={!!kidsEnabled}
+            />
+          )}
+
+          {reportType === ReportType.KIDS_MEAL && (
+            <KidsReport
+              data={getKidsMealData(selectedDayId, selectedMealType)}
+              selectedDayId={selectedDayId}
+              selectedMealType={selectedMealType}
+              dayConfig={dayConfig}
+              onSelectFlat={onSelectFlat}
             />
           )}
 

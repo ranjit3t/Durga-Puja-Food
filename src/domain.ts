@@ -53,6 +53,7 @@ export enum ReportType {
   PAYMENT = "payment",
   SINGLE = "single",
   NOT_TAKEN = "notTaken",
+  KIDS_MEAL = "kidsMeal",
 }
 
 export enum UserRole {

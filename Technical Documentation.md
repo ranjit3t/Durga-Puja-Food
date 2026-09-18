@@ -59,8 +59,8 @@ The application employs a **Zero-Hardcoding Policy** for UI text and Domain enti
   - **Audit Shortcut**: Tapping the payment summary card navigates to the `PaymentSummaryReport`.
   - **Menu verification**: Tapping the food plan card routes to the `ViewMenuScreen`.
 - **Contextual Pass Highlighting & Filtering**: The `SubscriptionListScreen` implements real-time subscription detection and filtering. It cross-references each pass's `mealSlots` with the globally active "Current Meal".
-  - **Markers**: Cards are decorated with specialized icons: **"restaurant"** (active service window), **"happy face"** (kids included), and **"briefcase"** (parcels registered).
-  - **Intelligent Quick Filters**: When the list satisfies specific conditions, the screen offers themed "Filter Chips" (`All`, `Current Meal`, `Kids`, and `Parcels`). Each chip dynamically displays the **count of qualifying passes**.
+  - **Markers**: Cards are decorated with specialized icons: **"restaurant"** (active service window), **"happy face"** (kids included), **"briefcase"** (parcels registered), and **"leaf"** (strictly vegetarian plan).
+  - **Intelligent Filter bar**: The themed "Filter Chips" (`All`, `Current Meal`, `Kids`, `Parcels`, and `Veg Only`) intelligently collapse if no qualified passes exist, ensuring a clean interface during off-peak hours.
   - **Visibility Rules**: The "Current Meal" chip only appears during an active service window, and the "Kids" chip only appears if at least one pass in the list contains children.
 
 - **Integrated Resident Communication**: Both the `SubscriptionListScreen` and `DetailsScreen` leverage the `Linking` API to provide direct communication paths.
@@ -98,7 +98,7 @@ The application employs a **Zero-Hardcoding Policy** for UI text and Domain enti
 ### H. Data Normalization & Natural Sorting
 Implemented in `src/repository.ts`, `normalizeRecord` ensures that the local matrices (Person x Day x Meal) are always correctly sized and shaped. It also manages the **Legacy Payment Migration**, automatically converting single-field amount/mode data into the new multi-payment `payments[]` array.
 
-- **Dine-in vs Parcel Tracking**: Independent collection flags for `taken` and `takenParcel` ensure accurate reconciliation. In the distribution workflow, the "Parcel Taken" toggle only appears after the primary meal is marked as "Taken". High-visibility **"P" badges** (12px, elevated) on collection matrices in the Details view provide instant verification.
+- **Dine-in vs Parcel Tracking**: Independent collection flags for `taken` and `takenParcel` ensure accurate reconciliation. In the distribution workflow, the "Parcel Taken" toggle only appears after the primary meal is marked as "Taken", preventing erroneous parcel-only collections. High-visibility **"P" badges** (12px, elevated) on collection matrices in the Details view provide instant verification.
 
 The application also enforces a **Natural Alphanumeric Sorting** policy globally:
 - **Implementation**: Uses `localeCompare(undefined, { numeric: true, sensitivity: 'base' })` in the `DatabaseContext` (for master list fetch) and `useReportData` (for all modular reports).
@@ -114,7 +114,7 @@ The application also enforces a **Natural Alphanumeric Sorting** policy globally
 - **Dual Visualization (Grid/Chart)**: Within each meal section, the **Total Taken** metric is strategically placed at the end of the grid to serve as the final reconciliation anchor. Volunteers can toggle between a numeric `MealMetricGrid` and a visual `MealBarChart` using the bottom-left action bar. The bar chart provides a comparative view of "Planned" (faded) vs "Taken" (solid) plates for each dietary type (Veg, Non-Veg, Guest, Parcel).
 - **Flicker-Free Mode Switching**: The dashboard employs a **Height-Locking Strategy** where the numeric grid height is measured and applied as a `minHeight` to the chart container. This ensures a stable, jump-free experience when toggling visualizations.
 - **Direct PNG Share (WhatsApp)**: Each meal section is equipped with a theme-aware WhatsApp export handler located at the bottom-right action bar. It captures the current state (Grid or Chart) exactly as seen by the user and generates a professional PNG image with localized operational captions.
-- **Modular Component Architecture**: The reporting system is broken down into specialized components (e.g., `DayWiseReport`, `PaymentSummaryReport`) located in `src/components/report/`. This modularity allows for clean, focused rendering of complex data sets.
+- **Modular Component Architecture**: The reporting system is broken down into specialized components (e.g., `DayWiseReport`, `KidsReport`, `PaymentSummaryReport`) located in `src/components/report/`. This modularity allows for clean, focused rendering of complex data sets.
 - **Headless Analytics (`useReportData`)**: All data aggregation logic is encapsulated in the `useReportData` custom hook. It calculates dietary splits, taken counts, and financial summaries synchronously from the global subscription state.
 - **Image Generation**: Uses `captureRef` from `react-native-view-shot` to convert themed views into PNGs.
 - **Detailed Transaction Audit**: The Payment Report provides a detailed audit trail grouped by **Payment Mode**. Each subsection features a vertical accent bar, subtotal, and transaction count. It lists individual line items with associated metadata where provided, facilitating easier reconciliation and direct navigation to detailed pass information. All entries within groups follow the **Natural Alphanumeric Sorting** policy.

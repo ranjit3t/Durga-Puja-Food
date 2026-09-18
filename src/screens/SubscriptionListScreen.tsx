@@ -37,6 +37,7 @@ const SubscriptionCard = React.memo(({
   whatsappCountryCode,
   hasCurrentMeal,
   hasParcel,
+  isVegOnly,
   onSelect
 }: {
   item: Subscription;
@@ -48,6 +49,7 @@ const SubscriptionCard = React.memo(({
   whatsappCountryCode: string;
   hasCurrentMeal: boolean;
   hasParcel: boolean;
+  isVegOnly: boolean;
   onSelect: (sub: Subscription) => void;
 }) => {
   const colorScheme = theme.cardColors[index % theme.cardColors.length];
@@ -77,6 +79,11 @@ const SubscriptionCard = React.memo(({
               {hasParcel && (
                 <View style={{ backgroundColor: theme.colors.secondary + "20", padding: 6, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.secondary + "40" }}>
                   <Ionicons name="briefcase" size={14} color={theme.colors.secondary} />
+                </View>
+              )}
+              {isVegOnly && (
+                <View style={{ backgroundColor: theme.colors.veg + "20", padding: 6, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.veg + "40" }}>
+                  <Ionicons name="leaf" size={14} color={theme.colors.veg} />
                 </View>
               )}
               {hasCurrentMeal && (
@@ -199,6 +206,37 @@ export function SubscriptionListScreen() {
 
   const hasAnyParcel = passesWithParcelCount > 0;
 
+  const isNonVegSeason = useMemo(() => {
+    return dayConfig.some(d =>
+      d.enabled && !d.vegOnly && (
+        (d[MealType.BREAKFAST].enabled && d[MealType.BREAKFAST].nonVeg) ||
+        (d[MealType.LUNCH].enabled && d[MealType.LUNCH].nonVeg) ||
+        (d[MealType.DINNER].enabled && d[MealType.DINNER].nonVeg)
+      )
+    );
+  }, [dayConfig]);
+
+  const passesWithVegOnlyCount = useMemo(() => {
+    if (!isNonVegSeason) return 0;
+    return subscriptions.filter(sub => {
+      let hasVeg = false;
+      let hasNonVeg = false;
+      Object.values(sub.mealSlots || {}).forEach(daySlots => {
+        daySlots.forEach(slot => {
+          if (slot[MealType.BREAKFAST] === DietaryOption.VEG) hasVeg = true;
+          if (slot[MealType.LUNCH] === DietaryOption.VEG) hasVeg = true;
+          if (slot[MealType.DINNER] === DietaryOption.VEG) hasVeg = true;
+          if (slot[MealType.BREAKFAST] === DietaryOption.NON_VEG) hasNonVeg = true;
+          if (slot[MealType.LUNCH] === DietaryOption.NON_VEG) hasNonVeg = true;
+          if (slot[MealType.DINNER] === DietaryOption.NON_VEG) hasNonVeg = true;
+        });
+      });
+      return hasVeg && !hasNonVeg;
+    }).length;
+  }, [subscriptions, isNonVegSeason]);
+
+  const hasAnyVegOnly = passesWithVegOnlyCount > 0;
+
   const subscribedCount = useMemo(() => {
     if (!currentMealInfo) return 0;
     return subscriptions.filter((sub) =>
@@ -237,6 +275,24 @@ export function SubscriptionListScreen() {
       );
     }
 
+    if (hasAnyVegOnly && filterMode === FilterMode.VEG_ONLY) {
+      filtered = filtered.filter(sub => {
+        let hasVeg = false;
+        let hasNonVeg = false;
+        Object.values(sub.mealSlots || {}).forEach(daySlots => {
+          daySlots.forEach(slot => {
+            if (slot[MealType.BREAKFAST] === DietaryOption.VEG) hasVeg = true;
+            if (slot[MealType.LUNCH] === DietaryOption.VEG) hasVeg = true;
+            if (slot[MealType.DINNER] === DietaryOption.VEG) hasVeg = true;
+            if (slot[MealType.BREAKFAST] === DietaryOption.NON_VEG) hasNonVeg = true;
+            if (slot[MealType.LUNCH] === DietaryOption.NON_VEG) hasNonVeg = true;
+            if (slot[MealType.DINNER] === DietaryOption.NON_VEG) hasNonVeg = true;
+          });
+        });
+        return hasVeg && !hasNonVeg;
+      });
+    }
+
     if (!subscriptionSearch) {
        return filtered.map(item => {
          const hasCurrentMeal = !!currentMealInfo && (item.mealSlots?.[currentMealInfo.dayId] || []).some(personSlots =>
@@ -246,7 +302,21 @@ export function SubscriptionListScreen() {
          const hasParcel = Object.values(item.mealSlots || {}).some(daySlots =>
            daySlots.some(slot => slot.breakfastParcel || slot.lunchParcel || slot.dinnerParcel)
          );
-         return { ...item, _hasCurrentMeal: hasCurrentMeal, _hasParcel: hasParcel };
+         let hasVeg = false;
+         let hasNonVeg = false;
+         Object.values(item.mealSlots || {}).forEach(daySlots => {
+           daySlots.forEach(slot => {
+             if (slot[MealType.BREAKFAST] === DietaryOption.VEG) hasVeg = true;
+             if (slot[MealType.LUNCH] === DietaryOption.VEG) hasVeg = true;
+             if (slot[MealType.DINNER] === DietaryOption.VEG) hasVeg = true;
+             if (slot[MealType.BREAKFAST] === DietaryOption.NON_VEG) hasNonVeg = true;
+             if (slot[MealType.LUNCH] === DietaryOption.NON_VEG) hasNonVeg = true;
+             if (slot[MealType.DINNER] === DietaryOption.NON_VEG) hasNonVeg = true;
+           });
+         });
+         const isVegOnly = hasVeg && !hasNonVeg;
+
+         return { ...item, _hasCurrentMeal: hasCurrentMeal, _hasParcel: hasParcel, _isVegOnly: isVegOnly };
        });
     }
 
@@ -265,12 +335,25 @@ export function SubscriptionListScreen() {
         const hasParcel = Object.values(item.mealSlots || {}).some(daySlots =>
           daySlots.some(slot => slot.breakfastParcel || slot.lunchParcel || slot.dinnerParcel)
         );
-        return { ...item, _hasCurrentMeal: hasCurrentMeal, _hasParcel: hasParcel };
+        let hasVeg = false;
+        let hasNonVeg = false;
+        Object.values(item.mealSlots || {}).forEach(daySlots => {
+          daySlots.forEach(slot => {
+            if (slot[MealType.BREAKFAST] === DietaryOption.VEG) hasVeg = true;
+            if (slot[MealType.LUNCH] === DietaryOption.VEG) hasVeg = true;
+            if (slot[MealType.DINNER] === DietaryOption.VEG) hasVeg = true;
+            if (slot[MealType.BREAKFAST] === DietaryOption.NON_VEG) hasNonVeg = true;
+            if (slot[MealType.LUNCH] === DietaryOption.NON_VEG) hasNonVeg = true;
+            if (slot[MealType.DINNER] === DietaryOption.NON_VEG) hasNonVeg = true;
+          });
+        });
+        const isVegOnly = hasVeg && !hasNonVeg;
+        return { ...item, _hasCurrentMeal: hasCurrentMeal, _hasParcel: hasParcel, _isVegOnly: isVegOnly };
       });
-  }, [subscriptions, subscriptionSearch, filterMode, currentMealInfo, kidsEnabled, hasAnyKids, hasAnySubscribed]);
+  }, [subscriptions, subscriptionSearch, filterMode, currentMealInfo, kidsEnabled, hasAnyKids, hasAnySubscribed, hasAnyParcel, hasAnyVegOnly]);
 
 
-  const renderItem = useCallback(({ item, index }: { item: Subscription & { _hasCurrentMeal?: boolean; _hasParcel?: boolean }; index: number }) => {
+  const renderItem = useCallback(({ item, index }: { item: Subscription & { _hasCurrentMeal?: boolean; _hasParcel?: boolean; _isVegOnly?: boolean }; index: number }) => {
     return (
       <SubscriptionCard
         item={item}
@@ -282,10 +365,13 @@ export function SubscriptionListScreen() {
         whatsappCountryCode={whatsappCountryCode}
         hasCurrentMeal={!!item._hasCurrentMeal}
         hasParcel={!!item._hasParcel}
+        isVegOnly={!!item._isVegOnly}
         onSelect={onSelect}
       />
     );
   }, [theme, styles, kidsEnabled, paymentConfig, whatsappCountryCode, onSelect]);
+
+  const showFilters = (currentMealInfo && hasAnySubscribed) || (kidsEnabled && hasAnyKids) || hasAnyParcel || (isNonVegSeason && hasAnyVegOnly);
 
   return (
     <View style={styles.root}>
@@ -306,6 +392,7 @@ export function SubscriptionListScreen() {
           <Text style={styles.subtitle}>{UI_TEXT.activePasses}: {subscriptions.length}</Text>
         </View>
 
+        {showFilters && (
           <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 20, marginTop: 20, flexWrap: 'wrap' }}>
             <Pressable
               onPress={() => setFilterMode(FilterMode.ALL)}
@@ -440,9 +527,44 @@ export function SubscriptionListScreen() {
                 </Text>
               </Pressable>
             )}
-          </View>
 
-        <View style={[styles.searchBox, { marginHorizontal: 20, marginTop: ((currentMealInfo && hasAnySubscribed) || (kidsEnabled && hasAnyKids) || hasAnyParcel) ? 4 : 20 }]}>
+            {isNonVegSeason && hasAnyVegOnly && (
+              <Pressable
+                onPress={() => setFilterMode(FilterMode.VEG_ONLY)}
+                style={({ pressed }) => [
+                  {
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 6,
+                    paddingHorizontal: 12,
+                    paddingVertical: 8,
+                    borderRadius: 20,
+                    borderWidth: 1,
+                    borderColor: filterMode === FilterMode.VEG_ONLY ? theme.colors.veg : theme.colors.border,
+                    backgroundColor: filterMode === FilterMode.VEG_ONLY ? theme.colors.veg + "10" : theme.colors.surface,
+                    marginBottom: 8
+                  },
+                  pressed && { opacity: 0.7 }
+                ]}
+              >
+                <Ionicons
+                  name={filterMode === FilterMode.VEG_ONLY ? "leaf" : "leaf-outline"}
+                  size={16}
+                  color={filterMode === FilterMode.VEG_ONLY ? theme.colors.veg : theme.colors.textSecondary}
+                />
+                <Text style={{
+                  fontSize: 13,
+                  fontWeight: "700",
+                  color: filterMode === FilterMode.VEG_ONLY ? theme.colors.veg : theme.colors.textSecondary
+                }}>
+                  {UI_TEXT.vegOnly} ({passesWithVegOnlyCount})
+                </Text>
+              </Pressable>
+            )}
+          </View>
+        )}
+
+        <View style={[styles.searchBox, { marginHorizontal: 20, marginTop: showFilters ? 4 : 20 }]}>
           <Ionicons name="search-outline" size={22} color={theme.colors.textSecondary} />
           <TextInput
             value={subscriptionSearch}

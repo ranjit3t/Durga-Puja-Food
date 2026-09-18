@@ -277,6 +277,7 @@ export const UI_TEXT = {
   parcelReport: "Parcel Wise Summary",
   singleMealReport: "Single Meal Specific",
   notTakenReport: "Meal Not Taken",
+  kidsMealReport: "Kids Meal Summary",
   flatWiseReport: "Flat Wise Distribution",
   paymentReport: "Payment Summary",
   detailedTransactions: "Detailed Transactions",

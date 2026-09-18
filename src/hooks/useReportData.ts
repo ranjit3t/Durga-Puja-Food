@@ -466,6 +466,53 @@ export function useReportData(
       .sort((a, b) => (a.block || "").localeCompare(b.block || "", undefined, { numeric: true, sensitivity: 'base' }) || (a.flat || "").localeCompare(b.flat || "", undefined, { numeric: true, sensitivity: 'base' }));
   };
 
+  const getKidsMealData = (selectedDayId: string, selectedMealType: MealType) => {
+    if (!kidsEnabled) return [];
+    return subscriptions
+      .map((sub) => {
+        const slots = sub.mealSlots[selectedDayId] || [];
+        const taken = sub.takenByPerson[selectedDayId] || [];
+        const adultCount = sub.peopleCount;
+
+        let veg = 0, nonVeg = 0, vegTaken = 0, nonVegTaken = 0;
+
+        slots.forEach((s, idx) => {
+          const isKid = idx >= adultCount;
+          if (!isKid) return;
+
+          const choice = s[selectedMealType];
+          if (choice === DietaryOption.NONE) return;
+          if (!isMealEnabled(selectedDayId, selectedMealType, dayConfig)) return;
+
+          const diet = choice === DietaryOption.VEG ? DietType.VEG : DietType.NON_VEG;
+          if (!isDietaryEnabled(selectedDayId, selectedMealType, diet, dayConfig)) return;
+
+          const hasTaken = taken[idx]?.[selectedMealType] || taken[idx]?.[`${selectedMealType}Parcel` as keyof typeof s];
+
+          if (choice === DietaryOption.VEG) {
+            veg++;
+            if (hasTaken) vegTaken++;
+          } else {
+            nonVeg++;
+            if (hasTaken) nonVegTaken++;
+          }
+        });
+
+        return {
+          id: sub.id,
+          block: sub.block,
+          flat: sub.flat,
+          veg,
+          nonVeg,
+          vegTaken,
+          nonVegTaken,
+          total: veg + nonVeg
+        };
+      })
+      .filter((item) => item.total > 0)
+      .sort((a, b) => (a.block || "").localeCompare(b.block || "", undefined, { numeric: true, sensitivity: 'base' }) || (a.flat || "").localeCompare(b.flat || "", undefined, { numeric: true, sensitivity: 'base' }));
+  };
+
   return {
     sortedActiveDays,
     activeDays,
@@ -473,6 +520,7 @@ export function useReportData(
     mealWiseData,
     flatWiseData,
     paymentData,
-    getNotTakenData
+    getNotTakenData,
+    getKidsMealData
   };
 }
