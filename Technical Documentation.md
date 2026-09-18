@@ -20,18 +20,28 @@ The application follows a **Serverless Modular Architecture** built on the **Exp
 The entire application is strictly **Config-Driven**. The `AppConfig` object controls:
 - **Branding**: `seasonName` updates all shared Digital Pass headers and Report captions.
 - **Financial Visibility**: The `payment` node toggles the display of all "Amount" and "Payment Mode" fields across the app.
-- **Automated Food Pricing**: When `foodPriceEnabled` is active, the app looks up configured `vegPrice`, `nonVegPrice`, and optional **Parcel Prices** for each selected meal. It then aggregates these for all members to pre-populate the registration amount, minimizing manual entry errors.
-- **Multi-Payment Support**: Subscriptions now support up to 3 separate payment entries per flat. Each entry tracks amount, mode (UPI, Cash, Bank Transfer), and optional Transaction ID. The system automatically migrates legacy single-payment records into the new array-based structure.
+- **Automated Food Pricing**: When `foodPriceEnabled` is active, the app looks up configured `vegPrice`, `nonVegPrice`, and optional **Parcel Prices** for each selected meal. If **Kids Support** is enabled, it also applies separate `kidsVegPrice`, `kidsNonVegPrice`, and kids-specific parcel surcharges. It then aggregates these for all members (A/K) to pre-populate the registration amount, minimizing manual entry errors.
+- **Kids Support**: `kidsEnabled` toggles separate tracking for children. When active:
+  - Registration UI splits headcount into **Adults** and **Kids**.
+  - Member legends change to **A1, A2...** and **K1, K2...**.
+  - Dashboard and Reports show segregated metrics (Adult vs Kids).
+  - Terminology across the app switches from generic "Person/Persons" to specific "Adults" and "Kids", respecting singular/plural grammar rules based on current counts.
+  - The Subscription List includes a specialized **Kids filter** with real-time pass counts.
+- **Multi-Payment Support**: Subscriptions now support up to 3 separate payment entries per flat. Each entry tracks amount, mode (UPI, Cash, Bank Transfer), and metadata:
+  - **UPI/Bank Transfer**: Includes an optional **Transaction ID** field.
+  - **Cash**: Includes an optional **Received By** text field to document which volunteer or committee member collected the physical currency.
+  - In reporting, metadata is hidden if empty to maintain a clean audit trail.
 - **Functional Rules**: `days[]` controls enabled meals, dietary options, parcel support per slot, the **Done** lifecycle status, individual meal prices, and the **Current** active meal prioritization. **Only 1 Current Meal is allowed per season**, and toggling it ON in settings automatically deactivates others across all days. The system automatically enforces that a meal can only be "Current" if it is both enabled and not marked as "Done".
-- **Settings State Isolation**: To ensure a smooth administrative experience, the `SettingsScreen` isolates its local form state from the application's 10-second periodic background synchronization. The form re-initializes from the database only on mount or after a successful save operation, preventing data loss during active typing or day management.
+- **Settings State Isolation & Sectional Saving**: To ensure a smooth administrative experience, the `SettingsScreen` isolates its local form state from the application's 10-second periodic background synchronization. Every configuration block (e.g., Global Rules, Individual Festival Days) features its own **Save** button, allowing admins to persist changes immediately without full-page scrolling. The form re-initializes from the database only on mount or after a successful save operation, preventing data loss during active typing or day management.
 - **Smart Change Detection & Validation**: Employs a `pristine` state snapshot to detect modifications. Buttons are only enabled if the live form differs from the initial load (accounting for data normalization) and strict data integrity rules are met—specifically, at least one dietary meal must be selected for the pass to be valid for saving.
 - **Global Feature Toggles**: Controlled by `guestEnabled` and `mobileEnabled` flags to streamline the UI based on event needs.
 - **WhatsApp Country Code**: `whatsappCountryCode` defines the default country code prefix appended to registered mobile numbers during direct pass distribution via WhatsApp, ensuring seamless messaging across global regions without manual formatting.
 
 ### B. Centralized UI String & Type Management
 The application employs a **Zero-Hardcoding Policy** for UI text and Domain entities.
-- **Strings**: All text is defined in `src/strings.ts`. 
-- **Enums**: Utilizes TypeScript `enum` for `MealType`, `DietType`, `DietaryOption`, `AppScreen`, `ReportType`, and `PaymentMode` to ensure type safety and eliminate string-based errors during navigation and logic evaluation.
+- **Zero-Hardcoding Policy**: Every single string displayed in the UI is retrieved from `src/strings.ts`. This includes labels, button text, error messages, and even micro-delimiters like `pipe (" | ")`, `plus (" + ")`, and `space (" ")`. This architecture ensures that changing a term (like "Adult" to "Person") or translating the app requires editing only one file.
+- **Status Bar Centralization**: Status bar styles are controlled via the `StatusBarStyleMode` enum, ensuring consistent dark/light mode integration without manual string checks.
+- **Enums**: Utilizes TypeScript `enum` for `MealType`, `DietType`, `DietaryOption`, `AppScreen`, `ReportType`, `PaymentMode`, `FilterMode`, and `AppThemeMode` to ensure type safety and eliminate string-based errors during navigation and logic evaluation.
 - **Localization Ready**: The infrastructure is in place to support multiple languages by swapping the `UI_TEXT` object.
 
 ### C. Real-Time Synchronization Strategy
@@ -40,11 +50,18 @@ The application employs a **Zero-Hardcoding Policy** for UI text and Domain enti
 - **Periodic Background Refresh**: Runs every 10 seconds. This is critical for synchronizing "Food Taken" counts and "Guest Demand" in a multi-user environment.
 
 ### D. Navigation & View State Management
-- **History Stack**: A React-state-based array in `NavigationContext.tsx` tracks navigation depth using the `AppScreen` enum. `goBack()` pops the stack, while navigating to "home" clears it entirely.
+- **History Stack**: A React-state-based array in `NavigationContext.tsx` tracks navigation depth using the `AppScreen` enum. `goBack()` pops the stack, while navigating to "home" clears it entirely. The **DetailsScreen** (View Pass) specifically implements a custom `onBack` handler that routes to Home, serving as a primary exit point during live operations.
 - **State Hoisting**: Crucial UI states like the `ReportScreen` active tab/filters and the `SubscriptionListScreen` search text are hoisted to the `NavigationContext`. This ensures UI continuity during sub-navigation.
+- **Interactive Details & Menu Navigation**: The `DetailsScreen` and `ViewMenuScreen` feature multiple deep-linking entry points:
+  - **Quick Edit (Pass)**: A pencil icon in the identity card routes to the `SubscriptionForm`.
+  - **Quick Edit (Menu)**: A circular pencil icon in each day card of the `ViewMenuScreen` routes to the `MenuEditorScreen`.
+  - **Targeted Auto-Scrolling**: Implemented a `targetDay` logic in the `NavigationContext`. When navigating between View Menu and Update Menu, the system automatically scrolls the targeted day into focus and highlights it with a primary-colored border.
+  - **Audit Shortcut**: Tapping the payment summary card navigates to the `PaymentSummaryReport`.
+  - **Menu verification**: Tapping the food plan card routes to the `ViewMenuScreen`.
 - **Contextual Pass Highlighting & Filtering**: The `SubscriptionListScreen` implements real-time subscription detection and filtering. It cross-references each pass's `mealSlots` with the globally active "Current Meal".
-  - **Markers**: If any member within a pass is registered for the current service window, the pass card is decorated with a specialized **"restaurant" icon marker** for immediate operational verification.
-  - **Intelligent Quick Filters**: When a meal is live and has at least one active subscriber, the screen offers themed "Filter Chips" (`All` and `Meal Subscribed`). These chips feature visual icons (Layers/Restaurant) and dynamic highlighting to allow volunteers to instantly isolate relevant recipients.
+  - **Markers**: Cards are decorated with specialized icons: **"restaurant"** (active service window), **"happy face"** (kids included), and **"briefcase"** (parcels registered).
+  - **Intelligent Quick Filters**: When the list satisfies specific conditions, the screen offers themed "Filter Chips" (`All`, `Current Meal`, `Kids`, and `Parcels`). Each chip dynamically displays the **count of qualifying passes**.
+  - **Visibility Rules**: The "Current Meal" chip only appears during an active service window, and the "Kids" chip only appears if at least one pass in the list contains children.
 
 - **Integrated Resident Communication**: Both the `SubscriptionListScreen` and `DetailsScreen` leverage the `Linking` API to provide direct communication paths.
   - **Auto-Injection**: If a pass contains a valid mobile number, the system automatically injects WhatsApp and Phone icons into the UI.
@@ -78,8 +95,14 @@ The application employs a **Zero-Hardcoding Policy** for UI text and Domain enti
     - **Max Collection**: "Taken" count cannot exceed the current planned Demand.
 - **Global Sync**: Guest data is stored within the `FoodMenu` object in Firebase, ensuring that Dashboard metrics remain read-only and consistent across all user sessions.
 
-### H. Data Normalization Layer
-Implemented in `src/repository.ts`, `normalizeRecord` ensures that the local matrices (Person x Day x Meal) are always correctly sized and shaped. It also manages the **Legacy Payment Migration**, automatically converting single-field amount/mode data into the new multi-payment `payments[]` array. Renamed `PujaDay` to `EventDay` to support generic event scheduling.
+### H. Data Normalization & Natural Sorting
+Implemented in `src/repository.ts`, `normalizeRecord` ensures that the local matrices (Person x Day x Meal) are always correctly sized and shaped. It also manages the **Legacy Payment Migration**, automatically converting single-field amount/mode data into the new multi-payment `payments[]` array.
+
+- **Dine-in vs Parcel Tracking**: Independent collection flags for `taken` and `takenParcel` ensure accurate reconciliation. In the distribution workflow, the "Parcel Taken" toggle only appears after the primary meal is marked as "Taken". High-visibility **"P" badges** (12px, elevated) on collection matrices in the Details view provide instant verification.
+
+The application also enforces a **Natural Alphanumeric Sorting** policy globally:
+- **Implementation**: Uses `localeCompare(undefined, { numeric: true, sensitivity: 'base' })` in the `DatabaseContext` (for master list fetch) and `useReportData` (for all modular reports).
+- **Logical Ordering**: This ensures that Block "2" correctly precedes Block "10", and alphanumeric flats (e.g., "3S", "30N") are sorted intuitively, matching the physical layout of the community.
 
 ### I. Digital Pass, Analytics & Home Layout
 - **High-Density Responsive Home Card**: The primary home page action summary tile leverages a high-density horizontal layout scheme. It dynamically adjusts font sizes, padding, and layout orientation based on device width to prevent breaking on smaller screens. It shifts pass and member counts into parallel side-by-side matrices and introduces a micro-partition divider for payment aggregation data, compressing card dimensions and increasing vertical space for action grids. Features a centered background watermark icon for enhanced branding.
@@ -87,13 +110,14 @@ Implemented in `src/repository.ts`, `normalizeRecord` ensures that the local mat
 - **Live Service Deep-Linking**: Integrates a `Pressable` shortcut layout within the card structure positioned at the top-right. If a specific event meal is globally marked as active, volunteers can tap the live status indicator badge to route straight to the kitchen metrics layout.
 - **Visual Completion Indicators**: The operational dashboard visually dims (reduces opacity to 0.5) meal sections that are marked as "Done". Individual sections are outlined with thin borders to better segregate high-density kitchen metrics.
 - **Operational Summary snapshot**: The dashboard's main event card includes a real-time snapshot of the "Current Meal" demand (Total, Veg, Non-Veg) and actual collection status, allowing kitchen managers to focus on the immediate workload without scrolling through day-wise matrices. This snapshot features a horizontally-aligned row for total plates and collection counts to maximize readability. It also includes automated dietary badges (Veg/Non-Veg Only) to ensure operational accuracy during single-diet service windows. This card is interactive, providing a direct navigation path to the full reporting suite. 
+- **Sectional Saving (Menu Editor)**: To minimize data transfer and provide immediate feedback, the `MenuEditorScreen` supports individual **Save** buttons for each meal section (Breakfast, Lunch, Dinner). These buttons are enabled only when the specific section has unsaved changes.
 - **Dual Visualization (Grid/Chart)**: Within each meal section, the **Total Taken** metric is strategically placed at the end of the grid to serve as the final reconciliation anchor. Volunteers can toggle between a numeric `MealMetricGrid` and a visual `MealBarChart` using the bottom-left action bar. The bar chart provides a comparative view of "Planned" (faded) vs "Taken" (solid) plates for each dietary type (Veg, Non-Veg, Guest, Parcel).
 - **Flicker-Free Mode Switching**: The dashboard employs a **Height-Locking Strategy** where the numeric grid height is measured and applied as a `minHeight` to the chart container. This ensures a stable, jump-free experience when toggling visualizations.
 - **Direct PNG Share (WhatsApp)**: Each meal section is equipped with a theme-aware WhatsApp export handler located at the bottom-right action bar. It captures the current state (Grid or Chart) exactly as seen by the user and generates a professional PNG image with localized operational captions.
 - **Modular Component Architecture**: The reporting system is broken down into specialized components (e.g., `DayWiseReport`, `PaymentSummaryReport`) located in `src/components/report/`. This modularity allows for clean, focused rendering of complex data sets.
 - **Headless Analytics (`useReportData`)**: All data aggregation logic is encapsulated in the `useReportData` custom hook. It calculates dietary splits, taken counts, and financial summaries synchronously from the global subscription state.
 - **Image Generation**: Uses `captureRef` from `react-native-view-shot` to convert themed views into PNGs.
-- **Detailed Transaction Audit**: The Payment Report features a dedicated section listing every flat with a breakdown of their individual part-payments, modes, member headcounts, and Transaction IDs, facilitating easier reconciliation and direct navigation to detailed pass information.
+- **Detailed Transaction Audit**: The Payment Report provides a detailed audit trail grouped by **Payment Mode**. Each subsection features a vertical accent bar, subtotal, and transaction count. It lists individual line items with associated metadata where provided, facilitating easier reconciliation and direct navigation to detailed pass information. All entries within groups follow the **Natural Alphanumeric Sorting** policy.
 - **Enhanced Sharing**: On mobile, the app uses the `Share` API to attach generated PNGs. **Admin-only** access is enforced for pass sharing to maintain operational security.
 - **WhatsApp API Integration**: Utilizes the `Linking` API with `wa.me` for direct, targeted chat initialization. Supports pre-populated formatted messages for Digital Pass distribution.
 - **Contact Selection**: Integrates `expo-contacts` to allow admins to pick registration numbers directly from the device's address book, with automatic normalization of country codes (+91) and special characters.
@@ -108,8 +132,8 @@ Implemented in `src/repository.ts`, `normalizeRecord` ensures that the local mat
 
 ### Role-Based Access Control (RBAC)
 - **Database Node**: `auth_config` stores staff credentials and roles.
-- **Admin**: Full write/delete access. Exclusive permission to edit **Guest Total** plates on the kitchen dashboard.
-- **Vendor**: Read-only access to subscriptions and restricted "Taken" status updates.
+- **Admin**: Full write/delete access. Exclusive permission to edit registration data, financials, and primary dietary plans.
+- **Vendor**: Operational access. Limited to marking food/parcels as "Taken" and viewing reports. Restricted from modifying core registration or financial records.
 
 ### Global Read-Only Mode
 Controlled via the `seasonEnabled` config flag. When disabled, the application enforces strict Read-Only mode globally:
@@ -155,6 +179,14 @@ Controlled via the `seasonEnabled` config flag. When disabled, the application e
 - **Password Toggle**: Integrated visibility switch in the Login screen.
 - **Dashed Interactive Cues**: Editable metrics (Guest counts) are highlighted with bold dashed borders and 15% opacity themed background tints for discovery.
 - **Adaptive Buttons**: "Add Item" button changes color based on the selected dietary type (Green/Red).
+- **Bug Reporting Engine**: Administrators have access to a "Report Bug" shortcut on the Home screen. This utility leverages the `Linking` API to open the native mail app with the support email and subject line retrieved from `src/strings.ts`.
+
+### J. Kids Support Implementation
+- **Data Model**: Updated `SubscriptionRecord` to include `kidsCount`. `MealMenu` and `MealAllocation` now track kids-specific metrics (`kidsVeg`, `kidsNonVeg`, `kidsVegTaken`, `kidsNonVegTaken`).
+- **Real-Time Price Calculation**: The pricing engine iterates through each member's meal choice for each day. It checks the index against `peopleCount` to determine if a member is an adult or a kid and applies the corresponding price from the `FoodMenu` or `dayConfig` fallback.
+- **Legend Logic**: Centralized in `getMemberLegend` helper. It dynamically calculates the prefix (A vs K) and localized index based on the global `kidsEnabled` setting and the pass's headcount distribution.
+- **Dashboard Aggregates**: The `dashboardData` useMemo hook in `DatabaseContext` performs dual-pass aggregation, summing adult and kids choices separately to populate the kitchen metrics grid and bar charts.
+- **Backward Compatibility Layer**: The `normalizeRecord` function in the repository ensures that older records (which only have `peopleCount`) are seamlessly converted. It defaults `kidsCount` to 0 and treats all existing `mealByPerson` and `takenByPerson` entries as adults.
 
 ---
 © 2026 Eternia Food Desk Technical Team

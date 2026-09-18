@@ -2,7 +2,7 @@
  * Subscription List Screen.
  * Displays all flat records with search and filtering capabilities.
  */
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import {
   View,
   Text,
@@ -16,21 +16,139 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useStyles } from "../styles";
-import { useAppTheme } from "../theme";
+import { StatusBarStyleMode, useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
 import { useAuth } from "../context/AuthContext";
 import { useDatabase } from "../context/DatabaseContext";
 import { useAppNavigation } from "../context/NavigationContext";
 import { getActiveDays, getPaymentModeLabel, isMealCurrent, isMealEnabled } from "../constants";
-import { AppScreen, Subscription, PaymentMode, UserRole, MealType, DietaryOption } from "../types";
+import { AppScreen, Subscription, PaymentMode, UserRole, MealType, DietaryOption, FilterMode, AppThemeMode } from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
 
+const SubscriptionCard = React.memo(({
+  item,
+  index,
+  theme,
+  styles,
+  kidsEnabled,
+  paymentConfig,
+  whatsappCountryCode,
+  hasCurrentMeal,
+  hasParcel,
+  onSelect
+}: {
+  item: Subscription;
+  index: number;
+  theme: any;
+  styles: any;
+  kidsEnabled: boolean;
+  paymentConfig: PaymentConfig;
+  whatsappCountryCode: string;
+  hasCurrentMeal: boolean;
+  hasParcel: boolean;
+  onSelect: (sub: Subscription) => void;
+}) => {
+  const colorScheme = theme.cardColors[index % theme.cardColors.length];
+
+  return (
+    <Pressable
+      onPress={() => onSelect(item)}
+      style={[
+        styles.card,
+        {
+          backgroundColor: colorScheme.bg,
+          borderColor: colorScheme.border,
+          borderWidth: 1.5
+        }
+      ]}
+    >
+      <View style={styles.cardTop}>
+        <View style={{ flex: 1 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <Text style={[styles.flatLabel, { color: colorScheme.accent, opacity: 0.8 }]}>{UI_TEXT.block} {item.block}</Text>
+            <View style={{ flexDirection: 'row', gap: 6 }}>
+              {kidsEnabled && item.kidsCount ? (
+                <View style={{ backgroundColor: theme.colors.nonVeg + "20", padding: 6, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.nonVeg + "40" }}>
+                  <Ionicons name="happy" size={14} color={theme.colors.nonVeg} />
+                </View>
+              ) : null}
+              {hasParcel && (
+                <View style={{ backgroundColor: theme.colors.secondary + "20", padding: 6, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.secondary + "40" }}>
+                  <Ionicons name="briefcase" size={14} color={theme.colors.secondary} />
+                </View>
+              )}
+              {hasCurrentMeal && (
+                <View style={{ backgroundColor: theme.colors.successLight, padding: 6, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.success + "40" }}>
+                  <Ionicons name="restaurant" size={14} color={theme.colors.success} />
+                </View>
+              )}
+            </View>
+          </View>
+          <Text style={[styles.flatTitle, { color: theme.colors.textPrimary }]}>{UI_TEXT.flatUpper} {item.flat}</Text>
+          <Text style={{ color: theme.colors.textSecondary, marginTop: 4, fontWeight: "600" }}>
+            {kidsEnabled ? (
+              `${item.peopleCount}${UI_TEXT.space}${item.peopleCount === 1 ? UI_TEXT.adult : UI_TEXT.adults}${item.kidsCount ? `${UI_TEXT.plus}${item.kidsCount}${UI_TEXT.space}${item.kidsCount === 1 ? UI_TEXT.kid : UI_TEXT.kids}` : ""}`
+            ) : (
+              `${item.peopleCount + (item.kidsCount || 0)}${item.peopleCount + (item.kidsCount || 0) === 1 ? UI_TEXT.personSuffix : UI_TEXT.personsSuffix}`
+            )}
+          </Text>
+        </View>
+      </View>
+
+      <View style={{ height: 1, backgroundColor: colorScheme.border, marginVertical: 16 }} />
+
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+          {paymentConfig.enabled && (
+            <>
+              <Ionicons name="card-outline" size={16} color={colorScheme.accent} />
+              <Text style={{ fontWeight: "700", color: theme.colors.textPrimary }}>{getPaymentModeLabel(item.payments && item.payments.length > 0 ? item.payments[0].mode : (item.paymentMode as PaymentMode || PaymentMode.CASH))}</Text>
+            </>
+          )}
+        </View>
+        {paymentConfig.enabled && (
+          <Text style={{ fontSize: 18, fontWeight: "900", color: colorScheme.accent }}>
+            {UI_TEXT.rs}{UI_TEXT.space}{item.amount || (item.payments && item.payments.reduce((sum: number, p: any) => sum + (parseFloat(p.amount) || 0), 0)) || UI_TEXT.zero}
+          </Text>
+        )}
+      </View>
+
+      {item.mobile && (
+        <>
+          <View style={{ height: 1, backgroundColor: colorScheme.border, marginVertical: 12, opacity: 0.5 }} />
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Pressable
+              onPress={() => Linking.openURL(`https://wa.me/${whatsappCountryCode || "91"}${item.mobile}`)}
+              style={({ pressed }) => [
+                { padding: 6, borderRadius: 20, backgroundColor: theme.colors.successLight },
+                pressed && { opacity: 0.7 }
+              ]}
+            >
+              <Ionicons name="logo-whatsapp" size={20} color={theme.colors.success} />
+            </Pressable>
+
+            <Pressable
+              onPress={() => Linking.openURL(`tel:${item.mobile}`)}
+              style={({ pressed }) => [
+                { padding: 6, borderRadius: 20, backgroundColor: theme.colors.surfaceDark },
+                pressed && { opacity: 0.7 }
+              ]}
+            >
+              <Ionicons name="call" size={20} color={theme.colors.primary} />
+            </Pressable>
+          </View>
+        </>
+      )}
+    </Pressable>
+  );
+});
+
 export function SubscriptionListScreen() {
   const { userRole, handleLogout } = useAuth();
   const {
-    subscriptions, dayConfig, paymentConfig, seasonEnabled, whatsappCountryCode
+    subscriptions, dayConfig, paymentConfig, seasonEnabled, whatsappCountryCode, kidsEnabled
   } = useDatabase();
 
   const {
@@ -38,11 +156,11 @@ export function SubscriptionListScreen() {
     setSelectedId, setSelectedRecord
   } = useAppNavigation();
 
-  const onSelect = (sub: Subscription) => {
+  const onSelect = useCallback((sub: Subscription) => {
     setSelectedId(sub.id);
     setSelectedRecord(sub);
     navigate(AppScreen.DETAILS);
-  };
+  }, [navigate, setSelectedId, setSelectedRecord]);
 
   const onAdd = () => startNew(dayConfig, "", paymentConfig, true, true, seasonEnabled);
 
@@ -63,23 +181,41 @@ export function SubscriptionListScreen() {
     return null;
   }, [dayConfig]);
 
-  const [filterMode, setFilterMode] = useState<"all" | "subscribed">("all");
+  const [filterMode, setFilterMode] = useState<FilterMode>(FilterMode.ALL);
 
-  const hasAnySubscribed = useMemo(() => {
-    if (!currentMealInfo) return false;
-    return subscriptions.some((sub) =>
+  const passesWithKidsCount = useMemo(() => {
+    return subscriptions.filter(sub => (sub.kidsCount || 0) > 0).length;
+  }, [subscriptions]);
+
+  const hasAnyKids = passesWithKidsCount > 0;
+
+  const passesWithParcelCount = useMemo(() => {
+    return subscriptions.filter(sub =>
+      Object.values(sub.mealSlots || {}).some(daySlots =>
+        daySlots.some(slot => slot.breakfastParcel || slot.lunchParcel || slot.dinnerParcel)
+      )
+    ).length;
+  }, [subscriptions]);
+
+  const hasAnyParcel = passesWithParcelCount > 0;
+
+  const subscribedCount = useMemo(() => {
+    if (!currentMealInfo) return 0;
+    return subscriptions.filter((sub) =>
       (sub.mealSlots?.[currentMealInfo.dayId] || []).some(
         (slot) =>
           slot[currentMealInfo.type] === DietaryOption.VEG ||
           slot[currentMealInfo.type] === DietaryOption.NON_VEG
       )
-    );
+    ).length;
   }, [subscriptions, currentMealInfo]);
+
+  const hasAnySubscribed = subscribedCount > 0;
 
   const visibleSubscriptions = useMemo(() => {
     let filtered = subscriptions;
 
-    if (currentMealInfo && hasAnySubscribed && filterMode === "subscribed") {
+    if (currentMealInfo && hasAnySubscribed && filterMode === FilterMode.SUBSCRIBED) {
       filtered = filtered.filter((sub) =>
         (sub.mealSlots?.[currentMealInfo.dayId] || []).some(
           (slot) =>
@@ -89,14 +225,67 @@ export function SubscriptionListScreen() {
       );
     }
 
-    if (!subscriptionSearch) return filtered;
-    return filtered.filter(
-      (s) =>
-        s.flat.toLowerCase().includes(subscriptionSearch.toLowerCase()) ||
-        s.block.toLowerCase().includes(subscriptionSearch.toLowerCase())
-    );
-  }, [subscriptions, subscriptionSearch, filterMode, currentMealInfo]);
+    if (kidsEnabled && hasAnyKids && filterMode === FilterMode.KIDS) {
+      filtered = filtered.filter(sub => (sub.kidsCount || 0) > 0);
+    }
 
+    if (hasAnyParcel && filterMode === FilterMode.PARCEL) {
+      filtered = filtered.filter(sub =>
+        Object.values(sub.mealSlots || {}).some(daySlots =>
+          daySlots.some(slot => slot.breakfastParcel || slot.lunchParcel || slot.dinnerParcel)
+        )
+      );
+    }
+
+    if (!subscriptionSearch) {
+       return filtered.map(item => {
+         const hasCurrentMeal = !!currentMealInfo && (item.mealSlots?.[currentMealInfo.dayId] || []).some(personSlots =>
+           personSlots[currentMealInfo.type] === DietaryOption.VEG ||
+           personSlots[currentMealInfo.type] === DietaryOption.NON_VEG
+         );
+         const hasParcel = Object.values(item.mealSlots || {}).some(daySlots =>
+           daySlots.some(slot => slot.breakfastParcel || slot.lunchParcel || slot.dinnerParcel)
+         );
+         return { ...item, _hasCurrentMeal: hasCurrentMeal, _hasParcel: hasParcel };
+       });
+    }
+
+    const searchLower = subscriptionSearch.toLowerCase();
+    return filtered
+      .filter(
+        (s) =>
+          s.flat.toLowerCase().includes(searchLower) ||
+          s.block.toLowerCase().includes(searchLower)
+      )
+      .map(item => {
+        const hasCurrentMeal = !!currentMealInfo && (item.mealSlots?.[currentMealInfo.dayId] || []).some(personSlots =>
+          personSlots[currentMealInfo.type] === DietaryOption.VEG ||
+          personSlots[currentMealInfo.type] === DietaryOption.NON_VEG
+        );
+        const hasParcel = Object.values(item.mealSlots || {}).some(daySlots =>
+          daySlots.some(slot => slot.breakfastParcel || slot.lunchParcel || slot.dinnerParcel)
+        );
+        return { ...item, _hasCurrentMeal: hasCurrentMeal, _hasParcel: hasParcel };
+      });
+  }, [subscriptions, subscriptionSearch, filterMode, currentMealInfo, kidsEnabled, hasAnyKids, hasAnySubscribed]);
+
+
+  const renderItem = useCallback(({ item, index }: { item: Subscription & { _hasCurrentMeal?: boolean; _hasParcel?: boolean }; index: number }) => {
+    return (
+      <SubscriptionCard
+        item={item}
+        index={index}
+        theme={theme}
+        styles={styles}
+        kidsEnabled={!!kidsEnabled}
+        paymentConfig={paymentConfig}
+        whatsappCountryCode={whatsappCountryCode}
+        hasCurrentMeal={!!item._hasCurrentMeal}
+        hasParcel={!!item._hasParcel}
+        onSelect={onSelect}
+      />
+    );
+  }, [theme, styles, kidsEnabled, paymentConfig, whatsappCountryCode, onSelect]);
 
   return (
     <View style={styles.root}>
@@ -104,7 +293,7 @@ export function SubscriptionListScreen() {
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-        <StatusBar style={theme.themeType === "dark" ? "light" : "dark"} />
+        <StatusBar style={theme.themeType === AppThemeMode.DARK ? StatusBarStyleMode.LIGHT : StatusBarStyleMode.DARK} />
         <View style={styles.header}>
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -117,10 +306,9 @@ export function SubscriptionListScreen() {
           <Text style={styles.subtitle}>{UI_TEXT.activePasses}: {subscriptions.length}</Text>
         </View>
 
-        {currentMealInfo && hasAnySubscribed && (
-          <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 20, marginTop: 20 }}>
+          <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 20, marginTop: 20, flexWrap: 'wrap' }}>
             <Pressable
-              onPress={() => setFilterMode("all")}
+              onPress={() => setFilterMode(FilterMode.ALL)}
               style={({ pressed }) => [
                 {
                   flexDirection: 'row',
@@ -130,60 +318,131 @@ export function SubscriptionListScreen() {
                   paddingVertical: 8,
                   borderRadius: 20,
                   borderWidth: 1,
-                  borderColor: filterMode === "all" ? theme.colors.primary : theme.colors.border,
-                  backgroundColor: filterMode === "all" ? theme.colors.primary + "15" : theme.colors.surface
+                  borderColor: filterMode === FilterMode.ALL ? theme.colors.primary : theme.colors.border,
+                  backgroundColor: filterMode === FilterMode.ALL ? theme.colors.surfaceDark : theme.colors.surface,
+                  marginBottom: 8
                 },
                 pressed && { opacity: 0.7 }
               ]}
             >
               <Ionicons
-                name={filterMode === "all" ? "layers" : "layers-outline"}
+                name={filterMode === FilterMode.ALL ? "layers" : "layers-outline"}
                 size={16}
-                color={filterMode === "all" ? theme.colors.primary : theme.colors.textSecondary}
+                color={filterMode === FilterMode.ALL ? theme.colors.primary : theme.colors.textSecondary}
               />
               <Text style={{
                 fontSize: 13,
                 fontWeight: "700",
-                color: filterMode === "all" ? theme.colors.primary : theme.colors.textSecondary
+                color: filterMode === FilterMode.ALL ? theme.colors.primary : theme.colors.textSecondary
               }}>
-                {UI_TEXT.all}
+                {UI_TEXT.all} ({subscriptions.length})
               </Text>
             </Pressable>
 
-            <Pressable
-              onPress={() => setFilterMode("subscribed")}
-              style={({ pressed }) => [
-                {
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 6,
-                  paddingHorizontal: 12,
-                  paddingVertical: 8,
-                  borderRadius: 20,
-                  borderWidth: 1,
-                  borderColor: filterMode === "subscribed" ? theme.colors.success : theme.colors.border,
-                  backgroundColor: filterMode === "subscribed" ? theme.colors.success + "15" : theme.colors.surface
-                },
-                pressed && { opacity: 0.7 }
-              ]}
-            >
-              <Ionicons
-                name={filterMode === "subscribed" ? "restaurant" : "restaurant-outline"}
-                size={14}
-                color={filterMode === "subscribed" ? theme.colors.success : theme.colors.textSecondary}
-              />
-              <Text style={{
-                fontSize: 13,
-                fontWeight: "700",
-                color: filterMode === "subscribed" ? theme.colors.success : theme.colors.textSecondary
-              }}>
-                {UI_TEXT.mealSubscriberMarker}
-              </Text>
-            </Pressable>
+            {currentMealInfo && hasAnySubscribed && (
+              <Pressable
+                onPress={() => setFilterMode(FilterMode.SUBSCRIBED)}
+                style={({ pressed }) => [
+                  {
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 6,
+                    paddingHorizontal: 12,
+                    paddingVertical: 8,
+                    borderRadius: 20,
+                    borderWidth: 1,
+                    borderColor: filterMode === FilterMode.SUBSCRIBED ? theme.colors.success : theme.colors.border,
+                    backgroundColor: filterMode === FilterMode.SUBSCRIBED ? theme.colors.successLight : theme.colors.surface,
+                    marginBottom: 8
+                  },
+                  pressed && { opacity: 0.7 }
+                ]}
+              >
+                <Ionicons
+                  name={filterMode === FilterMode.SUBSCRIBED ? "restaurant" : "restaurant-outline"}
+                  size={14}
+                  color={filterMode === FilterMode.SUBSCRIBED ? theme.colors.success : theme.colors.textSecondary}
+                />
+                <Text style={{
+                  fontSize: 13,
+                  fontWeight: "700",
+                  color: filterMode === FilterMode.SUBSCRIBED ? theme.colors.primary : theme.colors.textSecondary
+                }}>
+                  {UI_TEXT.mealSubscriberMarker} ({subscribedCount})
+                </Text>
+              </Pressable>
+            )}
+
+            {kidsEnabled && hasAnyKids && (
+              <Pressable
+                onPress={() => setFilterMode(FilterMode.KIDS)}
+                style={({ pressed }) => [
+                  {
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 6,
+                    paddingHorizontal: 12,
+                    paddingVertical: 8,
+                    borderRadius: 20,
+                    borderWidth: 1,
+                    borderColor: filterMode === FilterMode.KIDS ? theme.colors.nonVeg : theme.colors.border,
+                    backgroundColor: filterMode === FilterMode.KIDS ? theme.colors.errorLight : theme.colors.surface,
+                    marginBottom: 8
+                  },
+                  pressed && { opacity: 0.7 }
+                ]}
+              >
+                <Ionicons
+                  name={filterMode === FilterMode.KIDS ? "happy" : "happy-outline"}
+                  size={16}
+                  color={filterMode === FilterMode.KIDS ? theme.colors.nonVeg : theme.colors.textSecondary}
+                />
+                <Text style={{
+                  fontSize: 13,
+                  fontWeight: "700",
+                  color: filterMode === FilterMode.KIDS ? theme.colors.nonVeg : theme.colors.textSecondary
+                }}>
+                  {UI_TEXT.kids} ({passesWithKidsCount})
+                </Text>
+              </Pressable>
+            )}
+
+            {hasAnyParcel && (
+              <Pressable
+                onPress={() => setFilterMode(FilterMode.PARCEL)}
+                style={({ pressed }) => [
+                  {
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 6,
+                    paddingHorizontal: 12,
+                    paddingVertical: 8,
+                    borderRadius: 20,
+                    borderWidth: 1,
+                    borderColor: filterMode === FilterMode.PARCEL ? theme.colors.secondary : theme.colors.border,
+                    backgroundColor: filterMode === FilterMode.PARCEL ? theme.colors.surfaceDark : theme.colors.surface,
+                    marginBottom: 8
+                  },
+                  pressed && { opacity: 0.7 }
+                ]}
+              >
+                <Ionicons
+                  name={filterMode === FilterMode.PARCEL ? "briefcase" : "briefcase-outline"}
+                  size={16}
+                  color={filterMode === FilterMode.PARCEL ? theme.colors.secondary : theme.colors.textSecondary}
+                />
+                <Text style={{
+                  fontSize: 13,
+                  fontWeight: "700",
+                  color: filterMode === FilterMode.PARCEL ? theme.colors.secondary : theme.colors.textSecondary
+                }}>
+                  {UI_TEXT.parcels} ({passesWithParcelCount})
+                </Text>
+              </Pressable>
+            )}
           </View>
-        )}
 
-        <View style={[styles.searchBox, { marginHorizontal: 20, marginTop: (currentMealInfo && hasAnySubscribed) ? 12 : 20 }]}>
+        <View style={[styles.searchBox, { marginHorizontal: 20, marginTop: ((currentMealInfo && hasAnySubscribed) || (kidsEnabled && hasAnyKids) || hasAnyParcel) ? 4 : 20 }]}>
           <Ionicons name="search-outline" size={22} color={theme.colors.textSecondary} />
           <TextInput
             value={subscriptionSearch}
@@ -203,9 +462,11 @@ export function SubscriptionListScreen() {
           contentContainerStyle={[styles.content, { paddingTop: 10 }]}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
-          initialNumToRender={10}
-          maxToRenderPerBatch={10}
-          windowSize={5}
+          initialNumToRender={5}
+          maxToRenderPerBatch={5}
+          windowSize={3}
+          updateCellsBatchingPeriod={50}
+          removeClippedSubviews={Platform.OS === 'android'}
           ListEmptyComponent={
             <Text style={styles.emptyState}>
               {subscriptions.length === 0
@@ -218,90 +479,7 @@ export function SubscriptionListScreen() {
                <Text style={styles.footerText}>{UI_TEXT.footerCopyright}</Text>
             </View>
           }
-          renderItem={({ item, index }) => {
-            const colorScheme = theme.cardColors[index % theme.cardColors.length];
-
-            const hasCurrentMeal = currentMealInfo && (item.mealSlots?.[currentMealInfo.dayId] || []).some(personSlots =>
-              personSlots[currentMealInfo.type] === DietaryOption.VEG ||
-              personSlots[currentMealInfo.type] === DietaryOption.NON_VEG
-            );
-
-            return (
-              <Pressable
-                onPress={() => onSelect(item)}
-                style={[
-                  styles.card,
-                  {
-                    backgroundColor: colorScheme.bg,
-                    borderColor: colorScheme.border,
-                    borderWidth: 1.5
-                  }
-                ]}
-              >
-                <View style={styles.cardTop}>
-                  <View style={{ flex: 1 }}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <Text style={[styles.flatLabel, { color: colorScheme.accent, opacity: 0.8 }]}>{UI_TEXT.block} {item.block}</Text>
-                      {hasCurrentMeal && (
-                        <View style={{ backgroundColor: theme.colors.success + "20", padding: 6, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.success + "40" }}>
-                          <Ionicons name="restaurant" size={14} color={theme.colors.success} />
-                        </View>
-                      )}
-                    </View>
-                    <Text style={[styles.flatTitle, { color: theme.colors.textPrimary }]}>{UI_TEXT.flatUpper} {item.flat}</Text>
-                    <Text style={{ color: theme.colors.textSecondary, marginTop: 4, fontWeight: "600" }}>
-                      {item.peopleCount} {item.peopleCount === 1 ? UI_TEXT.personSuffix : UI_TEXT.personsSuffix}
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={{ height: 1, backgroundColor: colorScheme.border, marginVertical: 16 }} />
-
-                  <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                    {paymentConfig.enabled && (
-                      <>
-                        <Ionicons name="card-outline" size={16} color={colorScheme.accent} />
-                        <Text style={{ fontWeight: "700", color: theme.colors.textPrimary }}>{getPaymentModeLabel(item.payments && item.payments.length > 0 ? item.payments[0].mode : (item.paymentMode as PaymentMode || PaymentMode.CASH))}</Text>
-                      </>
-                    )}
-                  </View>
-                  {paymentConfig.enabled && (
-                    <Text style={{ fontSize: 18, fontWeight: "900", color: colorScheme.accent }}>
-                      {UI_TEXT.rs} {item.amount || (item.payments && item.payments.reduce((sum: number, p: any) => sum + (parseFloat(p.amount) || 0), 0)) || "0"}
-                    </Text>
-                  )}
-                </View>
-
-                {item.mobile && (
-                  <>
-                    <View style={{ height: 1, backgroundColor: colorScheme.border, marginVertical: 12, opacity: 0.5 }} />
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Pressable
-                        onPress={() => Linking.openURL(`https://wa.me/${whatsappCountryCode || "91"}${item.mobile}`)}
-                        style={({ pressed }) => [
-                          { padding: 6, borderRadius: 20, backgroundColor: theme.colors.success + "10" },
-                          pressed && { opacity: 0.7 }
-                        ]}
-                      >
-                        <Ionicons name="logo-whatsapp" size={20} color={theme.colors.success} />
-                      </Pressable>
-
-                      <Pressable
-                        onPress={() => Linking.openURL(`tel:${item.mobile}`)}
-                        style={({ pressed }) => [
-                          { padding: 6, borderRadius: 20, backgroundColor: theme.colors.primary + "10" },
-                          pressed && { opacity: 0.7 }
-                        ]}
-                      >
-                        <Ionicons name="call" size={20} color={theme.colors.primary} />
-                      </Pressable>
-                    </View>
-                  </>
-                )}
-              </Pressable>
-            );
-          }}
+          renderItem={renderItem}
         />
       </KeyboardAvoidingView>
 

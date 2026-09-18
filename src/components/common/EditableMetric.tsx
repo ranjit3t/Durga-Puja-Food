@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { AppThemeMode } from "../../types";
 import { View, Text, TextInput, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useStyles } from "../../styles";
@@ -89,6 +90,8 @@ export function EditableMetric({
     );
   }
 
+  const bgColor = value > 0 ? (color === theme.colors.veg ? theme.colors.successLight : theme.colors.errorLight) : theme.colors.surface;
+
   return (
     <Pressable
       style={[
@@ -97,7 +100,7 @@ export function EditableMetric({
           borderWidth: 2,
           borderColor: finalColor,
           borderStyle: "dashed",
-          backgroundColor: finalColor + "15"
+          backgroundColor: bgColor
         }
       ]}
       onPress={() => !disabled && setIsEditing(true)}

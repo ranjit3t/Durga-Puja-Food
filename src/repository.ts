@@ -34,7 +34,7 @@ export interface SubscriptionRepository {
   updateGuestCount(dayId: string, mealKey: MealType, field: string, value: number): Promise<void>;
   getConfig(): Promise<AppConfig>;
   updateConfig(config: AppConfig): Promise<void>;
-  updateSubscriptionStatus(flatId: string, dayId: string, personIndex: number, slot: MealType, taken: boolean): Promise<void>;
+  updateSubscriptionStatus(flatId: string, dayId: string, personIndex: number, slot: string, taken: boolean): Promise<void>;
   getAuthConfig(): Promise<any>;
 }
 
@@ -78,6 +78,10 @@ function emptyMenu(eventDays: string[]): FoodMenu {
     guestTaken: 0,
     guestVegTaken: 0,
     guestNonVegTaken: 0,
+    kidsVeg: 0,
+    kidsNonVeg: 0,
+    kidsVegTaken: 0,
+    kidsNonVegTaken: 0,
   });
   return eventDays.reduce((acc, day) => {
     acc[day] = {
@@ -98,6 +102,8 @@ function normalizeRecord(
   eventDays: string[]
 ): SubscriptionRecord {
   const peopleCount = Number(value.peopleCount) || 0;
+  const kidsCount = Number(value.kidsCount) || 0;
+  const totalPeople = peopleCount + kidsCount;
   const block = String(value.block || "");
   const flat = String(value.flat || "");
   const id = String(value.id || "");
@@ -146,7 +152,7 @@ function normalizeRecord(
         allocation?.[DietType.NON_VEG] ??
         (legacyDays[day] && legacyMeal === DietType.NON_VEG ? peopleCount : 0);
 
-      result[day] = Array.from({ length: peopleCount }, (_, index) => {
+      result[day] = Array.from({ length: totalPeople }, (_, index) => {
         if (index < vegCount) return DietaryOption.VEG;
         if (index < vegCount + nonVegCount) return DietaryOption.NON_VEG;
         return DietaryOption.NONE;
@@ -205,10 +211,20 @@ function normalizeRecord(
             [MealType.BREAKFAST]: Boolean(t?.breakfast),
             [MealType.LUNCH]: Boolean(t?.lunch),
             [MealType.DINNER]: Boolean(t?.dinner),
+            breakfastParcel: Boolean(t?.breakfastParcel),
+            lunchParcel: Boolean(t?.lunchParcel),
+            dinnerParcel: Boolean(t?.dinnerParcel),
           }))
-        : Array.from({ length: peopleCount }, () => {
+        : Array.from({ length: totalPeople }, () => {
             const isTaken = Boolean(legacyTaken[day]);
-            return { [MealType.BREAKFAST]: isTaken, [MealType.LUNCH]: isTaken, [MealType.DINNER]: isTaken };
+            return {
+              [MealType.BREAKFAST]: isTaken,
+              [MealType.LUNCH]: isTaken,
+              [MealType.DINNER]: isTaken,
+              breakfastParcel: false,
+              lunchParcel: false,
+              dinnerParcel: false,
+            };
           });
     return result;
   }, {} as Record<EventDay, TakenState[]>);
@@ -219,31 +235,44 @@ function normalizeRecord(
     const slots = mealSlots[day] || [];
     let dVegCount = 0;
     let dNonVegCount = 0;
+    let kidsVegCount = 0;
+    let kidsNonVegCount = 0;
 
-    const choices = slots.map((s) => {
+    slots.forEach((s, index) => {
+      const isKid = index >= peopleCount;
+      [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].forEach((mKey) => {
+        const choice = s[mKey];
+        if (choice === DietaryOption.VEG) {
+          if (isKid) kidsVegCount++;
+          else dVegCount++;
+        } else if (choice === DietaryOption.NON_VEG) {
+          if (isKid) kidsNonVegCount++;
+          else dNonVegCount++;
+        }
+      });
+    });
+
+    finalMealByPerson[day] = slots.map((s) => {
       if (
         s[MealType.BREAKFAST] === DietaryOption.NON_VEG ||
         s[MealType.LUNCH] === DietaryOption.NON_VEG ||
         s[MealType.DINNER] === DietaryOption.NON_VEG
       )
         return DietaryOption.NON_VEG;
-      if (s[MealType.BREAKFAST] === DietaryOption.VEG || s[MealType.LUNCH] === DietaryOption.VEG || s[MealType.DINNER] === DietaryOption.VEG)
+      if (
+        s[MealType.BREAKFAST] === DietaryOption.VEG ||
+        s[MealType.LUNCH] === DietaryOption.VEG ||
+        s[MealType.DINNER] === DietaryOption.VEG
+      )
         return DietaryOption.VEG;
       return DietaryOption.NONE;
     });
 
-    choices.forEach((choice) => {
-      if (choice === DietaryOption.NON_VEG) {
-        dNonVegCount++;
-      } else if (choice === DietaryOption.VEG) {
-        dVegCount++;
-      }
-    });
-
-    finalMealByPerson[day] = choices;
     result[day] = {
       [DietType.VEG]: dVegCount,
       [DietType.NON_VEG]: dNonVegCount,
+      kidsVeg: kidsVegCount,
+      kidsNonVeg: kidsNonVegCount,
     };
     return result;
   }, {} as Record<EventDay, MealAllocation>);
@@ -255,6 +284,7 @@ function normalizeRecord(
     flat,
     mobile,
     peopleCount,
+    kidsCount,
     amount: String(storedAmount),
     meals: normalizedMeals,
     mealByPerson: finalMealByPerson,
@@ -356,7 +386,7 @@ export function createFirebaseRepository(): SubscriptionRepository {
     },
     async getConfig() {
       const services = await ensureFirebaseAuth();
-      if (!services) return { seasonName: "", days: [], payment: { enabled: true, options: { upi: true, cash: true, bankTransfer: true } }, guestEnabled: true, mobileEnabled: true, foodPriceEnabled: false, seasonEnabled: true };
+      if (!services) return { seasonName: "", days: [], payment: { enabled: true, options: { upi: true, cash: true, bankTransfer: true } }, guestEnabled: true, mobileEnabled: true, foodPriceEnabled: false, seasonEnabled: true, kidsEnabled: false };
       const snapshot = await get(ref(services.db, configPath));
       const val = snapshot.val();
 
@@ -364,7 +394,7 @@ export function createFirebaseRepository(): SubscriptionRepository {
 
       if (snapshot.exists() && val) {
         if (Array.isArray(val)) {
-          return { seasonName: "", days: val as ConfigDay[], payment: defaultPayment, guestEnabled: true, mobileEnabled: true, foodPriceEnabled: false, seasonEnabled: true };
+          return { seasonName: "", days: val as ConfigDay[], payment: defaultPayment, guestEnabled: true, mobileEnabled: true, foodPriceEnabled: false, seasonEnabled: true, kidsEnabled: false };
         }
 
         const days = Array.isArray(val.days)
@@ -385,10 +415,11 @@ export function createFirebaseRepository(): SubscriptionRepository {
           mobileEnabled: val.mobileEnabled !== false,
           foodPriceEnabled: val.foodPriceEnabled || false,
           seasonEnabled: val.seasonEnabled !== false,
+          kidsEnabled: val.kidsEnabled || false,
           whatsappCountryCode: val.whatsappCountryCode || "91",
         };
       }
-      return { seasonName: "", days: [], payment: defaultPayment, guestEnabled: true, mobileEnabled: true, foodPriceEnabled: false, seasonEnabled: true };
+      return { seasonName: "", days: [], payment: defaultPayment, guestEnabled: true, mobileEnabled: true, foodPriceEnabled: false, seasonEnabled: true, kidsEnabled: false };
     },
     async updateConfig(config) {
       const services = await ensureFirebaseAuth();

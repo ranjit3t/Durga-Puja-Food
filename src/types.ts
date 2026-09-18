@@ -20,6 +20,18 @@ import {
   PaymentEntry,
 } from "./domain";
 
+export enum AppThemeMode {
+  LIGHT = "primary",
+  DARK = "dark",
+}
+
+export enum FilterMode {
+  ALL = "all",
+  SUBSCRIBED = "subscribed",
+  KIDS = "kids",
+  PARCEL = "parcel",
+}
+
 export type MealConfig = {
   enabled: boolean;
   veg: boolean;
@@ -58,6 +70,7 @@ export type AppConfig = {
   mobileEnabled?: boolean;
   foodPriceEnabled?: boolean;
   seasonEnabled?: boolean;
+  kidsEnabled?: boolean;
   whatsappCountryCode?: string;
 };
 

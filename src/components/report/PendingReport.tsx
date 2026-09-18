@@ -1,18 +1,21 @@
 import React from "react";
-import { View, Text, Pressable } from "react-native";
+import { View, Text, Pressable, Linking } from "react-native";
 import { useStyles } from "../../styles";
 import { useAppTheme } from "../../theme";
 import { UI_TEXT } from "../../strings";
 import { isDietaryEnabled } from "../../constants";
-import { ConfigDay, MealType, DietType } from "../../types";
+import { ConfigDay, MealType, DietType, AppThemeMode } from "../../types";
+import { Ionicons } from "@expo/vector-icons";
 
 interface PendingItem {
   id: string;
   block: string;
   flat: string;
+  mobile?: number;
   veg: number;
   nonVeg: number;
   count: number;
+  kids: number;
 }
 
 export function PendingReport({
@@ -21,12 +24,18 @@ export function PendingReport({
   selectedMealType,
   dayConfig,
   onSelectFlat,
+  kidsEnabled,
+  whatsappCountryCode,
+  mobileEnabled,
 }: {
   data: PendingItem[];
   selectedDayId: string;
   selectedMealType: MealType;
   dayConfig: ConfigDay[];
   onSelectFlat: (id: string) => void;
+  kidsEnabled: boolean;
+  whatsappCountryCode: string;
+  mobileEnabled: boolean;
 }) {
   const styles = useStyles();
   const { theme } = useAppTheme();
@@ -52,20 +61,48 @@ export function PendingReport({
               ]}
             >
               <View style={styles.dashboardCardTop}>
-                <Text style={[styles.dashboardDay, { color: colorScheme.accent }]}>{item.block}-{item.flat}</Text>
+                <Text style={[styles.dashboardDay, { color: colorScheme.accent }]}>{item.block}{UI_TEXT.hyphen}{item.flat}</Text>
                 <View style={{ alignItems: 'flex-end' }}>
                   <Text style={[styles.amount, { color: colorScheme.accent, fontWeight: '900' }]}>
-                    {item.count} {item.count === 1 ? UI_TEXT.personNotTaken : UI_TEXT.personsNotTaken}
+                    {item.count}{UI_TEXT.space}{item.count === 1 ? UI_TEXT.personNotTaken : UI_TEXT.personsNotTaken}
                   </Text>
+                  {kidsEnabled && item.kids > 0 && <Text style={{ fontSize: 10, fontWeight: '800', color: theme.colors.textMuted, marginBottom: 2 }}>{(item.kids === 1 ? UI_TEXT.kidIncluded : UI_TEXT.kidsIncluded).replace("{count}", String(item.kids))}</Text>}
                   <Text style={[styles.helper, { fontSize: 11, fontWeight: "700", color: theme.colors.textSecondary }]}>
-                    (
-                    {vegEnabled && item.veg > 0 && <Text style={{ color: theme.colors.veg }}>{item.veg} {UI_TEXT.veg}</Text>}
-                    {vegEnabled && item.veg > 0 && nonVegEnabled && item.nonVeg > 0 && <Text>, </Text>}
-                    {nonVegEnabled && item.nonVeg > 0 && <Text style={{ color: theme.colors.nonVeg }}>{item.nonVeg} {UI_TEXT.nonVeg}</Text>}
-                    )
+                    {UI_TEXT.openParen}
+                    {vegEnabled && item.veg > 0 && <Text style={{ color: theme.colors.veg }}>{item.veg}{UI_TEXT.space}{UI_TEXT.veg}</Text>}
+                    {vegEnabled && item.veg > 0 && nonVegEnabled && item.nonVeg > 0 && <Text>{UI_TEXT.comma}{UI_TEXT.space}</Text>}
+                    {nonVegEnabled && item.nonVeg > 0 && <Text style={{ color: theme.colors.nonVeg }}>{item.nonVeg}{UI_TEXT.space}{UI_TEXT.nonVeg}</Text>}
+                    {UI_TEXT.closeParen}
                   </Text>
                 </View>
               </View>
+
+              {mobileEnabled && item.mobile && (
+                <>
+                  <View style={{ height: 1, backgroundColor: colorScheme.border, marginVertical: 12, opacity: 0.5 }} />
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Pressable
+                      onPress={() => Linking.openURL(`https://wa.me/${whatsappCountryCode || "91"}${item.mobile}`)}
+                      style={({ pressed }) => [
+                        { padding: 6, borderRadius: 20, backgroundColor: theme.colors.successLight },
+                        pressed && { opacity: 0.7 }
+                      ]}
+                    >
+                      <Ionicons name="logo-whatsapp" size={20} color={theme.colors.success} />
+                    </Pressable>
+
+                    <Pressable
+                      onPress={() => Linking.openURL(`tel:${item.mobile}`)}
+                      style={({ pressed }) => [
+                        { padding: 6, borderRadius: 20, backgroundColor: theme.colors.surfaceDark },
+                        pressed && { opacity: 0.7 }
+                      ]}
+                    >
+                      <Ionicons name="call" size={20} color={theme.colors.primary} />
+                    </Pressable>
+                  </View>
+                </>
+              )}
             </Pressable>
           );
         })

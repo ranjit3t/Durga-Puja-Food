@@ -3,13 +3,12 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { primaryTheme } from "./primary";
 import { darkTheme } from "./dark";
 import { AppTheme } from "./types";
-
-type ThemeType = "primary" | "dark";
+import { AppThemeMode } from "../types";
 
 interface ThemeContextType {
   theme: AppTheme;
-  themeType: ThemeType;
-  setTheme: (type: ThemeType) => void;
+  themeType: AppThemeMode;
+  setTheme: (type: AppThemeMode) => void;
   toggleTheme: () => void;
 }
 
@@ -18,15 +17,15 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 const THEME_STORAGE_KEY = "@app_theme_preference";
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [themeType, setThemeState] = useState<ThemeType>("primary");
+  const [themeType, setThemeState] = useState<AppThemeMode>(AppThemeMode.LIGHT);
 
   useEffect(() => {
     // Load theme preference from local storage
     const loadTheme = async () => {
       try {
         const savedTheme = await AsyncStorage.getItem(THEME_STORAGE_KEY);
-        if (savedTheme === "dark" || savedTheme === "primary") {
-          setThemeState(savedTheme as ThemeType);
+        if (savedTheme === AppThemeMode.DARK || savedTheme === AppThemeMode.LIGHT) {
+          setThemeState(savedTheme as AppThemeMode);
         }
       } catch (e) {
         console.error("Failed to load theme preference", e);
@@ -35,7 +34,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     loadTheme();
   }, []);
 
-  const setTheme = async (type: ThemeType) => {
+  const setTheme = async (type: AppThemeMode) => {
     setThemeState(type);
     try {
       await AsyncStorage.setItem(THEME_STORAGE_KEY, type);
@@ -45,10 +44,10 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const toggleTheme = () => {
-    setTheme(themeType === "primary" ? "dark" : "primary");
+    setTheme(themeType === AppThemeMode.LIGHT ? AppThemeMode.DARK : AppThemeMode.LIGHT);
   };
 
-  const currentTheme = useMemo(() => (themeType === "dark" ? darkTheme : primaryTheme), [themeType]);
+  const currentTheme = useMemo(() => (themeType === AppThemeMode.DARK ? darkTheme : primaryTheme), [themeType]);
 
   const value = useMemo(() => ({
     theme: currentTheme,

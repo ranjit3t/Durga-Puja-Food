@@ -13,9 +13,9 @@ import {
   Switch,
 } from "react-native";
 import { useStyles } from "../styles";
-import { useAppTheme } from "../theme";
+import { useAppTheme, StatusBarStyleMode } from "../theme";
 import { UI_TEXT } from "../strings";
-import { ConfigDay, MealConfig, PaymentConfig, AppScreen, PaymentMode } from "../types";
+import { ConfigDay, MealConfig, PaymentConfig, AppScreen, PaymentMode, AppThemeMode } from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
@@ -25,12 +25,13 @@ import { useAuth } from "../context/AuthContext";
 import { useDatabase } from "../context/DatabaseContext";
 import { useUI } from "../context/UIContext";
 import { useAppNavigation } from "../context/NavigationContext";
+import { getPaymentModeLabel, getMealLabel } from "../constants";
 
 export function SettingsScreen() {
   const { handleLogout } = useAuth();
   const {
     dayConfig: config, seasonName, seasonEnabled, paymentConfig: payment, guestEnabled, mobileEnabled, foodPriceEnabled,
-    whatsappCountryCode, updateConfig
+    whatsappCountryCode, updateConfig, kidsEnabled
   } = useDatabase();
   const { showAlert } = useUI();
   const { navigate, goBack } = useAppNavigation();
@@ -48,6 +49,7 @@ export function SettingsScreen() {
   const [localGuestEnabled, setLocalGuestEnabled] = useState(true);
   const [localMobileEnabled, setLocalMobileEnabled] = useState(true);
   const [localFoodPriceEnabled, setLocalFoodPriceEnabled] = useState(false);
+  const [localKidsEnabled, setLocalKidsEnabled] = useState(false);
   const [localWhatsappCountryCode, setLocalWhatsappCountryCode] = useState("91");
   const [saving, setSaving] = useState(false);
   const [initialized, setInitialized] = useState(false);
@@ -62,6 +64,7 @@ export function SettingsScreen() {
       setLocalGuestEnabled(guestEnabled);
       setLocalMobileEnabled(mobileEnabled);
       setLocalFoodPriceEnabled(foodPriceEnabled);
+      setLocalKidsEnabled(kidsEnabled || false);
       setLocalWhatsappCountryCode(whatsappCountryCode || "91");
       setInitialized(true);
     }
@@ -176,10 +179,13 @@ export function SettingsScreen() {
         guestEnabled: localGuestEnabled,
         mobileEnabled: localMobileEnabled,
         foodPriceEnabled: localFoodPriceEnabled,
+        kidsEnabled: localKidsEnabled,
         whatsappCountryCode: localWhatsappCountryCode,
       });
       setInitialized(false); // Allow re-syncing from DB
-      showAlert(UI_TEXT.success, UI_TEXT.settingsUpdated);
+      showAlert(UI_TEXT.success, UI_TEXT.settingsUpdated, [
+        { text: UI_TEXT.ok, onPress: () => navigate(AppScreen.HOME) }
+      ]);
     } catch (err) {
       console.error("Save settings error:", err);
       showAlert(UI_TEXT.error, UI_TEXT.saveConfigError);
@@ -196,11 +202,12 @@ export function SettingsScreen() {
     localGuestEnabled !== guestEnabled ||
     localMobileEnabled !== mobileEnabled ||
     localFoodPriceEnabled !== foodPriceEnabled ||
+    localKidsEnabled !== kidsEnabled ||
     localWhatsappCountryCode !== whatsappCountryCode;
 
   return (
     <View style={styles.root}>
-      <StatusBar style={themeType === "dark" ? "light" : "dark"} />
+      <StatusBar style={themeType === AppThemeMode.DARK ? "light" : "dark"} />
       <View style={styles.header}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -236,12 +243,20 @@ export function SettingsScreen() {
                 <Text style={{ fontSize: 12, fontWeight: '800', color: theme.colors.primary }}>{UI_TEXT.enabledMethods}</Text>
                 {([['upi', PaymentMode.UPI], ['cash', PaymentMode.CASH], ['bankTransfer', PaymentMode.BANK_TRANSFER]] as const).map(([key, mode]) => (
                   <View key={key} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                     <Text style={{ fontSize: 14, fontWeight: '700', color: theme.colors.textPrimary }}>{mode}</Text>
+                     <Text style={{ fontSize: 14, fontWeight: '700', color: theme.colors.textPrimary }}>{getPaymentModeLabel(mode)}</Text>
                      <Switch value={localPayment.options[key]} onValueChange={(val) => setLocalPayment({ ...localPayment, options: { ...localPayment.options, [key]: val } })} trackColor={{ true: theme.colors.success }} style={{ transform: [{ scale: 0.8 }] }} />
                   </View>
                 ))}
              </View>
            )}
+           <View style={{ height: 1, backgroundColor: theme.colors.border, marginVertical: 20 }} />
+           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <View>
+                 <Text style={{ fontSize: 16, fontWeight: '800', color: theme.colors.textPrimary }}>{UI_TEXT.enableKidsSupport}</Text>
+                 <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600' }}>{UI_TEXT.enableKidsSupportHelper}</Text>
+              </View>
+              <Switch value={localKidsEnabled} onValueChange={setLocalKidsEnabled} trackColor={{ true: theme.colors.primary }} />
+           </View>
            <View style={{ height: 1, backgroundColor: theme.colors.border, marginVertical: 20 }} />
            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
               <View>
@@ -274,6 +289,14 @@ export function SettingsScreen() {
                 <Switch value={localFoodPriceEnabled} onValueChange={setLocalFoodPriceEnabled} trackColor={{ true: theme.colors.primary }} />
              </View>
            )}
+
+           <Pressable
+             onPress={handleSave}
+             style={[styles.primary, { height: 44, marginTop: 24, backgroundColor: theme.colors.primary }, (saving || !hasChanged) && { opacity: 0.5 }]}
+             disabled={saving || !hasChanged}
+           >
+             <ActionLabel icon="save-outline" label={UI_TEXT.saveChanges} color={theme.colors.white} size={18} />
+           </Pressable>
         </View>
 
         {(localConfig || []).map((day, index) => {
@@ -304,7 +327,7 @@ export function SettingsScreen() {
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                              <Ionicons name={mKey === "breakfast" ? "sunny-outline" : mKey === "lunch" ? "restaurant-outline" : "moon-outline"} size={18} color={theme.colors.textPrimary} />
-                             <Text style={{ fontWeight: "800", fontSize: 16, color: theme.colors.textPrimary, textTransform: "capitalize" }}>{mKey}</Text>
+                             <Text style={{ fontWeight: "800", fontSize: 16, color: theme.colors.textPrimary, textTransform: "capitalize" }}>{getMealLabel(mKey)}</Text>
                           </View>
                           <Switch value={m.enabled} onValueChange={(val) => updateMealConfig(day.id, mKey, { enabled: val })} trackColor={{ true: theme.colors.primary }} />
                         </View>
@@ -345,6 +368,15 @@ export function SettingsScreen() {
                       </View>
                     );
                   })}
+
+                  <Pressable
+                    onPress={handleSave}
+                    style={[styles.primary, { height: 44, marginTop: 12, backgroundColor: colorScheme.accent }, (saving || !hasChanged) && { opacity: 0.5 }]}
+                    disabled={saving || !hasChanged}
+                  >
+                    <ActionLabel icon="save-outline" label={UI_TEXT.saveChanges} color={theme.colors.white} size={18} />
+                  </Pressable>
+
                   <Pressable onPress={() => removeDay(day.id)} style={{ marginTop: 12, alignSelf: 'center', padding: 8 }}>
                     <Text style={{ color: theme.colors.nonVeg, fontWeight: '800', fontSize: 13, textDecorationLine: "underline" }}>{UI_TEXT.removeDayLabel}</Text>
                   </Pressable>

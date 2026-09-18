@@ -2,14 +2,14 @@ import React, { useState } from "react";
 import { View, Text, Pressable, StatusBar, StyleSheet, useWindowDimensions } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useStyles } from "../styles";
-import { useAppTheme } from "../theme";
+import { useAppTheme, StatusBarStyleMode } from "../theme";
 import { UI_TEXT } from "../strings";
 import { BackButton } from "../components/common/BackButton";
 
 import { useAppNavigation } from "../context/NavigationContext";
 import { useDatabase } from "../context/DatabaseContext";
 import { useUI } from "../context/UIContext";
-import { AppScreen } from "../types";
+import { AppScreen, AppThemeMode } from "../types";
 
 export function ScannerScreen() {
   const styles = useStyles();
@@ -29,7 +29,7 @@ export function ScannerScreen() {
   if (!permission.granted) {
     return (
       <View style={styles.root}>
-        <StatusBar style={themeType === "dark" ? "light" : "dark"} />
+        <StatusBar style={themeType === AppThemeMode.DARK ? StatusBarStyleMode.LIGHT : StatusBarStyleMode.DARK} />
         <View style={styles.header}>
           <BackButton onPress={goBack} />
           <Text style={styles.title}>{UI_TEXT.cameraAccess}</Text>
@@ -46,7 +46,7 @@ export function ScannerScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.shadow }}>
-      <StatusBar style={themeType === "dark" ? "light" : "dark"} />
+      <StatusBar style={themeType === AppThemeMode.DARK ? StatusBarStyleMode.LIGHT : StatusBarStyleMode.DARK} />
 
       {/* 1. Camera fills the screen */}
       <CameraView

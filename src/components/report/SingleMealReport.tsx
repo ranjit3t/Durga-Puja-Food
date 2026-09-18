@@ -4,15 +4,21 @@ import { useStyles } from "../../styles";
 import { useAppTheme } from "../../theme";
 import { UI_TEXT } from "../../strings";
 import { getDayLabel, isMealEnabled, isDietaryEnabled, isParcelEnabled } from "../../constants";
-import { ConfigDay, MealType, DietType } from "../../types";
+import { ConfigDay, MealType, DietType, AppThemeMode } from "../../types";
 
 interface MealStats {
   veg: number;
   nonVeg: number;
+  kidsVeg: number;
+  kidsNonVeg: number;
   vegTaken: number;
   nonVegTaken: number;
+  kidsVegTaken: number;
+  kidsNonVegTaken: number;
   vegParcel: number;
   nonVegParcel: number;
+  kidsVegParcel: number;
+  kidsNonVegParcel: number;
   guestVeg: number;
   guestNonVeg: number;
   guestVegTaken: number;
@@ -30,12 +36,14 @@ export function SingleMealReport({
   mealWiseData,
   dayConfig,
   guestEnabled,
+  kidsEnabled,
 }: {
   selectedDayId: string;
   selectedMealType: MealType;
   mealWiseData: DayData[];
   dayConfig: ConfigDay[];
   guestEnabled: boolean;
+  kidsEnabled: boolean;
 }) {
   const styles = useStyles();
   const { theme } = useAppTheme();
@@ -53,10 +61,10 @@ export function SingleMealReport({
     return <Text style={styles.emptyState}>{UI_TEXT.mealDisabled}</Text>;
   }
 
-  const tVeg = m.veg + m.guestVeg;
-  const tNonVeg = m.nonVeg + m.guestNonVeg;
-  const tTakenVeg = m.vegTaken + m.guestVegTaken;
-  const tTakenNonVeg = m.nonVegTaken + m.guestNonVegTaken;
+  const tVeg = m.veg + m.guestVeg + m.kidsVeg;
+  const tNonVeg = m.nonVeg + m.guestNonVeg + m.kidsNonVeg;
+  const tTakenVeg = m.vegTaken + m.guestVegTaken + m.kidsVegTaken;
+  const tTakenNonVeg = m.nonVegTaken + m.guestNonVegTaken + m.kidsNonVegTaken;
 
   const totalDemand = tVeg + tNonVeg;
   const totalTaken = tTakenVeg + tTakenNonVeg;
@@ -68,7 +76,7 @@ export function SingleMealReport({
       <View style={[styles.dashboardCard, { backgroundColor: colorScheme.bg, borderColor: colorScheme.border, borderWidth: 1.5 }]}>
         <View style={[styles.dashboardCardTop, { borderBottomWidth: 1, borderBottomColor: colorScheme.border, paddingBottom: 16 }]}>
           <Text style={[styles.dashboardDay, { color: colorScheme.accent }]}>{getDayLabel(selectedDayId, dayConfig)}</Text>
-          <View style={[styles.pill, { backgroundColor: colorScheme.accent + "20" }]}>
+          <View style={[styles.pill, { backgroundColor: colorScheme.accentLight }]}>
             <Text style={[styles.pillText, { color: colorScheme.accent }]}>{totalDemand} {UI_TEXT.totalDemand}</Text>
           </View>
         </View>
@@ -78,10 +86,18 @@ export function SingleMealReport({
             <Text style={{ fontSize: 15, fontWeight: "700", color: theme.colors.textSecondary }}>{UI_TEXT.demandSplit}</Text>
             <View style={{ alignItems: 'flex-end' }}>
               {vegEnabled && (
-                <Text style={{ fontSize: 13, fontWeight: "600", color: theme.colors.veg, marginBottom: 2 }}>{UI_TEXT.veg}: {tVeg} {guestEnabled && `(${UI_TEXT.resSuffix}:${m.veg}, ${UI_TEXT.guestSuffix}:${m.guestVeg})`}</Text>
+                <Text style={{ fontSize: 13, fontWeight: "600", color: theme.colors.veg, marginBottom: 2 }}>
+                  {UI_TEXT.veg}{UI_TEXT.colon}{UI_TEXT.space}{tVeg}{UI_TEXT.space}{(kidsEnabled || guestEnabled) && (
+                    `(${kidsEnabled ? `${UI_TEXT.adultAbbrLabel}${UI_TEXT.colon}${m.veg}${UI_TEXT.comma}${UI_TEXT.space}${UI_TEXT.kidsAbbrLabel}${UI_TEXT.colon}${m.kidsVeg}` : `${UI_TEXT.personAbbr}${UI_TEXT.colon}${m.veg}`}${guestEnabled ? `${UI_TEXT.comma}${UI_TEXT.space}${UI_TEXT.guestAbbrLabel}${UI_TEXT.colon}${m.guestVeg}` : ""})`
+                  )}
+                </Text>
               )}
               {nonVegEnabled && (
-                <Text style={{ fontSize: 13, fontWeight: "600", color: theme.colors.nonVeg }}>{UI_TEXT.nonVeg}: {tNonVeg} {guestEnabled && `(${UI_TEXT.resSuffix}:${m.nonVeg}, ${UI_TEXT.guestSuffix}:${m.guestNonVeg})`}</Text>
+                <Text style={{ fontSize: 13, fontWeight: "600", color: theme.colors.nonVeg }}>
+                  {UI_TEXT.nonVeg}{UI_TEXT.colon}{UI_TEXT.space}{tNonVeg}{UI_TEXT.space}{(kidsEnabled || guestEnabled) && (
+                    `(${kidsEnabled ? `${UI_TEXT.adultAbbrLabel}${UI_TEXT.colon}${m.nonVeg}${UI_TEXT.comma}${UI_TEXT.space}${UI_TEXT.kidsAbbrLabel}${UI_TEXT.colon}${m.kidsNonVeg}` : `${UI_TEXT.personAbbr}${UI_TEXT.colon}${m.nonVeg}`}${guestEnabled ? `${UI_TEXT.comma}${UI_TEXT.space}${UI_TEXT.guestAbbrLabel}${UI_TEXT.colon}${m.guestNonVeg}` : ""})`
+                  )}
+                </Text>
               )}
             </View>
           </View>
@@ -93,12 +109,16 @@ export function SingleMealReport({
               <View style={{ marginTop: 4 }}>
                 {vegEnabled && (
                   <Text style={{ color: theme.colors.veg, fontSize: 12, fontWeight: "700", textAlign: 'right' }}>
-                    {UI_TEXT.veg}: {tTakenVeg} {guestEnabled && `(${UI_TEXT.resSuffix}:${m.vegTaken}, ${UI_TEXT.guestSuffix}:${m.guestVegTaken})`}
+                    {UI_TEXT.veg}{UI_TEXT.colon}{UI_TEXT.space}{tTakenVeg}{UI_TEXT.space}{(kidsEnabled || guestEnabled) && (
+                      `(${kidsEnabled ? `${UI_TEXT.adultAbbrLabel}${UI_TEXT.colon}${m.vegTaken}${UI_TEXT.comma}${UI_TEXT.space}${UI_TEXT.kidsAbbrLabel}${UI_TEXT.colon}${m.kidsVegTaken}` : `${UI_TEXT.personAbbr}${UI_TEXT.colon}${m.vegTaken}`}${guestEnabled ? `${UI_TEXT.comma}${UI_TEXT.space}${UI_TEXT.guestAbbrLabel}${UI_TEXT.colon}${m.guestVegTaken}` : ""})`
+                    )}
                   </Text>
                 )}
                 {nonVegEnabled && (
                   <Text style={{ color: theme.colors.nonVeg, fontSize: 12, fontWeight: "700", textAlign: 'right' }}>
-                    {UI_TEXT.nonVeg}: {tTakenNonVeg} {guestEnabled && `(${UI_TEXT.resSuffix}:${m.nonVegTaken}, ${UI_TEXT.guestSuffix}:${m.guestNonVegTaken})`}
+                    {UI_TEXT.nonVeg}{UI_TEXT.colon}{UI_TEXT.space}{tTakenNonVeg}{UI_TEXT.space}{(kidsEnabled || guestEnabled) && (
+                      `(${kidsEnabled ? `${UI_TEXT.adultAbbrLabel}${UI_TEXT.colon}${m.nonVegTaken}${UI_TEXT.comma}${UI_TEXT.space}${UI_TEXT.kidsAbbrLabel}${UI_TEXT.colon}${m.kidsNonVegTaken}` : `${UI_TEXT.personAbbr}${UI_TEXT.colon}${m.nonVegTaken}`}${guestEnabled ? `${UI_TEXT.comma}${UI_TEXT.space}${UI_TEXT.guestAbbrLabel}${UI_TEXT.colon}${m.guestNonVegTaken}` : ""})`
+                    )}
                   </Text>
                 )}
               </View>
@@ -112,12 +132,16 @@ export function SingleMealReport({
               <View style={{ marginTop: 4 }}>
                 {vegEnabled && (
                   <Text style={{ color: theme.colors.veg, fontSize: 12, fontWeight: "700", textAlign: 'right' }}>
-                    {UI_TEXT.veg}: {tVeg - tTakenVeg} {guestEnabled && `(${UI_TEXT.resSuffix}:${m.veg - m.vegTaken}, ${UI_TEXT.guestSuffix}:${m.guestVeg - m.guestVegTaken})`}
+                    {UI_TEXT.veg}{UI_TEXT.colon}{UI_TEXT.space}{tVeg - tTakenVeg}{UI_TEXT.space}{(kidsEnabled || guestEnabled) && (
+                      `(${kidsEnabled ? `${UI_TEXT.adultAbbrLabel}${UI_TEXT.colon}${m.veg - m.vegTaken}${UI_TEXT.comma}${UI_TEXT.space}${UI_TEXT.kidsAbbrLabel}${UI_TEXT.colon}${m.kidsVeg - m.kidsVegTaken}` : `${UI_TEXT.personAbbr}${UI_TEXT.colon}${m.veg - m.vegTaken}`}${guestEnabled ? `${UI_TEXT.comma}${UI_TEXT.space}${UI_TEXT.guestAbbrLabel}${UI_TEXT.colon}${m.guestVeg - m.guestVegTaken}` : ""})`
+                    )}
                   </Text>
                 )}
                 {nonVegEnabled && (
                   <Text style={{ color: theme.colors.nonVeg, fontSize: 12, fontWeight: "700", textAlign: 'right' }}>
-                    {UI_TEXT.nonVeg}: {tNonVeg - tTakenNonVeg} {guestEnabled && `(${UI_TEXT.resSuffix}:${m.nonVeg - m.nonVegTaken}, ${UI_TEXT.guestSuffix}:${m.nonVeg - m.nonVegTaken})`}
+                    {UI_TEXT.nonVeg}{UI_TEXT.colon}{UI_TEXT.space}{tNonVeg - tTakenNonVeg}{UI_TEXT.space}{(kidsEnabled || guestEnabled) && (
+                      `(${kidsEnabled ? `${UI_TEXT.adultAbbrLabel}${UI_TEXT.colon}${m.nonVeg - m.nonVegTaken}${UI_TEXT.comma}${UI_TEXT.space}${UI_TEXT.kidsAbbrLabel}${UI_TEXT.colon}${m.kidsNonVeg - m.kidsNonVegTaken}` : `${UI_TEXT.personAbbr}${UI_TEXT.colon}${m.nonVeg - m.nonVegTaken}`}${guestEnabled ? `${UI_TEXT.comma}${UI_TEXT.space}${UI_TEXT.guestAbbrLabel}${UI_TEXT.colon}${m.guestNonVeg - m.guestNonVegTaken}` : ""})`
+                    )}
                   </Text>
                 )}
               </View>
@@ -128,13 +152,13 @@ export function SingleMealReport({
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", borderTopWidth: 1, borderTopColor: colorScheme.border, paddingTop: 16 }}>
               <Text style={{ fontSize: 15, fontWeight: "700", color: theme.colors.textSecondary }}>{UI_TEXT.parcelsNeeded}</Text>
               <View style={{ alignItems: 'flex-end' }}>
-                <Text style={{ fontSize: 18, fontWeight: "800", color: theme.colors.primary }}>{m.vegParcel + m.nonVegParcel} {UI_TEXT.parcelAbbr}</Text>
+                <Text style={{ fontSize: 18, fontWeight: "800", color: theme.colors.primary }}>{m.vegParcel + m.nonVegParcel}{UI_TEXT.space}{UI_TEXT.parcelAbbr}</Text>
                 <Text style={{ fontSize: 11, fontWeight: "600" }}>
-                  (
-                  {vegEnabled && m.vegParcel > 0 && <Text style={{ color: theme.colors.veg }}>{m.vegParcel} {UI_TEXT.veg}</Text>}
-                  {vegEnabled && m.vegParcel > 0 && nonVegEnabled && m.nonVegParcel > 0 && <Text>, </Text>}
-                  {nonVegEnabled && m.nonVegParcel > 0 && <Text style={{ color: theme.colors.nonVeg }}>{m.nonVegParcel} {UI_TEXT.nonVeg}</Text>}
-                  )
+                  {UI_TEXT.openParen}
+                  {vegEnabled && m.vegParcel > 0 && <Text style={{ color: theme.colors.veg }}>{m.vegParcel}{UI_TEXT.space}{UI_TEXT.veg}</Text>}
+                  {vegEnabled && m.vegParcel > 0 && nonVegEnabled && m.nonVegParcel > 0 && <Text>{UI_TEXT.comma}{UI_TEXT.space}</Text>}
+                  {nonVegEnabled && m.nonVegParcel > 0 && <Text style={{ color: theme.colors.nonVeg }}>{m.nonVegParcel}{UI_TEXT.space}{UI_TEXT.nonVeg}</Text>}
+                  {UI_TEXT.closeParen}
                 </Text>
               </View>
             </View>

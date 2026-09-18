@@ -12,7 +12,7 @@ import {
   Linking,
 } from "react-native";
 import { useStyles } from "../styles";
-import { useAppTheme } from "../theme";
+import { useAppTheme, StatusBarStyleMode } from "../theme";
 import { UI_TEXT } from "../strings";
 import {
   getActiveDays,
@@ -23,8 +23,9 @@ import {
   isDietaryEnabledForDay,
   mealSummary,
   getPaymentModeLabel,
+  getMemberLegend,
 } from "../constants";
-import { MealMenu, MealType, DietType, DietaryOption, AppScreen, UserRole, PaymentMode } from "../types";
+import { MealMenu, MealType, DietType, DietaryOption, AppScreen, UserRole, PaymentMode, ReportType, AppThemeMode } from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
@@ -41,11 +42,11 @@ export function DetailsScreen() {
   const { userRole, handleLogout } = useAuth();
   const {
     subscriptions, dayConfig, paymentConfig, seasonEnabled, foodMenu, mobileEnabled,
-    deleteSubscription, whatsappCountryCode
+    deleteSubscription, whatsappCountryCode, kidsEnabled
   } = useDatabase();
   const { showAlert: showGlobalAlert } = useUI();
   const {
-    selectedId, selectedRecord, navigate, goBack, setEditing
+    selectedId, selectedRecord, navigate, goBack, setEditing, setReportType
   } = useAppNavigation();
 
   const subscription = subscriptions.find(s => s.id === selectedId) || selectedRecord;
@@ -57,7 +58,7 @@ export function DetailsScreen() {
   const canEdit = seasonEnabled && !isSeasonDone(dayConfig);
   const activeDays = getActiveDays(dayConfig);
 
-  const onBack = goBack;
+  const onBack = () => navigate(AppScreen.HOME);
   const onHome = () => navigate(AppScreen.HOME);
   const onEdit = () => { setEditing(subscription); navigate(AppScreen.FORM); };
   const onQr = () => navigate(AppScreen.QR);
@@ -65,7 +66,7 @@ export function DetailsScreen() {
 
   return (
     <View style={styles.root}>
-      <StatusBar style={themeType === "dark" ? "light" : "dark"} />
+      <StatusBar style={themeType === AppThemeMode.DARK ? StatusBarStyleMode.LIGHT : StatusBarStyleMode.DARK} />
       <View style={styles.header}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -90,22 +91,36 @@ export function DetailsScreen() {
                 {subscription.id}
               </Text>
             </View>
-            {paymentConfig.enabled && (
-              <Text style={[styles.previewAmount, { color: theme.colors.white, fontSize: 22 }]}>
-                {UI_TEXT.rs} {subscription.amount || UI_TEXT.zero}
-              </Text>
-            )}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              {paymentConfig.enabled && (
+                <Text style={[styles.previewAmount, { color: theme.colors.white, fontSize: 22 }]}>
+                  {UI_TEXT.rs}{UI_TEXT.space}{subscription.amount || UI_TEXT.zero}
+                </Text>
+              )}
+              {canEdit && (
+                <Pressable
+                  onPress={onEdit}
+                  style={({ pressed }) => [
+                    { padding: 6, borderRadius: 20, backgroundColor: theme.colors.white + "33" },
+                    pressed && { opacity: 0.7 }
+                  ]}
+                >
+                  <Ionicons name="pencil" size={18} color={theme.colors.white} />
+                </Pressable>
+              )}
+            </View>
           </View>
 
           <View style={{ height: 1, backgroundColor: theme.colors.white, opacity: 0.2, marginVertical: 12 }} />
 
           <Text style={[styles.previewMeta, { color: theme.colors.white }]}>
-            {subscription.peopleCount}
-            {subscription.peopleCount === 1
-              ? UI_TEXT.personSuffix
-              : UI_TEXT.personsSuffix}
-            {paymentConfig.enabled && ` | ${UI_TEXT.rs} ${subscription.amount || UI_TEXT.zero}`}
-            {mobileEnabled && subscription.mobile && ` | ${subscription.mobile}`}
+            {kidsEnabled ? (
+               `${subscription.peopleCount}${UI_TEXT.space}${subscription.peopleCount === 1 ? UI_TEXT.adult : UI_TEXT.adults}${subscription.kidsCount ? `${UI_TEXT.plus}${subscription.kidsCount}${UI_TEXT.space}${subscription.kidsCount === 1 ? UI_TEXT.kid : UI_TEXT.kids}` : ""}`
+            ) : (
+               `${subscription.peopleCount + (subscription.kidsCount || 0)}${subscription.peopleCount + (subscription.kidsCount || 0) === 1 ? UI_TEXT.personSuffix : UI_TEXT.personsSuffix}`
+            )}
+            {paymentConfig.enabled && `${UI_TEXT.pipe}${UI_TEXT.rs}${UI_TEXT.space}${subscription.amount || UI_TEXT.zero}`}
+            {mobileEnabled && subscription.mobile && `${UI_TEXT.pipe}${subscription.mobile}`}
           </Text>
 
           {subscription.mobile && (
@@ -136,40 +151,67 @@ export function DetailsScreen() {
           )}
         </View>
         {/* Quick Overview Card */}
-        <View style={[styles.card, { backgroundColor: theme.cardColors[4].bg, borderColor: theme.cardColors[4].border }]}>
-           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-              <Text style={[styles.sectionTitle, { marginBottom: 0, color: theme.cardColors[4].accent }]}>{UI_TEXT.subscriptionSummary}</Text>
-              {paymentConfig.enabled && (
-                <View style={[styles.pill, { backgroundColor: theme.cardColors[4].accent + "33" }]}>
-                   <Text style={[styles.pillText, { color: theme.cardColors[4].accent }]}>{UI_TEXT.rs} {subscription.amount || UI_TEXT.zero}</Text>
+        {paymentConfig.enabled && (
+          <Pressable
+            onPress={() => {
+              setReportType(ReportType.PAYMENT);
+              navigate(AppScreen.REPORT);
+            }}
+            style={({ pressed }) => [
+              styles.card,
+              { backgroundColor: theme.cardColors[4].bg, borderColor: theme.cardColors[4].border },
+              pressed && { opacity: 0.8 }
+            ]}
+          >
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                <Text style={[styles.sectionTitle, { marginBottom: 0, color: theme.cardColors[4].accent }]}>{UI_TEXT.subscriptionSummary}</Text>
+                <View style={[styles.pill, { backgroundColor: theme.cardColors[4].accentLight }]}>
+                    <Text style={[styles.pillText, { color: theme.cardColors[4].accent }]}>{UI_TEXT.rs} {subscription.amount || UI_TEXT.zero}</Text>
                 </View>
-              )}
-           </View>
-           <View style={{ height: 1, backgroundColor: theme.cardColors[4].border, marginVertical: 16 }} />
+            </View>
+            <View style={{ height: 1, backgroundColor: theme.cardColors[4].border, marginVertical: 16 }} />
 
-            {paymentConfig.enabled && subscription.payments && subscription.payments.length > 0 ? (
-             <View style={{ marginBottom: 12, gap: 8 }}>
-                {subscription.payments.map((p, idx) => (
-                   <View key={idx} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <View>
-                         <Text style={{ fontSize: 13, fontWeight: '800', color: theme.colors.textPrimary }}>{getPaymentModeLabel(p.mode || PaymentMode.CASH)} {p.transactionId ? `(${p.transactionId})` : ''}</Text>
-                         <Text style={{ fontSize: 10, color: theme.colors.textSecondary, fontWeight: '700' }}>{UI_TEXT.paymentNumber}{idx + 1}</Text>
-                      </View>
-                      <Text style={{ fontSize: 14, fontWeight: '900', color: theme.cardColors[4].accent }}>{UI_TEXT.rs} {p.amount || UI_TEXT.zero}</Text>
-                   </View>
-                ))}
-                <View style={{ height: 1, backgroundColor: theme.cardColors[4].border, marginVertical: 4 }} />
-             </View>
-           ) : null}
-
-           <Text style={{ fontSize: 16, color: theme.colors.textPrimary, lineHeight: 24, fontWeight: "600" }}>
-              {mealSummary(subscription, dayConfig) || UI_TEXT.noFoodSelected}
-           </Text>
-        </View>
+              {subscription.payments && subscription.payments.length > 0 ? (
+              <View style={{ gap: 8 }}>
+                  {subscription.payments.map((p, idx) => (
+                    <View key={idx} style={[{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, idx > 0 && { marginTop: 12 }]}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontSize: 13, fontWeight: '800', color: theme.colors.textPrimary }}>
+                            {getPaymentModeLabel(p.mode || PaymentMode.CASH)}
+                          </Text>
+                          {p.mode === PaymentMode.CASH && p.receivedBy ? (
+                            <Text style={{ fontSize: 11, color: theme.colors.primary, fontWeight: '700', marginTop: 2 }}>
+                              {UI_TEXT.receivedByLabel}{UI_TEXT.colon}{UI_TEXT.space}{p.receivedBy}
+                            </Text>
+                          ) : (p.mode !== PaymentMode.CASH && p.transactionId) ? (
+                            <Text style={{ fontSize: 11, color: theme.colors.primary, fontWeight: '700', marginTop: 2 }}>
+                              {UI_TEXT.transactionIdLabel}{UI_TEXT.colon}{UI_TEXT.space}{p.transactionId}
+                            </Text>
+                          ) : null}
+                        </View>
+                        <Text style={{ fontSize: 14, fontWeight: '900', color: theme.cardColors[4].accent }}>{UI_TEXT.rs}{UI_TEXT.space}{p.amount || UI_TEXT.zero}</Text>
+                    </View>
+                  ))}
+              </View>
+            ) : null}
+          </Pressable>
+        )}
 
         {/* Global Food Plan */}
-        <Text style={[styles.sectionTitle, { marginBottom: 12 }]}>{UI_TEXT.foodPlan}</Text>
-        <View style={[styles.card, { paddingVertical: 10, backgroundColor: theme.cardColors[5].bg, borderColor: theme.cardColors[5].border }]}>
+        <Pressable
+          onPress={() => navigate(AppScreen.VIEW_MENU)}
+          style={({ pressed }) => [
+            styles.card,
+            { backgroundColor: theme.cardColors[5].bg, borderColor: theme.cardColors[5].border },
+            pressed && { opacity: 0.8 }
+          ]}
+        >
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+              <Text style={[styles.sectionTitle, { marginBottom: 0, color: theme.cardColors[5].accent }]}>{UI_TEXT.foodPlan}</Text>
+              <Ionicons name="restaurant-outline" size={20} color={theme.cardColors[5].accent} />
+          </View>
+          <View style={{ height: 1, backgroundColor: theme.cardColors[5].border, marginVertical: 16 }} />
+
           {activeDays.map((day, idx) => {
             const dayMenu = foodMenu[day];
             const hasMenu = (m: MealMenu) =>
@@ -182,28 +224,50 @@ export function DetailsScreen() {
             const vCount = subscription.meals[day]?.[DietType.VEG] || 0;
             const nvCount = subscription.meals[day]?.[DietType.NON_VEG] || 0;
 
+            // Calculate aggregate parcel count for this day
+            let pCount = 0;
+            (subscription.mealSlots[day] || []).forEach(slot => {
+              if (slot.breakfastParcel) pCount++;
+              if (slot.lunchParcel) pCount++;
+              if (slot.dinnerParcel) pCount++;
+            });
+
             if (vegEnabled && vCount > 0)
               parts.push(`${vCount} ${UI_TEXT.veg}`);
             if (nonVegEnabled && nvCount > 0)
               parts.push(`${nvCount} ${UI_TEXT.nonVeg}`);
+            if (pCount > 0)
+              parts.push(`${pCount}${UI_TEXT.parcelAbbr}`);
 
             const planSummary = parts.length > 0 ? parts.join(", ") : UI_TEXT.none;
 
+            if (planSummary === UI_TEXT.none) return null;
+
+            const isSubscribedTo = (slot: MealType) => {
+              return (subscription.mealSlots[day] || []).some(personSlot =>
+                personSlot[slot] !== DietaryOption.NONE
+              );
+            };
+
             return (
-              <View key={day} style={[styles.dayMenuSection, idx === activeDays.length - 1 && { borderBottomWidth: 0, marginBottom: 0 }, { borderBottomColor: theme.cardColors[5].border }]}>
+              <View key={day} style={[styles.dayMenuSection, idx === activeDays.length - 1 && { borderBottomWidth: 0, marginBottom: 0 }, { borderBottomColor: theme.cardColors[5].border, paddingVertical: 12 }]}>
                 <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                  <Text style={{ fontSize: 15, fontWeight: "800", color: theme.colors.textPrimary }}>{getDayLabel(day, dayConfig)}</Text>
-                  <Text style={{ fontSize: 14, fontWeight: "700", color: theme.cardColors[5].accent }}>{planSummary}</Text>
+                  <Text style={{ fontSize: 16, fontWeight: "900", color: theme.colors.textPrimary }}>{getDayLabel(day, dayConfig)}</Text>
+                  <View style={{ backgroundColor: theme.cardColors[5].accentLight, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
+                    <Text style={{ fontSize: 12, fontWeight: "800", color: theme.cardColors[5].accent }}>{planSummary.toUpperCase()}</Text>
+                  </View>
                 </View>
+
                 {dayMenu &&
                   (hasMenu(dayMenu[MealType.BREAKFAST]) ||
                     hasMenu(dayMenu[MealType.LUNCH]) ||
                     hasMenu(dayMenu[MealType.DINNER])) && (
-                    <View style={styles.menuSummaryInline}>
+                    <View style={{ gap: 6, marginTop: 4 }}>
                       {isMealEnabled(day, MealType.BREAKFAST, dayConfig) &&
+                        isSubscribedTo(MealType.BREAKFAST) &&
                         hasMenu(dayMenu[MealType.BREAKFAST]) && (
                           <MealSummaryInline
-                            label={UI_TEXT.breakfastLabel}
+                            label={UI_TEXT.breakfastTitle}
                             mealKey={MealType.BREAKFAST}
                             dayId={day}
                             config={dayConfig}
@@ -211,9 +275,10 @@ export function DetailsScreen() {
                           />
                         )}
                       {isMealEnabled(day, MealType.LUNCH, dayConfig) &&
+                        isSubscribedTo(MealType.LUNCH) &&
                         hasMenu(dayMenu[MealType.LUNCH]) && (
                           <MealSummaryInline
-                            label={UI_TEXT.lunchLabel}
+                            label={UI_TEXT.lunchTitle}
                             mealKey={MealType.LUNCH}
                             dayId={day}
                             config={dayConfig}
@@ -221,9 +286,10 @@ export function DetailsScreen() {
                           />
                         )}
                       {isMealEnabled(day, MealType.DINNER, dayConfig) &&
+                        isSubscribedTo(MealType.DINNER) &&
                         hasMenu(dayMenu[MealType.DINNER]) && (
                           <MealSummaryInline
-                            label={UI_TEXT.dinnerLabel}
+                            label={UI_TEXT.dinnerTitle}
                             mealKey={MealType.DINNER}
                             dayId={day}
                             config={dayConfig}
@@ -235,16 +301,16 @@ export function DetailsScreen() {
               </View>
             );
           })}
-        </View>
+        </Pressable>
 
         {/* Choice Matrix */}
         <Text style={[styles.sectionTitle, { marginBottom: 12 }]}>{UI_TEXT.foodChoiceByPerson}</Text>
-        <Text style={styles.helper}>{UI_TEXT.foodChoiceHelper}</Text>
-        {Array.from({ length: subscription.peopleCount }, (_, personIndex) => (
+        <Text style={styles.helper}>{UI_TEXT.foodChoiceInstruction || UI_TEXT.foodChoiceHelper}</Text>
+        {Array.from({ length: subscription.peopleCount + (kidsEnabled ? (subscription.kidsCount || 0) : 0) }, (_, personIndex) => (
           <View key={personIndex} style={[styles.card, { backgroundColor: theme.cardColors[2].bg, borderColor: theme.cardColors[2].border }]}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 16 }}>
                <Ionicons name="person-outline" size={18} color={theme.cardColors[2].accent} />
-               <Text style={[styles.sectionTitle, { marginBottom: 0, fontSize: 16, color: theme.cardColors[2].accent }]}>{UI_TEXT.personAbbr}{personIndex + 1}</Text>
+               <Text style={[styles.sectionTitle, { marginBottom: 0, fontSize: 16, color: theme.cardColors[2].accent }]}>{getMemberLegend(personIndex, subscription.peopleCount, !!kidsEnabled)}</Text>
             </View>
             <View style={styles.personDays}>
               {activeDays.map((day) => {
@@ -275,12 +341,12 @@ export function DetailsScreen() {
                     <View style={{ flexDirection: "row", gap: 4, flexWrap: 'wrap', justifyContent: 'center' }}>
                        {mealParts.map((p, i) => (
                           <View key={i} style={{ position: 'relative' }}>
-                             <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: theme.cardColors[2].accent, alignItems: "center", justifyContent: "center" }}>
-                                <Text style={{ color: theme.colors.white, fontSize: 8, fontWeight: "900" }}>{p.label}</Text>
+                             <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: theme.cardColors[2].accent, alignItems: "center", justifyContent: "center" }}>
+                                <Text style={{ color: theme.colors.white, fontSize: 10, fontWeight: "900" }}>{p.label}</Text>
                              </View>
                              {p.parcel && (
-                                <View style={{ position: 'absolute', top: -5, right: -5, width: 10, height: 10, borderRadius: 5, backgroundColor: theme.colors.secondary, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: theme.colors.white }}>
-                                   <Text style={{ color: theme.colors.white, fontSize: 6, fontWeight: "900" }}>P</Text>
+                                <View style={{ position: 'absolute', top: -6, right: -6, width: 12, height: 12, borderRadius: 6, backgroundColor: theme.colors.secondary, alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: theme.colors.white, zIndex: 1, elevation: 2 }}>
+                                   <Text style={{ color: theme.colors.white, fontSize: 7, fontWeight: "900" }}>{UI_TEXT.parcelAbbr}</Text>
                                 </View>
                              )}
                           </View>
@@ -297,11 +363,11 @@ export function DetailsScreen() {
         {/* Collection Matrix */}
         <Text style={[styles.sectionTitle, { marginBottom: 12 }]}>{UI_TEXT.foodTakenByPerson}</Text>
         <Text style={styles.helper}>{UI_TEXT.foodTakenHelper}</Text>
-        {Array.from({ length: subscription.peopleCount }, (_, personIndex) => (
+        {Array.from({ length: subscription.peopleCount + (kidsEnabled ? (subscription.kidsCount || 0) : 0) }, (_, personIndex) => (
           <View key={personIndex} style={[styles.card, { backgroundColor: theme.cardColors[0].bg, borderColor: theme.cardColors[0].border }]}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 16 }}>
                <Ionicons name="checkmark-circle-outline" size={18} color={theme.cardColors[0].accent} />
-               <Text style={[styles.sectionTitle, { marginBottom: 0, fontSize: 16, color: theme.cardColors[0].accent }]}>{UI_TEXT.personAbbr}{personIndex + 1}</Text>
+               <Text style={[styles.sectionTitle, { marginBottom: 0, fontSize: 16, color: theme.cardColors[0].accent }]}>{getMemberLegend(personIndex, subscription.peopleCount, !!kidsEnabled)}</Text>
             </View>
             <View style={styles.personDays}>
               {activeDays.map((day) => {
@@ -312,9 +378,9 @@ export function DetailsScreen() {
                 const getTakenParts = () => {
                    if (!taken) return [];
                    const res = [];
-                   if (taken[MealType.BREAKFAST]) res.push({ label: UI_TEXT.breakfastAbbr, parcel: slots?.breakfastParcel });
-                   if (taken[MealType.LUNCH]) res.push({ label: UI_TEXT.lunchAbbr, parcel: slots?.lunchParcel });
-                   if (taken[MealType.DINNER]) res.push({ label: UI_TEXT.dinnerAbbr, parcel: slots?.dinnerParcel });
+                   if (taken[MealType.BREAKFAST]) res.push({ label: UI_TEXT.breakfastAbbr, parcel: taken?.breakfastParcel });
+                   if (taken[MealType.LUNCH]) res.push({ label: UI_TEXT.lunchAbbr, parcel: taken?.lunchParcel });
+                   if (taken[MealType.DINNER]) res.push({ label: UI_TEXT.dinnerAbbr, parcel: taken?.dinnerParcel });
                    return res;
                 };
 
@@ -333,12 +399,12 @@ export function DetailsScreen() {
                     <View style={{ flexDirection: "row", gap: 4, flexWrap: 'wrap', justifyContent: 'center' }}>
                        {takenParts.map((p, i) => (
                           <View key={i} style={{ position: 'relative' }}>
-                             <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: theme.cardColors[0].accent, alignItems: "center", justifyContent: "center" }}>
-                                <Text style={{ color: theme.colors.white, fontSize: 8, fontWeight: "900" }}>{p.label}</Text>
+                             <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: theme.cardColors[0].accent, alignItems: "center", justifyContent: "center" }}>
+                                <Text style={{ color: theme.colors.white, fontSize: 10, fontWeight: "900" }}>{p.label}</Text>
                              </View>
                              {p.parcel && (
-                                <View style={{ position: 'absolute', top: -5, right: -5, width: 10, height: 10, borderRadius: 5, backgroundColor: theme.colors.secondary, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: theme.colors.white }}>
-                                   <Text style={{ color: theme.colors.white, fontSize: 6, fontWeight: "900" }}>P</Text>
+                                <View style={{ position: 'absolute', top: -6, right: -6, width: 12, height: 12, borderRadius: 6, backgroundColor: theme.colors.secondary, alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: theme.colors.white, zIndex: 1, elevation: 2 }}>
+                                   <Text style={{ color: theme.colors.white, fontSize: 7, fontWeight: "900" }}>{UI_TEXT.parcelAbbr}</Text>
                                 </View>
                              )}
                           </View>

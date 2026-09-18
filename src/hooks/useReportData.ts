@@ -25,7 +25,8 @@ export function useReportData(
   foodMenu: FoodMenu,
   dayConfig: ConfigDay[],
   guestEnabled: boolean,
-  paymentConfig: any
+  paymentConfig: any,
+  kidsEnabled: boolean
 ) {
   const sortedActiveDays = useMemo(() => {
     const active = getActiveDays(dayConfig);
@@ -47,10 +48,16 @@ export function useReportData(
       const totals = {
         veg: 0,
         nonVeg: 0,
+        kidsVeg: 0,
+        kidsNonVeg: 0,
         vegTaken: 0,
         nonVegTaken: 0,
+        kidsVegTaken: 0,
+        kidsNonVegTaken: 0,
         vegParcel: 0,
         nonVegParcel: 0,
+        kidsVegParcel: 0,
+        kidsNonVegParcel: 0,
         guestVeg: 0,
         guestNonVeg: 0,
         guestVegTaken: 0,
@@ -60,9 +67,11 @@ export function useReportData(
       subscriptions.forEach((sub) => {
         const slots = sub.mealSlots[day] || [];
         const taken = sub.takenByPerson[day] || [];
+        const adultCount = sub.peopleCount;
 
         slots.forEach((s, idx) => {
           if (!s) return;
+          const isKid = kidsEnabled && idx >= adultCount;
 
           const meals = [
             { choice: s[MealType.BREAKFAST], type: MealType.BREAKFAST },
@@ -78,19 +87,32 @@ export function useReportData(
             if (!isDietaryEnabled(day, type, diet, dayConfig)) return;
 
             const isVeg = choice === DietaryOption.VEG;
-            const hasTaken = taken[idx]?.[type];
+            const hasTaken = taken[idx]?.[type] || taken[idx]?.[`${type}Parcel` as keyof typeof s];
 
             if (isVeg) {
-              totals.veg += 1;
-              if (hasTaken) totals.vegTaken += 1;
+              if (isKid) totals.kidsVeg += 1;
+              else totals.veg += 1;
+              if (hasTaken) {
+                if (isKid) totals.kidsVegTaken += 1;
+                else totals.vegTaken += 1;
+              }
             } else {
-              totals.nonVeg += 1;
-              if (hasTaken) totals.nonVegTaken += 1;
+              if (isKid) totals.kidsNonVeg += 1;
+              else totals.nonVeg += 1;
+              if (hasTaken) {
+                if (isKid) totals.kidsNonVegTaken += 1;
+                else totals.nonVegTaken += 1;
+              }
             }
 
             if (isParcelEnabled(day, type, dayConfig) && s[`${type}Parcel` as keyof typeof s]) {
-              if (isVeg) totals.vegParcel += 1;
-              else totals.nonVegParcel += 1;
+              if (isVeg) {
+                if (isKid) totals.kidsVegParcel += 1;
+                else totals.vegParcel += 1;
+              } else {
+                if (isKid) totals.kidsNonVegParcel += 1;
+                else totals.nonVegParcel += 1;
+              }
             }
           });
         });
@@ -119,10 +141,16 @@ export function useReportData(
         [MealType.BREAKFAST]: {
           veg: 0,
           nonVeg: 0,
+          kidsVeg: 0,
+          kidsNonVeg: 0,
           vegTaken: 0,
           nonVegTaken: 0,
+          kidsVegTaken: 0,
+          kidsNonVegTaken: 0,
           vegParcel: 0,
           nonVegParcel: 0,
+          kidsVegParcel: 0,
+          kidsNonVegParcel: 0,
           guestVeg: 0,
           guestNonVeg: 0,
           guestVegTaken: 0,
@@ -131,10 +159,16 @@ export function useReportData(
         [MealType.LUNCH]: {
           veg: 0,
           nonVeg: 0,
+          kidsVeg: 0,
+          kidsNonVeg: 0,
           vegTaken: 0,
           nonVegTaken: 0,
+          kidsVegTaken: 0,
+          kidsNonVegTaken: 0,
           vegParcel: 0,
           nonVegParcel: 0,
+          kidsVegParcel: 0,
+          kidsNonVegParcel: 0,
           guestVeg: 0,
           guestNonVeg: 0,
           guestVegTaken: 0,
@@ -143,10 +177,16 @@ export function useReportData(
         [MealType.DINNER]: {
           veg: 0,
           nonVeg: 0,
+          kidsVeg: 0,
+          kidsNonVeg: 0,
           vegTaken: 0,
           nonVegTaken: 0,
+          kidsVegTaken: 0,
+          kidsNonVegTaken: 0,
           vegParcel: 0,
           nonVegParcel: 0,
+          kidsVegParcel: 0,
+          kidsNonVegParcel: 0,
           guestVeg: 0,
           guestNonVeg: 0,
           guestVegTaken: 0,
@@ -157,10 +197,12 @@ export function useReportData(
       subscriptions.forEach((sub) => {
         const slots = sub.mealSlots[day] || [];
         const taken = sub.takenByPerson[day] || [];
+        const adultCount = sub.peopleCount;
 
         slots.forEach((s, idx) => {
           const t = taken[idx];
           if (!s) return;
+          const isKid = kidsEnabled && idx >= adultCount;
 
           [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].forEach((mKey) => {
             const choice = s[mKey];
@@ -171,19 +213,34 @@ export function useReportData(
             if (!isDietaryEnabled(day, mKey, diet, dayConfig)) return;
 
             const isVeg = choice === DietaryOption.VEG;
+            const isTaken = t?.[mKey] || t?.[`${mKey}Parcel` as keyof typeof s];
+
             if (isVeg) {
-              meals[mKey].veg += 1;
-              if (t?.[mKey]) meals[mKey].vegTaken += 1;
+              if (isKid) meals[mKey].kidsVeg += 1;
+              else meals[mKey].veg += 1;
+              if (isTaken) {
+                if (isKid) meals[mKey].kidsVegTaken += 1;
+                else meals[mKey].vegTaken += 1;
+              }
             } else {
-              meals[mKey].nonVeg += 1;
-              if (t?.[mKey]) meals[mKey].nonVegTaken += 1;
+              if (isKid) meals[mKey].kidsNonVeg += 1;
+              else meals[mKey].nonVeg += 1;
+              if (isTaken) {
+                if (isKid) meals[mKey].kidsNonVegTaken += 1;
+                else meals[mKey].nonVegTaken += 1;
+              }
             }
             if (
               isParcelEnabled(day, mKey, dayConfig) &&
               s[`${mKey}Parcel` as keyof typeof s]
             ) {
-              if (isVeg) meals[mKey].vegParcel += 1;
-              else meals[mKey].nonVegParcel += 1;
+              if (isVeg) {
+                if (isKid) meals[mKey].kidsVegParcel += 1;
+                else meals[mKey].vegParcel += 1;
+              } else {
+                if (isKid) meals[mKey].kidsNonVegParcel += 1;
+                else meals[mKey].nonVegParcel += 1;
+              }
             }
           });
         });
@@ -217,8 +274,11 @@ export function useReportData(
             const meals = getSortedMealKeys(day, dayConfig)
               .filter((m) => isMealEnabled(day, m, dayConfig))
               .map((m) => {
-                let veg = 0, nonVeg = 0, vegTaken = 0, nonVegTaken = 0, vegParcel = 0, nonVegParcel = 0;
+                let veg = 0, nonVeg = 0, kidsVeg = 0, kidsNonVeg = 0;
+                let vegTaken = 0, nonVegTaken = 0, kidsVegTaken = 0, kidsNonVegTaken = 0;
+                let vegParcel = 0, nonVegParcel = 0, kidsVegParcel = 0, kidsNonVegParcel = 0;
 
+                const adultCount = sub.peopleCount;
                 slots.forEach((s, idx) => {
                   const choice = s[m];
                   if (choice === DietaryOption.NONE) return;
@@ -228,23 +288,36 @@ export function useReportData(
                   if (!isDietaryEnabled(day, m, diet, dayConfig)) return;
 
                   const t = taken[idx];
-                  const isTaken = !!t?.[m];
+                  const isTaken = !!t?.[m] || !!t?.[`${m}Parcel` as keyof typeof s];
                   const isParcel = isParcelEnabled(day, m, dayConfig) && !!s[`${m}Parcel` as keyof typeof s];
+                  const isKid = kidsEnabled && idx >= adultCount;
 
                   if (choice === DietaryOption.VEG) {
-                    veg++;
-                    if (isTaken) vegTaken++;
-                    if (isParcel) vegParcel++;
+                    if (isKid) {
+                      kidsVeg++;
+                      if (isTaken) kidsVegTaken++;
+                      if (isParcel) kidsVegParcel++;
+                    } else {
+                      veg++;
+                      if (isTaken) vegTaken++;
+                      if (isParcel) vegParcel++;
+                    }
                   } else {
-                    nonVeg++;
-                    if (isTaken) nonVegTaken++;
-                    if (isParcel) nonVegParcel++;
+                    if (isKid) {
+                      kidsNonVeg++;
+                      if (isTaken) kidsNonVegTaken++;
+                      if (isParcel) kidsNonVegParcel++;
+                    } else {
+                      nonVeg++;
+                      if (isTaken) nonVegTaken++;
+                      if (isParcel) nonVegParcel++;
+                    }
                   }
                 });
 
-                return { type: m, veg, nonVeg, vegTaken, nonVegTaken, vegParcel, nonVegParcel };
+                return { type: m, veg, nonVeg, kidsVeg, kidsNonVeg, vegTaken, nonVegTaken, kidsVegTaken, kidsNonVegTaken, vegParcel, nonVegParcel, kidsVegParcel, kidsNonVegParcel };
               })
-              .filter((m) => m.veg + m.nonVeg > 0);
+              .filter((m) => m.veg + m.nonVeg + m.kidsVeg + m.kidsNonVeg > 0);
 
             return { day, meals };
           })
@@ -255,11 +328,12 @@ export function useReportData(
           flat: sub.flat,
           block: sub.block,
           people: sub.peopleCount,
+          kids: sub.kidsCount || 0,
           amount: sub.amount,
           dayStats,
         };
       })
-      .sort((a, b) => a.block.localeCompare(b.block, undefined, { numeric: true }) || a.flat.localeCompare(b.flat, undefined, { numeric: true }));
+      .sort((a, b) => (a.block || "").localeCompare(b.block || "", undefined, { numeric: true, sensitivity: 'base' }) || (a.flat || "").localeCompare(b.flat || "", undefined, { numeric: true, sensitivity: 'base' }));
   }, [subscriptions, dayConfig, activeDays]);
 
   const paymentData = useMemo(() => {
@@ -296,32 +370,34 @@ export function useReportData(
           const dayMenu = foodMenu[dayId];
           const slots = sub.mealSlots[dayId] || [];
 
-          slots.forEach((personSlot) => {
+          slots.forEach((personSlot, idx) => {
+            const isKid = kidsEnabled && idx >= sub.peopleCount;
+
             // Breakfast
             if (personSlot[MealType.BREAKFAST] === DietaryOption.VEG) {
-              subFood += Number(dayMenu?.[MealType.BREAKFAST]?.vegPrice || dayConf[MealType.BREAKFAST]?.vegPrice || 0);
-              if (personSlot.breakfastParcel) subParcel += Number(dayMenu?.[MealType.BREAKFAST]?.vegParcelPrice || dayConf[MealType.BREAKFAST]?.vegParcelPrice || 0);
+              subFood += Number((isKid ? dayMenu?.[MealType.BREAKFAST]?.kidsVegPrice : dayMenu?.[MealType.BREAKFAST]?.vegPrice) || dayConf[MealType.BREAKFAST]?.vegPrice || 0);
+              if (personSlot.breakfastParcel) subParcel += Number((isKid ? dayMenu?.[MealType.BREAKFAST]?.kidsVegParcelPrice : dayMenu?.[MealType.BREAKFAST]?.vegParcelPrice) || dayConf[MealType.BREAKFAST]?.vegParcelPrice || 0);
             } else if (personSlot[MealType.BREAKFAST] === DietaryOption.NON_VEG) {
-              subFood += Number(dayMenu?.[MealType.BREAKFAST]?.nonVegPrice || dayConf[MealType.BREAKFAST]?.nonVegPrice || 0);
-              if (personSlot.breakfastParcel) subParcel += Number(dayMenu?.[MealType.BREAKFAST]?.nonVegParcelPrice || dayConf[MealType.BREAKFAST]?.nonVegParcelPrice || 0);
+              subFood += Number((isKid ? dayMenu?.[MealType.BREAKFAST]?.kidsNonVegPrice : dayMenu?.[MealType.BREAKFAST]?.nonVegPrice) || dayConf[MealType.BREAKFAST]?.nonVegPrice || 0);
+              if (personSlot.breakfastParcel) subParcel += Number((isKid ? dayMenu?.[MealType.BREAKFAST]?.kidsNonVegParcelPrice : dayMenu?.[MealType.BREAKFAST]?.nonVegParcelPrice) || dayConf[MealType.BREAKFAST]?.nonVegParcelPrice || 0);
             }
 
             // Lunch
             if (personSlot[MealType.LUNCH] === DietaryOption.VEG) {
-              subFood += Number(dayMenu?.[MealType.LUNCH]?.vegPrice || dayConf[MealType.LUNCH]?.vegPrice || 0);
-              if (personSlot.lunchParcel) subParcel += Number(dayMenu?.[MealType.LUNCH]?.vegParcelPrice || dayConf[MealType.LUNCH]?.vegParcelPrice || 0);
+              subFood += Number((isKid ? dayMenu?.[MealType.LUNCH]?.kidsVegPrice : dayMenu?.[MealType.LUNCH]?.vegPrice) || dayConf[MealType.LUNCH]?.vegPrice || 0);
+              if (personSlot.lunchParcel) subParcel += Number((isKid ? dayMenu?.[MealType.LUNCH]?.kidsVegParcelPrice : dayMenu?.[MealType.LUNCH]?.vegParcelPrice) || dayConf[MealType.LUNCH]?.vegParcelPrice || 0);
             } else if (personSlot[MealType.LUNCH] === DietaryOption.NON_VEG) {
-              subFood += Number(dayMenu?.[MealType.LUNCH]?.nonVegPrice || dayConf[MealType.LUNCH]?.nonVegPrice || 0);
-              if (personSlot.lunchParcel) subParcel += Number(dayMenu?.[MealType.LUNCH]?.nonVegParcelPrice || dayConf[MealType.LUNCH]?.nonVegParcelPrice || 0);
+              subFood += Number((isKid ? dayMenu?.[MealType.LUNCH]?.kidsNonVegPrice : dayMenu?.[MealType.LUNCH]?.nonVegPrice) || dayConf[MealType.LUNCH]?.nonVegPrice || 0);
+              if (personSlot.lunchParcel) subParcel += Number((isKid ? dayMenu?.[MealType.LUNCH]?.kidsNonVegParcelPrice : dayMenu?.[MealType.LUNCH]?.nonVegParcelPrice) || dayConf[MealType.LUNCH]?.nonVegParcelPrice || 0);
             }
 
             // Dinner
             if (personSlot[MealType.DINNER] === DietaryOption.VEG) {
-              subFood += Number(dayMenu?.[MealType.DINNER]?.vegPrice || dayConf[MealType.DINNER]?.vegPrice || 0);
-              if (personSlot.dinnerParcel) subParcel += Number(dayMenu?.[MealType.DINNER]?.vegParcelPrice || dayConf[MealType.DINNER]?.vegParcelPrice || 0);
+              subFood += Number((isKid ? dayMenu?.[MealType.DINNER]?.kidsVegPrice : dayMenu?.[MealType.DINNER]?.vegPrice) || dayConf[MealType.DINNER]?.vegPrice || 0);
+              if (personSlot.dinnerParcel) subParcel += Number((isKid ? dayMenu?.[MealType.DINNER]?.kidsVegParcelPrice : dayMenu?.[MealType.DINNER]?.vegParcelPrice) || dayConf[MealType.DINNER]?.vegParcelPrice || 0);
             } else if (personSlot[MealType.DINNER] === DietaryOption.NON_VEG) {
-              subFood += Number(dayMenu?.[MealType.DINNER]?.nonVegPrice || dayConf[MealType.DINNER]?.nonVegPrice || 0);
-              if (personSlot.dinnerParcel) subParcel += Number(dayMenu?.[MealType.DINNER]?.nonVegParcelPrice || dayConf[MealType.DINNER]?.nonVegParcelPrice || 0);
+              subFood += Number((isKid ? dayMenu?.[MealType.DINNER]?.kidsNonVegPrice : dayMenu?.[MealType.DINNER]?.nonVegPrice) || dayConf[MealType.DINNER]?.nonVegPrice || 0);
+              if (personSlot.dinnerParcel) subParcel += Number((isKid ? dayMenu?.[MealType.DINNER]?.kidsNonVegParcelPrice : dayMenu?.[MealType.DINNER]?.nonVegParcelPrice) || dayConf[MealType.DINNER]?.nonVegParcelPrice || 0);
             }
           });
         });
@@ -349,7 +425,7 @@ export function useReportData(
         };
       })
       .filter(s => s.total > 0)
-      .sort((a, b) => a.block.localeCompare(b.block, undefined, { numeric: true }) || a.flat.localeCompare(b.flat, undefined, { numeric: true }));
+      .sort((a, b) => (a.block || "").localeCompare(b.block || "", undefined, { numeric: true, sensitivity: 'base' }) || (a.flat || "").localeCompare(b.flat || "", undefined, { numeric: true, sensitivity: 'base' }));
 
     const summaryList = [];
     if (paymentConfig.options.upi) summaryList.push({ mode: PaymentMode.UPI, ...summary[PaymentMode.UPI] });
@@ -372,7 +448,7 @@ export function useReportData(
           if (choice !== DietaryOption.NONE && isMealEnabled(selectedDayId, selectedMealType, dayConfig)) {
             const diet = choice === DietaryOption.VEG ? DietType.VEG : DietType.NON_VEG;
             if (isDietaryEnabled(selectedDayId, selectedMealType, diet, dayConfig)) {
-              if (!taken[idx]?.[selectedMealType]) {
+              if (!taken[idx]?.[selectedMealType] && !taken[idx]?.[`${selectedMealType}Parcel` as keyof typeof s]) {
                 if (choice === DietaryOption.VEG) vegNotTaken++;
                 else nonVegNotTaken++;
               }
@@ -381,12 +457,13 @@ export function useReportData(
         });
 
         return {
-          id: sub.id, block: sub.block, flat: sub.flat,
+          id: sub.id, block: sub.block, flat: sub.flat, mobile: sub.mobile,
           veg: vegNotTaken, nonVeg: nonVegNotTaken, count: vegNotTaken + nonVegNotTaken,
+          kids: sub.kidsCount || 0
         };
       })
       .filter((item) => item.count > 0)
-      .sort((a, b) => a.block.localeCompare(b.block, undefined, { numeric: true }) || a.flat.localeCompare(b.flat, undefined, { numeric: true }));
+      .sort((a, b) => (a.block || "").localeCompare(b.block || "", undefined, { numeric: true, sensitivity: 'base' }) || (a.flat || "").localeCompare(b.flat || "", undefined, { numeric: true, sensitivity: 'base' }));
   };
 
   return {

@@ -4,16 +4,22 @@ import { useStyles } from "../../styles";
 import { useAppTheme } from "../../theme";
 import { UI_TEXT } from "../../strings";
 import { getDayLabel, isDietaryEnabledForDay, isParcelEnabled } from "../../constants";
-import { ConfigDay, MealType, DietType } from "../../types";
+import { ConfigDay, MealType, DietType, AppThemeMode } from "../../types";
 
 interface DayWiseData {
   day: string;
   veg: number;
   nonVeg: number;
+  kidsVeg: number;
+  kidsNonVeg: number;
   vegTaken: number;
   nonVegTaken: number;
+  kidsVegTaken: number;
+  kidsNonVegTaken: number;
   vegParcel: number;
   nonVegParcel: number;
+  kidsVegParcel: number;
+  kidsNonVegParcel: number;
   guestVeg: number;
   guestNonVeg: number;
   guestVegTaken: number;
@@ -23,9 +29,11 @@ interface DayWiseData {
 export function DayWiseReport({
   data,
   dayConfig,
+  kidsEnabled,
 }: {
   data: DayWiseData[];
   dayConfig: ConfigDay[];
+  kidsEnabled: boolean;
 }) {
   const styles = useStyles();
   const { theme } = useAppTheme();
@@ -37,10 +45,10 @@ export function DayWiseReport({
         const nonVegEnabled = isDietaryEnabledForDay(item.day, DietType.NON_VEG, dayConfig);
         const hasParcelSupport = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].some(m => isParcelEnabled(item.day, m, dayConfig));
 
-        const totalVeg = item.veg + item.guestVeg;
-        const totalNonVeg = item.nonVeg + item.guestNonVeg;
-        const totalVegTaken = item.vegTaken + item.guestVegTaken;
-        const totalNonVegTaken = item.nonVegTaken + item.guestNonVegTaken;
+        const totalVeg = item.veg + item.guestVeg + item.kidsVeg;
+        const totalNonVeg = item.nonVeg + item.guestNonVeg + item.kidsNonVeg;
+        const totalVegTaken = item.vegTaken + item.guestVegTaken + item.kidsVegTaken;
+        const totalNonVegTaken = item.nonVegTaken + item.guestNonVegTaken + item.kidsNonVegTaken;
         const totalDemand = totalVeg + totalNonVeg;
         const totalTaken = totalVegTaken + totalNonVegTaken;
         const totalNotTaken = totalDemand - totalTaken;
@@ -50,7 +58,7 @@ export function DayWiseReport({
           <View key={item.day} style={[styles.dashboardCard, { backgroundColor: colorScheme.bg, borderColor: colorScheme.border, borderWidth: 1.5 }]}>
             <View style={[styles.dashboardCardTop, { borderBottomWidth: 1, borderBottomColor: colorScheme.border, paddingBottom: 16 }]}>
               <Text style={[styles.dashboardDay, { color: colorScheme.accent }]}>{getDayLabel(item.day, dayConfig)}</Text>
-              <View style={[styles.pill, { backgroundColor: colorScheme.accent + "20" }]}>
+              <View style={[styles.pill, { backgroundColor: colorScheme.accentLight }]}>
                 <Text style={[styles.pillText, { color: colorScheme.accent }]}>{totalDemand} {UI_TEXT.platesDemand}</Text>
               </View>
             </View>
@@ -58,8 +66,22 @@ export function DayWiseReport({
               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
                 <Text style={{ fontSize: 15, fontWeight: "700", color: theme.colors.textSecondary }}>{UI_TEXT.totalDemand}</Text>
                 <View style={{ alignItems: 'flex-end' }}>
-                  {vegEnabled && <Text style={{ fontSize: 13, fontWeight: "600", color: theme.colors.veg, marginBottom: 2 }}>{UI_TEXT.veg}: {totalVeg}</Text>}
-                  {nonVegEnabled && <Text style={{ fontSize: 13, fontWeight: "600", color: theme.colors.nonVeg }}>{UI_TEXT.nonVeg}: {totalNonVeg}</Text>}
+                  {vegEnabled && (
+                    <View style={{ alignItems: 'flex-end', marginBottom: 4 }}>
+                      <Text style={{ fontSize: 13, fontWeight: "600", color: theme.colors.veg }}>{UI_TEXT.veg}{UI_TEXT.colon}{UI_TEXT.space}{totalVeg}</Text>
+                      {kidsEnabled && (
+                        <Text style={{ fontSize: 10, fontWeight: "700", color: theme.colors.textMuted }}>{UI_TEXT.openParen}{UI_TEXT.adultAbbrLabel}{UI_TEXT.colon}{item.veg}{UI_TEXT.comma}{UI_TEXT.space}{UI_TEXT.kidsAbbrLabel}{UI_TEXT.colon}{item.kidsVeg}{UI_TEXT.closeParen}</Text>
+                      )}
+                    </View>
+                  )}
+                  {nonVegEnabled && (
+                    <View style={{ alignItems: 'flex-end' }}>
+                      <Text style={{ fontSize: 13, fontWeight: "600", color: theme.colors.nonVeg }}>{UI_TEXT.nonVeg}{UI_TEXT.colon}{UI_TEXT.space}{totalNonVeg}</Text>
+                      {kidsEnabled && (
+                        <Text style={{ fontSize: 10, fontWeight: "700", color: theme.colors.textMuted }}>{UI_TEXT.openParen}{UI_TEXT.adultAbbrLabel}{UI_TEXT.colon}{item.nonVeg}{UI_TEXT.comma}{UI_TEXT.space}{UI_TEXT.kidsAbbrLabel}{UI_TEXT.colon}{item.kidsNonVeg}{UI_TEXT.closeParen}</Text>
+                      )}
+                    </View>
+                  )}
                 </View>
               </View>
               {/* Meal Taken Section */}
@@ -75,7 +97,7 @@ export function DayWiseReport({
               {hasParcelSupport && (item.vegParcel + item.nonVegParcel) > 0 && (
                 <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", borderTopWidth: 1, borderTopColor: colorScheme.border, paddingTop: 16 }}>
                   <Text style={{ fontSize: 15, fontWeight: "700", color: theme.colors.textSecondary }}>{UI_TEXT.totalParcels}</Text>
-                  <Text style={{ fontSize: 18, fontWeight: "800", color: theme.colors.primary }}>{item.vegParcel + item.nonVegParcel} {UI_TEXT.parcelAbbr}</Text>
+                  <Text style={{ fontSize: 18, fontWeight: "800", color: theme.colors.primary }}>{item.vegParcel + item.nonVegParcel}{UI_TEXT.space}{UI_TEXT.parcelAbbr}</Text>
                 </View>
               )}
             </View>

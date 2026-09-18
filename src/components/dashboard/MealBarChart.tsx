@@ -12,17 +12,22 @@ export function MealBarChart(props: MealMetricProps) {
   const { theme } = useAppTheme();
   const {
     day, type, total, veg, nonVeg, parcel, parcelTaken, totalVegTaken, totalNonVegTaken,
-    guestVeg, guestNonVeg, guestVegTaken, guestNonVegTaken, config, guestEnabled, isBothEnabled
+    guestVeg, guestNonVeg, guestVegTaken, guestNonVegTaken, config, kidsEnabled, guestEnabled, isBothEnabled,
+    kidsTotal, kidsTaken, kidsVeg, kidsNonVeg, kidsVegTaken, kidsNonVegTaken, totalMealTaken
   } = props;
 
   const chartHeight = 160;
   const barContainerHeight = chartHeight - 40;
 
+  const hasKids = kidsEnabled;
+
   const dataValues = [
     total, veg, nonVeg, parcel,
     totalVegTaken, totalNonVegTaken,
     guestVeg + guestNonVeg,
-    guestVegTaken + guestNonVegTaken
+    guestVegTaken + guestNonVegTaken,
+    kidsTotal,
+    kidsTaken
   ];
   const maxVal = Math.max(...dataValues, 1);
 
@@ -35,44 +40,57 @@ export function MealBarChart(props: MealMetricProps) {
         <View style={{ height: barContainerHeight, width: '100%', alignItems: 'flex-end', justifyContent: 'center', flexDirection: 'row', gap: 4 }}>
           {secondaryValue !== undefined ? (
              <>
-               <View style={{ width: 14, height: Math.max(height, 2), backgroundColor: color + "30", borderRadius: 4, position: 'relative' }}>
-                  <Text style={{ position: 'absolute', top: -16, width: 40, left: -13, textAlign: 'center', fontSize: 9, fontWeight: '800', color: theme.colors.textSecondary }}>{value}</Text>
+               <View style={{ width: 10, height: Math.max(height, 2), backgroundColor: color + "30", borderRadius: 4, position: 'relative' }}>
+                  <Text style={{ position: 'absolute', top: -16, width: 40, left: -15, textAlign: 'center', fontSize: 8, fontWeight: '800', color: theme.colors.textSecondary }}>{value}</Text>
                </View>
-               <View style={{ width: 14, height: Math.max(secHeight, 2), backgroundColor: color, borderRadius: 4, position: 'relative' }}>
-                  <Text style={{ position: 'absolute', top: -16, width: 40, left: -13, textAlign: 'center', fontSize: 9, fontWeight: '900', color: color }}>{secondaryValue}</Text>
+               <View style={{ width: 10, height: Math.max(secHeight, 2), backgroundColor: color, borderRadius: 4, position: 'relative' }}>
+                  <Text style={{ position: 'absolute', top: -16, width: 40, left: -15, textAlign: 'center', fontSize: 8, fontWeight: '900', color: color }}>{secondaryValue}</Text>
                </View>
              </>
           ) : (
-            <View style={{ width: 24, height: Math.max(height, 2), backgroundColor: color, borderRadius: 4, position: 'relative' }}>
-               <Text style={{ position: 'absolute', top: -16, width: 40, left: -8, textAlign: 'center', fontSize: 10, fontWeight: '900', color: color }}>{value}</Text>
+            <View style={{ width: 16, height: Math.max(height, 2), backgroundColor: color, borderRadius: 4, position: 'relative' }}>
+               <Text style={{ position: 'absolute', top: -16, width: 40, left: -12, textAlign: 'center', fontSize: 9, fontWeight: '900', color: color }}>{value}</Text>
             </View>
           )}
         </View>
-        <Text style={{ fontSize: 9, fontWeight: '700', color: theme.colors.textMuted, marginTop: 8, textAlign: 'center' }}>
+        <Text style={{ fontSize: 8, fontWeight: '700', color: theme.colors.textMuted, marginTop: 8, textAlign: 'center' }}>
           {(label || "").toUpperCase()}
         </Text>
       </View>
     );
   };
 
+  const guestTotal = guestVeg + guestNonVeg;
+  const guestTaken = guestVegTaken + guestNonVegTaken;
+  const adultsTotal = total - kidsTotal - guestTotal;
+  const adultsTaken = totalMealTaken - kidsTaken - guestTaken;
+
   return (
     <View style={{ paddingVertical: 10 }}>
-      <View style={{ flexDirection: 'row', height: chartHeight, alignItems: 'flex-end', gap: 12 }}>
+      <View style={{ flexDirection: 'row', height: chartHeight, alignItems: 'flex-end', gap: 8 }}>
         {isBothEnabled ? (
           <>
-            <Bar label={UI_TEXT.veg} value={veg} color={theme.colors.veg} secondaryValue={totalVegTaken} />
-            <Bar label={UI_TEXT.nonVeg} value={nonVeg} color={theme.colors.nonVeg} secondaryValue={totalNonVegTaken} />
+            <Bar label={kidsEnabled ? `${UI_TEXT.adultsAbbr}${UI_TEXT.space}${UI_TEXT.veg}` : UI_TEXT.veg} value={veg - kidsVeg} color={theme.colors.veg} secondaryValue={totalVegTaken - kidsVegTaken} />
+            <Bar label={kidsEnabled ? `${UI_TEXT.adultsAbbr}${UI_TEXT.space}${UI_TEXT.nonVeg}` : UI_TEXT.nonVeg} value={nonVeg - kidsNonVeg} color={theme.colors.nonVeg} secondaryValue={totalNonVegTaken - kidsNonVegTaken} />
+            {hasKids && (
+               <Bar label={kidsTotal === 1 ? UI_TEXT.kid : UI_TEXT.kids} value={kidsTotal} color={theme.colors.primary} secondaryValue={kidsTaken} />
+            )}
           </>
         ) : (
-          <Bar label={UI_TEXT.total} value={total} color={theme.colors.primary} secondaryValue={totalVegTaken + totalNonVegTaken} />
+          <>
+            <Bar label={hasKids ? (adultsTotal === 1 ? UI_TEXT.adult : UI_TEXT.adults) : UI_TEXT.total} value={adultsTotal} color={theme.colors.veg} secondaryValue={adultsTaken} />
+            {hasKids && (
+               <Bar label={kidsTotal === 1 ? UI_TEXT.kid : UI_TEXT.kids} value={kidsTotal} color={theme.colors.primary} secondaryValue={kidsTaken} />
+            )}
+          </>
         )}
 
-        {guestEnabled && (guestVeg + guestNonVeg > 0) && (
+        {guestEnabled && (guestTotal > 0) && (
           <Bar
             label={UI_TEXT.guest}
-            value={guestVeg + guestNonVeg}
+            value={guestTotal}
             color={theme.colors.info || theme.colors.secondary}
-            secondaryValue={guestVegTaken + guestNonVegTaken}
+            secondaryValue={guestTaken}
           />
         )}
 
@@ -90,11 +108,11 @@ export function MealBarChart(props: MealMetricProps) {
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 16, paddingTop: 12, borderTopWidth: 1, borderTopColor: theme.colors.border }}>
          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <View style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: "#99999930" }} />
-            <Text style={{ fontSize: 10, fontWeight: '600', color: theme.colors.textSecondary }}>{UI_TEXT.planned || "Planned"}</Text>
+            <Text style={{ fontSize: 10, fontWeight: '600', color: theme.colors.textSecondary }}>{UI_TEXT.planned}</Text>
          </View>
          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <View style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: "#999999" }} />
-            <Text style={{ fontSize: 10, fontWeight: '600', color: theme.colors.textSecondary }}>{UI_TEXT.taken || "Taken"}</Text>
+            <Text style={{ fontSize: 10, fontWeight: '600', color: theme.colors.textSecondary }}>{UI_TEXT.taken}</Text>
          </View>
       </View>
     </View>

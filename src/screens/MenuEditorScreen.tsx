@@ -2,7 +2,7 @@
  * Administrative tool for managing the global festival food menu.
  * Allows adding and removing items from Breakfast, Lunch, and Dinner slots.
  */
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -11,8 +11,9 @@ import {
   StatusBar,
 } from "react-native";
 import { useStyles } from "../styles";
-import { useAppTheme } from "../theme";
+import { useAppTheme, StatusBarStyleMode } from "../theme";
 import { UI_TEXT } from "../strings";
+import { AppThemeMode } from "../types";
 import {
   getDayLabel,
   isMealEnabled,
@@ -35,10 +36,13 @@ import { useUI } from "../context/UIContext";
 export function MenuEditorScreen() {
   const { handleLogout } = useAuth();
   const {
-    foodMenu: menu, dayConfig: config, seasonEnabled, foodPriceEnabled, updateMenu
+    foodMenu: menu, dayConfig: config, seasonEnabled, foodPriceEnabled, updateMenu, updateMealMenu, kidsEnabled
   } = useDatabase();
   const { showAlert } = useUI();
-  const { navigate, goBack } = useAppNavigation();
+  const { navigate, goBack, targetDay, targetMeal, setTargetDay, setTargetMeal } = useAppNavigation();
+
+  const scrollRef = useRef<ScrollView>(null);
+  const layouts = useRef<Record<string, number>>({});
 
   const styles = useStyles();
   const { theme, themeType } = useAppTheme();
@@ -72,13 +76,46 @@ export function MenuEditorScreen() {
   /**
    * Local update handler for meal slot items.
    */
-  const updateMeal = (day: Day, meal: keyof DayMenu, next: MealMenu) => {
-    const dayData = localMenu[day] || {
-      [MealType.BREAKFAST]: emptyMeal,
-      [MealType.LUNCH]: emptyMeal,
-      [MealType.DINNER]: emptyMeal,
-    };
-    setLocalMenu({ ...localMenu, [day]: { ...dayData, [meal]: next } });
+  const updateMeal = (day: Day, meal: MealType, next: MealMenu) => {
+    setLocalMenu(prev => ({
+      ...prev,
+      [day]: {
+        ...(prev[day] || {
+          [MealType.BREAKFAST]: emptyMeal,
+          [MealType.LUNCH]: emptyMeal,
+          [MealType.DINNER]: emptyMeal,
+        }),
+        [meal]: next
+      }
+    }));
+  };
+
+  const isMealDirty = (day: Day, meal: MealType) => {
+    const original = menu[day]?.[meal] || emptyMeal;
+    const current = localMenu[day]?.[meal] || emptyMeal;
+    return JSON.stringify(original) !== JSON.stringify(current);
+  };
+
+  const hasAnyChanges = useMemo(() => {
+    return JSON.stringify(menu) !== JSON.stringify(localMenu);
+  }, [menu, localMenu]);
+
+  const handleIndividualSave = async (day: Day, meal: MealType) => {
+    setSaving(true);
+    try {
+      await updateMealMenu(day, meal, localMenu[day][meal]);
+      showAlert(UI_TEXT.success, UI_TEXT.menuUpdated, [
+        { text: UI_TEXT.ok, onPress: () => {
+          setTargetDay(day);
+          setTargetMeal(meal);
+          navigate(AppScreen.VIEW_MENU);
+        }}
+      ]);
+    } catch (err) {
+      showAlert(UI_TEXT.error, UI_TEXT.couldNotUpdateMenu);
+    } finally {
+      setSaving(false);
+    }
   };
 
   /**
@@ -88,12 +125,25 @@ export function MenuEditorScreen() {
     setSaving(true);
     await onSave(localMenu);
     setSaving(false);
-    showAlert(UI_TEXT.success, UI_TEXT.menuUpdated);
+    showAlert(UI_TEXT.success, UI_TEXT.menuUpdated, [
+      { text: UI_TEXT.ok, onPress: () => navigate(AppScreen.VIEW_MENU) }
+    ]);
   };
+
+  useEffect(() => {
+    if (targetDay && layouts.current[targetDay] !== undefined) {
+      setTimeout(() => {
+        scrollRef.current?.scrollTo({ y: layouts.current[targetDay], animated: true });
+        // Clear targets after scrolling
+        setTargetDay("");
+        setTargetMeal(null);
+      }, 500);
+    }
+  }, [targetDay]);
 
   return (
     <View style={styles.root}>
-      <StatusBar style={themeType === "dark" ? "light" : "dark"} />
+      <StatusBar style={themeType === AppThemeMode.DARK ? StatusBarStyleMode.LIGHT : StatusBarStyleMode.DARK} />
       <View style={styles.header}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -106,6 +156,7 @@ export function MenuEditorScreen() {
         <Text style={styles.subtitle}>{UI_TEXT.menuEditorSubtitle}</Text>
       </View>
       <ScrollView
+        ref={scrollRef}
         style={{ flex: 1, width: "100%" }}
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
@@ -118,8 +169,19 @@ export function MenuEditorScreen() {
             [MealType.DINNER]: emptyMeal,
           };
           const colorScheme = theme.cardColors[index % theme.cardColors.length];
+          const isTargeted = day === targetDay;
+
           return (
-            <View key={day} style={[styles.dashboardCard, { backgroundColor: colorScheme.bg, borderColor: colorScheme.border, borderWidth: 1.5 }]}>
+            <View
+              key={day}
+              onLayout={(e) => {
+                layouts.current[day] = e.nativeEvent.layout.y;
+              }}
+              style={[
+                styles.dashboardCard,
+                { backgroundColor: colorScheme.bg, borderColor: isTargeted ? theme.colors.primary : colorScheme.border, borderWidth: isTargeted ? 2.5 : 1.5 }
+              ]}
+            >
               <Text style={[styles.dashboardDay, { color: colorScheme.accent, marginBottom: 12 }]}>{getDayLabel(day, config)}</Text>
               {getSortedMealKeys(day, config)
                 .filter((mKey) => isMealEnabled(day, mKey, config))
@@ -134,8 +196,11 @@ export function MenuEditorScreen() {
                       config={config}
                       value={dayMenu[mKey] || emptyMeal}
                       onChange={(next) => updateMeal(day, mKey, next)}
-                      disabled={!canEdit || isDone}
+                      onSave={() => handleIndividualSave(day, mKey)}
+                      isDirty={isMealDirty(day, mKey)}
+                      disabled={!canEdit || isDone || saving}
                       foodPriceEnabled={foodPriceEnabled}
+                      kidsEnabled={!!kidsEnabled}
                     />
                   );
                 })}
@@ -147,8 +212,8 @@ export function MenuEditorScreen() {
         {canEdit && (
           <Pressable
             onPress={handleSave}
-            style={[styles.primary, saving && { opacity: 0.7 }]}
-            disabled={saving}
+            style={[styles.primary, (saving || !hasAnyChanges) && { opacity: 0.5 }]}
+            disabled={saving || !hasAnyChanges}
           >
             <ActionLabel
               icon="save-outline"

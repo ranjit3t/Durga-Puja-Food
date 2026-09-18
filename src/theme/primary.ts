@@ -1,7 +1,8 @@
+import { AppThemeMode } from "../types";
 import { AppTheme } from "./types";
 
 export const primaryTheme: AppTheme = {
-  themeType: "primary",
+  themeType: AppThemeMode.LIGHT,
   colors: {
     primary: "#E31837",
     secondary: "#FFB300",
@@ -23,12 +24,12 @@ export const primaryTheme: AppTheme = {
     whatsapp: "#25D366",
   },
   cardColors: [
-    { bg: "#FFF5F5", border: "#FFE3E3", accent: "#E31837" }, // Red
-    { bg: "#E7F5FF", border: "#D0EBFF", accent: "#007BFF" }, // Blue
-    { bg: "#EBFBEE", border: "#D3F9D8", accent: "#28A745" }, // Green
-    { bg: "#FFF4E6", border: "#FFE8CC", accent: "#FD7E14" }, // Orange
-    { bg: "#F8F0FC", border: "#F3D9FA", accent: "#6F42C1" }, // Purple
-    { bg: "#E3FAFC", border: "#C5F6FA", accent: "#17A2B8" }, // Cyan
+    { bg: "#FFF5F5", border: "#FFE3E3", accent: "#E31837", accentLight: "#FFF5F5" }, // Red
+    { bg: "#E7F5FF", border: "#D0EBFF", accent: "#007BFF", accentLight: "#E7F5FF" }, // Blue
+    { bg: "#EBFBEE", border: "#D3F9D8", accent: "#28A745", accentLight: "#EBFBEE" }, // Green
+    { bg: "#FFF4E6", border: "#FFE8CC", accent: "#FD7E14", accentLight: "#FFF4E6" }, // Orange
+    { bg: "#F8F0FC", border: "#F3D9FA", accent: "#6F42C1", accentLight: "#F8F0FC" }, // Purple
+    { bg: "#E3FAFC", border: "#C5F6FA", accent: "#17A2B8", accentLight: "#E3FAFC" }, // Cyan
   ],
   sizes: {
     buttonHeight: 52,

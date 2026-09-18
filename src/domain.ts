@@ -60,7 +60,11 @@ export enum UserRole {
   VENDOR = "vendor",
 }
 
-export type MealAllocation = Record<DietType, number>;
+export type MealAllocation = Record<DietType, number> & {
+  kidsVeg?: number;
+  kidsNonVeg?: number;
+};
+
 export type MealChoice = DietaryOption;
 
 export type MealSlot = Record<MealType, MealChoice> & {
@@ -69,20 +73,32 @@ export type MealSlot = Record<MealType, MealChoice> & {
   dinnerParcel: boolean;
 };
 
-export type TakenState = Record<MealType, boolean>;
+export type TakenState = Record<MealType, boolean> & {
+  breakfastParcel?: boolean;
+  lunchParcel?: boolean;
+  dinnerParcel?: boolean;
+};
 
 export type MealMenu = {
   veg: string[];
   nonVeg: string[];
   vegPrice?: string;
   nonVegPrice?: string;
+  kidsVegPrice?: string;
+  kidsNonVegPrice?: string;
   vegParcelPrice?: string;
   nonVegParcelPrice?: string;
+  kidsVegParcelPrice?: string;
+  kidsNonVegParcelPrice?: string;
   guestVeg?: number;
   guestNonVeg?: number;
   guestTaken?: number;
   guestVegTaken?: number;
   guestNonVegTaken?: number;
+  kidsVeg?: number;
+  kidsNonVeg?: number;
+  kidsVegTaken?: number;
+  kidsNonVegTaken?: number;
 };
 
 export type DayMenu = Record<MealType, MealMenu>;
@@ -93,6 +109,7 @@ export type PaymentEntry = {
   amount: string;
   mode: PaymentMode;
   transactionId?: string;
+  receivedBy?: string;
 };
 
 export type SubscriptionRecord = {
@@ -101,6 +118,7 @@ export type SubscriptionRecord = {
   flat: string;
   mobile?: number;
   peopleCount: number;
+  kidsCount?: number;
   meals: Record<EventDay, MealAllocation>;
   mealByPerson: Record<EventDay, MealChoice[]>;
   mealSlots: Record<EventDay, MealSlot[]>;

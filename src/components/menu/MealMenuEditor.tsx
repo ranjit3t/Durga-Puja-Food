@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useStyles } from "../../styles";
 import { useAppTheme } from "../../theme";
 import { UI_TEXT } from "../../strings";
-import { MealMenu, Day, ConfigDay, MealType, DietType } from "../../types";
+import { MealMenu, Day, ConfigDay, MealType, DietType, AppThemeMode } from "../../types";
 import { isDietaryEnabled, isMealCurrent } from "../../constants";
 
 /**
@@ -18,8 +18,11 @@ export function MealMenuEditor({
   config,
   value,
   onChange,
+  onSave,
+  isDirty = false,
   disabled = false,
   foodPriceEnabled,
+  kidsEnabled,
 }: {
   title: string;
   mealKey: MealType;
@@ -27,8 +30,11 @@ export function MealMenuEditor({
   config: ConfigDay[];
   value: MealMenu;
   onChange: (next: MealMenu) => void;
+  onSave?: () => void;
+  isDirty?: boolean;
   disabled?: boolean;
   foodPriceEnabled: boolean;
+  kidsEnabled: boolean;
 }) {
   const styles = useStyles();
   const { theme } = useAppTheme();
@@ -74,7 +80,7 @@ export function MealMenuEditor({
             </View>
           )}
           {!isBothEnabled && (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: vegEnabled ? theme.colors.veg + "15" : theme.colors.nonVeg + "15", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: 0.5, borderColor: vegEnabled ? theme.colors.veg : theme.colors.nonVeg }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: vegEnabled ? theme.colors.successLight : theme.colors.errorLight, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: 0.5, borderColor: vegEnabled ? theme.colors.veg : theme.colors.nonVeg }}>
               <Ionicons name={vegEnabled ? "leaf" : "flame"} size={10} color={vegEnabled ? theme.colors.veg : theme.colors.nonVeg} />
               <Text style={{ color: vegEnabled ? theme.colors.veg : theme.colors.nonVeg, fontSize: 10, fontWeight: "800" }}>
                 {(vegEnabled ? UI_TEXT.vegOnly : UI_TEXT.nonVegOnly).toUpperCase()}
@@ -135,12 +141,12 @@ export function MealMenuEditor({
             )}
           </View>
 
-          {/* Parcel Prices */}
-          {mConf?.parcel && (
+          {/* Kids Prices */}
+          {kidsEnabled && (
             <View style={styles.row}>
               {vegEnabled && (
                 <View style={styles.fieldHalf}>
-                  <Text style={{ fontSize: 10, fontWeight: '700', color: theme.colors.textSecondary, marginBottom: 4 }}>{UI_TEXT.vegParcelPriceLabel.toUpperCase()}</Text>
+                  <Text style={{ fontSize: 10, fontWeight: '700', color: theme.colors.textSecondary, marginBottom: 4 }}>{UI_TEXT.kidsVegPriceLabel.toUpperCase()}</Text>
                   <TextInput
                     style={{
                       backgroundColor: theme.colors.surfaceDark,
@@ -153,8 +159,8 @@ export function MealMenuEditor({
                       color: theme.colors.textPrimary,
                       fontWeight: "700"
                     }}
-                    value={value.vegParcelPrice ?? ""}
-                    onChangeText={(val) => onChange({ ...value, vegParcelPrice: val.replace(/[^0-9]/g, "") })}
+                    value={value.kidsVegPrice ?? ""}
+                    onChangeText={(val) => onChange({ ...value, kidsVegPrice: val.replace(/[^0-9]/g, "") })}
                     keyboardType="numeric"
                     placeholder={UI_TEXT.zero}
                     editable={!disabled}
@@ -163,7 +169,7 @@ export function MealMenuEditor({
               )}
               {nonVegEnabled && (
                 <View style={styles.fieldHalf}>
-                  <Text style={{ fontSize: 10, fontWeight: '700', color: theme.colors.textSecondary, marginBottom: 4 }}>{UI_TEXT.nonVegParcelPriceLabel.toUpperCase()}</Text>
+                  <Text style={{ fontSize: 10, fontWeight: '700', color: theme.colors.textSecondary, marginBottom: 4 }}>{UI_TEXT.kidsNonVegPriceLabel.toUpperCase()}</Text>
                   <TextInput
                     style={{
                       backgroundColor: theme.colors.surfaceDark,
@@ -176,12 +182,117 @@ export function MealMenuEditor({
                       color: theme.colors.textPrimary,
                       fontWeight: "700"
                     }}
-                    value={value.nonVegParcelPrice ?? ""}
-                    onChangeText={(val) => onChange({ ...value, nonVegParcelPrice: val.replace(/[^0-9]/g, "") })}
+                    value={value.kidsNonVegPrice ?? ""}
+                    onChangeText={(val) => onChange({ ...value, kidsNonVegPrice: val.replace(/[^0-9]/g, "") })}
                     keyboardType="numeric"
                     placeholder={UI_TEXT.zero}
                     editable={!disabled}
                   />
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* Parcel Prices */}
+          {mConf?.parcel && (
+            <View style={{ gap: 8 }}>
+              <View style={styles.row}>
+                {vegEnabled && (
+                  <View style={styles.fieldHalf}>
+                    <Text style={{ fontSize: 10, fontWeight: '700', color: theme.colors.textSecondary, marginBottom: 4 }}>{UI_TEXT.vegParcelPriceLabel.toUpperCase()}</Text>
+                    <TextInput
+                      style={{
+                        backgroundColor: theme.colors.surfaceDark,
+                        borderWidth: 1,
+                        borderColor: theme.colors.border,
+                        borderRadius: 8,
+                        paddingHorizontal: 10,
+                        paddingVertical: 8,
+                        fontSize: 14,
+                        color: theme.colors.textPrimary,
+                        fontWeight: "700"
+                      }}
+                      value={value.vegParcelPrice ?? ""}
+                      onChangeText={(val) => onChange({ ...value, vegParcelPrice: val.replace(/[^0-9]/g, "") })}
+                      keyboardType="numeric"
+                      placeholder={UI_TEXT.zero}
+                      editable={!disabled}
+                    />
+                  </View>
+                )}
+                {nonVegEnabled && (
+                  <View style={styles.fieldHalf}>
+                    <Text style={{ fontSize: 10, fontWeight: '700', color: theme.colors.textSecondary, marginBottom: 4 }}>{UI_TEXT.nonVegParcelPriceLabel.toUpperCase()}</Text>
+                    <TextInput
+                      style={{
+                        backgroundColor: theme.colors.surfaceDark,
+                        borderWidth: 1,
+                        borderColor: theme.colors.border,
+                        borderRadius: 8,
+                        paddingHorizontal: 10,
+                        paddingVertical: 8,
+                        fontSize: 14,
+                        color: theme.colors.textPrimary,
+                        fontWeight: "700"
+                      }}
+                      value={value.nonVegParcelPrice ?? ""}
+                      onChangeText={(val) => onChange({ ...value, nonVegParcelPrice: val.replace(/[^0-9]/g, "") })}
+                      keyboardType="numeric"
+                      placeholder={UI_TEXT.zero}
+                      editable={!disabled}
+                    />
+                  </View>
+                )}
+              </View>
+
+              {kidsEnabled && (
+                <View style={styles.row}>
+                  {vegEnabled && (
+                    <View style={styles.fieldHalf}>
+                      <Text style={{ fontSize: 10, fontWeight: '700', color: theme.colors.textSecondary, marginBottom: 4 }}>{UI_TEXT.kidsVegParcelPriceLabel.toUpperCase()}</Text>
+                      <TextInput
+                        style={{
+                          backgroundColor: theme.colors.surfaceDark,
+                          borderWidth: 1,
+                          borderColor: theme.colors.border,
+                          borderRadius: 8,
+                          paddingHorizontal: 10,
+                          paddingVertical: 8,
+                          fontSize: 14,
+                          color: theme.colors.textPrimary,
+                          fontWeight: "700"
+                        }}
+                        value={value.kidsVegParcelPrice ?? ""}
+                        onChangeText={(val) => onChange({ ...value, kidsVegParcelPrice: val.replace(/[^0-9]/g, "") })}
+                        keyboardType="numeric"
+                        placeholder={UI_TEXT.zero}
+                        editable={!disabled}
+                      />
+                    </View>
+                  )}
+                  {nonVegEnabled && (
+                    <View style={styles.fieldHalf}>
+                      <Text style={{ fontSize: 10, fontWeight: '700', color: theme.colors.textSecondary, marginBottom: 4 }}>{UI_TEXT.kidsNonVegParcelPriceLabel.toUpperCase()}</Text>
+                      <TextInput
+                        style={{
+                          backgroundColor: theme.colors.surfaceDark,
+                          borderWidth: 1,
+                          borderColor: theme.colors.border,
+                          borderRadius: 8,
+                          paddingHorizontal: 10,
+                          paddingVertical: 8,
+                          fontSize: 14,
+                          color: theme.colors.textPrimary,
+                          fontWeight: "700"
+                        }}
+                        value={value.kidsNonVegParcelPrice ?? ""}
+                        onChangeText={(val) => onChange({ ...value, kidsNonVegParcelPrice: val.replace(/[^0-9]/g, "") })}
+                        keyboardType="numeric"
+                        placeholder={UI_TEXT.zero}
+                        editable={!disabled}
+                      />
+                    </View>
+                  )}
                 </View>
               )}
             </View>
@@ -250,6 +361,26 @@ export function MealMenuEditor({
           </View>
         ))}
       </View>
+
+      {onSave && (
+        <Pressable
+          onPress={onSave}
+          disabled={!isDirty || disabled}
+          style={({ pressed }) => [
+            styles.primary,
+            { height: 40, marginTop: 20 },
+            !isDirty && { backgroundColor: theme.colors.surfaceDark, opacity: 0.5 },
+            pressed && { opacity: 0.7 }
+          ]}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Ionicons name="save-outline" size={18} color={isDirty ? theme.colors.white : theme.colors.textMuted} />
+            <Text style={{ color: isDirty ? theme.colors.white : theme.colors.textMuted, fontWeight: '800', fontSize: 14 }}>
+              {UI_TEXT.saveChanges.toUpperCase()}
+            </Text>
+          </View>
+        </Pressable>
+      )}
     </View>
   );
 }

@@ -15,7 +15,7 @@ import {
 import { captureRef } from "react-native-view-shot";
 import { Ionicons } from "@expo/vector-icons";
 import { useStyles } from "../styles";
-import { useAppTheme } from "../theme";
+import { useAppTheme, StatusBarStyleMode } from "../theme";
 import { UI_TEXT } from "../strings";
 import {
   getDayLabel,
@@ -26,8 +26,9 @@ import {
   isMealCurrent,
   getSortedMealKeys,
   getPaymentModeLabel,
+  getMealLabel,
 } from "../constants";
-import { MealMenu, UserRole, ConfigDay, MealType, DietType, AppScreen, PaymentMode } from "../types";
+import { MealMenu, UserRole, ConfigDay, MealType, DietType, AppScreen, PaymentMode, AppThemeMode } from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
@@ -52,6 +53,13 @@ interface MealSectionProps {
   taken: number;
   flatVegTaken: number;
   flatNonVegTaken: number;
+  kidsTotal: number;
+  kidsVeg: number;
+  kidsNonVeg: number;
+  kidsTaken: number;
+  kidsVegTaken: number;
+  kidsNonVegTaken: number;
+  kidsEnabled: boolean;
   guestVeg: number;
   guestNonVeg: number;
   guestVegTaken: number;
@@ -105,6 +113,13 @@ const DashboardMealSection = memo(
     taken,
     flatVegTaken,
     flatNonVegTaken,
+    kidsTotal,
+    kidsVeg,
+    kidsNonVeg,
+    kidsTaken,
+    kidsVegTaken,
+    kidsNonVegTaken,
+    kidsEnabled,
     guestVeg,
     guestNonVeg,
     guestVegTaken,
@@ -135,7 +150,7 @@ const DashboardMealSection = memo(
     const totalNonVegTaken = flatNonVegTaken + guestNonVegTaken;
     const totalMealTaken = totalVegTaken + totalNonVegTaken;
 
-    const mealLabel = type === MealType.BREAKFAST ? UI_TEXT.breakfast : type === MealType.LUNCH ? UI_TEXT.lunch : UI_TEXT.dinner;
+    const mealLabel = getMealLabel(type);
     const isCurrent = isMealCurrent(day, type, config);
     const isDone = isMealDone(day, type, config);
 
@@ -156,7 +171,7 @@ const DashboardMealSection = memo(
             quality: 1,
             result: "tmpfile",
           });
-          const message = `${seasonName || UI_TEXT.headerTitle}\n${getDayLabel(day, config)} - ${mealLabel} ${UI_TEXT.operationalSummary}\n${UI_TEXT.total}: ${total} | ${UI_TEXT.taken}: ${totalMealTaken}`;
+          const message = `${seasonName || UI_TEXT.headerTitle}\n${getDayLabel(day, config)}${UI_TEXT.space}${UI_TEXT.hyphen}${UI_TEXT.space}${mealLabel}${UI_TEXT.space}${UI_TEXT.operationalSummary}\n${UI_TEXT.total}${UI_TEXT.colon}${UI_TEXT.space}${total}${UI_TEXT.space}${UI_TEXT.pipe}${UI_TEXT.space}${UI_TEXT.taken}${UI_TEXT.colon}${UI_TEXT.space}${totalMealTaken}`;
           await shareQr(uri, message);
         } catch (err) {
           console.error("Meal share error:", err);
@@ -191,7 +206,7 @@ const DashboardMealSection = memo(
                   </View>
                 )}
                 {!isBothEnabled && (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: isVegEnabled ? theme.colors.veg + "15" : theme.colors.nonVeg + "15", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: 0.5, borderColor: isVegEnabled ? theme.colors.veg : theme.colors.nonVeg }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: isVegEnabled ? theme.colors.successLight : theme.colors.errorLight, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: 0.5, borderColor: isVegEnabled ? theme.colors.veg : theme.colors.nonVeg }}>
                       <Ionicons name={isVegEnabled ? "leaf" : "flame"} size={10} color={isVegEnabled ? theme.colors.veg : theme.colors.nonVeg} />
                       <Text style={{ color: isVegEnabled ? theme.colors.veg : theme.colors.nonVeg, fontSize: 10, fontWeight: "800" }}>
                         {(isVegEnabled ? UI_TEXT.vegOnly : UI_TEXT.nonVegOnly).toUpperCase()}
@@ -200,7 +215,7 @@ const DashboardMealSection = memo(
                 )}
               </View>
             </View>
-            <View style={[styles.pill, { backgroundColor: isCurrent ? theme.colors.primary + "15" : theme.colors.surface, alignSelf: 'center' }]}>
+            <View style={[styles.pill, { backgroundColor: isCurrent ? theme.colors.surfaceDark : theme.colors.surface, alignSelf: 'center' }]}>
               <Text style={[styles.pillText, { color: isCurrent ? theme.colors.primary : theme.colors.textSecondary }]}>{total} {UI_TEXT.plates}</Text>
             </View>
           </View>
@@ -252,20 +267,24 @@ const DashboardMealSection = memo(
             {showChart ? (
               <MealBarChart
                 day={day} type={type} total={total} veg={veg} nonVeg={nonVeg}
+                kidsTotal={kidsTotal} kidsVeg={kidsVeg} kidsNonVeg={kidsNonVeg}
+                kidsTaken={kidsTaken} kidsVegTaken={kidsVegTaken} kidsNonVegTaken={kidsNonVegTaken}
                 parcel={parcel} parcelTaken={parcelTaken} totalVegTaken={totalVegTaken}
                 totalNonVegTaken={totalNonVegTaken} guestVeg={guestVeg} guestNonVeg={guestNonVeg}
                 guestVegTaken={guestVegTaken} guestNonVegTaken={guestNonVegTaken}
-                totalMealTaken={totalMealTaken} config={config} guestEnabled={guestEnabled}
-                isBothEnabled={isBothEnabled} labels={labels}
+                totalMealTaken={totalMealTaken} config={config} kidsEnabled={kidsEnabled} guestEnabled={guestEnabled}
+                isBothEnabled={isBothEnabled} labels={labels as any}
               />
             ) : (
               <MealMetricGrid
                 day={day} type={type} total={total} veg={veg} nonVeg={nonVeg}
+                kidsTotal={kidsTotal} kidsVeg={kidsVeg} kidsNonVeg={kidsNonVeg}
+                kidsTaken={kidsTaken} kidsVegTaken={kidsVegTaken} kidsNonVegTaken={kidsNonVegTaken}
                 parcel={parcel} parcelTaken={parcelTaken} totalVegTaken={totalVegTaken}
                 totalNonVegTaken={totalNonVegTaken} guestVeg={guestVeg} guestNonVeg={guestNonVeg}
                 guestVegTaken={guestVegTaken} guestNonVegTaken={guestNonVegTaken}
-                totalMealTaken={totalMealTaken} config={config} guestEnabled={guestEnabled}
-                isBothEnabled={isBothEnabled} labels={labels}
+                totalMealTaken={totalMealTaken} config={config} kidsEnabled={kidsEnabled} guestEnabled={guestEnabled}
+                isBothEnabled={isBothEnabled} labels={labels as any}
               />
             )}
           </View>
@@ -286,7 +305,7 @@ const DashboardMealSection = memo(
               <Pressable
                 onPress={() => toggleChart(true)}
                 style={({ pressed }) => [
-                  { padding: 8, borderRadius: 20, backgroundColor: theme.colors.primary + "15" },
+                  { padding: 8, borderRadius: 20, backgroundColor: theme.colors.surfaceDark },
                   pressed && { opacity: 0.7 }
                 ]}
               >
@@ -296,7 +315,7 @@ const DashboardMealSection = memo(
               <Pressable
                 onPress={() => toggleChart(false)}
                 style={({ pressed }) => [
-                  { padding: 8, borderRadius: 20, backgroundColor: theme.colors.textMuted + "15" },
+                  { padding: 8, borderRadius: 20, backgroundColor: theme.colors.surfaceDark },
                   pressed && { opacity: 0.7 }
                 ]}
               >
@@ -308,7 +327,7 @@ const DashboardMealSection = memo(
           <Pressable
             onPress={handleShare}
             style={({ pressed }) => [
-              { padding: 8, borderRadius: 20, backgroundColor: theme.colors.success + "15" },
+              { padding: 8, borderRadius: 20, backgroundColor: theme.colors.successLight },
               pressed && { opacity: 0.7 }
             ]}
           >
@@ -324,7 +343,7 @@ export function DashboardScreen() {
   const { userRole, handleLogout } = useAuth();
   const {
     foodMenu, dayConfig, seasonName, paymentConfig, guestEnabled, seasonEnabled,
-    dashboardData, collections, updateGuestCount
+    dashboardData, collections, updateGuestCount, kidsEnabled
   } = useDatabase();
 
   const { navigate, goBack } = useAppNavigation();
@@ -363,9 +382,13 @@ export function DashboardScreen() {
       acc.total += (day.breakfast || 0) + (day.lunch || 0) + (day.dinner || 0);
       acc.veg += (day.breakfastVeg || 0) + (day.lunchVeg || 0) + (day.dinnerVeg || 0);
       acc.nonVeg += (day.breakfastNonVeg || 0) + (day.lunchNonVeg || 0) + (day.dinnerNonVeg || 0);
+      acc.kidsVeg += (day.breakfastKidsVeg || 0) + (day.lunchKidsVeg || 0) + (day.dinnerKidsVeg || 0);
+      acc.kidsNonVeg += (day.breakfastKidsNonVeg || 0) + (day.lunchKidsNonVeg || 0) + (day.dinnerKidsNonVeg || 0);
+      acc.kidsTotal += (day.breakfastKidsTotal || 0) + (day.lunchKidsTotal || 0) + (day.dinnerKidsTotal || 0);
+      acc.kidsTaken += (day.breakfastKidsTaken || 0) + (day.lunchKidsTaken || 0) + (day.dinnerKidsTaken || 0);
       acc.taken += (day.breakfastTaken || 0) + (day.lunchTaken || 0) + (day.dinnerTaken || 0);
       return acc;
-    }, { total: 0, veg: 0, nonVeg: 0, taken: 0 });
+    }, { total: 0, veg: 0, nonVeg: 0, kidsVeg: 0, kidsNonVeg: 0, kidsTotal: 0, kidsTaken: 0, taken: 0 });
   }, [dashboardData]);
 
   const currentMealSummary = useMemo(() => {
@@ -376,23 +399,35 @@ export function DashboardScreen() {
           const item = dashboardData.find(dashDay => dashDay.dayId === d.id);
           if (!item) return null;
 
-          const mLabel = mType === MealType.BREAKFAST ? UI_TEXT.breakfast : mType === MealType.LUNCH ? UI_TEXT.lunch : UI_TEXT.dinner;
+          const mLabel = getMealLabel(mType);
 
-          let total = 0, veg = 0, nonVeg = 0, taken = 0;
+          let total = 0, veg = 0, nonVeg = 0, taken = 0, kidsVeg = 0, kidsNonVeg = 0, kidsTotal = 0, kidsTaken = 0;
           if (mType === MealType.BREAKFAST) {
             total = item.breakfast || 0;
             veg = item.breakfastVeg || 0;
             nonVeg = item.breakfastNonVeg || 0;
+            kidsVeg = item.breakfastKidsVeg || 0;
+            kidsNonVeg = item.breakfastKidsNonVeg || 0;
+            kidsTotal = item.breakfastKidsTotal || 0;
+            kidsTaken = item.breakfastKidsTaken || 0;
             taken = item.breakfastTaken || 0;
           } else if (mType === MealType.LUNCH) {
             total = item.lunch || 0;
             veg = item.lunchVeg || 0;
             nonVeg = item.lunchNonVeg || 0;
+            kidsVeg = item.lunchKidsVeg || 0;
+            kidsNonVeg = item.lunchKidsNonVeg || 0;
+            kidsTotal = item.lunchKidsTotal || 0;
+            kidsTaken = item.lunchKidsTaken || 0;
             taken = item.lunchTaken || 0;
           } else {
             total = item.dinner || 0;
             veg = item.dinnerVeg || 0;
             nonVeg = item.dinnerNonVeg || 0;
+            kidsVeg = item.dinnerKidsVeg || 0;
+            kidsNonVeg = item.dinnerKidsNonVeg || 0;
+            kidsTotal = item.dinnerKidsTotal || 0;
+            kidsTaken = item.dinnerKidsTaken || 0;
             taken = item.dinnerTaken || 0;
           }
 
@@ -406,6 +441,10 @@ export function DashboardScreen() {
             total,
             veg,
             nonVeg,
+            kidsVeg,
+            kidsNonVeg,
+            kidsTotal,
+            kidsTaken,
             taken,
             isVegEnabled: isVeg,
             isNonVegEnabled: isNonVeg
@@ -447,7 +486,7 @@ export function DashboardScreen() {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
     >
-      <StatusBar style={themeType === "dark" ? "light" : "dark"} />
+      <StatusBar style={themeType === AppThemeMode.DARK ? StatusBarStyleMode.LIGHT : StatusBarStyleMode.DARK} />
       <View style={styles.header}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -494,14 +533,21 @@ export function DashboardScreen() {
           <View style={{ height: 1, backgroundColor: theme.colors.white, opacity: 0.2, marginVertical: 12 }} />
 
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-            <Text style={[styles.previewMeta, { color: theme.colors.white, flexShrink: 1 }]}>
-               {(() => {
-                 if (isVegEnabledGlobally && isNonVegEnabledGlobally) {
-                    return `${summaryTotals.veg} ${UI_TEXT.veg} | ${summaryTotals.nonVeg} ${UI_TEXT.nonVeg}`;
-                 }
-                 return "";
-               })()}
-            </Text>
+              <View style={{ flexShrink: 1 }}>
+                <Text style={[styles.previewMeta, { color: theme.colors.white }]}>
+                  {(() => {
+                    const parts = [];
+                    if (isVegEnabledGlobally) parts.push(`${summaryTotals.veg}${UI_TEXT.space}${kidsEnabled ? UI_TEXT.adultVeg : UI_TEXT.veg}`);
+                    if (isNonVegEnabledGlobally) parts.push(`${summaryTotals.nonVeg}${UI_TEXT.space}${kidsEnabled ? UI_TEXT.adultNonVeg : UI_TEXT.nonVeg}`);
+                    return parts.join(UI_TEXT.pipe);
+                  })()}
+                </Text>
+                {kidsEnabled && (
+                  <Text style={{ color: theme.colors.white, fontSize: 11, fontWeight: '700', opacity: 0.8 }}>
+                     {summaryTotals.kidsTotal}{UI_TEXT.space}{summaryTotals.kidsTotal === 1 ? UI_TEXT.kid : UI_TEXT.kids}{UI_TEXT.space}({summaryTotals.kidsVeg}{UI_TEXT.space}{UI_TEXT.vegAbbrLabel}{UI_TEXT.pipe}{summaryTotals.kidsNonVeg}{UI_TEXT.space}{UI_TEXT.nonVegAbbrLabel})
+                  </Text>
+                )}
+              </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                <Ionicons name="checkmark-done-circle" size={16} color={theme.colors.white} />
                <Text style={{ color: theme.colors.white, fontWeight: "800", fontSize: 14 }}>
@@ -516,7 +562,7 @@ export function DashboardScreen() {
               <View style={{ gap: 10 }}>
                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                     <Text style={{ color: theme.colors.white, fontSize: 11, fontWeight: '800', opacity: 0.8, textTransform: 'uppercase' }}>
-                       {currentMealSummary.dayLabel} - {currentMealSummary.mealLabel}
+                       {currentMealSummary.dayLabel}{UI_TEXT.space}{UI_TEXT.hyphen}{UI_TEXT.space}{currentMealSummary.mealLabel}
                     </Text>
                     {(!currentMealSummary.isVegEnabled || !currentMealSummary.isNonVegEnabled) && (
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: theme.colors.white + "33", paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4 }}>
@@ -549,11 +595,23 @@ export function DashboardScreen() {
                     </View>
                  </View>
 
-                 {currentMealSummary.isVegEnabled && currentMealSummary.isNonVegEnabled && (
-                    <Text style={{ color: theme.colors.white, fontSize: 12, fontWeight: '700', opacity: 0.9 }}>
-                       {currentMealSummary.veg} {UI_TEXT.veg} | {currentMealSummary.nonVeg} {UI_TEXT.nonVeg}
-                    </Text>
-                 )}
+                 <View>
+                    {(currentMealSummary.isVegEnabled || currentMealSummary.isNonVegEnabled) && (
+                       <Text style={{ color: theme.colors.white, fontSize: 12, fontWeight: '700', opacity: 0.9 }}>
+                          {(() => {
+                             const p = [];
+                             if (currentMealSummary.isVegEnabled) p.push(`${currentMealSummary.veg}${UI_TEXT.space}${kidsEnabled ? UI_TEXT.adultVeg : UI_TEXT.veg}`);
+                             if (currentMealSummary.isNonVegEnabled) p.push(`${currentMealSummary.nonVeg}${UI_TEXT.space}${kidsEnabled ? UI_TEXT.adultNonVeg : UI_TEXT.nonVeg}`);
+                             return p.join(UI_TEXT.pipe);
+                          })()}
+                       </Text>
+                    )}
+                    {kidsEnabled && (
+                      <Text style={{ color: theme.colors.white, fontSize: 10, fontWeight: '600', opacity: 0.8 }}>
+                         {currentMealSummary.kidsTotal}{UI_TEXT.space}{currentMealSummary.kidsTotal === 1 ? UI_TEXT.kid : UI_TEXT.kids}{UI_TEXT.space}({currentMealSummary.kidsVeg}{UI_TEXT.space}{UI_TEXT.vegAbbrLabel}{UI_TEXT.pipe}{currentMealSummary.kidsNonVeg}{UI_TEXT.space}{UI_TEXT.nonVegAbbrLabel})
+                      </Text>
+                    )}
+                 </View>
               </View>
             </>
           )}
@@ -592,6 +650,12 @@ export function DashboardScreen() {
                   total: item.breakfast || 0,
                   veg: item.breakfastVeg || 0,
                   nonVeg: item.breakfastNonVeg || 0,
+                  kidsTotal: item.breakfastKidsTotal || 0,
+                  kidsVeg: item.breakfastKidsVeg || 0,
+                  kidsNonVeg: item.breakfastKidsNonVeg || 0,
+                  kidsTaken: item.breakfastKidsTaken || 0,
+                  kidsVegTaken: item.breakfastKidsVegTaken || 0,
+                  kidsNonVegTaken: item.breakfastKidsNonVegTaken || 0,
                   parcel: item.breakfastParcel || 0,
                   parcelTaken: item.breakfastParcelTaken || 0,
                   taken: item.breakfastTaken || 0,
@@ -603,8 +667,14 @@ export function DashboardScreen() {
                   guestNonVegTaken: item.breakfastGuestNonVegTaken || 0,
                   icon: "sunny-outline" as const,
                   labels: {
-                    veg: UI_TEXT.bVeg,
-                    nonVeg: UI_TEXT.bNonVeg,
+                    veg: kidsEnabled ? UI_TEXT.adultVeg : UI_TEXT.bVeg,
+                    nonVeg: kidsEnabled ? UI_TEXT.adultNonVeg : UI_TEXT.bNonVeg,
+                    kidsVeg: UI_TEXT.kidsVeg,
+                    kidsNonVeg: UI_TEXT.kidsNonVeg,
+                    kidsTotal: UI_TEXT.kidsTotal,
+                    kidsTaken: UI_TEXT.kidsTaken,
+                    kidsVegTaken: UI_TEXT.kidsVegTaken,
+                    kidsNonVegTaken: UI_TEXT.kidsNonVegTaken,
                     parcel: UI_TEXT.bParcel,
                     parcelTaken: UI_TEXT.bP_Taken,
                     taken: UI_TEXT.bTaken,
@@ -612,13 +682,19 @@ export function DashboardScreen() {
                     guestNonVeg: UI_TEXT.guestNonVeg,
                     guestVegTaken: UI_TEXT.guestVegTaken,
                     guestNonVegTaken: UI_TEXT.guestNonVegTaken,
-                    vegTaken: UI_TEXT.vegTaken,
-                    nonVegTaken: UI_TEXT.nonVegTaken,
+                    vegTaken: kidsEnabled ? UI_TEXT.adultVegTaken : UI_TEXT.vegTaken,
+                    nonVegTaken: kidsEnabled ? UI_TEXT.adultNonVegTaken : UI_TEXT.nonVegTaken,
                   }
                 } : mKey === MealType.LUNCH ? {
                   total: item.lunch || 0,
                   veg: item.lunchVeg || 0,
                   nonVeg: item.lunchNonVeg || 0,
+                  kidsTotal: item.lunchKidsTotal || 0,
+                  kidsVeg: item.lunchKidsVeg || 0,
+                  kidsNonVeg: item.lunchKidsNonVeg || 0,
+                  kidsTaken: item.lunchKidsTaken || 0,
+                  kidsVegTaken: item.lunchKidsVegTaken || 0,
+                  kidsNonVegTaken: item.lunchKidsNonVegTaken || 0,
                   parcel: item.lunchParcel || 0,
                   parcelTaken: item.lunchParcelTaken || 0,
                   taken: item.lunchTaken || 0,
@@ -630,8 +706,14 @@ export function DashboardScreen() {
                   guestNonVegTaken: item.lunchGuestNonVegTaken || 0,
                   icon: "restaurant-outline" as const,
                   labels: {
-                    veg: UI_TEXT.lVeg,
-                    nonVeg: UI_TEXT.lNonVeg,
+                    veg: kidsEnabled ? UI_TEXT.adultVeg : UI_TEXT.lVeg,
+                    nonVeg: kidsEnabled ? UI_TEXT.adultNonVeg : UI_TEXT.lNonVeg,
+                    kidsVeg: UI_TEXT.kidsVeg,
+                    kidsNonVeg: UI_TEXT.kidsNonVeg,
+                    kidsTotal: UI_TEXT.kidsTotal,
+                    kidsTaken: UI_TEXT.kidsTaken,
+                    kidsVegTaken: UI_TEXT.kidsVegTaken,
+                    kidsNonVegTaken: UI_TEXT.kidsNonVegTaken,
                     parcel: UI_TEXT.lParcel,
                     parcelTaken: UI_TEXT.lP_Taken,
                     taken: UI_TEXT.lTaken,
@@ -639,13 +721,19 @@ export function DashboardScreen() {
                     guestNonVeg: UI_TEXT.guestNonVeg,
                     guestVegTaken: UI_TEXT.guestVegTaken,
                     guestNonVegTaken: UI_TEXT.guestNonVegTaken,
-                    vegTaken: UI_TEXT.vegTaken,
-                    nonVegTaken: UI_TEXT.nonVegTaken,
+                    vegTaken: kidsEnabled ? UI_TEXT.adultVegTaken : UI_TEXT.vegTaken,
+                    nonVegTaken: kidsEnabled ? UI_TEXT.adultNonVegTaken : UI_TEXT.nonVegTaken,
                   }
                 } : {
                   total: item.dinner || 0,
                   veg: item.dinnerVeg || 0,
                   nonVeg: item.dinnerNonVeg || 0,
+                  kidsTotal: item.dinnerKidsTotal || 0,
+                  kidsVeg: item.dinnerKidsVeg || 0,
+                  kidsNonVeg: item.dinnerKidsNonVeg || 0,
+                  kidsTaken: item.dinnerKidsTaken || 0,
+                  kidsVegTaken: item.dinnerKidsVegTaken || 0,
+                  kidsNonVegTaken: item.dinnerKidsNonVegTaken || 0,
                   parcel: item.dinnerParcel || 0,
                   parcelTaken: item.dinnerParcelTaken || 0,
                   taken: item.dinnerTaken || 0,
@@ -657,8 +745,14 @@ export function DashboardScreen() {
                   guestNonVegTaken: item.dinnerGuestNonVegTaken || 0,
                   icon: "moon-outline" as const,
                   labels: {
-                    veg: UI_TEXT.dVeg,
-                    nonVeg: UI_TEXT.dNonVeg,
+                    veg: kidsEnabled ? UI_TEXT.adultVeg : UI_TEXT.dVeg,
+                    nonVeg: kidsEnabled ? UI_TEXT.adultNonVeg : UI_TEXT.dNonVeg,
+                    kidsVeg: UI_TEXT.kidsVeg,
+                    kidsNonVeg: UI_TEXT.kidsNonVeg,
+                    kidsTotal: UI_TEXT.kidsTotal,
+                    kidsTaken: UI_TEXT.kidsTaken,
+                    kidsVegTaken: UI_TEXT.kidsVegTaken,
+                    kidsNonVegTaken: UI_TEXT.kidsNonVegTaken,
                     parcel: UI_TEXT.dParcel,
                     parcelTaken: UI_TEXT.dP_Taken,
                     taken: UI_TEXT.dTaken,
@@ -666,8 +760,8 @@ export function DashboardScreen() {
                     guestNonVeg: UI_TEXT.guestNonVeg,
                     guestVegTaken: UI_TEXT.guestVegTaken,
                     guestNonVegTaken: UI_TEXT.guestNonVegTaken,
-                    vegTaken: UI_TEXT.vegTaken,
-                    nonVegTaken: UI_TEXT.nonVegTaken,
+                    vegTaken: kidsEnabled ? UI_TEXT.adultVegTaken : UI_TEXT.vegTaken,
+                    nonVegTaken: kidsEnabled ? UI_TEXT.adultNonVegTaken : UI_TEXT.nonVegTaken,
                   }
                 };
 
@@ -686,6 +780,12 @@ export function DashboardScreen() {
                       total={mealProps.total}
                       veg={mealProps.veg}
                       nonVeg={mealProps.nonVeg}
+                      kidsTotal={mealProps.kidsTotal}
+                      kidsVeg={mealProps.kidsVeg}
+                      kidsNonVeg={mealProps.kidsNonVeg}
+                      kidsTaken={mealProps.kidsTaken}
+                      kidsVegTaken={mealProps.kidsVegTaken}
+                      kidsNonVegTaken={mealProps.kidsNonVegTaken}
                       parcel={mealProps.parcel}
                       parcelTaken={mealProps.parcelTaken}
                       taken={mealProps.taken}
@@ -699,9 +799,10 @@ export function DashboardScreen() {
                       userRole={userRole || UserRole.VENDOR}
                       config={dayConfig}
                       onUpdateGuest={updateGuestCount}
+                      kidsEnabled={!!kidsEnabled}
                       guestEnabled={guestEnabled}
                       seasonEnabled={seasonEnabled}
-                      labels={mealProps.labels}
+                      labels={mealProps.labels as any}
                       seasonName={seasonName}
                       onFocus={() => focusSection(`${day}-${mKey}`)}
                     />

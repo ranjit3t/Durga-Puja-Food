@@ -1,7 +1,8 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useRef, useEffect } from "react";
 import { View, Text, ScrollView, Pressable, StatusBar } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useStyles } from "../styles";
-import { useAppTheme } from "../theme";
+import { StatusBarStyleMode, useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
 import {
   getDayLabel,
@@ -9,7 +10,7 @@ import {
   getSortedMealKeys,
   isMealCurrent,
 } from "../constants";
-import { UserRole, ConfigDay, MealType, AppScreen } from "../types";
+import { UserRole, ConfigDay, MealType, AppScreen, AppThemeMode } from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
@@ -23,14 +24,21 @@ import { useAppNavigation } from "../context/NavigationContext";
 export function ViewMenuScreen() {
   const { userRole, handleLogout } = useAuth();
   const {
-    foodMenu, dayConfig, guestEnabled, seasonEnabled, foodPriceEnabled, paymentConfig
+    foodMenu, dayConfig, guestEnabled, seasonEnabled, foodPriceEnabled, paymentConfig, kidsEnabled
   } = useDatabase();
-  const { navigate, goBack } = useAppNavigation();
+  const { navigate, goBack, targetDay, setTargetDay, targetMeal, setTargetMeal } = useAppNavigation();
 
   const styles = useStyles();
   const { theme, themeType } = useAppTheme();
 
-  const onEdit = () => navigate(AppScreen.MENU);
+  const scrollRef = useRef<ScrollView>(null);
+  const layouts = useRef<Record<string, number>>({});
+
+  const onEdit = (day?: Day, meal?: MealType) => {
+    if (day) setTargetDay(day);
+    if (meal) setTargetMeal(meal);
+    navigate(AppScreen.MENU);
+  };
   const isPaymentEnabled = paymentConfig.enabled;
 
   const emptyMeal = {
@@ -44,7 +52,17 @@ export function ViewMenuScreen() {
   };
   const isAdmin = userRole === UserRole.ADMIN;
   const sortedActiveDays = useMemo(() => {
-    const active = dayConfig.filter((d) => d.enabled).map((d) => d.id);
+    const active = dayConfig
+      .filter((d) => d.enabled)
+      .filter((d) => {
+        const dayMenu = foodMenu[d.id];
+        if (!dayMenu) return false;
+        return Object.values(dayMenu).some(
+          (m: any) => (m?.veg?.length || 0) > 0 || (m?.nonVeg?.length || 0) > 0
+        );
+      })
+      .map((d) => d.id);
+
     return [...active].sort((a, b) => {
       const aHasCurrent = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].some(m => isMealCurrent(a, m, dayConfig));
       const bHasCurrent = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].some(m => isMealCurrent(b, m, dayConfig));
@@ -52,11 +70,22 @@ export function ViewMenuScreen() {
       if (!aHasCurrent && bHasCurrent) return 1;
       return 0;
     });
-  }, [dayConfig]);
+  }, [dayConfig, foodMenu]);
+
+  useEffect(() => {
+    if (targetDay && layouts.current[targetDay] !== undefined) {
+      setTimeout(() => {
+        scrollRef.current?.scrollTo({ y: layouts.current[targetDay], animated: true });
+        // Clear targets after scrolling
+        setTargetDay("");
+        setTargetMeal(null);
+      }, 500);
+    }
+  }, [targetDay]);
 
   return (
     <View style={styles.root}>
-      <StatusBar style={themeType === "dark" ? "light" : "dark"} />
+      <StatusBar style={themeType === AppThemeMode.DARK ? StatusBarStyleMode.LIGHT : StatusBarStyleMode.DARK} />
       <View style={styles.header}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -69,6 +98,7 @@ export function ViewMenuScreen() {
         <Text style={styles.subtitle}>{UI_TEXT.menuSubtitle}</Text>
       </View>
       <ScrollView
+        ref={scrollRef}
         style={{ flex: 1, width: "100%" }}
         contentContainerStyle={styles.content}
       >
@@ -80,13 +110,38 @@ export function ViewMenuScreen() {
           };
           const colorScheme = theme.cardColors[index % theme.cardColors.length];
           return (
-            <View key={day} style={[styles.menuDayCard, { backgroundColor: colorScheme.bg, borderColor: colorScheme.border, borderWidth: 1.5 }]}>
-              <View style={[styles.menuDayHeader, { backgroundColor: colorScheme.accent + "15", borderBottomColor: colorScheme.border }]}>
+            <View
+              key={day}
+              onLayout={(e) => {
+                layouts.current[day] = e.nativeEvent.layout.y;
+              }}
+              style={[styles.menuDayCard, { backgroundColor: colorScheme.bg, borderColor: colorScheme.border, borderWidth: 1.5 }]}
+            >
+              <View style={[styles.menuDayHeader, { backgroundColor: colorScheme.accentLight, borderBottomColor: colorScheme.border, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
                 <Text style={[styles.menuDayTitle, { color: colorScheme.accent }]}>{getDayLabel(day, dayConfig)}</Text>
+                {isAdmin && seasonEnabled && (
+                  <Pressable
+                    onPress={() => onEdit(day)}
+                    style={({ pressed }) => [
+                      {
+                        padding: 6,
+                        borderRadius: 20,
+                        backgroundColor: colorScheme.accentLight
+                      },
+                      pressed && { opacity: 0.7 }
+                    ]}
+                  >
+                    <Ionicons name="pencil" size={18} color={colorScheme.accent} />
+                  </Pressable>
+                )}
               </View>
               <View style={styles.menuDayBody}>
                 {getSortedMealKeys(day, dayConfig)
                   .filter((mKey) => isMealEnabled(day, mKey, dayConfig))
+                  .filter((mKey) => {
+                    const meal = dayMenu[mKey];
+                    return (meal?.veg?.length || 0) > 0 || (meal?.nonVeg?.length || 0) > 0;
+                  })
                   .map((mKey) => (
                     <MealDisplay
                       key={mKey}
@@ -98,6 +153,7 @@ export function ViewMenuScreen() {
                       menu={dayMenu[mKey] || emptyMeal}
                       guestEnabled={guestEnabled}
                       foodPriceEnabled={foodPriceEnabled && isPaymentEnabled}
+                      kidsEnabled={!!kidsEnabled}
                     />
                   ))}
               </View>

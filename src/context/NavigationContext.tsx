@@ -37,6 +37,13 @@ interface NavigationContextType {
   // Subscription Search
   subscriptionSearch: string;
   setSubscriptionSearch: (text: string) => void;
+
+  // Menu Editor Target
+  targetDay: Day;
+  setTargetDay: (day: Day) => void;
+  targetMeal: MealType | null;
+  setTargetMeal: (meal: MealType | null) => void;
+
   // Actions
   startNew: (dayConfig: ConfigDay[], seasonName: string, paymentConfig: PaymentConfig, guestEnabled: boolean, mobileEnabled: boolean, seasonEnabled: boolean) => void;
   openScannedValue: (val: string, subscriptions: Subscription[]) => boolean;
@@ -60,6 +67,9 @@ export function NavigationProvider({ children }: { children: React.ReactNode }) 
   const [reportMealType, setReportMealType] = useState<MealType>(MealType.BREAKFAST);
   const [subscriptionSearch, setSubscriptionSearch] = useState("");
 
+  const [targetDay, setTargetDay] = useState<Day>("");
+  const [targetMeal, setTargetMeal] = useState<MealType | null>(null);
+
   const startNew = (dayConfig: ConfigDay[], seasonName: string, paymentConfig: PaymentConfig, guestEnabled: boolean, mobileEnabled: boolean, seasonEnabled: boolean) => {
     const enabledMethods = getEnabledPaymentMethods({
       seasonName,
@@ -70,13 +80,19 @@ export function NavigationProvider({ children }: { children: React.ReactNode }) 
       seasonEnabled
     });
 
-    setEditing({
+    const initialMeals = emptyMeals(dayConfig);
+    const initialSub: any = {
       id: "",
       flat: "",
       block: "1",
       peopleCount: 1,
-      meals: emptyMeals(dayConfig),
-      mealByPerson: mealChoicesFromMeals(emptyMeals(dayConfig), 1, dayConfig),
+      kidsCount: 0,
+      meals: initialMeals,
+    };
+
+    setEditing({
+      ...initialSub,
+      mealByPerson: mealChoicesFromMeals(initialSub, dayConfig),
       mealSlots: mealSlotsFromChoices({}, 1, dayConfig),
       takenByPerson: emptyTaken(1, dayConfig),
       payments: [
@@ -105,6 +121,8 @@ export function NavigationProvider({ children }: { children: React.ReactNode }) 
     setReportDayId("");
     setReportMealType(MealType.BREAKFAST);
     setSubscriptionSearch("");
+    setTargetDay("");
+    setTargetMeal(null);
   };
 
   const navigate = (next: Screen) => {
@@ -162,10 +180,12 @@ export function NavigationProvider({ children }: { children: React.ReactNode }) 
     screen, history, navigate, goBack, startNew, openScannedValue,
     selectedId, setSelectedId, selectedRecord, setSelectedRecord, editing, setEditing,
     reportType, setReportType, reportDayId, setReportDayId, reportMealType, setReportMealType,
-    subscriptionSearch, setSubscriptionSearch
+    subscriptionSearch, setSubscriptionSearch,
+    targetDay, setTargetDay, targetMeal, setTargetMeal
   }), [
     screen, history, selectedId, selectedRecord, editing,
     reportType, reportDayId, reportMealType, subscriptionSearch,
+    targetDay, targetMeal,
     startNew, openScannedValue
   ]);
 

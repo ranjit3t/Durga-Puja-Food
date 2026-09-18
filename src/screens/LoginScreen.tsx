@@ -15,9 +15,9 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { useStyles } from "../styles";
-import { useAppTheme } from "../theme";
+import { useAppTheme, StatusBarStyleMode } from "../theme";
 import { UI_TEXT } from "../strings";
-import { UserRole } from "../types";
+import { UserRole, AppThemeMode } from "../types";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useAuth } from "../context/AuthContext";
@@ -65,10 +65,10 @@ export function LoginScreen() {
 
   return (
     <View style={styles.root}>
-      <StatusBar style={themeType === "dark" ? "light" : "dark"} />
+      <StatusBar style={themeType === AppThemeMode.DARK ? StatusBarStyleMode.LIGHT : StatusBarStyleMode.DARK} />
       <View style={{ position: 'absolute', top: Platform.OS === 'ios' ? 60 : 40, left: 20, zIndex: 10 }}>
         <Pressable onPress={toggleTheme} style={[styles.backButton, { width: 36, height: 36, borderRadius: 18, paddingHorizontal: 0 }]}>
-          <Ionicons name={themeType === "dark" ? "sunny-outline" : "moon-outline"} size={18} color={theme.colors.secondary} />
+          <Ionicons name={themeType === AppThemeMode.DARK ? "sunny-outline" : "moon-outline"} size={18} color={theme.colors.secondary} />
         </Pressable>
       </View>
       <KeyboardAvoidingView

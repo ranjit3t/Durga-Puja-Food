@@ -19,18 +19,16 @@ The project follows a **Modular Layered Architecture**:
 
 ### 📂 Presentation Layer (`src/screens`, `src/components`)
 - **Screens**: Discrete full-page views.
-    - `LoginScreen`: Gateway for role-based session initialization. Dynamically fetches credentials from `auth_config`.
-    - `HomeScreen`: Quick-action dashboard utilizing a grid of sleek interaction tiles and a space-saving, high-density dashboard header card with a centered watermark icon and deep-linked live service shortcut attributes. The "LIVE" badge only appears if the current meal is active and enabled.
-    - `SubscriptionListScreen`: Dedicated interface for pass management with high-performance search and subscription-based filtering. Cards automatically highlight passes with active subscriptions for the "Current Meal" and provide integrated **WhatsApp/Call shortcuts** in the bottom row.
+    - `SubscriptionListScreen`: Dedicated interface for pass management with high-performance search and **Natural Alphanumeric Sorting**. Features **Real-time Filter Chips** (All / Current Meal / Kids / Parcels) with recipient counts. Cards automatically highlight status using specialized markers (restaurant, happy face, briefcase) and provide integrated WhatsApp/Call shortcuts.
     - `DashboardScreen`: Aggregated analytics with a sleek, earthy-toned financial summary. Features a dynamic "Current Meal" demand snapshot and supports visual comparative bar charts. Each section includes a dedicated **Action Bar** for visualization toggling and PNG sharing.
-    - `QrScreen`: Renders a permanent digital pass with seasonal branding. Used for verification during meal collection.
-    - `DetailsScreen`: Comprehensive view of a single pass including food plan and collection matrix. Integrates **Quick Contact Actions** (WhatsApp/Call) directly into the bottom of the Pass Identity card.
-    - `SubscriptionForm`: CRUD interface with role-based field locking and touch-optimized block dropdowns. Features **Automated Food Pricing** that calculates costs in real-time as meal choices are modified. Implements strict **Data Integrity Rules** preventing the creation of empty passes with no meal subscriptions.
-    - `SettingsScreen`: Administrative interface for managing festival config, payment rules, and Season Branding. It employs a **State Isolation Pattern** to prevent background database refreshes from overwriting local unsaved edits during the configuration process. It also enforces operational integrity by ensuring that only enabled and incomplete meals can be designated as the "Current Meal".
-    - `GuestManagementScreen`: Operational module for tracking extra guest plates with automated total/taken calculations. Employs a vertically-aligned input architecture and shares the same "LIVE" prioritization and highlighting logic as the kitchen dashboard. Includes aggregated guest workload summaries for dual-diet service slots.
-    - `MenuEditorScreen`: Administrative tool for managing the global festival food menu. It allows adding and removing items from Breakfast, Lunch, and Dinner slots. The interface features "LIVE" service badges and dietary tags for operational clarity.
-    - `ViewMenuScreen`: A clean, read-only interface for volunteers to view the current feast plan, featuring "LIVE" badges and dietary tags consistent with the editor and dashboard.
-    - `ReportScreen`: A modularized analytics engine. Instead of a monolithic file, it utilizes specialized sub-components (`DayWiseReport`, `MealWiseReport`, `GuestWiseReport`, `ParcelWiseReport`, `SingleMealReport`, `PendingReport`, `FlatWiseReport`, `PaymentSummaryReport`) for distinct data visualizations. The payment audit tab includes a granular flat-wise transaction list with headcount parameters and deep-linking into specific passes. Supports PNG export for all views.
+    - `QrScreen`: Renders a permanent digital pass with seasonal branding. Used for verification during meal collection. Uses grammar-aware headcount labels.
+    - `DetailsScreen`: Comprehensive view of a single pass including food plan and collection matrix. Integrates **Quick Contact Actions** (WhatsApp/Call) and a **Quick Edit Shortcut** directly into the Pass Identity card. Uses grammar-aware labels. Features interactive informational blocks that deep-link to analytical reports or the global menu.
+    - `SubscriptionForm`: CRUD interface with role-based field locking and touch-optimized block dropdowns. Features **Automated Food Pricing** that calculates costs in real-time based on both **Adult and Kids pricing** (when enabled). Supports separate headcounts for Adults and Kids with dynamic legend switching (A1, K1...). Implements strict **Data Integrity Rules** preventing the creation of empty passes with no meal subscriptions. Includes **State Reconciliation** logic that merges kids into adults if the feature is toggled off globally.
+    - `SettingsScreen`: Administrative interface for managing festival config, payment rules, Season Branding, and **Kids Support**. It employs a **State Isolation Pattern** to prevent background database refreshes from overwriting local unsaved edits during the configuration process. It also enforces operational integrity by ensuring that only enabled and incomplete meals can be designated as the "Current Meal". Features **Sectional Saving** for faster updates and includes an **alert-driven navigation callback** to return to Home after saving.
+    - **Bug Reporting**: Integrated `Linking` API shortcut for administrators to send pre-populated bug reports via the device's native email client. Destination and subject are configurable via `strings.ts`.
+    - `MenuEditorScreen`: Administrative tool for managing the global festival food menu. It allows adding and removing items from Breakfast, Lunch, and Dinner slots. Features **Sectional Saving** and an **alert-driven navigation callback** with auto-scrolling to the targeted day in the View Menu. The interface features "LIVE" service badges and dietary tags for operational clarity.
+    - `ViewMenuScreen`: A clean, read-only interface for volunteers to view the current feast plan, featuring "LIVE" badges and dietary tags consistent with the editor and dashboard. Includes Admin-only **Quick Edit (pencil)** buttons with deep-linking and auto-focus logic.
+    - `ReportScreen`: A modularized analytics engine. Instead of a monolithic file, it utilizes specialized sub-components (`DayWiseReport`, `MealWiseReport`, `GuestWiseReport`, `ParcelWiseReport`, `SingleMealReport`, `PendingReport`, `FlatWiseReport`, `PaymentSummaryReport`) for distinct data visualizations. The payment audit tab includes a granular list grouped by **Payment Mode**, showing individual transactions with metadata (Transaction IDs, Receivers) and deep-linking into specific passes. Supports PNG export for all views. All reports are grammar-aware and respect the global sorting policy.
 - **Components**: Atomic and reusable UI units.
     - `ActionLabel`: Standardized Icon+Text component supporting both horizontal and vertical layouts.
     - `CounterInput`: Specialized numeric input with `+/-` controls and automated min/max clamping.
@@ -52,16 +50,18 @@ The project follows a **Modular Layered Architecture**:
     - `seasonEnabled`: Global master switch for Read-Only mode.
     - `mobileEnabled`: Global toggle for mobile number collection.
     - `foodPriceEnabled`: Global toggle for price-based auto-calculations.
+    - `kidsEnabled`: Global master switch to enable separate tracking and pricing for children.
     - `payment`: Global switch and method whitelist (UPI, Cash, Bank Transfer).
     - `days`: Array of event day rules (meals, dietary, parcels, current status, prices, and done status).
     - `whatsappCountryCode`: Global default country calling code prefix for WhatsApp sharing (e.g., "91" for India).
-- **Navigation & History Stack**: Uses a custom-built history array in `NavigationContext.tsx`. The `navigate()` and `goBack()` helpers manage the transition state using the `AppScreen` enum, ensuring that the Android hardware back button behaves predictably. History is automatically purged upon returning to the **Home** screen to prevent stack bloat.
+- **Navigation & History Stack**: Uses a custom-built history array in `NavigationContext.tsx`. The `navigate()` and `goBack()` helpers manage the transition state using the `AppScreen` enum, ensuring that the Android hardware back button behaves predictably. History is automatically purged upon returning to the **Home** screen to prevent stack bloat. Note that the **Details screen** utilizes a custom back action that routes directly to Home to provide a "fast exit" after pass verification.
 - **Persistent View State Hoisting**: Selected tabs and filter states for the `ReportScreen` and search queries for the `SubscriptionListScreen` are hoisted to the root level. This ensures UI continuity during sub-navigation (e.g., returning from a pass detail to the exact same report tab).
 - **Visibility Logic**: Helpers in `constants.ts` strictly enforce the active configuration, hiding disabled features (like payments or specific meals) globally across all screens.
 
-### 📂 Data Layer (`src/repository.ts`, `src/firebase.ts`)
+### 📂 Data Layer (`src/repository.ts`, `src/firebase.ts`, `src/context/DatabaseContext.tsx`)
 - **Real-time Persistence**: Uses Firebase Realtime Database for all subscriptions, menus, and configurations.
 - **Query Optimization**: Implements a granular path strategy. Rather than replacing entire parent objects, the repository provides methods to target specific leaf nodes (e.g., a single guest count or one member's food collection status). This minimizes bandwidth usage and improves concurrency.
+- **Natural Alphanumeric Sorting**: The `DatabaseContext` and `useReportData` hook implement a centralized sorting policy using `localeCompare` with `numeric: true`. This ensures that blocks and flats are always ordered in an intuitive numeric-aware sequence (1, 2, 10...) rather than strict ASCII (1, 10, 2...).
 - **Data Normalization**: Handles schema variations and ensures data matrix integrity (Person x Day x Meal). 
 
 ## 4. Security & Permissions Model
@@ -70,8 +70,12 @@ The application implements **Role-Based Access Control (RBAC)**:
 - **Vendor**: Operational access. Can mark food as taken, update **Guest collection counts** (Taken), and view Reports. Destructive actions, festival rule changes, and pass registration are restricted.
 - **Global Read-Only Enforcement**: When the `seasonEnabled` config flag is false, the application automatically locks all data-modifying components (text inputs, checkboxes, save buttons) across all roles, effectively archiving the season's data.
 
-## 5. Performance & Synchronization Patterns
-- **Transition-Based Data Sync**: Performs a comprehensive backend fetch on every screen transition to eliminate reliance on stale data.
-- **Periodic Background Refresh**: Triggers a silent sync every 10 seconds to maintain live metrics during long sessions.
-- **Windowed Rendering**: `FlatList` optimization for high-volume pass records.
-- **CaptureRef**: Asynchronous PNG generation for the "Digital Pass" and analytical reports.
+## 6. Kids Support System
+The application features a comprehensive Kids tracking system:
+- **Dual Headcounts**: Pass registration segregates Adults and Kids, providing more accurate kitchen planning.
+- **Dynamic Legends**: Legend identifiers automatically switch from `P1, P2...` (standard) to `A1, A2...` (Adults) and `K1, K2...` (Kids) when enabled.
+- **Contextual Terminology & Grammar**: The UI logic monitors the `kidsEnabled` flag and item counts. When disabled, all instances of "Adults" are replaced with "Persons". When enabled, it differentiates between "Adult/Adults" and "Kid/Kids" using singular/plural logic based on the count.
+- **Segregated Metrics**: The Dashboard and Reports provide granular breakdowns for Adults and Kids across all dietary types.
+- **Differential Pricing**: Supports separate price points for Adult meals and Kids meals, including parcel surcharges.
+- **Filtering**: The subscription list includes a dedicated "Kids" filter with real-time count to quickly identify family passes.
+- **Backward Compatibility & Toggle Stability**: Existing data is automatically normalized. Toggling the feature OFF triggers a silent merge in the registration form to ensure data continuity.

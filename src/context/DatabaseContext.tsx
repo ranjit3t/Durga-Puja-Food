@@ -45,6 +45,7 @@ interface DatabaseContextType {
   guestEnabled: boolean;
   mobileEnabled: boolean;
   foodPriceEnabled: boolean;
+  kidsEnabled: boolean;
   whatsappCountryCode: string;
 
   // Derived Metrics
@@ -59,7 +60,7 @@ interface DatabaseContextType {
   updateMenu: (menu: FoodMenu) => Promise<void>;
   updateGuestCount: (dayId: string, mealKey: MealType, field: string, value: number) => Promise<void>;
   updateMealMenu: (dayId: string, mealKey: MealType, menu: MealMenu) => Promise<void>;
-  updateSubscriptionStatus: (flatId: string, dayId: string, personIndex: number, slot: MealType, taken: boolean) => Promise<void>;
+  updateSubscriptionStatus: (flatId: string, dayId: string, personIndex: number, slot: string, taken: boolean) => Promise<void>;
   getAuthConfig: () => Promise<any>;
 }
 
@@ -83,6 +84,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
   const [guestEnabled, setGuestEnabled] = useState(true);
   const [mobileEnabled, setMobileEnabled] = useState(true);
   const [foodPriceEnabled, setFoodPriceEnabled] = useState(false);
+  const [kidsEnabled, setKidsEnabled] = useState(false);
   const [whatsappCountryCode, setWhatsappCountryCode] = useState("91");
 
   const refreshAllData = useCallback(async (silent = false) => {
@@ -97,7 +99,15 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
         repository.getConfig(),
         repository.getMenu(),
       ]);
-      setSubscriptions(subs);
+
+      // Natural sort by Block then Flat
+      const sortedSubs = [...subs].sort((a, b) => {
+        const blockCompare = (a.block || "").localeCompare(b.block || "", undefined, { numeric: true, sensitivity: 'base' });
+        if (blockCompare !== 0) return blockCompare;
+        return (a.flat || "").localeCompare(b.flat || "", undefined, { numeric: true, sensitivity: 'base' });
+      });
+
+      setSubscriptions(sortedSubs);
       setDayConfig(config.days);
       setSeasonName(config.seasonName);
       setSeasonEnabled(config.seasonEnabled !== false);
@@ -105,12 +115,13 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       setGuestEnabled(config.guestEnabled !== false);
       setMobileEnabled(config.mobileEnabled !== false);
       setFoodPriceEnabled(config.foodPriceEnabled || false);
+      setKidsEnabled(config.kidsEnabled || false);
       setWhatsappCountryCode(config.whatsappCountryCode || "91");
       setFoodMenu(menu);
       setFirebaseError("");
     } catch (err: any) {
       console.error("Sync error:", err);
-      const defaultError = "Could not sync with database.";
+      const defaultError = UI_TEXT.syncError;
       setFirebaseError(err.message || defaultError);
     } finally {
       if (!silent) setLoading(false);
@@ -196,7 +207,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const updateSubscriptionStatus = useCallback(async (flatId: string, dayId: string, personIndex: number, slot: MealType, taken: boolean) => {
+  const updateSubscriptionStatus = useCallback(async (flatId: string, dayId: string, personIndex: number, slot: string, taken: boolean) => {
      try {
        await repository.updateSubscriptionStatus(flatId, dayId, personIndex, slot, taken);
        // Optimistic update
@@ -205,7 +216,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
             const updated = { ...s };
             updated.takenByPerson[dayId][personIndex] = {
               ...updated.takenByPerson[dayId][personIndex],
-              [slot]: taken
+              [slot as MealType]: taken
             };
             return updated;
          }
@@ -241,6 +252,12 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
         breakfastGuestNonVegTaken: guestEnabled ? (dayMenu?.breakfast?.guestNonVegTaken || 0) : 0,
         breakfastFlatVegTaken: 0,
         breakfastFlatNonVegTaken: 0,
+        breakfastKidsTotal: 0,
+        breakfastKidsVeg: 0,
+        breakfastKidsNonVeg: 0,
+        breakfastKidsTaken: 0,
+        breakfastKidsVegTaken: 0,
+        breakfastKidsNonVegTaken: 0,
 
         lunch: guestEnabled ? ((dayMenu?.lunch?.guestVeg || 0) + (dayMenu?.lunch?.guestNonVeg || 0)) : 0,
         lunchVeg: guestEnabled ? (dayMenu?.lunch?.guestVeg || 0) : 0,
@@ -255,6 +272,12 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
         lunchGuestNonVegTaken: guestEnabled ? (dayMenu?.lunch?.guestNonVegTaken || 0) : 0,
         lunchFlatVegTaken: 0,
         lunchFlatNonVegTaken: 0,
+        lunchKidsTotal: 0,
+        lunchKidsVeg: 0,
+        lunchKidsNonVeg: 0,
+        lunchKidsTaken: 0,
+        lunchKidsVegTaken: 0,
+        lunchKidsNonVegTaken: 0,
 
         dinner: guestEnabled ? ((dayMenu?.dinner?.guestVeg || 0) + (dayMenu?.dinner?.guestNonVeg || 0)) : 0,
         dinnerVeg: guestEnabled ? (dayMenu?.dinner?.guestVeg || 0) : 0,
@@ -269,30 +292,55 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
         dinnerGuestNonVegTaken: guestEnabled ? (dayMenu?.dinner?.guestNonVegTaken || 0) : 0,
         dinnerFlatVegTaken: 0,
         dinnerFlatNonVegTaken: 0,
+        dinnerKidsTotal: 0,
+        dinnerKidsVeg: 0,
+        dinnerKidsNonVeg: 0,
+        dinnerKidsTaken: 0,
+        dinnerKidsVegTaken: 0,
+        dinnerKidsNonVegTaken: 0,
       };
 
       return uniqueSubscriptions.reduce((totals, item) => {
         const mealSlots = item.mealSlots?.[day] || [];
         const takenByPerson = item.takenByPerson?.[day] || [];
 
-        mealSlots.forEach((slots, index) => {
+          mealSlots.forEach((slots, index) => {
           const taken = takenByPerson?.[index];
+          const isKid = kidsEnabled && index >= item.peopleCount;
 
           // Breakfast
           if (isMealEnabled(day, MealType.BREAKFAST, dayConfig) && slots?.[MealType.BREAKFAST] && slots[MealType.BREAKFAST] !== DietaryOption.NONE) {
              const diet = slots[MealType.BREAKFAST] === DietaryOption.VEG ? DietType.VEG : DietType.NON_VEG;
              if (isDietaryEnabled(day, MealType.BREAKFAST, diet, dayConfig)) {
                 totals.breakfast += 1;
-                if (slots[MealType.BREAKFAST] === DietaryOption.VEG) totals.breakfastVeg += 1;
-                else totals.breakfastNonVeg += 1;
+                if (isKid) totals.breakfastKidsTotal += 1;
+
+                if (slots[MealType.BREAKFAST] === DietaryOption.VEG) {
+                   if (isKid) totals.breakfastKidsVeg += 1;
+                   else totals.breakfastVeg += 1;
+                } else {
+                   if (isKid) totals.breakfastKidsNonVeg += 1;
+                   else totals.breakfastNonVeg += 1;
+                }
+
                 if (isParcelEnabled(day, MealType.BREAKFAST, dayConfig) && slots.breakfastParcel) {
                   totals.breakfastParcel += 1;
-                  if (taken?.breakfast) totals.breakfastParcelTaken += 1;
+                  if (taken?.breakfastParcel) totals.breakfastParcelTaken += 1;
                 }
-                if (taken?.breakfast) {
+
+                const isB_Taken = taken?.breakfast || taken?.breakfastParcel;
+
+                if (isB_Taken) {
                   totals.breakfastTaken += 1;
-                  if (slots[MealType.BREAKFAST] === DietaryOption.VEG) totals.breakfastFlatVegTaken += 1;
-                  else totals.breakfastFlatNonVegTaken += 1;
+                  if (isKid) totals.breakfastKidsTaken += 1;
+
+                  if (slots[MealType.BREAKFAST] === DietaryOption.VEG) {
+                     if (isKid) totals.breakfastKidsVegTaken += 1;
+                     else totals.breakfastFlatVegTaken += 1;
+                  } else {
+                     if (isKid) totals.breakfastKidsNonVegTaken += 1;
+                     else totals.breakfastFlatNonVegTaken += 1;
+                  }
                 }
              }
           }
@@ -302,16 +350,33 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
             const diet = slots[MealType.LUNCH] === DietaryOption.VEG ? DietType.VEG : DietType.NON_VEG;
             if (isDietaryEnabled(day, MealType.LUNCH, diet, dayConfig)) {
               totals.lunch += 1;
-              if (slots[MealType.LUNCH] === DietaryOption.VEG) totals.lunchVeg += 1;
-              else totals.lunchNonVeg += 1;
+              if (isKid) totals.lunchKidsTotal += 1;
+
+              if (slots[MealType.LUNCH] === DietaryOption.VEG) {
+                 if (isKid) totals.lunchKidsVeg += 1;
+                 else totals.lunchVeg += 1;
+              } else {
+                 if (isKid) totals.lunchKidsNonVeg += 1;
+                 else totals.lunchNonVeg += 1;
+              }
               if (isParcelEnabled(day, MealType.LUNCH, dayConfig) && slots.lunchParcel) {
                 totals.lunchParcel += 1;
-                if (taken?.lunch) totals.lunchParcelTaken += 1;
+                if (taken?.lunchParcel) totals.lunchParcelTaken += 1;
               }
-              if (taken?.lunch) {
+
+              const isL_Taken = taken?.lunch || taken?.lunchParcel;
+
+              if (isL_Taken) {
                 totals.lunchTaken += 1;
-                if (slots[MealType.LUNCH] === DietaryOption.VEG) totals.lunchFlatVegTaken += 1;
-                else totals.lunchFlatNonVegTaken += 1;
+                if (isKid) totals.lunchKidsTaken += 1;
+
+                if (slots[MealType.LUNCH] === DietaryOption.VEG) {
+                   if (isKid) totals.lunchKidsVegTaken += 1;
+                   else totals.lunchFlatVegTaken += 1;
+                } else {
+                   if (isKid) totals.lunchKidsNonVegTaken += 1;
+                   else totals.lunchFlatNonVegTaken += 1;
+                }
               }
             }
           }
@@ -321,16 +386,33 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
             const diet = slots[MealType.DINNER] === DietaryOption.VEG ? DietType.VEG : DietType.NON_VEG;
             if (isDietaryEnabled(day, MealType.DINNER, diet, dayConfig)) {
               totals.dinner += 1;
-              if (slots[MealType.DINNER] === DietaryOption.VEG) totals.dinnerVeg += 1;
-              else totals.dinnerNonVeg += 1;
+              if (isKid) totals.dinnerKidsTotal += 1;
+
+              if (slots[MealType.DINNER] === DietaryOption.VEG) {
+                 if (isKid) totals.dinnerKidsVeg += 1;
+                 else totals.dinnerVeg += 1;
+              } else {
+                 if (isKid) totals.dinnerKidsNonVeg += 1;
+                 else totals.dinnerNonVeg += 1;
+              }
               if (isParcelEnabled(day, MealType.DINNER, dayConfig) && slots.dinnerParcel) {
                 totals.dinnerParcel += 1;
-                if (taken?.dinner) totals.dinnerParcelTaken += 1;
+                if (taken?.dinnerParcel) totals.dinnerParcelTaken += 1;
               }
-              if (taken?.dinner) {
+
+              const isD_Taken = taken?.dinner || taken?.dinnerParcel;
+
+              if (isD_Taken) {
                 totals.dinnerTaken += 1;
-                if (slots[MealType.DINNER] === DietaryOption.VEG) totals.dinnerFlatVegTaken += 1;
-                else totals.dinnerFlatNonVegTaken += 1;
+                if (isKid) totals.dinnerKidsTaken += 1;
+
+                if (slots[MealType.DINNER] === DietaryOption.VEG) {
+                   if (isKid) totals.dinnerKidsVegTaken += 1;
+                   else totals.dinnerFlatVegTaken += 1;
+                } else {
+                   if (isKid) totals.dinnerKidsNonVegTaken += 1;
+                   else totals.dinnerFlatNonVegTaken += 1;
+                }
               }
             }
           }
@@ -338,7 +420,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
         return totals;
       }, initialTotals);
     });
-  }, [subscriptions, foodMenu, dayConfig, guestEnabled]);
+  }, [subscriptions, foodMenu, dayConfig, guestEnabled, kidsEnabled]);
 
   const collections = useMemo(() => {
     let total = 0, upi = 0, cash = 0, bankTransfer = 0;
@@ -363,13 +445,13 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
   }, [subscriptions]);
 
   const totalPeople = useMemo(() => {
-    return subscriptions.reduce((sum, sub) => sum + (sub.peopleCount || 0), 0);
+    return subscriptions.reduce((sum, sub) => sum + (sub.peopleCount || 0) + (sub.kidsCount || 0), 0);
   }, [subscriptions]);
 
   const value = useMemo(() => ({
     loading, firebaseError, refreshAllData,
     subscriptions, foodMenu, dayConfig, seasonName, seasonEnabled, paymentConfig, guestEnabled, mobileEnabled, foodPriceEnabled,
-    whatsappCountryCode,
+    kidsEnabled, whatsappCountryCode,
     dashboardData, collections, totalPeople,
     upsertSubscription, deleteSubscription, updateConfig, updateMenu, updateGuestCount, updateMealMenu, updateSubscriptionStatus,
     getAuthConfig

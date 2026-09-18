@@ -2,10 +2,10 @@ import React, { memo } from "react";
 import { View, Text, ScrollView, StatusBar, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useStyles } from "../styles";
-import { useAppTheme } from "../theme";
+import { StatusBarStyleMode, useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
-import { getDayLabel, isMealEnabled, isMealDone, getSortedMealKeys, isDietaryEnabled, isMealCurrent } from "../constants";
-import { MealMenu, ConfigDay, UserRole, MealType, DietType, AppScreen } from "../types";
+import { getDayLabel, isMealEnabled, isMealDone, getSortedMealKeys, isDietaryEnabled, isMealCurrent, getMealLabel } from "../constants";
+import { MealMenu, ConfigDay, UserRole, MealType, DietType, AppScreen, AppThemeMode } from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
@@ -36,7 +36,7 @@ const GuestMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, onUp
   const isCurrent = isMealCurrent(dayId, type, config);
   const showDetailed = isVegEnabled && isNonVegEnabled;
 
-  const mealLabel = type === MealType.BREAKFAST ? UI_TEXT.breakfast : type === MealType.LUNCH ? UI_TEXT.lunch : UI_TEXT.dinner;
+  const mealLabel = getMealLabel(type);
   const icon = type === MealType.BREAKFAST ? "sunny-outline" : type === MealType.LUNCH ? "restaurant-outline" : "moon-outline";
 
   const guestVeg = menu.guestVeg || 0;
@@ -66,7 +66,7 @@ const GuestMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, onUp
                </View>
             )}
             {!showDetailed && (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: isVegEnabled ? theme.colors.veg + "15" : theme.colors.nonVeg + "15", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: 0.5, borderColor: isVegEnabled ? theme.colors.veg : theme.colors.nonVeg }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: isVegEnabled ? theme.colors.successLight : theme.colors.errorLight, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: 0.5, borderColor: isVegEnabled ? theme.colors.veg : theme.colors.nonVeg }}>
                 <Ionicons name={isVegEnabled ? "leaf" : "flame"} size={10} color={isVegEnabled ? theme.colors.veg : theme.colors.nonVeg} />
                 <Text style={{ color: isVegEnabled ? theme.colors.veg : theme.colors.nonVeg, fontSize: 10, fontWeight: "800" }}>
                   {(isVegEnabled ? UI_TEXT.vegOnly : UI_TEXT.nonVegOnly).toUpperCase()}
@@ -199,7 +199,7 @@ export function GuestManagementScreen() {
 
   return (
     <View style={styles.root}>
-      <StatusBar style={themeType === "dark" ? "light" : "dark"} />
+      <StatusBar style={themeType === AppThemeMode.DARK ? StatusBarStyleMode.LIGHT : StatusBarStyleMode.DARK} />
       <View style={styles.header}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>

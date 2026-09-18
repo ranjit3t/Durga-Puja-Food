@@ -7,7 +7,7 @@ import { View, Text, ScrollView, StatusBar, Pressable, Platform } from "react-na
 import { captureRef } from "react-native-view-shot";
 import { Ionicons } from "@expo/vector-icons";
 import { useStyles } from "../styles";
-import { useAppTheme } from "../theme";
+import { StatusBarStyleMode, useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
 import {
   getActiveDays,
@@ -15,10 +15,11 @@ import {
   getDayAbbr,
   isMealEnabled,
   getSortedMealKeys,
+  getMealLabel,
   isParcelEnabled,
   isMealCurrent,
 } from "../constants";
-import { ReportType, MealType, AppScreen } from "../types";
+import { ReportType, MealType, AppScreen, AppThemeMode } from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
@@ -45,7 +46,7 @@ import { useAppNavigation } from "../context/NavigationContext";
 export function ReportScreen() {
   const { userRole, handleLogout } = useAuth();
   const {
-    subscriptions, foodMenu, dayConfig, seasonName, paymentConfig, guestEnabled
+    subscriptions, foodMenu, dayConfig, seasonName, paymentConfig, guestEnabled, kidsEnabled, whatsappCountryCode, mobileEnabled
   } = useDatabase();
   const { shareQr } = useUI();
   const {
@@ -55,7 +56,7 @@ export function ReportScreen() {
 
   const {
     sortedActiveDays, activeDays, dayWiseData, mealWiseData, flatWiseData, paymentData, getNotTakenData
-  } = useReportData(subscriptions, foodMenu, dayConfig, guestEnabled, paymentConfig);
+  } = useReportData(subscriptions, foodMenu, dayConfig, guestEnabled, paymentConfig, !!kidsEnabled);
 
   const styles = useStyles();
   const { theme, themeType } = useAppTheme();
@@ -114,7 +115,7 @@ export function ReportScreen() {
           reportType === ReportType.MEAL ? UI_TEXT.mealWiseReport :
           reportType === ReportType.GUEST ? UI_TEXT.guestReport :
           reportType === ReportType.PARCEL ? UI_TEXT.parcelReport :
-          reportType === ReportType.SINGLE ? `${getDayLabel(selectedDayId, dayConfig)} - ${selectedMealType.charAt(0).toUpperCase() + selectedMealType.slice(1)}` :
+          reportType === ReportType.SINGLE ? `${getDayLabel(selectedDayId, dayConfig)} - ${getMealLabel(selectedMealType)}` :
           reportType === ReportType.NOT_TAKEN ? UI_TEXT.notTakenReport :
           reportType === ReportType.FLAT ? UI_TEXT.flatWiseReport :
           UI_TEXT.paymentReport;
@@ -134,7 +135,7 @@ export function ReportScreen() {
 
   return (
     <View style={styles.root}>
-      <StatusBar style={themeType === "dark" ? "light" : "dark"} />
+      <StatusBar style={themeType === AppThemeMode.DARK ? StatusBarStyleMode.LIGHT : StatusBarStyleMode.DARK} />
       <View style={styles.header}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -248,7 +249,7 @@ export function ReportScreen() {
                         { fontSize: 12 }
                       ]}
                     >
-                      {mKey.charAt(0).toUpperCase() + mKey.slice(1)}
+                      {getMealLabel(mKey)}
                     </Text>
                   </Pressable>
                 ))}
@@ -266,7 +267,7 @@ export function ReportScreen() {
                   {reportType === ReportType.MEAL && UI_TEXT.mealWiseReport}
                   {reportType === ReportType.GUEST && UI_TEXT.guestReport}
                   {reportType === ReportType.PARCEL && UI_TEXT.parcelReport}
-                  {reportType === ReportType.SINGLE && `${getDayLabel(selectedDayId, dayConfig)} - ${selectedMealType.charAt(0).toUpperCase() + selectedMealType.slice(1)}`}
+                  {reportType === ReportType.SINGLE && `${getDayLabel(selectedDayId, dayConfig)}${UI_TEXT.space}${UI_TEXT.hyphen}${UI_TEXT.space}${getMealLabel(selectedMealType)}`}
                   {reportType === ReportType.NOT_TAKEN && `${UI_TEXT.notTakenReport}`}
                   {reportType === ReportType.FLAT && UI_TEXT.flatWiseReport}
                   {reportType === ReportType.PAYMENT && UI_TEXT.paymentReport}
@@ -280,11 +281,19 @@ export function ReportScreen() {
           </View>
 
           {reportType === ReportType.DAY && (
-            <DayWiseReport data={dayWiseData} dayConfig={dayConfig} />
+            <DayWiseReport
+              data={dayWiseData}
+              dayConfig={dayConfig}
+              kidsEnabled={!!kidsEnabled}
+            />
           )}
 
           {reportType === ReportType.MEAL && (
-            <MealWiseReport data={mealWiseData} dayConfig={dayConfig} />
+            <MealWiseReport
+              data={mealWiseData}
+              dayConfig={dayConfig}
+              kidsEnabled={!!kidsEnabled}
+            />
           )}
 
           {reportType === ReportType.GUEST && (
@@ -302,6 +311,7 @@ export function ReportScreen() {
               mealWiseData={mealWiseData}
               dayConfig={dayConfig}
               guestEnabled={guestEnabled}
+              kidsEnabled={!!kidsEnabled}
             />
           )}
 
@@ -312,11 +322,19 @@ export function ReportScreen() {
               selectedMealType={selectedMealType}
               dayConfig={dayConfig}
               onSelectFlat={onSelectFlat}
+              kidsEnabled={!!kidsEnabled}
+              whatsappCountryCode={whatsappCountryCode}
+              mobileEnabled={!!mobileEnabled}
             />
           )}
 
           {reportType === ReportType.FLAT && (
-            <FlatWiseReport data={flatWiseData} dayConfig={dayConfig} onSelectFlat={onSelectFlat} />
+            <FlatWiseReport
+              data={flatWiseData}
+              dayConfig={dayConfig}
+              onSelectFlat={onSelectFlat}
+              kidsEnabled={!!kidsEnabled}
+            />
           )}
 
           {reportType === ReportType.PAYMENT && (

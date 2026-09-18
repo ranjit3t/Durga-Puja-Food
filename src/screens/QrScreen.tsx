@@ -3,10 +3,10 @@ import { View, Text, Pressable, StatusBar, ScrollView, Platform, useWindowDimens
 import { captureRef } from "react-native-view-shot";
 import QRCode from "react-native-qrcode-svg";
 import { useStyles } from "../styles";
-import { useAppTheme } from "../theme";
+import { StatusBarStyleMode, useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
 import { qrValueFor } from "../constants";
-import { AppScreen } from "../types";
+import { AppScreen, AppThemeMode } from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
@@ -20,7 +20,7 @@ import { useAppNavigation } from "../context/NavigationContext";
 export function QrScreen() {
   const { userRole, handleLogout } = useAuth();
   const {
-    dayConfig, seasonName, seasonEnabled, mobileEnabled, subscriptions, whatsappCountryCode
+    dayConfig, seasonName, seasonEnabled, mobileEnabled, subscriptions, whatsappCountryCode, kidsEnabled
   } = useDatabase();
   const { shareQr } = useUI();
   const { selectedId, selectedRecord, goBack, navigate } = useAppNavigation();
@@ -45,7 +45,7 @@ export function QrScreen() {
   };
   return (
     <View style={styles.root}>
-      <StatusBar style={themeType === "dark" ? "light" : "dark"} />
+      <StatusBar style={themeType === AppThemeMode.DARK ? StatusBarStyleMode.LIGHT : StatusBarStyleMode.DARK} />
       <View style={styles.header}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -75,7 +75,11 @@ export function QrScreen() {
             <View style={styles.qrPassDetails}>
               <Text style={styles.qrPassFlat}>{subscription.block}{UI_TEXT.hyphen}{subscription.flat}</Text>
               <Text style={styles.qrPassPeople}>
-                {subscription.peopleCount} {subscription.peopleCount === 1 ? UI_TEXT.personSuffix : UI_TEXT.personsSuffix}
+                {kidsEnabled ? (
+                  `${subscription.peopleCount}${UI_TEXT.space}${subscription.peopleCount === 1 ? UI_TEXT.adult : UI_TEXT.adults}${subscription.kidsCount ? `${UI_TEXT.plus}${subscription.kidsCount}${UI_TEXT.space}${subscription.kidsCount === 1 ? UI_TEXT.kid : UI_TEXT.kids}` : ""}`
+                ) : (
+                  `${subscription.peopleCount + (subscription.kidsCount || 0)}${subscription.peopleCount + (subscription.kidsCount || 0) === 1 ? UI_TEXT.personSuffix : UI_TEXT.personsSuffix}`
+                )}
               </Text>
             </View>
 
@@ -93,7 +97,11 @@ export function QrScreen() {
             {canShare && mobileEnabled && subscription.mobile ? (
               <Pressable
                 onPress={async () => {
-                  const message = `*${seasonName || UI_TEXT.headerTitle}*\n*${UI_TEXT.flatUpper}:* ${subscription.block}${UI_TEXT.hyphen}${subscription.flat}\n*${UI_TEXT.passIdLabel}:* ${subscription.id}\n\n${UI_TEXT.passInstruction}`;
+                  const peopleSummary = kidsEnabled
+                    ? `${UI_TEXT.bold}${UI_TEXT.people}${UI_TEXT.colon}${UI_TEXT.bold}${UI_TEXT.space}${subscription.peopleCount}${UI_TEXT.space}${subscription.peopleCount === 1 ? UI_TEXT.adult : UI_TEXT.adults}${subscription.kidsCount ? `${UI_TEXT.plus}${subscription.kidsCount}${UI_TEXT.space}${subscription.kidsCount === 1 ? UI_TEXT.kid : UI_TEXT.kids}` : ""}`
+                    : `${UI_TEXT.bold}${UI_TEXT.people}${UI_TEXT.colon}${UI_TEXT.bold}${UI_TEXT.space}${subscription.peopleCount + (subscription.kidsCount || 0)}${subscription.peopleCount + (subscription.kidsCount || 0) === 1 ? UI_TEXT.personSuffix : UI_TEXT.personsSuffix}`;
+
+                  const message = `${UI_TEXT.bold}${seasonName || UI_TEXT.headerTitle}${UI_TEXT.bold}${UI_TEXT.newline}${UI_TEXT.bold}${UI_TEXT.flatUpper}${UI_TEXT.colon}${UI_TEXT.bold}${UI_TEXT.space}${subscription.block}${UI_TEXT.hyphen}${subscription.flat}${UI_TEXT.newline}${peopleSummary}${UI_TEXT.newline}${UI_TEXT.bold}${UI_TEXT.passIdLabel}${UI_TEXT.colon}${UI_TEXT.bold}${UI_TEXT.space}${subscription.id}${UI_TEXT.newline}${UI_TEXT.newline}${UI_TEXT.passInstruction}`;
                   const url = `https://wa.me/${whatsappCountryCode}${subscription.mobile}?text=${encodeURIComponent(message)}`;
 
                   try {

@@ -1,3 +1,10 @@
+import { AppThemeMode } from "../types";
+
+export enum StatusBarStyleMode {
+  LIGHT = "light",
+  DARK = "dark",
+}
+
 export interface ThemeColors {
   primary: string;
   secondary: string;
@@ -23,6 +30,7 @@ export interface CardColor {
   bg: string;
   border: string;
   accent: string;
+  accentLight: string;
 }
 
 export interface ThemeSizes {
@@ -48,7 +56,7 @@ export interface ThemeTypography {
 }
 
 export interface AppTheme {
-  themeType: "primary" | "dark";
+  themeType: AppThemeMode;
   colors: ThemeColors;
   cardColors: CardColor[];
   sizes: ThemeSizes;

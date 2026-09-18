@@ -15,7 +15,7 @@ import {
 } from "react-native";
 import * as Contacts from "expo-contacts/legacy";
 import { useStyles } from "../styles";
-import { useAppTheme } from "../theme";
+import { StatusBarStyleMode, useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
 import {
   getActiveDays,
@@ -33,6 +33,9 @@ import {
   isParcelEnabled,
   isVegOnlyDay,
   isMealCurrent,
+  getMemberLegend,
+  getMealLabel,
+  getDietaryOptionLabel,
 } from "../constants";
 import {
   Subscription,
@@ -46,6 +49,7 @@ import {
   PaymentEntry,
   AppScreen,
   PaymentMode,
+  AppThemeMode,
 } from "../types";
 import { ActionLabel } from "../components/common/ActionLabel";
 import { Dropdown } from "../components/common/Dropdown";
@@ -64,7 +68,7 @@ export function SubscriptionForm() {
   const { userRole, handleLogout } = useAuth();
   const {
     dayConfig, paymentConfig, seasonEnabled, foodPriceEnabled, foodMenu, mobileEnabled,
-    upsertSubscription, deleteSubscription
+    upsertSubscription, deleteSubscription, kidsEnabled
   } = useDatabase();
   const { showAlert: showGlobalAlert } = useUI();
   const {
@@ -93,12 +97,20 @@ export function SubscriptionForm() {
     [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].some(m => isMealCurrent(day, m, dayConfig))
   );
 
-  const onCancel = goBack;
+  const onCancel = () => {
+    if (lockIdentity) {
+      navigate(AppScreen.DETAILS);
+    } else {
+      goBack();
+    }
+  };
   const onHome = () => navigate(AppScreen.HOME);
   const onSave = async (next: Subscription) => {
     try {
       if (await upsertSubscription(next)) {
-        goBack();
+        setSelectedId(next.id);
+        setSelectedRecord(next);
+        navigate(AppScreen.DETAILS);
       }
     } catch (err) {
       console.error("Save error:", err);
@@ -133,11 +145,19 @@ export function SubscriptionForm() {
   });
 
   const [form, setForm] = useState(() => {
-    // If we're editing an existing record, ensure the payment mode is still valid/enabled
-    if (enabledMethods.length > 0 && !enabledMethods.includes(value.paymentMode)) {
-      return { ...value, paymentMode: enabledMethods[0] as any };
+    let initialValue = { ...value };
+
+    // If kids support is disabled, merge kids into adults to prevent data hidden/split confusion
+    if (!kidsEnabled && initialValue.kidsCount > 0) {
+      initialValue.peopleCount = initialValue.peopleCount + initialValue.kidsCount;
+      initialValue.kidsCount = 0;
     }
-    return value;
+
+    // If we're editing an existing record, ensure the payment mode is still valid/enabled
+    if (enabledMethods.length > 0 && !enabledMethods.includes(initialValue.paymentMode)) {
+      initialValue.paymentMode = enabledMethods[0] as any;
+    }
+    return initialValue;
   });
 
   const [mobileInput, setMobileInput] = useState(form.mobile ? String(form.mobile) : "");
@@ -169,6 +189,7 @@ export function SubscriptionForm() {
     flat: form.flat.trim(),
     mobile: mobileInput.trim(),
     peopleCount: form.peopleCount,
+    kidsCount: form.kidsCount || 0,
     mealSlots: normalizeForComparison(form.mealSlots),
     takenByPerson: normalizeForComparison(form.takenByPerson),
     payments: normalizeForComparison(payments)
@@ -180,6 +201,7 @@ export function SubscriptionForm() {
     if (form.flat.trim() !== pristine.current.flat) return true;
     if (mobileInput.trim() !== pristine.current.mobile) return true;
     if (form.peopleCount !== pristine.current.peopleCount) return true;
+    if ((form.kidsCount || 0) !== pristine.current.kidsCount) return true;
 
     // 2. Complex Matrices
     if (normalizeForComparison(form.mealSlots) !== pristine.current.mealSlots) return true;
@@ -189,7 +211,7 @@ export function SubscriptionForm() {
     if (normalizeForComparison(payments) !== pristine.current.payments) return true;
 
     return false;
-  }, [form.block, form.flat, form.peopleCount, form.mealSlots, form.takenByPerson, mobileInput, payments, normalizeForComparison]);
+  }, [form.block, form.flat, form.peopleCount, form.kidsCount, form.mealSlots, form.takenByPerson, mobileInput, payments, normalizeForComparison]);
 
   const hasAnyMealSelected = useMemo(() => {
     return Object.values(form.mealSlots).some(personSlots =>
@@ -200,6 +222,13 @@ export function SubscriptionForm() {
       )
     );
   }, [form.mealSlots]);
+
+  const canSave = useMemo(() => {
+    const hasFlat = !!form.flat.trim();
+    // If adding a new pass, we don't strictly require "hasChanged" because it's a new record.
+    // If editing, we want to prevent saving if nothing changed.
+    return hasFlat && hasAnyMealSelected && (!lockIdentity || hasChanged);
+  }, [form.flat, hasAnyMealSelected, hasChanged, lockIdentity]);
 
   const totalAmount = payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
 
@@ -250,9 +279,9 @@ export function SubscriptionForm() {
     id: lockIdentity
       ? value.id
       : `${form.block}-${form.flat.trim().toUpperCase()}`,
-    takenByPerson: resizeTaken(form.takenByPerson, form.peopleCount, dayConfig),
-    mealSlots: resizeMealSlots(form.mealSlots, form.peopleCount, dayConfig),
-    meals: mealsFromChoices(form.mealSlots, dayConfig),
+    takenByPerson: resizeTaken(form.takenByPerson, pristine.current.peopleCount, form.peopleCount, pristine.current.kidsCount, form.kidsCount || 0, dayConfig),
+    mealSlots: resizeMealSlots(form.mealSlots, pristine.current.peopleCount, form.peopleCount, pristine.current.kidsCount, form.kidsCount || 0, dayConfig),
+    meals: mealsFromChoices(form.mealSlots, dayConfig, form.peopleCount, !!kidsEnabled),
     payments: payments,
     amount: totalAmount.toFixed(0),
     paymentMode: payments[0]?.mode || PaymentMode.CASH,
@@ -302,7 +331,7 @@ export function SubscriptionForm() {
   /**
    * Toggles whether a specific meal has been 'taken' (collected) by the person.
    */
-  const setTakenChoice = (slot: MealType, taken: boolean) =>
+  const setTakenChoice = (slot: string, taken: boolean) =>
     set("takenByPerson", {
       ...form.takenByPerson,
       [selectedDay]: form.takenByPerson[selectedDay].map((item, index) =>
@@ -343,43 +372,45 @@ export function SubscriptionForm() {
       const dayMenu = foodMenu[dayId];
 
       const slots = form.mealSlots[dayId] || [];
-      slots.forEach((personSlot) => {
+      slots.forEach((personSlot, index) => {
+        const isKid = kidsEnabled && index >= form.peopleCount;
+
         // Breakfast
         if (personSlot[MealType.BREAKFAST] === DietaryOption.VEG) {
-          total += Number(dayMenu?.[MealType.BREAKFAST]?.vegPrice || dayConf[MealType.BREAKFAST]?.vegPrice || 0);
+          total += Number((isKid ? dayMenu?.[MealType.BREAKFAST]?.kidsVegPrice : dayMenu?.[MealType.BREAKFAST]?.vegPrice) || dayConf[MealType.BREAKFAST]?.vegPrice || 0);
           if (personSlot.breakfastParcel) {
-            total += Number(dayMenu?.[MealType.BREAKFAST]?.vegParcelPrice || dayConf[MealType.BREAKFAST]?.vegParcelPrice || 0);
+            total += Number((isKid ? dayMenu?.[MealType.BREAKFAST]?.kidsVegParcelPrice : dayMenu?.[MealType.BREAKFAST]?.vegParcelPrice) || dayConf[MealType.BREAKFAST]?.vegParcelPrice || 0);
           }
         } else if (personSlot[MealType.BREAKFAST] === DietaryOption.NON_VEG) {
-          total += Number(dayMenu?.[MealType.BREAKFAST]?.nonVegPrice || dayConf[MealType.BREAKFAST]?.nonVegPrice || 0);
+          total += Number((isKid ? dayMenu?.[MealType.BREAKFAST]?.kidsNonVegPrice : dayMenu?.[MealType.BREAKFAST]?.nonVegPrice) || dayConf[MealType.BREAKFAST]?.nonVegPrice || 0);
           if (personSlot.breakfastParcel) {
-            total += Number(dayMenu?.[MealType.BREAKFAST]?.nonVegParcelPrice || dayConf[MealType.BREAKFAST]?.nonVegParcelPrice || 0);
+            total += Number((isKid ? dayMenu?.[MealType.BREAKFAST]?.kidsNonVegParcelPrice : dayMenu?.[MealType.BREAKFAST]?.nonVegParcelPrice) || dayConf[MealType.BREAKFAST]?.nonVegParcelPrice || 0);
           }
         }
 
         // Lunch
         if (personSlot[MealType.LUNCH] === DietaryOption.VEG) {
-          total += Number(dayMenu?.[MealType.LUNCH]?.vegPrice || dayConf[MealType.LUNCH]?.vegPrice || 0);
+          total += Number((isKid ? dayMenu?.[MealType.LUNCH]?.kidsVegPrice : dayMenu?.[MealType.LUNCH]?.vegPrice) || dayConf[MealType.LUNCH]?.vegPrice || 0);
           if (personSlot.lunchParcel) {
-            total += Number(dayMenu?.[MealType.LUNCH]?.vegParcelPrice || dayConf[MealType.LUNCH]?.vegParcelPrice || 0);
+            total += Number((isKid ? dayMenu?.[MealType.LUNCH]?.kidsVegParcelPrice : dayMenu?.[MealType.LUNCH]?.vegParcelPrice) || dayConf[MealType.LUNCH]?.vegParcelPrice || 0);
           }
         } else if (personSlot[MealType.LUNCH] === DietaryOption.NON_VEG) {
-          total += Number(dayMenu?.[MealType.LUNCH]?.nonVegPrice || dayConf[MealType.LUNCH]?.nonVegPrice || 0);
+          total += Number((isKid ? dayMenu?.[MealType.LUNCH]?.kidsNonVegPrice : dayMenu?.[MealType.LUNCH]?.nonVegPrice) || dayConf[MealType.LUNCH]?.nonVegPrice || 0);
           if (personSlot.lunchParcel) {
-            total += Number(dayMenu?.[MealType.LUNCH]?.nonVegParcelPrice || dayConf[MealType.LUNCH]?.nonVegParcelPrice || 0);
+            total += Number((isKid ? dayMenu?.[MealType.LUNCH]?.kidsNonVegParcelPrice : dayMenu?.[MealType.LUNCH]?.nonVegParcelPrice) || dayConf[MealType.LUNCH]?.nonVegParcelPrice || 0);
           }
         }
 
         // Dinner
         if (personSlot[MealType.DINNER] === DietaryOption.VEG) {
-          total += Number(dayMenu?.[MealType.DINNER]?.vegPrice || dayConf[MealType.DINNER]?.vegPrice || 0);
+          total += Number((isKid ? dayMenu?.[MealType.DINNER]?.kidsVegPrice : dayMenu?.[MealType.DINNER]?.vegPrice) || dayConf[MealType.DINNER]?.vegPrice || 0);
           if (personSlot.dinnerParcel) {
-            total += Number(dayMenu?.[MealType.DINNER]?.vegParcelPrice || dayConf[MealType.DINNER]?.vegParcelPrice || 0);
+            total += Number((isKid ? dayMenu?.[MealType.DINNER]?.kidsVegParcelPrice : dayMenu?.[MealType.DINNER]?.vegParcelPrice) || dayConf[MealType.DINNER]?.vegParcelPrice || 0);
           }
         } else if (personSlot[MealType.DINNER] === DietaryOption.NON_VEG) {
-          total += Number(dayMenu?.[MealType.DINNER]?.nonVegPrice || dayConf[MealType.DINNER]?.nonVegPrice || 0);
+          total += Number((isKid ? dayMenu?.[MealType.DINNER]?.kidsNonVegPrice : dayMenu?.[MealType.DINNER]?.nonVegPrice) || dayConf[MealType.DINNER]?.nonVegPrice || 0);
           if (personSlot.dinnerParcel) {
-            total += Number(dayMenu?.[MealType.DINNER]?.nonVegParcelPrice || dayConf[MealType.DINNER]?.nonVegParcelPrice || 0);
+            total += Number((isKid ? dayMenu?.[MealType.DINNER]?.kidsNonVegParcelPrice : dayMenu?.[MealType.DINNER]?.nonVegParcelPrice) || dayConf[MealType.DINNER]?.nonVegParcelPrice || 0);
           }
         }
       });
@@ -387,7 +418,7 @@ export function SubscriptionForm() {
 
     // Only update if we have a single payment entry and it's either a new pass
     // or the user hasn't manually edited the price yet.
-    if (payments.length === 1 && (!lockIdentity || !isManualAmount)) {
+    if (payments.length === 1 && (!lockIdentity && !isManualAmount)) {
       const currentVal = payments[0].amount || UI_TEXT.zero;
       if (currentVal !== String(total)) {
         // Direct set to ensure immediate UI update
@@ -401,7 +432,7 @@ export function SubscriptionForm() {
       style={styles.root}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
-      <StatusBar style={themeType === "dark" ? "light" : "dark"} />
+      <StatusBar style={themeType === AppThemeMode.DARK ? StatusBarStyleMode.LIGHT : StatusBarStyleMode.DARK} />
       <View style={styles.header}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -429,12 +460,12 @@ export function SubscriptionForm() {
             <View>
               <Text style={[styles.previewLabel, { color: theme.colors.white, opacity: 0.7 }]}>{UI_TEXT.livePreview}</Text>
               <Text style={[styles.previewTitle, { color: theme.colors.white, fontSize: 28 }]}>
-                {form.block || "-"}-{form.flat || "-"}
+                {form.block || UI_TEXT.hyphen}{UI_TEXT.hyphen}{form.flat || UI_TEXT.hyphen}
               </Text>
             </View>
             {paymentConfig.enabled && (
               <Text style={[styles.previewAmount, { color: theme.colors.white, fontSize: 22 }]}>
-                {`${UI_TEXT.rs} ${totalAmount.toFixed(0)}`}
+                {`${UI_TEXT.rs}${UI_TEXT.space}${totalAmount.toFixed(0)}`}
               </Text>
             )}
           </View>
@@ -443,10 +474,9 @@ export function SubscriptionForm() {
 
           <Text style={[styles.previewMeta, { color: theme.colors.white }]}>
             {form.peopleCount}
-            {form.peopleCount === 1
-              ? UI_TEXT.personSuffix
-              : UI_TEXT.personsSuffix}
-            {paymentConfig.enabled && ` | ${payments[0]?.mode || UI_TEXT.paymentModeNotSet}`}
+            {kidsEnabled ? `${UI_TEXT.space}${form.peopleCount === 1 ? UI_TEXT.adult : UI_TEXT.adults}` : (form.peopleCount === 1 ? UI_TEXT.personSuffix : UI_TEXT.personsSuffix)}
+            {kidsEnabled && `${UI_TEXT.pipe}${form.kidsCount || 0}${UI_TEXT.space}${form.kidsCount === 1 ? UI_TEXT.kid : UI_TEXT.kids}`}
+            {paymentConfig.enabled && `${UI_TEXT.pipe}${payments[0]?.mode || UI_TEXT.paymentModeNotSet}`}
           </Text>
         </View>
 
@@ -522,24 +552,49 @@ export function SubscriptionForm() {
             </>
           )}
 
-          <CounterInput
-            label={UI_TEXT.peopleCount}
-            value={form.peopleCount}
-            min={1}
-            onChange={(count) => {
-              setSelectedPerson((current) =>
-                Math.min(current, Math.max(0, count - 1))
-              );
-              setForm({
-                ...form,
-                peopleCount: count,
-                mealByPerson: resizeMealChoices(form.mealByPerson, count, dayConfig),
-                mealSlots: resizeMealSlots(form.mealSlots, count, dayConfig),
-              });
-              setIsManualAmount(false);
-            }}
-            disabled={!isAdmin || !canEdit}
-          />
+          <View style={{ marginTop: 12 }}>
+            <CounterInput
+              label={kidsEnabled ? UI_TEXT.adultCount : UI_TEXT.peopleCount}
+              value={form.peopleCount}
+              min={1}
+              onChange={(count) => {
+                const oldPeople = form.peopleCount;
+                const kids = form.kidsCount || 0;
+                setSelectedPerson((current) =>
+                  Math.min(current, Math.max(0, count + kids - 1))
+                );
+                setForm({
+                  ...form,
+                  peopleCount: count,
+                  mealSlots: resizeMealSlots(form.mealSlots, oldPeople, count, kids, kids, dayConfig),
+                });
+                setIsManualAmount(false);
+              }}
+              disabled={!isAdmin || !canEdit}
+            />
+          </View>
+
+          {kidsEnabled && (
+            <CounterInput
+              label={UI_TEXT.kidsCount}
+              value={form.kidsCount || 0}
+              min={0}
+              onChange={(count) => {
+                const adults = form.peopleCount;
+                const oldKids = form.kidsCount || 0;
+                setSelectedPerson((current) =>
+                  Math.min(current, Math.max(0, adults + count - 1))
+                );
+                setForm({
+                  ...form,
+                  kidsCount: count,
+                  mealSlots: resizeMealSlots(form.mealSlots, adults, adults, oldKids, count, dayConfig),
+                });
+                setIsManualAmount(false);
+              }}
+              disabled={!isAdmin || !canEdit}
+            />
+          )}
         </View>
 
         {/* Selection Matrix */}
@@ -550,7 +605,7 @@ export function SubscriptionForm() {
           <Text style={styles.selectorLabel}>{UI_TEXT.person}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
             <View style={styles.selectorRow}>
-              {Array.from({ length: form.peopleCount }, (_, index) => (
+              {Array.from({ length: form.peopleCount + (form.kidsCount || 0) }, (_, index) => (
                 <Pressable
                   key={index}
                   onPress={() => setSelectedPerson(index)}
@@ -566,7 +621,7 @@ export function SubscriptionForm() {
                       selectedPerson === index && styles.selectorTextOn,
                     ]}
                   >
-                    {UI_TEXT.personAbbr}{index + 1}
+                    {getMemberLegend(index, form.peopleCount, kidsEnabled)}
                   </Text>
                 </Pressable>
               ))}
@@ -607,12 +662,7 @@ export function SubscriptionForm() {
             {getSortedMealKeys(selectedDay, dayConfig)
               .filter((slot) => isMealEnabled(selectedDay, slot, dayConfig))
               .map((slot) => {
-                const label =
-                  slot === MealType.BREAKFAST
-                    ? UI_TEXT.breakfastTitle
-                    : slot === MealType.LUNCH
-                    ? UI_TEXT.lunchTitle
-                    : UI_TEXT.dinnerTitle;
+                const label = getMealLabel(slot);
                 const currentSlotChoice =
                   form.mealSlots[selectedDay]?.[selectedPerson]?.[slot] || DietaryOption.NONE;
                 const isVegOnly = isVegOnlyDay(selectedDay, dayConfig);
@@ -642,7 +692,7 @@ export function SubscriptionForm() {
                             { fontSize: 12 }
                           ]}
                         >
-                          {UI_TEXT.none}
+                          {getDietaryOptionLabel(DietaryOption.NONE)}
                         </Text>
                       </Pressable>
 
@@ -665,7 +715,7 @@ export function SubscriptionForm() {
                               { fontSize: 12 }
                             ]}
                           >
-                            {UI_TEXT.veg}
+                            {getDietaryOptionLabel(DietaryOption.VEG)}
                           </Text>
                         </Pressable>
                       )}
@@ -689,7 +739,7 @@ export function SubscriptionForm() {
                               { fontSize: 12 }
                             ]}
                           >
-                            {UI_TEXT.nonVeg}
+                            {getDietaryOptionLabel(DietaryOption.NON_VEG)}
                           </Text>
                         </Pressable>
                       )}
@@ -719,20 +769,20 @@ export function SubscriptionForm() {
                     .map((slot) => {
                       const currentChoice = form.mealSlots[selectedDay]?.[selectedPerson]?.[slot] || DietaryOption.NONE;
                     const isParcel = !!form.mealSlots[selectedDay]?.[selectedPerson]?.[`${slot}Parcel` as keyof MealSlot];
-                    const label = slot === MealType.BREAKFAST ? UI_TEXT.breakfastTitle : slot === MealType.LUNCH ? UI_TEXT.lunchTitle : UI_TEXT.dinnerTitle;
+                    const label = getMealLabel(slot);
                     const isDone = isMealDone(selectedDay, slot, dayConfig);
 
                     return (
                       <Pressable
                         key={slot}
-                        disabled={currentChoice === UI_TEXT.none || isDone}
-                        onPress={() => canEdit && !isDone && setMealParcel(slot, !isParcel)}
+                        disabled={currentChoice === DietaryOption.NONE || isDone || !isAdmin}
+                        onPress={() => isAdmin && canEdit && !isDone && setMealParcel(slot, !isParcel)}
                         style={[
                           styles.choice,
                           isParcel
-                            ? (currentChoice === UI_TEXT.nonVeg ? styles.nonVegChoice : styles.vegChoice)
+                            ? (currentChoice === DietaryOption.NON_VEG ? styles.nonVegChoice : styles.vegChoice)
                             : styles.noneChoice,
-                          (currentChoice === UI_TEXT.none || isDone) && { opacity: 0.2 },
+                          (currentChoice === DietaryOption.NONE || isDone || !isAdmin) && { opacity: 0.2 },
                           { paddingVertical: 12, paddingHorizontal: 4 }
                         ]}
                       >
@@ -743,7 +793,7 @@ export function SubscriptionForm() {
                             { fontSize: 11 }
                           ]}
                         >
-                          {label} {UI_TEXT.parcelAbbr}
+                          {label}
                         </Text>
                       </Pressable>
                     );
@@ -764,7 +814,10 @@ export function SubscriptionForm() {
               </View>
               <View style={styles.choiceRow}>
                 {getSortedMealKeys(selectedDay, dayConfig)
-                  .filter((slot) => isMealEnabled(selectedDay, slot, dayConfig))
+                  .filter((slot) => {
+                    const choice = form.mealSlots[selectedDay]?.[selectedPerson]?.[slot];
+                    return isMealEnabled(selectedDay, slot, dayConfig) && choice !== DietaryOption.NONE;
+                  })
                   .map((slot) => {
                     const choice =
                       form.mealSlots[selectedDay]?.[selectedPerson]?.[slot];
@@ -781,12 +834,7 @@ export function SubscriptionForm() {
                         ? styles.vegChoice
                         : styles.nonVegChoice;
 
-                    const label =
-                      slot === MealType.BREAKFAST
-                        ? UI_TEXT.breakfastTitle
-                        : slot === MealType.LUNCH
-                        ? UI_TEXT.lunchTitle
-                        : UI_TEXT.dinnerTitle;
+                    const label = getMealLabel(slot);
                     const isDone = isMealDone(selectedDay, slot, dayConfig);
                     return (
                       <Pressable
@@ -813,6 +861,68 @@ export function SubscriptionForm() {
                     );
                   })}
               </View>
+
+              {/* SECTION 4: Parcel Collection */}
+              {(() => {
+                const parcelTakenSlots = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].filter(
+                  (slot) => {
+                    const choice = form.mealSlots[selectedDay]?.[selectedPerson]?.[slot];
+                    const isParcelRegistered = !!form.mealSlots[selectedDay]?.[selectedPerson]?.[`${slot}Parcel` as keyof MealSlot];
+                    const isFoodTaken = !!form.takenByPerson[selectedDay]?.[selectedPerson]?.[slot];
+                    return isMealEnabled(selectedDay, slot, dayConfig) && isParcelEnabled(selectedDay, slot, dayConfig) && choice !== DietaryOption.NONE && isParcelRegistered && isFoodTaken;
+                  }
+                );
+
+                if (parcelTakenSlots.length === 0) return null;
+
+                return (
+                  <View style={{ marginTop: 20 }}>
+                    <View style={{ marginBottom: 12 }}>
+                      <Text style={[styles.currentChoice, { marginTop: 0, fontSize: 16, marginBottom: 8 }]}>{UI_TEXT.parcelCollection || "Parcel taken by member"}</Text>
+                    </View>
+                    <View style={styles.choiceRow}>
+                      {getSortedMealKeys(selectedDay, dayConfig)
+                        .filter((slot) => {
+                           const isParcelRegistered = !!form.mealSlots[selectedDay]?.[selectedPerson]?.[`${slot}Parcel` as keyof MealSlot];
+                           const isFoodTaken = !!form.takenByPerson[selectedDay]?.[selectedPerson]?.[slot];
+                           return isMealEnabled(selectedDay, slot, dayConfig) && isParcelEnabled(selectedDay, slot, dayConfig) && isParcelRegistered && isFoodTaken;
+                        })
+                        .map((slot) => {
+                          const choice = form.mealSlots[selectedDay]?.[selectedPerson]?.[slot];
+                          const parcelTakenKey = `${slot}Parcel`;
+                          const isParcelTaken = !!form.takenByPerson[selectedDay]?.[selectedPerson]?.[parcelTakenKey as keyof TakenState];
+                          const slotColorStyle = choice === DietaryOption.NON_VEG ? styles.nonVegChoice : styles.vegChoice;
+                          const label = getMealLabel(slot);
+                          const isDone = isMealDone(selectedDay, slot, dayConfig);
+
+                          return (
+                            <Pressable
+                              key={slot}
+                              onPress={() => canEdit && !isDone && setTakenChoice(parcelTakenKey, !isParcelTaken)}
+                              style={[
+                                styles.choice,
+                                isParcelTaken ? slotColorStyle : styles.noneChoice,
+                                isDone && { opacity: 0.5 },
+                                { paddingVertical: 12, paddingHorizontal: 4 }
+                              ]}
+                              disabled={isDone}
+                            >
+                              <Text
+                                style={[
+                                  styles.choiceText,
+                                  isParcelTaken && styles.choiceTextOn,
+                                  { fontSize: 11 }
+                                ]}
+                              >
+                                {label}
+                              </Text>
+                            </Pressable>
+                          );
+                        })}
+                    </View>
+                  </View>
+                );
+              })()}
             </View>
           )}
         </View>
@@ -822,7 +932,7 @@ export function SubscriptionForm() {
           <View style={[styles.card, { backgroundColor: theme.cardColors[3].bg, borderColor: theme.cardColors[3].border }]}>
              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                 <Text style={[styles.sectionTitle, { fontSize: 18, marginBottom: 0, color: theme.cardColors[3].accent }]}>{UI_TEXT.paymentDetails}</Text>
-                <View style={[styles.pill, { backgroundColor: theme.cardColors[3].accent + "20" }]}>
+                <View style={[styles.pill, { backgroundColor: theme.cardColors[3].accentLight }]}>
                    <Text style={[styles.pillText, { color: theme.cardColors[3].accent }]}>{UI_TEXT.rs} {totalAmount.toFixed(0)}</Text>
                 </View>
              </View>
@@ -883,6 +993,20 @@ export function SubscriptionForm() {
                       />
                     </View>
                   )}
+
+                  {p.mode === PaymentMode.CASH && (
+                    <View style={{ marginTop: 16 }}>
+                      <Text style={styles.label}>{UI_TEXT.receivedByLabel}</Text>
+                      <TextInput
+                        value={p.receivedBy || ""}
+                        onChangeText={(name) => updatePayment(idx, { receivedBy: name })}
+                        placeholder={UI_TEXT.receivedByPlaceholder}
+                        placeholderTextColor={theme.colors.textMuted}
+                        editable={isAdmin && canEdit}
+                        style={[styles.input, !isAdmin && { backgroundColor: theme.colors.surface }]}
+                      />
+                    </View>
+                  )}
                </View>
              ))}
 
@@ -912,8 +1036,8 @@ export function SubscriptionForm() {
                 }
                 onSave(prepared);
               }}
-              style={[styles.primary, (!prepared.flat.trim() || !hasChanged || !hasAnyMealSelected) && { opacity: 0.5 }]}
-              disabled={!prepared.flat.trim() || !hasChanged || !hasAnyMealSelected}
+              style={[styles.primary, !canSave && { opacity: 0.5 }]}
+              disabled={!canSave}
             >
               <ActionLabel
                 icon="checkmark-circle-outline"
@@ -948,9 +1072,9 @@ export function SubscriptionForm() {
                   shadowRadius: 0,
                   shadowOffset: { width: 0, height: 0 }
                 },
-                (!prepared.flat.trim() || !hasChanged || !hasAnyMealSelected) && { opacity: 0.5 },
+                !canSave && { opacity: 0.5 },
               ]}
-              disabled={!prepared.flat.trim() || !hasChanged || !hasAnyMealSelected}
+              disabled={!canSave}
             >
               <ActionLabel
                 icon="qr-code-outline"

@@ -184,6 +184,30 @@ export const getPaymentModeLabel = (mode: PaymentMode) => {
   }
 };
 
+/**
+ * Returns localized label for a meal type.
+ */
+export const getMealLabel = (meal: MealType) => {
+  switch (meal) {
+    case MealType.BREAKFAST: return UI_TEXT.breakfastTitle;
+    case MealType.LUNCH: return UI_TEXT.lunchTitle;
+    case MealType.DINNER: return UI_TEXT.dinnerTitle;
+    default: return String(meal);
+  }
+};
+
+/**
+ * Returns localized label for a dietary option.
+ */
+export const getDietaryOptionLabel = (option: DietaryOption) => {
+  switch (option) {
+    case DietaryOption.VEG: return UI_TEXT.veg;
+    case DietaryOption.NON_VEG: return UI_TEXT.nonVeg;
+    case DietaryOption.NONE: return UI_TEXT.none;
+    default: return String(option);
+  }
+};
+
 export const paymentOptions: PaymentMode[] = [PaymentMode.UPI, PaymentMode.CASH, PaymentMode.BANK_TRANSFER];
 
 /**
@@ -191,29 +215,41 @@ export const paymentOptions: PaymentMode[] = [PaymentMode.UPI, PaymentMode.CASH,
  */
 export const emptyMeals = (config: ConfigDay[]) =>
   Object.fromEntries(
-    getActiveDays(config).map((day) => [day, { [DietType.VEG]: 0, [DietType.NON_VEG]: 0 }])
+    getActiveDays(config).map((day) => [day, { [DietType.VEG]: 0, [DietType.NON_VEG]: 0, kidsVeg: 0, kidsNonVeg: 0 }])
   ) as Record<string, MealAllocation>;
 
 /**
  * Derives individual meal choices (Veg/Non-veg/None) based on allocation counts.
  */
 export const mealChoicesFromMeals = (
-  meals: Subscription["meals"],
-  count: number,
-  config: ConfigDay[]
-) =>
-  Object.fromEntries(
-    getActiveDays(config).map((day) => [
-      day,
-      Array.from({ length: count }, (_, index) =>
-        index < meals[day]?.[DietType.VEG]
-          ? DietaryOption.VEG
-          : index < (meals[day]?.[DietType.VEG] || 0) + (meals[day]?.[DietType.NON_VEG] || 0)
-          ? DietaryOption.NON_VEG
-          : DietaryOption.NONE
-      ),
-    ])
+  subscription: Subscription,
+  config: ConfigDay[],
+  kidsEnabled: boolean
+) => {
+  const { meals, peopleCount, kidsCount = 0 } = subscription;
+  const count = peopleCount + kidsCount;
+  return Object.fromEntries(
+    getActiveDays(config).map((day) => {
+      const allocation = meals[day] || { [DietType.VEG]: 0, [DietType.NON_VEG]: 0, kidsVeg: 0, kidsNonVeg: 0 };
+      const choices = Array.from({ length: count }, (_, index) => {
+        const isKid = kidsEnabled && index >= peopleCount;
+        if (!isKid) {
+          // Adult logic
+          if (index < (allocation[DietType.VEG] || 0)) return DietaryOption.VEG;
+          if (index < (allocation[DietType.VEG] || 0) + (allocation[DietType.NON_VEG] || 0)) return DietaryOption.NON_VEG;
+          return DietaryOption.NONE;
+        } else {
+          // Kids logic
+          const kidIndex = index - peopleCount;
+          if (kidIndex < (allocation.kidsVeg || 0)) return DietaryOption.VEG;
+          if (kidIndex < (allocation.kidsVeg || 0) + (allocation.kidsNonVeg || 0)) return DietaryOption.NON_VEG;
+          return DietaryOption.NONE;
+        }
+      });
+      return [day, choices];
+    })
   ) as Subscription["mealByPerson"];
+};
 
 /**
  * Initializes meal slots (Breakfast/Lunch/Dinner) with 'None' choice.
@@ -245,34 +281,43 @@ export const mealSlotsFromChoices = (
  */
 export const mealsFromChoices = (
   mealSlots: Subscription["mealSlots"],
-  config: ConfigDay[]
+  config: ConfigDay[],
+  adultCount: number,
+  kidsEnabled: boolean
 ) =>
   Object.fromEntries(
     getActiveDays(config).map((day) => {
       const slots = mealSlots[day] || [];
       const meals = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER];
 
-      const vegCount = slots.filter((s) =>
-        meals.some(
-          (m) =>
-            s[m] === DietaryOption.VEG &&
-            isDietaryEnabled(day, m, DietType.VEG, config)
-        )
-      ).length;
+      let vegCount = 0;
+      let nonVegCount = 0;
+      let kidsVegCount = 0;
+      let kidsNonVegCount = 0;
 
-      const nonVegCount = slots.filter((s) =>
-        meals.some(
-          (m) =>
-            s[m] === DietaryOption.NON_VEG &&
-            isDietaryEnabled(day, m, DietType.NON_VEG, config)
-        )
-      ).length;
+      slots.forEach((s, index) => {
+        const isKid = kidsEnabled && index >= adultCount;
+
+        meals.forEach((m) => {
+          if (!isMealEnabled(day, m, config)) return;
+
+          if (s[m] === DietaryOption.VEG && isDietaryEnabled(day, m, DietType.VEG, config)) {
+            if (isKid) kidsVegCount++;
+            else vegCount++;
+          } else if (s[m] === DietaryOption.NON_VEG && isDietaryEnabled(day, m, DietType.NON_VEG, config)) {
+            if (isKid) kidsNonVegCount++;
+            else nonVegCount++;
+          }
+        });
+      });
 
       return [
         day,
         {
           [DietType.VEG]: vegCount,
           [DietType.NON_VEG]: nonVegCount,
+          kidsVeg: kidsVegCount,
+          kidsNonVeg: kidsNonVegCount,
         },
       ];
     })
@@ -283,17 +328,23 @@ export const mealsFromChoices = (
  */
 export const resizeMealChoices = (
   mealByPerson: Subscription["mealByPerson"],
-  count: number,
+  oldAdultCount: number,
+  newAdultCount: number,
+  oldKidsCount: number,
+  newKidsCount: number,
   config: ConfigDay[]
 ) =>
   Object.fromEntries(
-    getActiveDays(config).map((day) => [
-      day,
-      Array.from(
-        { length: count },
-        (_, index) => mealByPerson[day]?.[index] ?? DietaryOption.NONE
-      ),
-    ])
+    getActiveDays(config).map((day) => {
+      const oldChoices = mealByPerson[day] || [];
+      const oldAdults = oldChoices.slice(0, oldAdultCount);
+      const oldKids = oldChoices.slice(oldAdultCount, oldAdultCount + oldKidsCount);
+
+      const newAdults = Array.from({ length: newAdultCount }, (_, i) => oldAdults[i] ?? DietaryOption.NONE);
+      const newKids = Array.from({ length: newKidsCount }, (_, i) => oldKids[i] ?? DietaryOption.NONE);
+
+      return [day, [...newAdults, ...newKids]];
+    })
   ) as Subscription["mealByPerson"];
 
 /**
@@ -301,24 +352,32 @@ export const resizeMealChoices = (
  */
 export const resizeMealSlots = (
   mealSlots: Subscription["mealSlots"],
-  count: number,
+  oldAdultCount: number,
+  newAdultCount: number,
+  oldKidsCount: number,
+  newKidsCount: number,
   config: ConfigDay[]
 ) =>
   Object.fromEntries(
-    getActiveDays(config).map((day) => [
-      day,
-      Array.from({ length: count }, (_, index) => {
-        const s = mealSlots[day]?.[index];
-        return {
-          [MealType.BREAKFAST]: s?.breakfast || DietaryOption.NONE,
-          [MealType.LUNCH]: s?.lunch || DietaryOption.NONE,
-          [MealType.DINNER]: s?.dinner || DietaryOption.NONE,
-          breakfastParcel: Boolean(s?.breakfastParcel),
-          lunchParcel: Boolean(s?.lunchParcel),
-          dinnerParcel: Boolean(s?.dinnerParcel),
-        };
-      }),
-    ])
+    getActiveDays(config).map((day) => {
+      const oldS = mealSlots[day] || [];
+      const oldAdults = oldS.slice(0, oldAdultCount);
+      const oldKids = oldS.slice(oldAdultCount, oldAdultCount + oldKidsCount);
+
+      const emptySlot = {
+        [MealType.BREAKFAST]: DietaryOption.NONE,
+        [MealType.LUNCH]: DietaryOption.NONE,
+        [MealType.DINNER]: DietaryOption.NONE,
+        breakfastParcel: false,
+        lunchParcel: false,
+        dinnerParcel: false,
+      };
+
+      const newAdults = Array.from({ length: newAdultCount }, (_, i) => oldAdults[i] ?? { ...emptySlot });
+      const newKids = Array.from({ length: newKidsCount }, (_, i) => oldKids[i] ?? { ...emptySlot });
+
+      return [day, [...newAdults, ...newKids]];
+    })
   ) as Subscription["mealSlots"];
 
 /**
@@ -336,9 +395,6 @@ export const emptyTaken = (count: number, config: ConfigDay[]) =>
     ])
   ) as Subscription["takenByPerson"];
 
-/**
- * Generates an empty menu structure for the festival feast.
- */
 export const emptyFoodMenu = (config: ConfigDay[]): FoodMenu => {
   const emptyMeal = () => ({
     veg: [],
@@ -348,6 +404,10 @@ export const emptyFoodMenu = (config: ConfigDay[]): FoodMenu => {
     guestTaken: 0,
     guestVegTaken: 0,
     guestNonVegTaken: 0,
+    kidsVeg: 0,
+    kidsNonVeg: 0,
+    kidsVegTaken: 0,
+    kidsNonVegTaken: 0,
   });
   return Object.fromEntries(
     getActiveDays(config).map((day) => [
@@ -367,22 +427,43 @@ export const qrValueFor = (id: string) =>
 /**
  * Returns a short summary of meal counts across days for the subscription list.
  */
-export const mealSummary = (subscription: Subscription, config: ConfigDay[]) =>
+export const mealSummary = (subscription: Subscription, config: ConfigDay[], kidsEnabled: boolean) =>
   getActiveDays(config)
     .filter((day) => {
-      const v = subscription?.meals?.[day]?.[DietType.VEG] || 0;
-      const nv = subscription?.meals?.[day]?.[DietType.NON_VEG] || 0;
-      return v + nv > 0;
+      const m = subscription?.meals?.[day];
+      const v = m?.[DietType.VEG] || 0;
+      const nv = m?.[DietType.NON_VEG] || 0;
+      const kv = m?.kidsVeg || 0;
+      const knv = m?.kidsNonVeg || 0;
+      return v + nv + kv + knv > 0;
     })
     .map((day) => {
-      const v = subscription?.meals?.[day]?.[DietType.VEG] || 0;
-      const nv = subscription?.meals?.[day]?.[DietType.NON_VEG] || 0;
+      const m = subscription?.meals?.[day];
+      const v = m?.[DietType.VEG] || 0;
+      const nv = m?.[DietType.NON_VEG] || 0;
+      const kv = m?.kidsVeg || 0;
+      const knv = m?.kidsNonVeg || 0;
 
       const parts = [];
-      if (isDietaryEnabledForDay(day, DietType.VEG, config) && v > 0) parts.push(`${v} ${UI_TEXT.veg}`);
-      if (isDietaryEnabledForDay(day, DietType.NON_VEG, config) && nv > 0) parts.push(`${nv} ${UI_TEXT.nonVeg}`);
 
-      return `${getDayAbbr(day, config)} ${parts.join("/")}`;
+      if (isDietaryEnabledForDay(day, DietType.VEG, config)) {
+        if (kidsEnabled) {
+           if (v > 0) parts.push(`${v}${UI_TEXT.adultsAbbr}${UI_TEXT.space}${UI_TEXT.veg}`);
+           if (kv > 0) parts.push(`${kv}${UI_TEXT.kidsAbbr}${UI_TEXT.space}${UI_TEXT.veg}`);
+        } else {
+           if (v + kv > 0) parts.push(`${v + kv}${UI_TEXT.space}${UI_TEXT.veg}`);
+        }
+      }
+      if (isDietaryEnabledForDay(day, DietType.NON_VEG, config)) {
+        if (kidsEnabled) {
+          if (nv > 0) parts.push(`${nv}${UI_TEXT.adultsAbbr}${UI_TEXT.space}${UI_TEXT.nonVeg}`);
+          if (knv > 0) parts.push(`${knv}${UI_TEXT.kidsAbbr}${UI_TEXT.space}${UI_TEXT.nonVeg}`);
+        } else {
+          if (nv + knv > 0) parts.push(`${nv + knv}${UI_TEXT.space}${UI_TEXT.nonVeg}`);
+        }
+      }
+
+      return `${getDayAbbr(day, config)}${UI_TEXT.space}${parts.join(UI_TEXT.slash)}`;
     })
     .join("  ");
 
@@ -391,21 +472,29 @@ export const mealSummary = (subscription: Subscription, config: ConfigDay[]) =>
  */
 export const resizeTaken = (
   takenByPerson: Subscription["takenByPerson"],
-  count: number,
+  oldAdultCount: number,
+  newAdultCount: number,
+  oldKidsCount: number,
+  newKidsCount: number,
   config: ConfigDay[]
 ) =>
   Object.fromEntries(
-    getActiveDays(config).map((day) => [
-      day,
-      Array.from({ length: count }, (_, index) => {
-        const t = takenByPerson[day]?.[index];
-        return {
-          [MealType.BREAKFAST]: Boolean(t?.breakfast),
-          [MealType.LUNCH]: Boolean(t?.lunch),
-          [MealType.DINNER]: Boolean(t?.dinner),
-        };
-      }),
-    ])
+    getActiveDays(config).map((day) => {
+      const oldT = takenByPerson[day] || [];
+      const oldAdults = oldT.slice(0, oldAdultCount);
+      const oldKids = oldT.slice(oldAdultCount, oldAdultCount + oldKidsCount);
+
+      const emptyTakenState = {
+        [MealType.BREAKFAST]: false,
+        [MealType.LUNCH]: false,
+        [MealType.DINNER]: false,
+      };
+
+      const newAdults = Array.from({ length: newAdultCount }, (_, i) => oldAdults[i] ?? { ...emptyTakenState });
+      const newKids = Array.from({ length: newKidsCount }, (_, i) => oldKids[i] ?? { ...emptyTakenState });
+
+      return [day, [...newAdults, ...newKids]];
+    })
   ) as Subscription["takenByPerson"];
 
 /**
@@ -413,15 +502,26 @@ export const resizeTaken = (
  */
 export const capMeals = (
   meals: Subscription["meals"],
-  count: number,
+  adultCount: number,
+  kidsCount: number,
   config: ConfigDay[]
 ) =>
   Object.fromEntries(
     getActiveDays(config).map((day) => {
-      const m = meals[day] || { [DietType.VEG]: 0, [DietType.NON_VEG]: 0 };
-      const total = m[DietType.VEG] + m[DietType.NON_VEG];
-      if (total <= count) return [day, m];
-      const veg = Math.min(m[DietType.VEG], count);
-      return [day, { [DietType.VEG]: veg, [DietType.NON_VEG]: Math.max(0, count - veg) }];
+      const m = meals[day] || { [DietType.VEG]: 0, [DietType.NON_VEG]: 0, kidsVeg: 0, kidsNonVeg: 0 };
+
+      const v = Math.min(m[DietType.VEG] || 0, adultCount);
+      const nv = Math.min(m[DietType.NON_VEG] || 0, adultCount - v);
+
+      const kv = Math.min(m.kidsVeg || 0, kidsCount);
+      const knv = Math.min(m.kidsNonVeg || 0, kidsCount - kv);
+
+      return [day, { [DietType.VEG]: v, [DietType.NON_VEG]: nv, kidsVeg: kv, kidsNonVeg: knv }];
     })
   ) as Subscription["meals"];
+
+export const getMemberLegend = (index: number, adultCount: number, kidsEnabled: boolean) => {
+  if (!kidsEnabled) return `${UI_TEXT.personAbbr}${index + 1}`;
+  if (index < adultCount) return `${UI_TEXT.adultsAbbr}${index + 1}`;
+  return `${UI_TEXT.kidsAbbr}${index - adultCount + 1}`;
+};
