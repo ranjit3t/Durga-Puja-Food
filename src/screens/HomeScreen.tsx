@@ -18,7 +18,7 @@ export function HomeScreen() {
   const { theme, themeType, toggleTheme } = useAppTheme();
   const { userRole, handleLogout } = useAuth();
   const {
-    subscriptions, dayConfig, seasonName, seasonEnabled, guestEnabled, totalPeople, firebaseError, paymentConfig, collections, kidsEnabled
+    subscriptions, dayConfig, seasonName, seasonEnabled, guestEnabled, totalPeople, firebaseError, paymentConfig, collections, kidsEnabled, foodMenu
   } = useDatabase();
   const { navigate, startNew } = useAppNavigation();
   const { showGlobalError } = useUI();
@@ -40,6 +40,28 @@ export function HomeScreen() {
       return acc;
     }, { adults: 0, kids: 0 });
   }, [subscriptions]);
+
+  const guestSummary = React.useMemo(() => {
+    let seasonTotal = 0;
+    let currentMealTotal = 0;
+
+    Object.keys(foodMenu).forEach(dayId => {
+      const dayMenu = foodMenu[dayId];
+      [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].forEach(mType => {
+        const meal = dayMenu[mType];
+        if (meal) {
+          const mGuest = (meal.guestVeg || 0) + (meal.guestNonVeg || 0);
+          seasonTotal += mGuest;
+
+          if (isMealCurrent(dayId, mType, dayConfig) && isMealEnabled(dayId, mType, dayConfig)) {
+            currentMealTotal = mGuest;
+          }
+        }
+      });
+    });
+
+    return { seasonTotal, currentMealTotal };
+  }, [foodMenu, dayConfig]);
 
   const currentMealInfo = React.useMemo(() => {
     const active = getActiveDays(dayConfig);
@@ -101,6 +123,20 @@ export function HomeScreen() {
                   </Text>
                 )}
               </View>
+
+              {guestEnabled && (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flexWrap: 'wrap' }}>
+                  <Text style={[styles.summaryLabel, { opacity: 0.8, fontSize: labelFontSize }]}>{UI_TEXT.guest}{UI_TEXT.colon}</Text>
+                  <Text style={[styles.summaryNumber, { fontSize: secondaryFontSize, marginTop: 0, lineHeight: secondaryFontSize + 4 }]}>
+                    {guestSummary.seasonTotal}
+                  </Text>
+                  {guestSummary.currentMealTotal > 0 && (
+                    <Text style={{ fontSize: labelFontSize, color: theme.colors.white, opacity: 0.7, fontWeight: '700', marginLeft: -4 }}>
+                      {UI_TEXT.openParen}{guestSummary.currentMealTotal}{UI_TEXT.space}{UI_TEXT.live}{UI_TEXT.closeParen}
+                    </Text>
+                  )}
+                </View>
+              )}
 
               {paymentConfig?.enabled && (
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flexWrap: 'wrap' }}>

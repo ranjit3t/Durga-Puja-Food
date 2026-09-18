@@ -166,7 +166,7 @@ export function ReportScreen() {
             { id: ReportType.DAY, label: UI_TEXT.day, icon: "calendar-outline" },
             { id: ReportType.MEAL, label: UI_TEXT.meal, icon: "restaurant-outline" },
             { id: ReportType.GUEST, label: UI_TEXT.guestSuffix, icon: "people-circle-outline" },
-            { id: ReportType.KIDS_MEAL, label: UI_TEXT.kidsAbbr, icon: "happy-outline" },
+            { id: ReportType.KIDS_MEAL, label: UI_TEXT.kids, icon: "happy-outline" },
             { id: ReportType.PARCEL, label: UI_TEXT.parcels, icon: "cube-outline" },
             { id: ReportType.SINGLE, label: UI_TEXT.split, icon: "fast-food-outline" },
             {id: ReportType.NOT_TAKEN, label: UI_TEXT.pending, icon: "alert-circle-outline"},

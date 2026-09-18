@@ -63,168 +63,85 @@ export function MealMetricGrid(props: MealMetricProps) {
 
   const hasKids = kidsEnabled;
   const guestTotal = guestVeg + guestNonVeg;
-  const adultsTotal = total - kidsTotal - guestTotal;
 
   return (
     <View style={styles.metricGrid}>
-      <Metric icon="people-outline" label={UI_TEXT.total} value={total} />
-
+      {/* 1. Top Summary Row: Primary Identifiers */}
+      <Metric icon="people-outline" label={UI_TEXT.plannedTotal} value={total} />
       {hasKids && (
         <Metric icon="happy-outline" label={kidsTotal === 1 ? UI_TEXT.kid : UI_TEXT.kids} value={kidsTotal} color={theme.colors.primary} />
       )}
-
       {guestEnabled && guestTotal > 0 && (
-        <Metric
-          icon="people-circle-outline"
-          label={UI_TEXT.guestTotal}
-          value={guestTotal}
-        />
+        <Metric icon="people-circle-outline" label={UI_TEXT.guestTotal} value={guestTotal} color={theme.colors.secondary} />
       )}
 
-      {/* Demand Breakdown Section */}
-      <View style={{ width: "100%", height: 1, backgroundColor: theme.colors.border, marginVertical: 8 }} />
-
-      {/* Adults Section */}
-      {isBothEnabled ? (
+      {/* 2. Veg Group: Demand and Collection */}
+      {isBothEnabled && (veg > 0 || totalVegTaken > 0) && (
         <>
+          <View style={{ width: "100%", height: 1, backgroundColor: theme.colors.border, marginVertical: 4, opacity: 0.5 }} />
           <Metric icon="leaf-outline" label={labels.veg} value={veg} color={theme.colors.veg} />
+          <Metric icon="checkmark-done-outline" label={labels.vegTaken} value={totalVegTaken - kidsVegTaken - (guestEnabled ? guestVegTaken : 0)} color={theme.colors.veg} />
+          {hasKids && kidsVeg > 0 && (
+            <Metric icon="happy-outline" label={UI_TEXT.kidsVegTaken} value={kidsVegTaken} color={theme.colors.veg} />
+          )}
+        </>
+      )}
+
+      {/* 3. Non-Veg Group: Demand and Collection */}
+      {isBothEnabled && (nonVeg > 0 || totalNonVegTaken > 0) && (
+        <>
+          <View style={{ width: "100%", height: 1, backgroundColor: theme.colors.border, marginVertical: 4, opacity: 0.5 }} />
           <Metric icon="flame-outline" label={labels.nonVeg} value={nonVeg} color={theme.colors.nonVeg} />
-        </>
-      ) : (
-        <Metric icon="leaf-outline" label={kidsEnabled ? (adultsTotal === 1 ? UI_TEXT.adult : UI_TEXT.adults) : labels.veg} value={adultsTotal} color={theme.colors.veg} />
-      )}
-
-      {/* Kids Section */}
-      {hasKids && (
-        <>
-          {isBothEnabled ? (
-            <>
-              <Metric icon="happy-outline" label={kidsVeg === 1 ? UI_TEXT.kid : UI_TEXT.kids} value={kidsVeg} color={theme.colors.veg} />
-              <Metric icon="happy-outline" label={kidsNonVeg === 1 ? UI_TEXT.kid : UI_TEXT.kids} value={kidsNonVeg} color={theme.colors.nonVeg} />
-            </>
-          ) : (
-            <Metric icon="happy-outline" label={kidsTotal === 1 ? UI_TEXT.kid : UI_TEXT.kids} value={kidsTotal} color={theme.colors.primary} />
+          <Metric icon="checkmark-done-outline" label={labels.nonVegTaken} value={totalNonVegTaken - kidsNonVegTaken - (guestEnabled ? guestNonVegTaken : 0)} color={theme.colors.nonVeg} />
+          {hasKids && kidsNonVeg > 0 && (
+            <Metric icon="happy-outline" label={UI_TEXT.kidsNonVegTaken} value={kidsNonVegTaken} color={theme.colors.nonVeg} />
           )}
         </>
       )}
 
-      {/* Parcel Section */}
-      {isParcelEnabled(day, type, config) && parcel > 0 && (
+      {/* 4. Single-Diet Mode Fallback (If not Both Enabled) */}
+      {!isBothEnabled && (
         <>
-          <View style={{ width: "100%", height: 1, backgroundColor: theme.colors.border, marginVertical: 8 }} />
-          <Metric icon="cube-outline" label={labels.parcel} value={parcel} />
+          <View style={{ width: "100%", height: 1, backgroundColor: theme.colors.border, marginVertical: 4, opacity: 0.5 }} />
           <Metric
-            icon="checkmark-circle-outline"
-            label={labels.parcelTaken}
-            value={parcelTaken}
+            icon={veg > 0 ? "leaf-outline" : "flame-outline"}
+            label={veg > 0 ? labels.veg : labels.nonVeg}
+            value={veg + nonVeg}
             color={theme.colors.primary}
           />
-        </>
-      )}
-
-      {/* Collection Breakdown Section */}
-      <View style={{ width: "100%", height: 1, backgroundColor: theme.colors.border, marginVertical: 8 }} />
-
-      {/* Adult/Resident Collection */}
-      {isBothEnabled ? (
-        <>
           <Metric
             icon="checkmark-done-outline"
-            label={labels.vegTaken}
-            value={totalVegTaken - kidsVegTaken}
+            label={veg > 0 ? labels.vegTaken : labels.nonVegTaken}
+            value={totalMealTaken - kidsTaken - (guestEnabled ? (guestVegTaken + guestNonVegTaken) : 0)}
             color={theme.colors.veg}
           />
-          <Metric
-            icon="checkmark-done-outline"
-            label={labels.nonVegTaken}
-            value={totalNonVegTaken - kidsNonVegTaken}
-            color={theme.colors.nonVeg}
-          />
-        </>
-      ) : (
-        <Metric
-          icon="checkmark-done-outline"
-          label={`${kidsEnabled ? (totalMealTaken - kidsTaken - (guestEnabled ? (guestVegTaken + guestNonVegTaken) : 0) === 1 ? UI_TEXT.adult : UI_TEXT.adults) : UI_TEXT.veg}${UI_TEXT.space}${UI_TEXT.taken}`}
-          value={totalMealTaken - kidsTaken - (guestEnabled ? (guestVegTaken + guestNonVegTaken) : 0)}
-          color={theme.colors.veg}
-        />
-      )}
-
-      {/* Kids Collection */}
-      {hasKids && (
-        <>
-          {isBothEnabled ? (
-            <>
-              <Metric
-                icon="checkbox-outline"
-                label={kidsVegTaken === 1 ? UI_TEXT.kidVegTaken : labels.kidsVegTaken}
-                value={kidsVegTaken}
-                color={theme.colors.veg}
-              />
-              <Metric
-                icon="checkbox-outline"
-                label={kidsNonVegTaken === 1 ? UI_TEXT.kidNonVegTaken : labels.kidsNonVegTaken}
-                value={kidsNonVegTaken}
-                color={theme.colors.nonVeg}
-              />
-            </>
-          ) : null}
-          <Metric
-            icon="checkmark-done-outline"
-            label={`${kidsTaken === 1 ? UI_TEXT.kid : UI_TEXT.kids}${UI_TEXT.space}${UI_TEXT.taken}`}
-            value={kidsTaken}
-            color={theme.colors.primary}
-          />
+          {hasKids && (
+             <Metric icon="happy-outline" label={UI_TEXT.kidsTaken} value={kidsTaken} color={theme.colors.primary} />
+          )}
         </>
       )}
 
-      {/* Guest Collection */}
-      {guestEnabled && guestTotal > 0 && (
+      {/* 5. Supplemental Data: Parcels and Guests */}
+      {(parcel > 0 || (guestEnabled && guestTotal > 0)) && (
         <>
-          <View style={{ width: "100%", height: 1, backgroundColor: theme.colors.border, marginVertical: 8 }} />
-          {isBothEnabled && (
-            <>
-              <Metric
-                icon="leaf-outline"
-                label={labels.guestVeg}
-                value={guestVeg}
-                color={theme.colors.veg}
-              />
-              <Metric
-                icon="flame-outline"
-                label={labels.guestNonVeg}
-                value={guestNonVeg}
-                color={theme.colors.nonVeg}
-              />
+          <View style={{ width: "100%", height: 1, backgroundColor: theme.colors.border, marginVertical: 4, opacity: 0.5 }} />
 
-              <Metric
-                icon="checkbox-outline"
-                label={labels.guestVegTaken}
-                value={guestVegTaken}
-              />
-              <Metric
-                icon="checkbox-outline"
-                label={labels.guestNonVegTaken}
-                value={guestNonVegTaken}
-              />
+          {parcel > 0 && (
+            <>
+              <Metric icon="cube-outline" label={labels.parcel} value={parcel} />
+              <Metric icon="checkmark-circle-outline" label={UI_TEXT.parcelTaken} value={parcelTaken} color={theme.colors.primary} />
             </>
           )}
-          <Metric
-            icon="checkbox-outline"
-            label={UI_TEXT.guestTaken}
-            value={guestVegTaken + guestNonVegTaken}
-            color={theme.colors.veg}
-          />
+
+          {guestEnabled && guestTotal > 0 && (
+            <Metric icon="checkbox-outline" label={UI_TEXT.guestTaken} value={guestVegTaken + guestNonVegTaken} color={theme.colors.secondary} />
+          )}
         </>
       )}
 
-      <View style={{ width: "100%", height: 1, backgroundColor: theme.colors.border, marginVertical: 8 }} />
-      <Metric
-        icon="checkmark-done-outline"
-        label={`${UI_TEXT.total}${UI_TEXT.space}${UI_TEXT.taken}`}
-        value={totalMealTaken}
-        color={theme.colors.veg}
-      />
+      {/* 6. Grand Total Footer */}
+      <View style={{ width: "100%", height: 1, backgroundColor: theme.colors.border, marginVertical: 4 }} />
+      <Metric icon="checkmark-done-outline" label={UI_TEXT.totalServed} value={totalMealTaken} color={theme.colors.veg} />
     </View>
   );
 }

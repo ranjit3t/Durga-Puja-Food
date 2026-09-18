@@ -350,21 +350,21 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
     metricGrid: {
       flexDirection: "row",
       flexWrap: "wrap",
-      gap: 10,
+      gap: 8,
       justifyContent: "space-between"
     },
     metric: {
       backgroundColor: COLORS.surface,
-      borderRadius: 16,
-      padding: SIZES.paddingSmall,
-      width: isLargeScreen ? "30%" : "31%",
+      borderRadius: 12,
+      padding: 8,
+      width: isLargeScreen ? "23%" : "31%",
       flexGrow: 1,
       alignItems: "center",
       borderWidth: 1,
       borderColor: COLORS.border,
     },
-    metricValue: { color: COLORS.textPrimary, fontSize: 20, fontWeight: "800" },
-    metricLabel: { color: COLORS.textSecondary, fontSize: 11, fontWeight: "600", marginTop: 4, textAlign: "center" },
+    metricValue: { color: COLORS.textPrimary, fontSize: 18, fontWeight: "800" },
+    metricLabel: { color: COLORS.textSecondary, fontSize: 10, fontWeight: "600", marginTop: 2, textAlign: "center" },
 
     // List Items
     flatTitle: {

@@ -146,8 +146,8 @@ const DashboardMealSection = memo(
     const isNonVegEnabled = isDietaryEnabled(day, type, DietType.NON_VEG, config);
     const isBothEnabled = isVegEnabled && isNonVegEnabled;
 
-    const totalVegTaken = flatVegTaken + guestVegTaken;
-    const totalNonVegTaken = flatNonVegTaken + guestNonVegTaken;
+    const totalVegTaken = flatVegTaken + kidsVegTaken + guestVegTaken;
+    const totalNonVegTaken = flatNonVegTaken + kidsNonVegTaken + guestNonVegTaken;
     const totalMealTaken = totalVegTaken + totalNonVegTaken;
 
     const mealLabel = getMealLabel(type);
@@ -379,17 +379,44 @@ export function DashboardScreen() {
 
   const summaryTotals = useMemo(() => {
     return dashboardData.reduce((acc, day) => {
-      acc.total += (day.breakfast || 0) + (day.lunch || 0) + (day.dinner || 0);
+      // Member totals (Adults + Kids)
+      const mealTotal = (day.breakfast || 0) + (day.lunch || 0) + (day.dinner || 0);
+      const mealTaken = (day.breakfastTaken || 0) + (day.lunchTaken || 0) + (day.dinnerTaken || 0);
+
+      acc.total += mealTotal;
+      acc.taken += mealTaken;
+
       acc.veg += (day.breakfastVeg || 0) + (day.lunchVeg || 0) + (day.dinnerVeg || 0);
       acc.nonVeg += (day.breakfastNonVeg || 0) + (day.lunchNonVeg || 0) + (day.dinnerNonVeg || 0);
+
+      acc.adultTaken += (day.breakfastFlatVegTaken || 0) + (day.breakfastFlatNonVegTaken || 0) +
+                        (day.lunchFlatVegTaken || 0) + (day.lunchFlatNonVegTaken || 0) +
+                        (day.dinnerFlatVegTaken || 0) + (day.dinnerFlatNonVegTaken || 0);
+
       acc.kidsVeg += (day.breakfastKidsVeg || 0) + (day.lunchKidsVeg || 0) + (day.dinnerKidsVeg || 0);
       acc.kidsNonVeg += (day.breakfastKidsNonVeg || 0) + (day.lunchKidsNonVeg || 0) + (day.dinnerKidsNonVeg || 0);
       acc.kidsTotal += (day.breakfastKidsTotal || 0) + (day.lunchKidsTotal || 0) + (day.dinnerKidsTotal || 0);
       acc.kidsTaken += (day.breakfastKidsTaken || 0) + (day.lunchKidsTaken || 0) + (day.dinnerKidsTaken || 0);
-      acc.taken += (day.breakfastTaken || 0) + (day.lunchTaken || 0) + (day.dinnerTaken || 0);
+
+      if (guestEnabled) {
+        const gVeg = (day.breakfastGuestVeg || 0) + (day.lunchGuestVeg || 0) + (day.dinnerGuestVeg || 0);
+        const gNonVeg = (day.breakfastGuestNonVeg || 0) + (day.lunchGuestNonVeg || 0) + (day.dinnerGuestNonVeg || 0);
+        const mealGuests = gVeg + gNonVeg;
+        const mealGuestsTaken = (day.breakfastGuestTaken || 0) + (day.lunchGuestTaken || 0) + (day.dinnerGuestTaken || 0);
+
+        acc.guestTotal += mealGuests;
+        acc.guestVeg += gVeg;
+        acc.guestNonVeg += gNonVeg;
+        acc.guestTaken += mealGuestsTaken;
+
+        // Add guests to grand totals for Plates and Taken counts
+        acc.total += mealGuests;
+        acc.taken += mealGuestsTaken;
+      }
+
       return acc;
-    }, { total: 0, veg: 0, nonVeg: 0, kidsVeg: 0, kidsNonVeg: 0, kidsTotal: 0, kidsTaken: 0, taken: 0 });
-  }, [dashboardData]);
+    }, { total: 0, veg: 0, nonVeg: 0, adultTaken: 0, kidsVeg: 0, kidsNonVeg: 0, kidsTotal: 0, kidsTaken: 0, taken: 0, guestTotal: 0, guestVeg: 0, guestNonVeg: 0, guestTaken: 0 });
+  }, [dashboardData, guestEnabled]);
 
   const currentMealSummary = useMemo(() => {
     const active = dayConfig.filter((d) => d.enabled);
@@ -402,6 +429,8 @@ export function DashboardScreen() {
           const mLabel = getMealLabel(mType);
 
           let total = 0, veg = 0, nonVeg = 0, taken = 0, kidsVeg = 0, kidsNonVeg = 0, kidsTotal = 0, kidsTaken = 0;
+          let guestTotal = 0, guestTaken = 0, guestVeg = 0, guestNonVeg = 0, adultsTaken = 0;
+
           if (mType === MealType.BREAKFAST) {
             total = item.breakfast || 0;
             veg = item.breakfastVeg || 0;
@@ -411,6 +440,11 @@ export function DashboardScreen() {
             kidsTotal = item.breakfastKidsTotal || 0;
             kidsTaken = item.breakfastKidsTaken || 0;
             taken = item.breakfastTaken || 0;
+            guestVeg = item.breakfastGuestVeg || 0;
+            guestNonVeg = item.breakfastGuestNonVeg || 0;
+            guestTotal = guestVeg + guestNonVeg;
+            guestTaken = item.breakfastGuestTaken || 0;
+            adultsTaken = (item.breakfastFlatVegTaken || 0) + (item.breakfastFlatNonVegTaken || 0);
           } else if (mType === MealType.LUNCH) {
             total = item.lunch || 0;
             veg = item.lunchVeg || 0;
@@ -420,6 +454,11 @@ export function DashboardScreen() {
             kidsTotal = item.lunchKidsTotal || 0;
             kidsTaken = item.lunchKidsTaken || 0;
             taken = item.lunchTaken || 0;
+            guestVeg = item.lunchGuestVeg || 0;
+            guestNonVeg = item.lunchGuestNonVeg || 0;
+            guestTotal = guestVeg + guestNonVeg;
+            guestTaken = item.lunchGuestTaken || 0;
+            adultsTaken = (item.lunchFlatVegTaken || 0) + (item.lunchFlatNonVegTaken || 0);
           } else {
             total = item.dinner || 0;
             veg = item.dinnerVeg || 0;
@@ -429,6 +468,11 @@ export function DashboardScreen() {
             kidsTotal = item.dinnerKidsTotal || 0;
             kidsTaken = item.dinnerKidsTaken || 0;
             taken = item.dinnerTaken || 0;
+            guestVeg = item.dinnerGuestVeg || 0;
+            guestNonVeg = item.dinnerGuestNonVeg || 0;
+            guestTotal = guestVeg + guestNonVeg;
+            guestTaken = item.dinnerGuestTaken || 0;
+            adultsTaken = (item.dinnerFlatVegTaken || 0) + (item.dinnerFlatNonVegTaken || 0);
           }
 
           const mConf = d[mType];
@@ -438,14 +482,19 @@ export function DashboardScreen() {
           return {
             dayLabel: getDayLabel(d.id, dayConfig),
             mealLabel: mLabel,
-            total,
+            total: total + guestTotal, // Grand total plates for current meal
             veg,
             nonVeg,
+            adultsTaken,
             kidsVeg,
             kidsNonVeg,
             kidsTotal,
             kidsTaken,
-            taken,
+            taken: taken + guestTaken, // Grand total taken for current meal
+            guestVeg,
+            guestNonVeg,
+            guestTotal,
+            guestTaken,
             isVegEnabled: isVeg,
             isNonVegEnabled: isNonVeg
           };
@@ -534,19 +583,41 @@ export function DashboardScreen() {
 
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
               <View style={{ flexShrink: 1 }}>
-                <Text style={[styles.previewMeta, { color: theme.colors.white }]}>
-                  {(() => {
-                    const parts = [];
-                    if (isVegEnabledGlobally) parts.push(`${summaryTotals.veg}${UI_TEXT.space}${kidsEnabled ? UI_TEXT.adultVeg : UI_TEXT.veg}`);
-                    if (isNonVegEnabledGlobally) parts.push(`${summaryTotals.nonVeg}${UI_TEXT.space}${kidsEnabled ? UI_TEXT.adultNonVeg : UI_TEXT.nonVeg}`);
-                    return parts.join(UI_TEXT.pipe);
-                  })()}
-                </Text>
-                {kidsEnabled && (
-                  <Text style={{ color: theme.colors.white, fontSize: 11, fontWeight: '700', opacity: 0.8 }}>
-                     {summaryTotals.kidsTotal}{UI_TEXT.space}{summaryTotals.kidsTotal === 1 ? UI_TEXT.kid : UI_TEXT.kids}{UI_TEXT.space}({summaryTotals.kidsVeg}{UI_TEXT.space}{UI_TEXT.vegAbbrLabel}{UI_TEXT.pipe}{summaryTotals.kidsNonVeg}{UI_TEXT.space}{UI_TEXT.nonVegAbbrLabel})
-                  </Text>
-                )}
+                <View style={{ gap: 4 }}>
+                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Text style={{ fontSize: 13, fontWeight: '800', color: theme.colors.white }}>{kidsEnabled ? UI_TEXT.adults : UI_TEXT.members}:</Text>
+                      <Text style={{ fontSize: 14, fontWeight: '900', color: theme.colors.white }}>
+                        {summaryTotals.veg + summaryTotals.nonVeg}
+                      </Text>
+                      <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.white, opacity: 0.8 }}>
+                        ({summaryTotals.veg}{UI_TEXT.vegAbbrLabel}{UI_TEXT.pipe}{summaryTotals.nonVeg}{UI_TEXT.nonVegAbbrLabel}) ({UI_TEXT.taken}{UI_TEXT.colon}{UI_TEXT.space}{summaryTotals.adultTaken})
+                      </Text>
+                   </View>
+
+                  {kidsEnabled && summaryTotals.kidsTotal > 0 && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Text style={{ fontSize: 12, fontWeight: '800', color: theme.colors.white, opacity: 0.9 }}>{UI_TEXT.kids}:</Text>
+                      <Text style={{ fontSize: 12, fontWeight: '900', color: theme.colors.white, opacity: 0.9 }}>
+                        {summaryTotals.kidsTotal}
+                      </Text>
+                      <Text style={{ fontSize: 10, fontWeight: '700', color: theme.colors.white, opacity: 0.7 }}>
+                        ({summaryTotals.kidsVeg}{UI_TEXT.vegAbbrLabel}{UI_TEXT.pipe}{summaryTotals.kidsNonVeg}{UI_TEXT.nonVegAbbrLabel}) ({UI_TEXT.taken}{UI_TEXT.colon}{UI_TEXT.space}{summaryTotals.kidsTaken})
+                      </Text>
+                    </View>
+                  )}
+
+                  {guestEnabled && summaryTotals.guestTotal > 0 && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Text style={{ fontSize: 12, fontWeight: '800', color: theme.colors.white, opacity: 0.9 }}>{UI_TEXT.guest}:</Text>
+                      <Text style={{ fontSize: 12, fontWeight: '900', color: theme.colors.white, opacity: 0.9 }}>
+                        {summaryTotals.guestTotal}
+                      </Text>
+                      <Text style={{ fontSize: 10, fontWeight: '700', color: theme.colors.white, opacity: 0.7 }}>
+                        ({summaryTotals.guestVeg}{UI_TEXT.vegAbbrLabel}{UI_TEXT.pipe}{summaryTotals.guestNonVeg}{UI_TEXT.nonVegAbbrLabel}) ({UI_TEXT.taken}{UI_TEXT.colon}{UI_TEXT.space}{summaryTotals.guestTaken})
+                      </Text>
+                    </View>
+                  )}
+                </View>
               </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                <Ionicons name="checkmark-done-circle" size={16} color={theme.colors.white} />
@@ -595,21 +666,48 @@ export function DashboardScreen() {
                     </View>
                  </View>
 
-                 <View>
-                    {(currentMealSummary.isVegEnabled || currentMealSummary.isNonVegEnabled) && (
-                       <Text style={{ color: theme.colors.white, fontSize: 12, fontWeight: '700', opacity: 0.9 }}>
-                          {(() => {
-                             const p = [];
-                             if (currentMealSummary.isVegEnabled) p.push(`${currentMealSummary.veg}${UI_TEXT.space}${kidsEnabled ? UI_TEXT.adultVeg : UI_TEXT.veg}`);
-                             if (currentMealSummary.isNonVegEnabled) p.push(`${currentMealSummary.nonVeg}${UI_TEXT.space}${kidsEnabled ? UI_TEXT.adultNonVeg : UI_TEXT.nonVeg}`);
-                             return p.join(UI_TEXT.pipe);
-                          })()}
+                 <View style={{ gap: 6 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                       <Text style={{ fontSize: 13, fontWeight: '800', color: theme.colors.white }}>{kidsEnabled ? UI_TEXT.adults : UI_TEXT.members}:</Text>
+                       <Text style={{ fontSize: 14, fontWeight: '900', color: theme.colors.white }}>
+                          {currentMealSummary.veg + currentMealSummary.nonVeg}
                        </Text>
+                       <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.white, opacity: 0.8 }}>
+                          {currentMealSummary.isVegEnabled && currentMealSummary.isNonVegEnabled && (
+                            `(${currentMealSummary.veg}${UI_TEXT.vegAbbrLabel}${UI_TEXT.pipe}${currentMealSummary.nonVeg}${UI_TEXT.nonVegAbbrLabel})${UI_TEXT.space}`
+                          )}
+                          ({UI_TEXT.taken}{UI_TEXT.colon}{UI_TEXT.space}{currentMealSummary.adultsTaken})
+                       </Text>
+                    </View>
+
+                    {kidsEnabled && currentMealSummary.kidsTotal > 0 && (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                         <Text style={{ fontSize: 12, fontWeight: '800', color: theme.colors.white, opacity: 0.9 }}>{UI_TEXT.kids}:</Text>
+                         <Text style={{ fontSize: 12, fontWeight: '900', color: theme.colors.white, opacity: 0.9 }}>
+                            {currentMealSummary.kidsTotal}
+                         </Text>
+                         <Text style={{ fontSize: 10, fontWeight: '700', color: theme.colors.white, opacity: 0.7 }}>
+                            {currentMealSummary.isVegEnabled && currentMealSummary.isNonVegEnabled && (
+                               `(${currentMealSummary.kidsVeg}{UI_TEXT.vegAbbrLabel}${UI_TEXT.pipe}${currentMealSummary.kidsNonVeg}{UI_TEXT.nonVegAbbrLabel})${UI_TEXT.space}`
+                            )}
+                            ({UI_TEXT.taken}{UI_TEXT.colon}{UI_TEXT.space}{currentMealSummary.kidsTaken})
+                         </Text>
+                      </View>
                     )}
-                    {kidsEnabled && (
-                      <Text style={{ color: theme.colors.white, fontSize: 10, fontWeight: '600', opacity: 0.8 }}>
-                         {currentMealSummary.kidsTotal}{UI_TEXT.space}{currentMealSummary.kidsTotal === 1 ? UI_TEXT.kid : UI_TEXT.kids}{UI_TEXT.space}({currentMealSummary.kidsVeg}{UI_TEXT.space}{UI_TEXT.vegAbbrLabel}{UI_TEXT.pipe}{currentMealSummary.kidsNonVeg}{UI_TEXT.space}{UI_TEXT.nonVegAbbrLabel})
-                      </Text>
+
+                    {guestEnabled && currentMealSummary.guestTotal > 0 && (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                         <Text style={{ fontSize: 12, fontWeight: '800', color: theme.colors.white, opacity: 0.9 }}>{UI_TEXT.guest}:</Text>
+                         <Text style={{ fontSize: 12, fontWeight: '900', color: theme.colors.white, opacity: 0.9 }}>
+                            {currentMealSummary.guestTotal}
+                         </Text>
+                         <Text style={{ fontSize: 10, fontWeight: '700', color: theme.colors.white, opacity: 0.7 }}>
+                            {currentMealSummary.isVegEnabled && currentMealSummary.isNonVegEnabled && (
+                               `(${currentMealSummary.guestVeg}${UI_TEXT.vegAbbrLabel}${UI_TEXT.pipe}${currentMealSummary.guestNonVeg}${UI_TEXT.nonVegAbbrLabel})${UI_TEXT.space}`
+                            )}
+                            ({UI_TEXT.taken}{UI_TEXT.colon}{UI_TEXT.space}{currentMealSummary.guestTaken})
+                         </Text>
+                      </View>
                     )}
                  </View>
               </View>
@@ -646,8 +744,9 @@ export function DashboardScreen() {
                 if (!isMealEnabled(day, mKey, dayConfig)) return null;
 
                 const mealKey = `${day}-${mKey}`;
+                const gTotal = (item[`${mKey}GuestVeg` as keyof typeof item] || 0) + (item[`${mKey}GuestNonVeg` as keyof typeof item] || 0);
                 const mealProps = mKey === MealType.BREAKFAST ? {
-                  total: item.breakfast || 0,
+                  total: (item.breakfast || 0) + gTotal,
                   veg: item.breakfastVeg || 0,
                   nonVeg: item.breakfastNonVeg || 0,
                   kidsTotal: item.breakfastKidsTotal || 0,
@@ -658,7 +757,7 @@ export function DashboardScreen() {
                   kidsNonVegTaken: item.breakfastKidsNonVegTaken || 0,
                   parcel: item.breakfastParcel || 0,
                   parcelTaken: item.breakfastParcelTaken || 0,
-                  taken: item.breakfastTaken || 0,
+                  taken: (item.breakfastTaken || 0) + (item.breakfastGuestTaken || 0),
                   flatVegTaken: item.breakfastFlatVegTaken || 0,
                   flatNonVegTaken: item.breakfastFlatNonVegTaken || 0,
                   guestVeg: item.breakfastGuestVeg || 0,
@@ -686,7 +785,7 @@ export function DashboardScreen() {
                     nonVegTaken: kidsEnabled ? UI_TEXT.adultNonVegTaken : UI_TEXT.nonVegTaken,
                   }
                 } : mKey === MealType.LUNCH ? {
-                  total: item.lunch || 0,
+                  total: (item.lunch || 0) + gTotal,
                   veg: item.lunchVeg || 0,
                   nonVeg: item.lunchNonVeg || 0,
                   kidsTotal: item.lunchKidsTotal || 0,
@@ -697,7 +796,7 @@ export function DashboardScreen() {
                   kidsNonVegTaken: item.lunchKidsNonVegTaken || 0,
                   parcel: item.lunchParcel || 0,
                   parcelTaken: item.lunchParcelTaken || 0,
-                  taken: item.lunchTaken || 0,
+                  taken: (item.lunchTaken || 0) + (item.lunchGuestTaken || 0),
                   flatVegTaken: item.lunchFlatVegTaken || 0,
                   flatNonVegTaken: item.lunchFlatNonVegTaken || 0,
                   guestVeg: item.lunchGuestVeg || 0,
@@ -725,7 +824,7 @@ export function DashboardScreen() {
                     nonVegTaken: kidsEnabled ? UI_TEXT.adultNonVegTaken : UI_TEXT.nonVegTaken,
                   }
                 } : {
-                  total: item.dinner || 0,
+                  total: (item.dinner || 0) + gTotal,
                   veg: item.dinnerVeg || 0,
                   nonVeg: item.dinnerNonVeg || 0,
                   kidsTotal: item.dinnerKidsTotal || 0,
@@ -736,7 +835,7 @@ export function DashboardScreen() {
                   kidsNonVegTaken: item.dinnerKidsNonVegTaken || 0,
                   parcel: item.dinnerParcel || 0,
                   parcelTaken: item.dinnerParcelTaken || 0,
-                  taken: item.dinnerTaken || 0,
+                  taken: (item.dinnerTaken || 0) + (item.dinnerGuestTaken || 0),
                   flatVegTaken: item.dinnerFlatVegTaken || 0,
                   flatNonVegTaken: item.dinnerFlatNonVegTaken || 0,
                   guestVeg: item.dinnerGuestVeg || 0,
