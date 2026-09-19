@@ -1,9 +1,10 @@
 /**
  * Shared Application Constants and Logic Helpers
  */
-import { Day, Subscription, FoodMenu, ConfigDay, AppConfig, MealType, DietType, DietaryOption, PaymentMode } from "./domain";
+import { FoodMenu, ConfigDay, AppConfig, MealType, DietType, DietaryOption, PaymentMode } from "./domain";
 import { UI_TEXT } from "./strings";
 import { MealAllocation } from "./domain";
+import { Subscription } from "./types";
 
 /**
  * Returns the enabled days from the config.

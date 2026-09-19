@@ -79,7 +79,7 @@ export function LoginScreen() {
 
   return (
     <View style={styles.root}>
-      <StatusBar style={themeType === AppThemeMode.DARK ? StatusBarStyleMode.LIGHT : StatusBarStyleMode.DARK} />
+      <StatusBar barStyle={themeType === AppThemeMode.DARK ? "light-content" : "dark-content"} />
       <View style={{ position: 'absolute', top: Platform.OS === 'ios' ? 60 : 40, left: 20, zIndex: 10 }}>
         <Pressable onPress={toggleTheme} style={[styles.backButton, { width: 36, height: 36, borderRadius: 18, paddingHorizontal: 0 }]}>
           <Ionicons name={themeType === AppThemeMode.DARK ? "sunny-outline" : "moon-outline"} size={18} color={theme.colors.secondary} />

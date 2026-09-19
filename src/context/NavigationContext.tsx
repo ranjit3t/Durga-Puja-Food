@@ -62,7 +62,7 @@ export function NavigationProvider({ children }: { children: React.ReactNode }) 
   const [editing, setEditing] = useState<Subscription | null>(null);
 
   // View Filter states
-  const [reportType, setReportType] = useState<ReportType>("day");
+  const [reportType, setReportType] = useState<ReportType>(ReportType.DAY);
   const [reportDayId, setReportDayId] = useState<Day>("");
   const [reportMealType, setReportMealType] = useState<MealType>(MealType.BREAKFAST);
   const [subscriptionSearch, setSubscriptionSearch] = useState("");
@@ -92,7 +92,7 @@ export function NavigationProvider({ children }: { children: React.ReactNode }) 
 
     setEditing({
       ...initialSub,
-      mealByPerson: mealChoicesFromMeals(initialSub, dayConfig),
+      mealByPerson: mealChoicesFromMeals(initialSub, dayConfig, true),
       mealSlots: mealSlotsFromChoices({}, 1, dayConfig),
       takenByPerson: emptyTaken(1, dayConfig),
       payments: [
@@ -117,7 +117,7 @@ export function NavigationProvider({ children }: { children: React.ReactNode }) 
   };
 
   const resetViewStates = () => {
-    setReportType("day");
+    setReportType(ReportType.DAY);
     setReportDayId("");
     setReportMealType(MealType.BREAKFAST);
     setSubscriptionSearch("");

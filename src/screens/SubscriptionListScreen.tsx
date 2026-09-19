@@ -22,7 +22,7 @@ import { useAuth } from "../context/AuthContext";
 import { useDatabase } from "../context/DatabaseContext";
 import { useAppNavigation } from "../context/NavigationContext";
 import { getActiveDays, getPaymentModeLabel, isMealCurrent, isMealEnabled } from "../constants";
-import { AppScreen, Subscription, PaymentMode, UserRole, MealType, DietaryOption, FilterMode, AppThemeMode, ActivityModule, ActivityAction } from "../types";
+import { AppScreen, Subscription, PaymentMode, UserRole, MealType, DietaryOption, FilterMode, AppThemeMode, ActivityModule, ActivityAction, PaymentConfig } from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
@@ -402,7 +402,7 @@ export function SubscriptionListScreen() {
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-        <StatusBar style={theme.themeType === AppThemeMode.DARK ? StatusBarStyleMode.LIGHT : StatusBarStyleMode.DARK} />
+        <StatusBar barStyle={theme.themeType === AppThemeMode.DARK ? "light-content" : "dark-content"} />
         <View style={styles.header}>
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>

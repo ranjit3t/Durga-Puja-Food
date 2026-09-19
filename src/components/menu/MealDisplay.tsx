@@ -86,16 +86,16 @@ export function MealDisplay({
                      <View style={[styles.pill, { backgroundColor: theme.colors.successLight, height: 24, paddingHorizontal: 10, borderRadius: 8 }]}>
                        <Text style={{ fontSize: 11, fontWeight: '900', color: theme.colors.veg }}>{UI_TEXT.rs} {menu.vegPrice || mConf?.vegPrice || UI_TEXT.zero}</Text>
                      </View>
-                     {kidsEnabled && (menu.kidsVegPrice || mConf?.kidsVegPrice) && (
+                     {kidsEnabled && (menu.kidsVegPrice || (mConf as any)?.kidsVegPrice) && (
                        <View style={[styles.pill, { backgroundColor: theme.colors.successLight, paddingVertical: 4, paddingHorizontal: 10, borderRadius: 8, borderStyle: 'dashed', borderWidth: 1, borderColor: theme.colors.veg }]}>
-                         <Text style={{ fontSize: 11, fontWeight: '900', color: theme.colors.veg }}>{UI_TEXT.kidsAbbrLabel}{UI_TEXT.colon} {UI_TEXT.rs} {menu.kidsVegPrice || mConf?.kidsVegPrice}</Text>
+                         <Text style={{ fontSize: 11, fontWeight: '900', color: theme.colors.veg }}>{UI_TEXT.kidsAbbrLabel}{UI_TEXT.colon} {UI_TEXT.rs} {menu.kidsVegPrice || (mConf as any)?.kidsVegPrice}</Text>
                        </View>
                      )}
                   </View>
                   {mConf?.parcel && (
                     <Text style={{ fontSize: 10, color: theme.colors.textSecondary, fontWeight: '700' }}>
                       {UI_TEXT.parcelLabel}{UI_TEXT.colon}{UI_TEXT.space}{UI_TEXT.rs}{UI_TEXT.space}{menu.vegParcelPrice || mConf?.vegParcelPrice || UI_TEXT.zero}
-                      {kidsEnabled && (menu.kidsVegParcelPrice || mConf?.kidsVegParcelPrice) ? `${UI_TEXT.space}${UI_TEXT.openParen}${UI_TEXT.kidsAbbrLabel}${UI_TEXT.colon}${UI_TEXT.space}${UI_TEXT.rs}${UI_TEXT.space}${menu.kidsVegParcelPrice || mConf?.kidsVegParcelPrice}${UI_TEXT.closeParen}` : ''}
+                      {kidsEnabled && (menu.kidsVegParcelPrice || (mConf as any)?.kidsVegParcelPrice) ? `${UI_TEXT.space}${UI_TEXT.openParen}${UI_TEXT.kidsAbbrLabel}${UI_TEXT.colon}${UI_TEXT.space}${UI_TEXT.rs}${UI_TEXT.space}${menu.kidsVegParcelPrice || (mConf as any)?.kidsVegParcelPrice}${UI_TEXT.closeParen}` : ''}
                     </Text>
                   )}
                 </View>
@@ -117,16 +117,16 @@ export function MealDisplay({
                     <View style={[styles.pill, { backgroundColor: theme.colors.errorLight, height: 24, paddingHorizontal: 10, borderRadius: 8 }]}>
                       <Text style={{ fontSize: 11, fontWeight: '900', color: theme.colors.nonVeg }}>{UI_TEXT.rs} {menu.nonVegPrice || mConf?.nonVegPrice || UI_TEXT.zero}</Text>
                     </View>
-                    {kidsEnabled && (menu.kidsNonVegPrice || mConf?.kidsNonVegPrice) && (
+                    {kidsEnabled && (menu.kidsNonVegPrice || (mConf as any)?.kidsNonVegPrice) && (
                        <View style={[styles.pill, { backgroundColor: theme.colors.errorLight, paddingVertical: 4, paddingHorizontal: 10, borderRadius: 8, borderStyle: 'dashed', borderWidth: 1, borderColor: theme.colors.nonVeg }]}>
-                         <Text style={{ fontSize: 11, fontWeight: '900', color: theme.colors.nonVeg }}>{UI_TEXT.kidsAbbrLabel}{UI_TEXT.colon} {UI_TEXT.rs} {menu.kidsNonVegPrice || mConf?.kidsNonVegPrice}</Text>
+                         <Text style={{ fontSize: 11, fontWeight: '900', color: theme.colors.nonVeg }}>{UI_TEXT.kidsAbbrLabel}{UI_TEXT.colon} {UI_TEXT.rs} {menu.kidsNonVegPrice || (mConf as any)?.kidsNonVegPrice}</Text>
                        </View>
                      )}
                   </View>
                   {mConf?.parcel && (
                     <Text style={{ fontSize: 10, color: theme.colors.textSecondary, fontWeight: '700' }}>
                       {UI_TEXT.parcelLabel}{UI_TEXT.colon}{UI_TEXT.space}{UI_TEXT.rs}{UI_TEXT.space}{menu.nonVegParcelPrice || mConf?.nonVegParcelPrice || UI_TEXT.zero}
-                      {kidsEnabled && (menu.kidsNonVegParcelPrice || mConf?.kidsNonVegParcelPrice) ? `${UI_TEXT.space}${UI_TEXT.openParen}${UI_TEXT.kidsAbbrLabel}${UI_TEXT.colon}${UI_TEXT.space}${UI_TEXT.rs}${UI_TEXT.space}${menu.kidsNonVegParcelPrice || mConf?.kidsNonVegParcelPrice}${UI_TEXT.closeParen}` : ''}
+                      {kidsEnabled && (menu.kidsNonVegParcelPrice || (mConf as any)?.kidsNonVegParcelPrice) ? `${UI_TEXT.space}${UI_TEXT.openParen}${UI_TEXT.kidsAbbrLabel}${UI_TEXT.colon}${UI_TEXT.space}${UI_TEXT.rs}${UI_TEXT.space}${menu.kidsNonVegParcelPrice || (mConf as any)?.kidsNonVegParcelPrice}${UI_TEXT.closeParen}` : ''}
                     </Text>
                   )}
                 </View>

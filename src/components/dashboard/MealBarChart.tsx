@@ -88,7 +88,7 @@ export function MealBarChart(props: MealMetricProps) {
           <Bar
             label={UI_TEXT.guest}
             value={guestTotal}
-            color={theme.colors.info || theme.colors.secondary}
+            color={(theme.colors as any).info || theme.colors.secondary}
             secondaryValue={guestTaken}
           />
         )}

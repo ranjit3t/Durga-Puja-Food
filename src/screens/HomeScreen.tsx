@@ -136,7 +136,7 @@ export function HomeScreen() {
 
   return (
     <View style={styles.root}>
-      <StatusBar style={themeType === AppThemeMode.DARK ? StatusBarStyleMode.LIGHT : StatusBarStyleMode.DARK} />
+      <StatusBar barStyle={themeType === AppThemeMode.DARK ? "light-content" : "dark-content"} />
       <View style={styles.header}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", height: 40, marginBottom: 16 }}>
           <Pressable onPress={toggleTheme} style={[styles.backButton, { width: 36, height: 36, borderRadius: 18, paddingHorizontal: 0 }]}>

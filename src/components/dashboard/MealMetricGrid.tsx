@@ -126,7 +126,7 @@ export function MealMetricGrid(props: MealMetricProps) {
 
           {parcel > 0 && (
             <>
-              <Metric icon="cube-outline" label={labels.parcel} value={parcel} />
+              <Metric icon="cube-outline" label={(labels as any).parcel || UI_TEXT.parcels} value={parcel} />
               <Metric icon="checkmark-circle-outline" label={UI_TEXT.parcelTaken} value={parcelTaken} color={theme.colors.primary} />
             </>
           )}

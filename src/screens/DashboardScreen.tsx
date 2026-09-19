@@ -259,7 +259,7 @@ const DashboardMealSection = memo(
                 parcel={parcel} parcelTaken={parcelTaken} totalVegTaken={totalVegTaken}
                 totalNonVegTaken={totalNonVegTaken} guestVeg={guestVeg} guestNonVeg={guestNonVeg}
                 guestVegTaken={guestVegTaken} guestNonVegTaken={guestNonVegTaken}
-                totalMealTaken={totalMealTaken} config={config} kidsEnabled={kidsEnabled} guestEnabled={guestEnabled}
+                totalMealTaken={totalMealTaken} kidsEnabled={kidsEnabled} guestEnabled={guestEnabled}
                 isBothEnabled={isBothEnabled} labels={labels as any}
               />
             ) : (
@@ -270,7 +270,7 @@ const DashboardMealSection = memo(
                 parcel={parcel} parcelTaken={parcelTaken} totalVegTaken={totalVegTaken}
                 totalNonVegTaken={totalNonVegTaken} guestVeg={guestVeg} guestNonVeg={guestNonVeg}
                 guestVegTaken={guestVegTaken} guestNonVegTaken={guestNonVegTaken}
-                totalMealTaken={totalMealTaken} config={config} kidsEnabled={kidsEnabled} guestEnabled={guestEnabled}
+                totalMealTaken={totalMealTaken} kidsEnabled={kidsEnabled} guestEnabled={guestEnabled}
                 isBothEnabled={isBothEnabled} labels={labels as any}
               />
             )}
@@ -523,7 +523,7 @@ export function DashboardScreen() {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={Platform.OS === "ios" ? 0 : s(20)}
     >
-      <StatusBar style={themeType === AppThemeMode.DARK ? StatusBarStyleMode.LIGHT : StatusBarStyleMode.DARK} />
+      <StatusBar barStyle={themeType === AppThemeMode.DARK ? "light-content" : "dark-content"} />
       <View style={styles.header}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: s(16) }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(8) }}>

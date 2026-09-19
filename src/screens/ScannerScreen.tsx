@@ -29,7 +29,7 @@ export function ScannerScreen() {
   if (!permission.granted) {
     return (
       <View style={styles.root}>
-        <StatusBar style={themeType === AppThemeMode.DARK ? StatusBarStyleMode.LIGHT : StatusBarStyleMode.DARK} />
+        <StatusBar barStyle={themeType === AppThemeMode.DARK ? "light-content" : "dark-content"} />
         <View style={styles.header}>
           <BackButton onPress={goBack} />
           <Text style={styles.title}>{UI_TEXT.cameraAccess}</Text>
@@ -46,7 +46,7 @@ export function ScannerScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.shadow }}>
-      <StatusBar style={themeType === AppThemeMode.DARK ? StatusBarStyleMode.LIGHT : StatusBarStyleMode.DARK} />
+      <StatusBar barStyle={themeType === AppThemeMode.DARK ? "light-content" : "dark-content"} />
 
       {/* 1. Camera fills the screen */}
       <CameraView

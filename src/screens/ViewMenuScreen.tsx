@@ -10,7 +10,7 @@ import {
   getSortedMealKeys,
   isMealCurrent,
 } from "../constants";
-import { UserRole, ConfigDay, MealType, AppScreen, AppThemeMode, ActivityModule, ActivityAction } from "../types";
+import { UserRole, ConfigDay, MealType, AppScreen, AppThemeMode, ActivityModule, ActivityAction, Day } from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
@@ -91,7 +91,7 @@ export function ViewMenuScreen() {
 
   return (
     <View style={styles.root}>
-      <StatusBar style={themeType === AppThemeMode.DARK ? StatusBarStyleMode.LIGHT : StatusBarStyleMode.DARK} />
+      <StatusBar barStyle={themeType === AppThemeMode.DARK ? "light-content" : "dark-content"} />
       <View style={styles.header}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -168,7 +168,7 @@ export function ViewMenuScreen() {
 
         {isAdmin && seasonEnabled && (
           <View style={{ marginTop: 24, paddingHorizontal: 4 }}>
-            <Pressable onPress={onEdit} style={styles.primary}>
+            <Pressable onPress={() => onEdit()} style={styles.primary}>
               <ActionLabel
                 icon="create-outline"
                 label={UI_TEXT.updateMenuItems}

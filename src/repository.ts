@@ -17,7 +17,8 @@ import {
   MealType,
   DietType,
   DietaryOption,
-  ActivityLog
+  ActivityLog,
+  PaymentMode
 } from "./domain";
 import { ConfigDay, AppConfig } from "./types";
 import { UI_TEXT } from "./strings";
@@ -151,7 +152,7 @@ function normalizeRecord(
     )?.[day];
 
     if (current && Array.isArray(current)) {
-      result[day] = current.map(c => (c === "Non-veg" ? "Non-Veg" : c));
+      result[day] = current.map(c => (c as string === "Non-veg" ? DietaryOption.NON_VEG : c));
     } else {
       const allocation = (
         value.meals as Record<string, MealAllocation> | undefined

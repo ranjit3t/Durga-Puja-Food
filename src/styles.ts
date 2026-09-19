@@ -41,7 +41,7 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
   const MAX_WIDTH = isWeb ? undefined : 600;
 
   const maxWidthStyle = {
-    width: "100%",
+    width: "100%" as any,
     maxWidth: MAX_WIDTH,
     alignSelf: "center" as const,
   };
@@ -57,7 +57,7 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
     rootOverlay: {
       flex: 1,
       backgroundColor: theme?.themeType === 'dark' ? COLORS.shadow + "D9" : COLORS.white + "EB",
-      width: "100%",
+      width: "100%" as any,
     },
     center: { justifyContent: "center", alignItems: "center" },
     backgroundImage: { opacity: 0.15 },
@@ -77,7 +77,7 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
       borderBottomWidth: 1,
       borderBottomColor: COLORS.border,
       ...maxWidthStyle,
-      width: isWeb ? "100%" : maxWidthStyle.width,
+      width: (isWeb ? "100%" : maxWidthStyle.width) as any,
     },
     title: {
       color: COLORS.textPrimary,
@@ -107,7 +107,7 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
       padding: s(SIZES.paddingMedium),
       paddingBottom: v(150),
       ...maxWidthStyle,
-      width: isWeb ? "100%" : maxWidthStyle.width,
+      width: (isWeb ? "100%" : maxWidthStyle.width) as any,
     },
 
     // Fixed width wrapper for elements outside scrollviews/flatlists

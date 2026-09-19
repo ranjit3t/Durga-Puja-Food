@@ -38,8 +38,6 @@ import {
   getDayAbbr,
 } from "../constants";
 import {
-  Subscription,
-  Day,
   MealChoice,
   MealSlot,
   UserRole,
@@ -52,6 +50,7 @@ import {
   AppThemeMode,
   ActivityModule,
   ActivityAction,
+  TakenState,
 } from "../domain";
 import { ActionLabel } from "../components/common/ActionLabel";
 import { Dropdown } from "../components/common/Dropdown";
@@ -65,6 +64,7 @@ import { useAuth } from "../context/AuthContext";
 import { useDatabase } from "../context/DatabaseContext";
 import { useUI } from "../context/UIContext";
 import { useAppNavigation } from "../context/NavigationContext";
+import { Day, Subscription } from "../types";
 
 export function SubscriptionForm() {
   const { userRole, handleLogout } = useAuth();
@@ -252,8 +252,8 @@ export function SubscriptionForm() {
     let initialValue = { ...value };
 
     // If kids support is disabled, merge kids into adults to prevent data hidden/split confusion
-    if (!kidsEnabled && initialValue.kidsCount > 0) {
-      initialValue.peopleCount = initialValue.peopleCount + initialValue.kidsCount;
+    if (!kidsEnabled && (initialValue.kidsCount ?? 0) > 0) {
+      initialValue.peopleCount = initialValue.peopleCount + (initialValue.kidsCount ?? 0);
       initialValue.kidsCount = 0;
     }
 
@@ -534,7 +534,7 @@ export function SubscriptionForm() {
       style={styles.root}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
-      <StatusBar style={themeType === AppThemeMode.DARK ? StatusBarStyleMode.LIGHT : StatusBarStyleMode.DARK} />
+      <StatusBar barStyle={themeType === AppThemeMode.DARK ? "light-content" : "dark-content"} />
       <View style={styles.header}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>

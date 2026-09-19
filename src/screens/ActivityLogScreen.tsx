@@ -20,7 +20,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useStyles, useScaling } from "../styles";
 import { useAppTheme, StatusBarStyleMode } from "../theme";
 import { UI_TEXT } from "../strings";
-import { AppScreen, ActivityLog, ActivityModule, ActivityAction, AppThemeMode, Subscription } from "../domain";
+import { AppScreen, ActivityLog, ActivityModule, ActivityAction, AppThemeMode } from "../domain";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
@@ -29,6 +29,7 @@ import { Dropdown } from "../components/common/Dropdown";
 import { useAuth } from "../context/AuthContext";
 import { useDatabase } from "../context/DatabaseContext";
 import { useAppNavigation } from "../context/NavigationContext";
+import { Subscription } from "../types";
 
 /**
  * Memoized individual log item for performance optimization.
@@ -356,7 +357,7 @@ export function ActivityLogScreen() {
 
   return (
     <View style={styles.root}>
-      <StatusBar style={themeType === AppThemeMode.DARK ? StatusBarStyleMode.LIGHT : StatusBarStyleMode.DARK} />
+      <StatusBar barStyle={themeType === AppThemeMode.DARK ? "light-content" : "dark-content"} />
       <View style={styles.header}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", height: 40, marginBottom: 16 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>

@@ -15,7 +15,7 @@ import {
 import { useStyles } from "../styles";
 import { useAppTheme, StatusBarStyleMode } from "../theme";
 import { UI_TEXT } from "../strings";
-import { ConfigDay, MealConfig, PaymentConfig, AppScreen, PaymentMode, AppThemeMode, ActivityModule, ActivityAction } from "../types";
+import { ConfigDay, PaymentConfig, AppScreen, PaymentMode, AppThemeMode, ActivityModule, ActivityAction } from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
@@ -26,6 +26,7 @@ import { useDatabase } from "../context/DatabaseContext";
 import { useUI } from "../context/UIContext";
 import { useAppNavigation } from "../context/NavigationContext";
 import { getPaymentModeLabel, getMealLabel } from "../constants";
+import { MealConfig, MealType } from "../domain";
 
 export function SettingsScreen() {
   const { handleLogout } = useAuth();
@@ -228,7 +229,7 @@ export function SettingsScreen() {
               if (newM.current !== oldM.current) mChanges.push(`Current:${newM.current ? 'ON' : 'OFF'}`);
 
               if (mChanges.length > 0) {
-                dayChanges.push(`${getMealLabel(m).toUpperCase()}(${mChanges.join(',')})`);
+                dayChanges.push(`${getMealLabel(m as MealType).toUpperCase()}(${mChanges.join(',')})`);
               }
             }
           });
@@ -286,7 +287,7 @@ export function SettingsScreen() {
 
   return (
     <View style={styles.root}>
-      <StatusBar style={themeType === AppThemeMode.DARK ? StatusBarStyleMode.LIGHT : StatusBarStyleMode.DARK} />
+      <StatusBar barStyle={themeType === AppThemeMode.DARK ? "light-content" : "dark-content"} />
       <View style={styles.header}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -406,7 +407,7 @@ export function SettingsScreen() {
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                              <Ionicons name={mKey === "breakfast" ? "sunny-outline" : mKey === "lunch" ? "restaurant-outline" : "moon-outline"} size={18} color={theme.colors.textPrimary} />
-                             <Text style={{ fontWeight: "800", fontSize: 16, color: theme.colors.textPrimary, textTransform: "capitalize" }}>{getMealLabel(mKey)}</Text>
+                             <Text style={{ fontWeight: "800", fontSize: 16, color: theme.colors.textPrimary, textTransform: "capitalize" }}>{getMealLabel(mKey as MealType)}</Text>
                           </View>
                           <Switch value={m.enabled} onValueChange={(val) => withConfirm(m.enabled, val, () => updateMealConfig(day.id, mKey, { enabled: val }))} trackColor={{ true: theme.colors.primary }} />
                         </View>

@@ -94,7 +94,7 @@ export function DetailsScreen() {
 
   return (
     <View style={styles.root}>
-      <StatusBar style={themeType === AppThemeMode.DARK ? StatusBarStyleMode.LIGHT : StatusBarStyleMode.DARK} />
+      <StatusBar barStyle={themeType === AppThemeMode.DARK ? "light-content" : "dark-content"} />
       <View style={styles.header}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -331,7 +331,7 @@ export function DetailsScreen() {
                         isSubscribedTo(MealType.BREAKFAST) &&
                         hasMenu(dayMenu[MealType.BREAKFAST]) && (
                           <MealSummaryInline
-                            label={UI_TEXT.breakfastTitle}
+                            label={UI_TEXT.breakfast}
                             mealKey={MealType.BREAKFAST}
                             dayId={day}
                             config={dayConfig}
@@ -342,7 +342,7 @@ export function DetailsScreen() {
                         isSubscribedTo(MealType.LUNCH) &&
                         hasMenu(dayMenu[MealType.LUNCH]) && (
                           <MealSummaryInline
-                            label={UI_TEXT.lunchTitle}
+                            label={UI_TEXT.lunch}
                             mealKey={MealType.LUNCH}
                             dayId={day}
                             config={dayConfig}
@@ -353,7 +353,7 @@ export function DetailsScreen() {
                         isSubscribedTo(MealType.DINNER) &&
                         hasMenu(dayMenu[MealType.DINNER]) && (
                           <MealSummaryInline
-                            label={UI_TEXT.dinnerTitle}
+                            label={UI_TEXT.dinner}
                             mealKey={MealType.DINNER}
                             dayId={day}
                             config={dayConfig}
