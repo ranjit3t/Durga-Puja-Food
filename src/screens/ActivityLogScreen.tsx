@@ -371,9 +371,22 @@ export function ActivityLogScreen() {
               <Text style={styles.title}>{UI_TEXT.activityLog}</Text>
               <Text style={styles.subtitle}>{UI_TEXT.activityLogSubtitle}</Text>
            </View>
-           <View style={{ backgroundColor: theme.colors.success + "20", paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderColor: theme.colors.success + "40" }}>
-              <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: theme.colors.success }} />
-              <Text style={{ fontSize: 12, fontWeight: '900', color: theme.colors.success }}>{UI_TEXT.live.toUpperCase()}</Text>
+           <View style={{
+             backgroundColor: theme.colors.success,
+             paddingHorizontal: 12,
+             paddingVertical: 6,
+             borderRadius: 20,
+             flexDirection: 'row',
+             alignItems: 'center',
+             gap: 6,
+             elevation: 4,
+             shadowColor: theme.colors.success,
+             shadowOffset: { width: 0, height: 2 },
+             shadowOpacity: 0.3,
+             shadowRadius: 4
+           }}>
+              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: theme.colors.white }} />
+              <Text style={{ fontSize: 11, fontWeight: '900', color: theme.colors.white, letterSpacing: 1 }}>{UI_TEXT.live.toUpperCase()}</Text>
            </View>
         </View>
       </View>
