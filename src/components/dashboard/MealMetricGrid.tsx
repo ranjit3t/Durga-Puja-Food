@@ -5,7 +5,7 @@ import { useAppTheme } from "../../theme";
 import { UI_TEXT } from "../../strings";
 import { Metric } from "../common/Metric";
 import { isParcelEnabled } from "../../constants";
-import { ConfigDay, MealType } from "../../types";
+import { ConfigDay, MealType } from "../../domain";
 
 export interface MealMetricProps {
   day: string;

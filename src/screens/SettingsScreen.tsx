@@ -15,7 +15,7 @@ import {
 import { useStyles } from "../styles";
 import { useAppTheme, StatusBarStyleMode } from "../theme";
 import { UI_TEXT } from "../strings";
-import { ConfigDay, MealConfig, PaymentConfig, AppScreen, PaymentMode, AppThemeMode } from "../types";
+import { ConfigDay, MealConfig, PaymentConfig, AppScreen, PaymentMode, AppThemeMode, ActivityModule, ActivityAction } from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
@@ -31,7 +31,7 @@ export function SettingsScreen() {
   const { handleLogout } = useAuth();
   const {
     dayConfig: config, seasonName, seasonEnabled, paymentConfig: payment, guestEnabled, mobileEnabled, foodPriceEnabled,
-    whatsappCountryCode, updateConfig, kidsEnabled, subscriptions
+    whatsappCountryCode, updateConfig, kidsEnabled, subscriptions, addActivityLog
   } = useDatabase();
   const { showAlert } = useUI();
   const { navigate, goBack } = useAppNavigation();
@@ -192,6 +192,11 @@ export function SettingsScreen() {
         foodPriceEnabled: localFoodPriceEnabled,
         kidsEnabled: localKidsEnabled,
         whatsappCountryCode: localWhatsappCountryCode,
+      });
+      addActivityLog({
+        module: ActivityModule.CONFIG,
+        action: ActivityAction.UPDATE,
+        description: UI_TEXT.logUpdateConfig
       });
       setInitialized(false); // Allow re-syncing from DB
       showAlert(UI_TEXT.success, UI_TEXT.settingsUpdated, [

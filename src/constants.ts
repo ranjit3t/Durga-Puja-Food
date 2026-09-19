@@ -1,7 +1,7 @@
 /**
  * Shared Application Constants and Logic Helpers
  */
-import { Day, Subscription, FoodMenu, ConfigDay, AppConfig, MealType, DietType, DietaryOption, PaymentMode } from "./types";
+import { Day, Subscription, FoodMenu, ConfigDay, AppConfig, MealType, DietType, DietaryOption, PaymentMode } from "./domain";
 import { UI_TEXT } from "./strings";
 import { MealAllocation } from "./domain";
 

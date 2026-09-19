@@ -20,6 +20,10 @@
     "auth_config": {
       ".read": "auth != null",
       ".write": false
+    },
+    "logs": {
+      ".read": "auth != null",
+      ".write": "auth != null"
     }
   }
 }

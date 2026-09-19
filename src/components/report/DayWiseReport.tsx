@@ -4,7 +4,7 @@ import { useStyles } from "../../styles";
 import { useAppTheme } from "../../theme";
 import { UI_TEXT } from "../../strings";
 import { getDayLabel, isDietaryEnabledForDay, isParcelEnabled } from "../../constants";
-import { ConfigDay, MealType, DietType, AppThemeMode } from "../../types";
+import { ConfigDay, MealType, DietType, AppThemeMode } from "../../domain";
 
 interface DayWiseData {
   day: string;

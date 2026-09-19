@@ -50,7 +50,9 @@ import {
   AppScreen,
   PaymentMode,
   AppThemeMode,
-} from "../types";
+  ActivityModule,
+  ActivityAction,
+} from "../domain";
 import { ActionLabel } from "../components/common/ActionLabel";
 import { Dropdown } from "../components/common/Dropdown";
 import { BackButton } from "../components/common/BackButton";
@@ -68,7 +70,7 @@ export function SubscriptionForm() {
   const { userRole, handleLogout } = useAuth();
   const {
     dayConfig, paymentConfig, seasonEnabled, foodPriceEnabled, foodMenu, mobileEnabled,
-    upsertSubscription, deleteSubscription, kidsEnabled
+    upsertSubscription, deleteSubscription, kidsEnabled, addActivityLog
   } = useDatabase();
   const { showAlert: showGlobalAlert } = useUI();
   const {
@@ -108,6 +110,44 @@ export function SubscriptionForm() {
   const onSave = async (next: Subscription) => {
     try {
       if (await upsertSubscription(next)) {
+        // Build detailed description for log
+        let parcelCount = 0;
+        let vegCount = 0;
+        let nonVegCount = 0;
+
+        Object.values(next.mealSlots).forEach(daySlots => {
+          daySlots.forEach(slot => {
+            if (slot.breakfastParcel) parcelCount++;
+            if (slot.lunchParcel) parcelCount++;
+            if (slot.dinnerParcel) parcelCount++;
+
+            if (slot.breakfast === DietaryOption.VEG) vegCount++;
+            if (slot.lunch === DietaryOption.VEG) vegCount++;
+            if (slot.dinner === DietaryOption.VEG) vegCount++;
+
+            if (slot.breakfast === DietaryOption.NON_VEG) nonVegCount++;
+            if (slot.lunch === DietaryOption.NON_VEG) nonVegCount++;
+            if (slot.dinner === DietaryOption.NON_VEG) nonVegCount++;
+          });
+        });
+
+        let detailedDesc = (lockIdentity ? UI_TEXT.logEditPass : UI_TEXT.logAddPass)
+          .replace("{id}", next.id)
+          .replace("{adults}", String(next.peopleCount))
+          .replace("{kids}", String(next.kidsCount || 0))
+          .replace("{amount}", next.amount);
+
+        detailedDesc += UI_TEXT.logMealSplitSuffix.replace("{v}", String(vegCount)).replace("{n}", String(nonVegCount));
+        if (parcelCount > 0) {
+          detailedDesc += UI_TEXT.logParcelSuffix.replace("{count}", String(parcelCount));
+        }
+
+        addActivityLog({
+          module: ActivityModule.SUBSCRIPTION,
+          action: lockIdentity ? ActivityAction.UPDATE : ActivityAction.CREATE,
+          targetId: next.id,
+          description: detailedDesc
+        });
         setSelectedId(next.id);
         setSelectedRecord(next);
         navigate(AppScreen.DETAILS);
@@ -121,6 +161,45 @@ export function SubscriptionForm() {
   const onSaveQr = async (next: Subscription) => {
     try {
       if (await upsertSubscription(next)) {
+        // Build detailed description for log
+        let parcelCount = 0;
+        let vegCount = 0;
+        let nonVegCount = 0;
+
+        Object.values(next.mealSlots).forEach(daySlots => {
+          daySlots.forEach(slot => {
+            if (slot.breakfastParcel) parcelCount++;
+            if (slot.lunchParcel) parcelCount++;
+            if (slot.dinnerParcel) parcelCount++;
+
+            if (slot.breakfast === DietaryOption.VEG) vegCount++;
+            if (slot.lunch === DietaryOption.VEG) vegCount++;
+            if (slot.dinner === DietaryOption.VEG) vegCount++;
+
+            if (slot.breakfast === DietaryOption.NON_VEG) nonVegCount++;
+            if (slot.lunch === DietaryOption.NON_VEG) nonVegCount++;
+            if (slot.dinner === DietaryOption.NON_VEG) nonVegCount++;
+          });
+        });
+
+        let detailedDesc = (lockIdentity ? UI_TEXT.logEditPass : UI_TEXT.logAddPass)
+          .replace("{id}", next.id)
+          .replace("{adults}", String(next.peopleCount))
+          .replace("{kids}", String(next.kidsCount || 0))
+          .replace("{amount}", next.amount);
+
+        detailedDesc += UI_TEXT.logMealSplitSuffix.replace("{v}", String(vegCount)).replace("{n}", String(nonVegCount));
+        if (parcelCount > 0) {
+          detailedDesc += UI_TEXT.logParcelSuffix.replace("{count}", String(parcelCount));
+        }
+        detailedDesc += " (QR)";
+
+        addActivityLog({
+          module: ActivityModule.SUBSCRIPTION,
+          action: lockIdentity ? ActivityAction.UPDATE : ActivityAction.CREATE,
+          targetId: next.id,
+          description: detailedDesc
+        });
         setSelectedId(next.id);
         setSelectedRecord(next);
         navigate(AppScreen.QR);
@@ -132,7 +211,15 @@ export function SubscriptionForm() {
 
   const onDelete = lockIdentity ? () => showGlobalAlert(UI_TEXT.deleteConfirmTitle, `${UI_TEXT.deleteConfirmMessage}${value.id}${UI_TEXT.deleteConfirmMessageSuffix}`, [
     { text: UI_TEXT.cancel, style: "cancel" },
-    { text: UI_TEXT.deleteButton, style: "destructive", onPress: () => void deleteSubscription(value.id).then(() => navigate(AppScreen.HOME)) },
+    { text: UI_TEXT.deleteButton, style: "destructive", onPress: () => void deleteSubscription(value.id).then(() => {
+        addActivityLog({
+          module: ActivityModule.SUBSCRIPTION,
+          action: ActivityAction.DELETE,
+          targetId: value.id,
+          description: UI_TEXT.logDeletePass.replace("{id}", value.id)
+        });
+        navigate(AppScreen.HOME);
+    }) },
   ]) : undefined;
 
   const enabledMethods = getEnabledPaymentMethods({

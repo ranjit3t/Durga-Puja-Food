@@ -5,7 +5,7 @@ import { useStyles } from "../styles";
 import { StatusBarStyleMode, useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
 import { getDayLabel, isMealEnabled, isMealDone, getSortedMealKeys, isDietaryEnabled, isMealCurrent, getMealLabel } from "../constants";
-import { MealMenu, ConfigDay, UserRole, MealType, DietType, AppScreen, AppThemeMode } from "../types";
+import { MealMenu, ConfigDay, UserRole, MealType, DietType, AppScreen, AppThemeMode, ActivityModule, ActivityAction } from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
@@ -168,7 +168,7 @@ import { useAppNavigation } from "../context/NavigationContext";
 export function GuestManagementScreen() {
   const { userRole, handleLogout } = useAuth();
   const {
-    foodMenu, dayConfig, seasonEnabled, updateGuestCount
+    foodMenu, dayConfig, seasonEnabled, updateGuestCount, addActivityLog
   } = useDatabase();
   const { goBack, navigate } = useAppNavigation();
 
@@ -195,6 +195,16 @@ export function GuestManagementScreen() {
     value: number
   ) => {
     updateGuestCount(day, type, field, value);
+    addActivityLog({
+      module: ActivityModule.GUEST,
+      action: ActivityAction.UPDATE,
+      targetId: `${day}-${type}`,
+      description: UI_TEXT.logUpdateGuest
+        .replace("{field}", field)
+        .replace("{value}", String(value))
+        .replace("{day}", getDayLabel(day, dayConfig))
+        .replace("{meal}", getMealLabel(type))
+    });
   };
 
   return (

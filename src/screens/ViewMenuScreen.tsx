@@ -10,7 +10,7 @@ import {
   getSortedMealKeys,
   isMealCurrent,
 } from "../constants";
-import { UserRole, ConfigDay, MealType, AppScreen, AppThemeMode } from "../types";
+import { UserRole, ConfigDay, MealType, AppScreen, AppThemeMode, ActivityModule, ActivityAction } from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
@@ -24,7 +24,7 @@ import { useAppNavigation } from "../context/NavigationContext";
 export function ViewMenuScreen() {
   const { userRole, handleLogout } = useAuth();
   const {
-    foodMenu, dayConfig, guestEnabled, seasonEnabled, foodPriceEnabled, paymentConfig, kidsEnabled
+    foodMenu, dayConfig, guestEnabled, seasonEnabled, foodPriceEnabled, paymentConfig, kidsEnabled, addActivityLog
   } = useDatabase();
   const { navigate, goBack, targetDay, setTargetDay, targetMeal, setTargetMeal } = useAppNavigation();
 
@@ -35,6 +35,12 @@ export function ViewMenuScreen() {
   const layouts = useRef<Record<string, number>>({});
 
   const onEdit = (day?: Day, meal?: MealType) => {
+    addActivityLog({
+      module: ActivityModule.MENU,
+      action: ActivityAction.VIEW,
+      targetId: day ? (meal ? `${day}-${meal}` : day) : "all",
+      description: day ? `Opening editor for ${getDayLabel(day, dayConfig)}` : "Opening overall menu editor"
+    });
     if (day) setTargetDay(day);
     if (meal) setTargetMeal(meal);
     navigate(AppScreen.MENU);

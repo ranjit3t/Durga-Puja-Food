@@ -235,40 +235,43 @@ export function HomeScreen() {
         <View style={styles.compactActions}>
           {userRole === UserRole.ADMIN && seasonEnabled && !isSeasonDone(dayConfig) && (
             <Pressable accessibilityLabel={UI_TEXT.addFlat} onPress={() => startNew(dayConfig, seasonName, paymentConfig, guestEnabled, true, seasonEnabled)} style={[styles.compactSecondary, { backgroundColor: theme.colors.success, borderColor: theme.colors.success }]} disabled={getActiveDays(dayConfig).length === 0}>
-              <ActionLabel icon="add-circle-outline" label={UI_TEXT.addFlat} color={theme.colors.white} size={20} vertical />
+              <ActionLabel icon="add-circle-outline" label={UI_TEXT.addFlat} color={theme.colors.white} size={18} vertical />
             </Pressable>
           )}
           {guestEnabled && (
             <Pressable accessibilityLabel={UI_TEXT.guestButton} onPress={() => navigate(AppScreen.GUEST_MANAGEMENT)} style={[styles.compactSecondary, { backgroundColor: theme.cardColors[2].accent, borderColor: theme.cardColors[2].accent }]}>
-              <ActionLabel icon="people-circle-outline" label={UI_TEXT.guestButton} color={theme.colors.white} size={20} vertical />
+              <ActionLabel icon="people-circle-outline" label={UI_TEXT.guestButton} color={theme.colors.white} size={18} vertical />
             </Pressable>
           )}
           <Pressable accessibilityLabel={UI_TEXT.subscriptions} onPress={() => navigate(AppScreen.SUBSCRIPTION_LIST)} style={[styles.compactSecondary, { backgroundColor: theme.cardColors[1].accent, borderColor: theme.cardColors[1].accent }]}>
-            <ActionLabel icon="list-outline" label={UI_TEXT.subscriptions} color={theme.colors.white} size={20} vertical />
+            <ActionLabel icon="list-outline" label={UI_TEXT.subscriptions} color={theme.colors.white} size={18} vertical />
           </Pressable>
           <Pressable accessibilityLabel={UI_TEXT.scanQr} onPress={() => navigate(AppScreen.SCANNER)} style={[styles.compactSecondary, { backgroundColor: theme.cardColors[4].accent, borderColor: theme.cardColors[4].accent }]}>
-            <ActionLabel icon="scan-outline" label={UI_TEXT.scanQr} color={theme.colors.white} size={20} vertical />
+            <ActionLabel icon="scan-outline" label={UI_TEXT.scanQr} color={theme.colors.white} size={18} vertical />
           </Pressable>
           <Pressable accessibilityLabel={UI_TEXT.dashboard} onPress={() => navigate(AppScreen.DASHBOARD)} style={[styles.compactSecondary, { backgroundColor: theme.cardColors[3].accent, borderColor: theme.cardColors[3].accent }]}>
-            <ActionLabel icon="stats-chart-outline" label={UI_TEXT.dashboard} color={theme.colors.white} size={20} vertical />
+            <ActionLabel icon="stats-chart-outline" label={UI_TEXT.dashboard} color={theme.colors.white} size={18} vertical />
           </Pressable>
           <Pressable accessibilityLabel={UI_TEXT.report} onPress={() => navigate(AppScreen.REPORT)} style={[styles.compactSecondary, { backgroundColor: theme.cardColors[5].accent, borderColor: theme.cardColors[5].accent }]}>
-            <ActionLabel icon="document-text-outline" label={UI_TEXT.report} color={theme.colors.white} size={20} vertical />
+            <ActionLabel icon="document-text-outline" label={UI_TEXT.report} color={theme.colors.white} size={18} vertical />
           </Pressable>
           <Pressable accessibilityLabel={UI_TEXT.viewMenu} onPress={() => navigate(AppScreen.VIEW_MENU)} style={[styles.compactSecondary, { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary }]}>
-            <ActionLabel icon="restaurant-outline" label={UI_TEXT.viewMenu} color={theme.colors.white} size={20} vertical />
+            <ActionLabel icon="restaurant-outline" label={UI_TEXT.viewMenu} color={theme.colors.white} size={18} vertical />
           </Pressable>
           {userRole === UserRole.ADMIN && (
             <>
+              <Pressable accessibilityLabel={UI_TEXT.activityLog} onPress={() => navigate(AppScreen.ACTIVITY_LOG)} style={[styles.compactSecondary, { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary }]}>
+                <ActionLabel icon="time-outline" label={UI_TEXT.activityLog} color={theme.colors.white} size={18} vertical />
+              </Pressable>
               <Pressable accessibilityLabel={UI_TEXT.settings} onPress={() => navigate(AppScreen.SETTINGS)} style={[styles.compactSecondary, { backgroundColor: theme.colors.textMuted, borderColor: theme.colors.textMuted }]}>
-                <ActionLabel icon="settings-outline" label={UI_TEXT.settings} color={theme.colors.white} size={20} vertical />
+                <ActionLabel icon="settings-outline" label={UI_TEXT.settings} color={theme.colors.white} size={18} vertical />
               </Pressable>
               <Pressable
                 accessibilityLabel={UI_TEXT.reportBug}
                 onPress={() => Linking.openURL(`mailto:${UI_TEXT.supportEmail}?subject=${encodeURIComponent(UI_TEXT.bugReportSubject)}`)}
                 style={[styles.compactSecondary, { backgroundColor: theme.colors.error, borderColor: theme.colors.error }]}
               >
-                <ActionLabel icon="bug-outline" label={UI_TEXT.reportBug} color={theme.colors.white} size={20} vertical />
+                <ActionLabel icon="bug-outline" label={UI_TEXT.reportBug} color={theme.colors.white} size={18} vertical />
               </Pressable>
             </>
           )}

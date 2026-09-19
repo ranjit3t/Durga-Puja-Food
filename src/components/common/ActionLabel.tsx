@@ -24,9 +24,9 @@ export function ActionLabel({
   const { theme } = useAppTheme();
   const finalColor = color || theme.colors.textSecondary;
   return (
-    <View style={[styles.actionLabel, vertical && { flexDirection: 'column', gap: 6 }]}>
+    <View style={[styles.actionLabel, vertical && { flexDirection: 'column', gap: 4 }]}>
       <Ionicons name={icon} size={size} color={finalColor} />
-      <Text style={[styles.actionLabelText, { color: finalColor }, vertical && { fontSize: 13, textAlign: 'center' }]}>{label}</Text>
+      <Text style={[styles.actionLabelText, { color: finalColor }, vertical && { fontSize: 11, textAlign: 'center' }]}>{label}</Text>
     </View>
   );
 }

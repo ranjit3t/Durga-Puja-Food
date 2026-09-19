@@ -19,7 +19,7 @@ import {
   isParcelEnabled,
   isMealCurrent,
 } from "../constants";
-import { ReportType, MealType, AppScreen, AppThemeMode } from "../types";
+import { ReportType, MealType, AppScreen, UserRole, ActivityModule, ActivityAction, AppThemeMode, ConfigDay, AppConfig, PaymentConfig } from "../domain";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
@@ -47,7 +47,7 @@ import { useAppNavigation } from "../context/NavigationContext";
 export function ReportScreen() {
   const { userRole, handleLogout } = useAuth();
   const {
-    subscriptions, foodMenu, dayConfig, seasonName, paymentConfig, guestEnabled, kidsEnabled, whatsappCountryCode, mobileEnabled
+    subscriptions, foodMenu, dayConfig, seasonName, paymentConfig, guestEnabled, kidsEnabled, whatsappCountryCode, mobileEnabled, addActivityLog
   } = useDatabase();
   const { shareQr } = useUI();
   const {
@@ -340,6 +340,7 @@ export function ReportScreen() {
               kidsEnabled={!!kidsEnabled}
               whatsappCountryCode={whatsappCountryCode}
               mobileEnabled={!!mobileEnabled}
+              addActivityLog={addActivityLog}
             />
           )}
 

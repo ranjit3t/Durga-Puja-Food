@@ -5,7 +5,7 @@ import { useStyles } from "../../styles";
 import { useAppTheme } from "../../theme";
 import { UI_TEXT } from "../../strings";
 import { getDayLabel, isMealEnabled, getSortedMealKeys, isParcelEnabled, isDietaryEnabled, getMealLabel } from "../../constants";
-import { ConfigDay, MealType, DietType } from "../../types";
+import { ConfigDay, MealType, DietType } from "../../domain";
 
 interface MealStats {
   veg: number;

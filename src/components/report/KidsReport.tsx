@@ -4,7 +4,7 @@ import { useStyles } from "../../styles";
 import { useAppTheme } from "../../theme";
 import { UI_TEXT } from "../../strings";
 import { isDietaryEnabled } from "../../constants";
-import { ConfigDay, MealType, DietType } from "../../types";
+import { ConfigDay, MealType, DietType } from "../../domain";
 
 interface KidsMealItem {
   id: string;

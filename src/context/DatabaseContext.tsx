@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from "react";
+import { Platform } from "react-native";
 import {
   createFirebaseRepository,
   firebaseRepositoryConfigured
@@ -16,7 +17,10 @@ import {
   MealType,
   DietType,
   DietaryOption,
-  PaymentMode
+  PaymentMode,
+  ActivityLog,
+  ActivityModule,
+  ActivityAction
 } from "../types";
 import { useAuth } from "./AuthContext";
 
@@ -26,7 +30,9 @@ import {
   getActiveDays,
   isMealEnabled,
   isDietaryEnabled,
-  isParcelEnabled
+  isParcelEnabled,
+  getDayLabel,
+  getMealLabel
 } from "../constants";
 
 interface DatabaseContextType {
@@ -62,12 +68,14 @@ interface DatabaseContextType {
   updateMealMenu: (dayId: string, mealKey: MealType, menu: MealMenu) => Promise<void>;
   updateSubscriptionStatus: (flatId: string, dayId: string, personIndex: number, slot: string, taken: boolean) => Promise<void>;
   getAuthConfig: () => Promise<any>;
+  addActivityLog: (log: Omit<ActivityLog, "id" | "timestamp" | "userName">, manualUser?: string) => void;
+  getActivityLogs: (limit?: number) => Promise<ActivityLog[]>;
 }
 
 const DatabaseContext = createContext<DatabaseContextType | undefined>(undefined);
 
 export function DatabaseProvider({ children }: { children: React.ReactNode }) {
-  const { userRole } = useAuth();
+  const { userRole, userName } = useAuth();
 
   const [loading, setLoading] = useState(false);
   const [firebaseError, setFirebaseError] = useState("");
@@ -86,6 +94,24 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
   const [foodPriceEnabled, setFoodPriceEnabled] = useState(false);
   const [kidsEnabled, setKidsEnabled] = useState(false);
   const [whatsappCountryCode, setWhatsappCountryCode] = useState("91");
+
+  const getAuthConfig = useCallback(() => repository.getAuthConfig(), []);
+
+  const addActivityLog = useCallback((log: Omit<ActivityLog, "id" | "timestamp" | "userName" | "device" | "os">, manualUser?: string) => {
+    const user = manualUser || userName;
+    if (!user) return;
+    void repository.addActivityLog({
+      ...log,
+      timestamp: Date.now(),
+      userName: user,
+      os: Platform.OS,
+      device: Platform.Version ? String(Platform.Version) : undefined
+    }).catch(err => console.error("Failed to add activity log:", err));
+  }, [userName]);
+
+  const getActivityLogs = useCallback((limitCount?: number) => {
+    return repository.getActivityLogs(limitCount);
+  }, []);
 
   const refreshAllData = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -147,27 +173,47 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       await refreshAllData(true);
       return true;
     } catch (err: any) {
+      addActivityLog({
+        module: ActivityModule.SUBSCRIPTION,
+        action: ActivityAction.ERROR,
+        targetId: sub.id,
+        description: UI_TEXT.logError.replace("{module}", ActivityModule.SUBSCRIPTION).replace("{message}", err.message || String(err)),
+        stack: err.stack
+      });
       throw err;
     }
-  }, [refreshAllData]);
+  }, [refreshAllData, addActivityLog]);
 
   const deleteSubscription = useCallback(async (id: string) => {
     try {
       await repository.remove(id);
       await refreshAllData(true);
     } catch (err: any) {
+      addActivityLog({
+        module: ActivityModule.SUBSCRIPTION,
+        action: ActivityAction.ERROR,
+        targetId: id,
+        description: UI_TEXT.logError.replace("{module}", ActivityModule.SUBSCRIPTION).replace("{message}", err.message || String(err)),
+        stack: err.stack
+      });
       throw err;
     }
-  }, [refreshAllData]);
+  }, [refreshAllData, addActivityLog]);
 
   const updateConfig = useCallback(async (config: AppConfig) => {
     try {
       await repository.updateConfig(config);
       await refreshAllData(true);
     } catch (err: any) {
+      addActivityLog({
+        module: ActivityModule.CONFIG,
+        action: ActivityAction.ERROR,
+        description: UI_TEXT.logError.replace("{module}", ActivityModule.CONFIG).replace("{message}", err.message || String(err)),
+        stack: err.stack
+      });
       throw err;
     }
-  }, [refreshAllData]);
+  }, [refreshAllData, addActivityLog]);
 
   const updateMenu = useCallback(async (menu: FoodMenu) => {
     try {
@@ -175,9 +221,15 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       setFoodMenu(menu);
       await refreshAllData(true);
     } catch (err: any) {
+      addActivityLog({
+        module: ActivityModule.MENU,
+        action: ActivityAction.ERROR,
+        description: UI_TEXT.logError.replace("{module}", ActivityModule.MENU).replace("{message}", err.message || String(err)),
+        stack: err.stack
+      });
       throw err;
     }
-  }, [refreshAllData]);
+  }, [refreshAllData, addActivityLog]);
 
   const updateGuestCount = useCallback(async (dayId: string, mealKey: MealType, field: string, value: number) => {
     try {
@@ -190,10 +242,27 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
           [mealKey]: { ...prev[dayId][mealKey as keyof DayMenu], [field]: value }
         }
       }));
+      addActivityLog({
+        module: ActivityModule.GUEST,
+        action: ActivityAction.UPDATE,
+        targetId: `${dayId}-${mealKey}`,
+        description: UI_TEXT.logUpdateGuest
+          .replace("{field}", field)
+          .replace("{value}", String(value))
+          .replace("{day}", getDayLabel(dayId, dayConfig))
+          .replace("{meal}", getMealLabel(mealKey))
+      });
     } catch (err: any) {
+      addActivityLog({
+        module: ActivityModule.GUEST,
+        action: ActivityAction.ERROR,
+        targetId: `${dayId}-${mealKey}`,
+        description: UI_TEXT.logError.replace("{module}", ActivityModule.GUEST).replace("{message}", err.message || String(err)),
+        stack: err.stack
+      });
       throw err;
     }
-  }, []);
+  }, [dayConfig, addActivityLog]);
 
   const updateMealMenu = useCallback(async (dayId: string, mealKey: MealType, menu: MealMenu) => {
     try {
@@ -203,9 +272,16 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
         [dayId]: { ...prev[dayId], [mealKey]: menu }
       }));
     } catch (err: any) {
+      addActivityLog({
+        module: ActivityModule.MENU,
+        action: ActivityAction.ERROR,
+        targetId: `${dayId}-${mealKey}`,
+        description: UI_TEXT.logError.replace("{module}", ActivityModule.MENU).replace("{message}", err.message || String(err)),
+        stack: err.stack
+      });
       throw err;
     }
-  }, []);
+  }, [addActivityLog]);
 
   const updateSubscriptionStatus = useCallback(async (flatId: string, dayId: string, personIndex: number, slot: string, taken: boolean) => {
      try {
@@ -222,12 +298,31 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
          }
          return s;
        }));
+
+       const isParcel = slot.includes("Parcel");
+       const mealKey = isParcel ? slot.replace("Parcel", "") : slot;
+
+       addActivityLog({
+         module: ActivityModule.SUBSCRIPTION,
+         action: ActivityAction.UPDATE,
+         targetId: flatId,
+         description: (isParcel ? UI_TEXT.logUpdateParcelStatus : UI_TEXT.logUpdateStatus)
+           .replace("{flatId}", flatId)
+           .replace("{meal}", getMealLabel(mealKey as MealType))
+           .replace("{person}", `Member ${personIndex + 1}`)
+           .replace("{status}", taken ? UI_TEXT.taken : UI_TEXT.missed)
+       });
      } catch (err: any) {
+       addActivityLog({
+         module: ActivityModule.SUBSCRIPTION,
+         action: ActivityAction.ERROR,
+         targetId: flatId,
+         description: UI_TEXT.logError.replace("{module}", ActivityModule.SUBSCRIPTION).replace("{message}", err.message || String(err)),
+         stack: err.stack
+       });
        throw err;
      }
-  }, []);
-
-  const getAuthConfig = useCallback(() => repository.getAuthConfig(), []);
+  }, [addActivityLog]);
 
   const dashboardData = useMemo(() => {
     const uniqueSubscriptions = Array.from(new Map(subscriptions.map((s) => [s.id, s])).values());
@@ -454,14 +549,14 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
     kidsEnabled, whatsappCountryCode,
     dashboardData, collections, totalPeople,
     upsertSubscription, deleteSubscription, updateConfig, updateMenu, updateGuestCount, updateMealMenu, updateSubscriptionStatus,
-    getAuthConfig
+    getAuthConfig, addActivityLog, getActivityLogs
   }), [
     loading, firebaseError, refreshAllData,
     subscriptions, foodMenu, dayConfig, seasonName, seasonEnabled, paymentConfig, guestEnabled, mobileEnabled, foodPriceEnabled,
     whatsappCountryCode,
     dashboardData, collections, totalPeople,
     upsertSubscription, deleteSubscription, updateConfig, updateMenu, updateGuestCount, updateMealMenu, updateSubscriptionStatus,
-    getAuthConfig
+    getAuthConfig, addActivityLog, getActivityLogs
   ]);
 
   return <DatabaseContext.Provider value={value}>{children}</DatabaseContext.Provider>;

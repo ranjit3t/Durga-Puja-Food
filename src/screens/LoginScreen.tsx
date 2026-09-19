@@ -17,7 +17,7 @@ import {
 import { useStyles } from "../styles";
 import { useAppTheme, StatusBarStyleMode } from "../theme";
 import { UI_TEXT } from "../strings";
-import { UserRole, AppThemeMode } from "../types";
+import { UserRole, AppThemeMode, ActivityModule, ActivityAction } from "../types";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useAuth } from "../context/AuthContext";
@@ -26,7 +26,7 @@ import { useUI } from "../context/UIContext";
 
 export function LoginScreen() {
   const { handleLogin } = useAuth();
-  const { getAuthConfig } = useDatabase();
+  const { getAuthConfig, addActivityLog } = useDatabase();
   const { showAlert } = useUI();
   const styles = useStyles();
   const { theme, toggleTheme, themeType } = useAppTheme();
@@ -51,12 +51,28 @@ export function LoginScreen() {
       );
 
       if (user) {
-        handleLogin(user.role as UserRole);
+        addActivityLog({
+          module: ActivityModule.AUTH,
+          action: ActivityAction.LOGIN,
+          description: UI_TEXT.logLogin.replace("{role}", user.role)
+        }, user.username);
+        handleLogin(user.role as UserRole, user.username);
       } else {
+        addActivityLog({
+          module: ActivityModule.AUTH,
+          action: ActivityAction.ERROR,
+          description: UI_TEXT.logLoginFail.replace("{user}", username)
+        }, username);
         showAlert(UI_TEXT.error, UI_TEXT.invalidCredentials);
       }
     } catch (err) {
       console.error("Login fetch error:", err);
+      addActivityLog({
+        module: ActivityModule.AUTH,
+        action: ActivityAction.ERROR,
+        description: UI_TEXT.logError.replace("{module}", ActivityModule.AUTH).replace("{message}", (err as any).message || String(err)),
+        stack: (err as any).stack
+      }, username);
       showAlert(UI_TEXT.error, UI_TEXT.authServerError);
     } finally {
       setLoading(false);

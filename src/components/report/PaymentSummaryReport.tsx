@@ -3,7 +3,7 @@ import { View, Text, Pressable } from "react-native";
 import { useStyles } from "../../styles";
 import { useAppTheme } from "../../theme";
 import { UI_TEXT } from "../../strings";
-import { PaymentMode, AppThemeMode } from "../../types";
+import { PaymentMode, AppThemeMode } from "../../domain";
 import { getPaymentModeLabel } from "../../constants";
 
 interface PaymentSummaryItem {

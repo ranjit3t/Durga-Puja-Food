@@ -6,7 +6,7 @@ import { useStyles } from "../styles";
 import { StatusBarStyleMode, useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
 import { qrValueFor } from "../constants";
-import { AppScreen, AppThemeMode } from "../types";
+import { AppScreen, AppThemeMode, ActivityModule, ActivityAction } from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
@@ -20,7 +20,7 @@ import { useAppNavigation } from "../context/NavigationContext";
 export function QrScreen() {
   const { userRole, handleLogout } = useAuth();
   const {
-    dayConfig, seasonName, seasonEnabled, mobileEnabled, subscriptions, whatsappCountryCode, kidsEnabled
+    dayConfig, seasonName, seasonEnabled, mobileEnabled, subscriptions, whatsappCountryCode, kidsEnabled, addActivityLog
   } = useDatabase();
   const { shareQr } = useUI();
   const { selectedId, selectedRecord, goBack, navigate } = useAppNavigation();
@@ -39,6 +39,12 @@ export function QrScreen() {
   const shareImage = async () => {
     if (qrRef.current && canShare) {
       const uri = await captureRef(qrRef, { format: "png", quality: 1 });
+      addActivityLog({
+        module: ActivityModule.QR,
+        action: Platform.OS === "web" ? ActivityAction.DOWNLOAD : ActivityAction.SHARE,
+        targetId: subscription.id,
+        description: (Platform.OS === "web" ? UI_TEXT.downloadPass : UI_TEXT.shareQrDialog) + " for " + subscription.id
+      });
       // Share only the image for the generic share button
       shareQr(uri);
     }
@@ -105,6 +111,12 @@ export function QrScreen() {
                   const url = `https://wa.me/${whatsappCountryCode}${subscription.mobile}?text=${encodeURIComponent(message)}`;
 
                   try {
+                    addActivityLog({
+                      module: ActivityModule.QR,
+                      action: ActivityAction.CHAT,
+                      targetId: subscription.id,
+                      description: UI_TEXT.logChat.replace("{id}", subscription.id) + " (QR)"
+                    });
                     await Linking.openURL(url);
                   } catch (err) {
                     console.error("WhatsApp API error:", err);

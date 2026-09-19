@@ -42,7 +42,97 @@ export enum AppScreen {
   SUBSCRIPTION_LIST = "subscriptionList",
   GUEST_MANAGEMENT = "guestManagement",
   LOGIN = "login",
+  ACTIVITY_LOG = "activityLog",
 }
+
+export enum AppThemeMode {
+  LIGHT = "primary",
+  DARK = "dark",
+}
+
+export type MealConfig = {
+  enabled: boolean;
+  veg: boolean;
+  nonVeg: boolean;
+  parcel: boolean;
+  done?: boolean;
+  current?: boolean;
+  vegPrice?: string;
+  nonVegPrice?: string;
+  vegParcelPrice?: string;
+  nonVegParcelPrice?: string;
+};
+
+export type ConfigDay = {
+  id: string;
+  label: string;
+  abbr: string;
+  enabled: boolean;
+  vegOnly?: boolean;
+} & Record<MealType, MealConfig>;
+
+export type PaymentConfig = {
+  enabled: boolean;
+  options: {
+    upi: boolean;
+    cash: boolean;
+    bankTransfer: boolean;
+  };
+};
+
+export type AppConfig = {
+  seasonName: string;
+  days: ConfigDay[];
+  payment?: PaymentConfig;
+  guestEnabled?: boolean;
+  mobileEnabled?: boolean;
+  foodPriceEnabled?: boolean;
+  seasonEnabled?: boolean;
+  kidsEnabled?: boolean;
+  whatsappCountryCode?: string;
+};
+
+export enum ActivityModule {
+  SUBSCRIPTION = "Pass",
+  MENU = "Menu",
+  CONFIG = "Settings",
+  GUEST = "Guest",
+  QR = "QR Pass",
+  REPORT = "Report",
+  SCANNER = "Scanner",
+  AUTH = "Login",
+}
+
+export enum ActivityAction {
+  CREATE = "Created",
+  UPDATE = "Updated",
+  DELETE = "Deleted",
+  VIEW = "Viewed",
+  CHAT = "Started Chat",
+  CALL = "Started Call",
+  SHARE = "Shared",
+  DOWNLOAD = "Downloaded",
+  PRINT = "Printed",
+  SCAN = "Scanned",
+  LOGIN = "Logged In",
+  LOGOUT = "Logged Out",
+  ERROR = "Error",
+}
+
+export type ActivityLog = {
+  id: string;
+  timestamp: number;
+  userName: string;
+  module: ActivityModule;
+  action: ActivityAction;
+  targetId?: string;
+  description?: string;
+  oldData?: any;
+  newData?: any;
+  device?: string;
+  os?: string;
+  stack?: string;
+};
 
 export enum ReportType {
   DAY = "day",

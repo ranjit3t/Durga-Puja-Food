@@ -27,6 +27,7 @@ import { MenuEditorScreen } from "../screens/MenuEditorScreen";
 import { ReportScreen } from "../screens/ReportScreen";
 import { SettingsScreen } from "../screens/SettingsScreen";
 import { GuestManagementScreen } from "../screens/GuestManagementScreen";
+import { ActivityLogScreen } from "../screens/ActivityLogScreen";
 
 import { HomeScreen } from "../screens/HomeScreen";
 
@@ -75,6 +76,8 @@ export function AppNavigator() {
       return <ReportScreen />;
     case AppScreen.SETTINGS:
       return <SettingsScreen />;
+    case AppScreen.ACTIVITY_LOG:
+      return <ActivityLogScreen />;
     case AppScreen.SUBSCRIPTION_LIST:
       return <SubscriptionListScreen />;
     case AppScreen.HOME:

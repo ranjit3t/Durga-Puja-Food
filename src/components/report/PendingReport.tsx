@@ -4,7 +4,7 @@ import { useStyles } from "../../styles";
 import { useAppTheme } from "../../theme";
 import { UI_TEXT } from "../../strings";
 import { isDietaryEnabled } from "../../constants";
-import { ConfigDay, MealType, DietType, AppThemeMode } from "../../types";
+import { ConfigDay, MealType, DietType, AppThemeMode, ActivityModule, ActivityAction } from "../../domain";
 import { Ionicons } from "@expo/vector-icons";
 
 interface PendingItem {
@@ -27,6 +27,7 @@ export function PendingReport({
   kidsEnabled,
   whatsappCountryCode,
   mobileEnabled,
+  addActivityLog,
 }: {
   data: PendingItem[];
   selectedDayId: string;
@@ -36,6 +37,7 @@ export function PendingReport({
   kidsEnabled: boolean;
   whatsappCountryCode: string;
   mobileEnabled: boolean;
+  addActivityLog: any;
 }) {
   const styles = useStyles();
   const { theme } = useAppTheme();
@@ -82,7 +84,15 @@ export function PendingReport({
                   <View style={{ height: 1, backgroundColor: colorScheme.border, marginVertical: 12, opacity: 0.5 }} />
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Pressable
-                      onPress={() => Linking.openURL(`https://wa.me/${whatsappCountryCode || "91"}${item.mobile}`)}
+                      onPress={() => {
+                        addActivityLog({
+                          module: ActivityModule.REPORT,
+                          action: ActivityAction.CHAT,
+                          targetId: item.id,
+                          description: `Started WhatsApp chat from report for ${item.id}`
+                        });
+                        Linking.openURL(`https://wa.me/${whatsappCountryCode || "91"}${item.mobile}`);
+                      }}
                       style={({ pressed }) => [
                         { padding: 6, borderRadius: 20, backgroundColor: theme.colors.successLight },
                         pressed && { opacity: 0.7 }
@@ -92,7 +102,15 @@ export function PendingReport({
                     </Pressable>
 
                     <Pressable
-                      onPress={() => Linking.openURL(`tel:${item.mobile}`)}
+                      onPress={() => {
+                        addActivityLog({
+                          module: ActivityModule.REPORT,
+                          action: ActivityAction.CALL,
+                          targetId: item.id,
+                          description: `Started phone call from report for ${item.id}`
+                        });
+                        Linking.openURL(`tel:${item.mobile}`);
+                      }}
                       style={({ pressed }) => [
                         { padding: 6, borderRadius: 20, backgroundColor: theme.colors.surfaceDark },
                         pressed && { opacity: 0.7 }

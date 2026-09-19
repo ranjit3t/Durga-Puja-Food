@@ -25,7 +25,7 @@ import {
   getPaymentModeLabel,
   getMemberLegend,
 } from "../constants";
-import { MealMenu, MealType, DietType, DietaryOption, AppScreen, UserRole, PaymentMode, ReportType, AppThemeMode } from "../types";
+import { MealMenu, MealType, DietType, DietaryOption, AppScreen, UserRole, PaymentMode, ReportType, AppThemeMode, ActivityModule, ActivityAction } from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
@@ -42,7 +42,7 @@ export function DetailsScreen() {
   const { userRole, handleLogout } = useAuth();
   const {
     subscriptions, dayConfig, paymentConfig, seasonEnabled, foodMenu, mobileEnabled,
-    deleteSubscription, whatsappCountryCode, kidsEnabled
+    deleteSubscription, whatsappCountryCode, kidsEnabled, addActivityLog
   } = useDatabase();
   const { showAlert: showGlobalAlert } = useUI();
   const {
@@ -60,7 +60,16 @@ export function DetailsScreen() {
 
   const onBack = () => navigate(AppScreen.HOME);
   const onHome = () => navigate(AppScreen.HOME);
-  const onEdit = () => { setEditing(subscription); navigate(AppScreen.FORM); };
+  const onEdit = () => {
+    addActivityLog({
+      module: ActivityModule.SUBSCRIPTION,
+      action: ActivityAction.VIEW,
+      targetId: subscription.id,
+      description: UI_TEXT.logViewPass.replace("{id}", subscription.id)
+    });
+    setEditing(subscription);
+    navigate(AppScreen.FORM);
+  };
   const onQr = () => navigate(AppScreen.QR);
   const onDelete = () => deleteSubscription(subscription.id).then(() => navigate(AppScreen.HOME));
 
@@ -128,7 +137,15 @@ export function DetailsScreen() {
               <View style={{ height: 1, backgroundColor: theme.colors.white, opacity: 0.2, marginVertical: 12 }} />
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Pressable
-                  onPress={() => Linking.openURL(`https://wa.me/${whatsappCountryCode || "91"}${subscription.mobile}`)}
+                  onPress={() => {
+                    addActivityLog({
+                      module: ActivityModule.SUBSCRIPTION,
+                      action: ActivityAction.CHAT,
+                      targetId: subscription.id,
+                      description: UI_TEXT.logChat.replace("{id}", subscription.id)
+                    });
+                    Linking.openURL(`https://wa.me/${whatsappCountryCode || "91"}${subscription.mobile}`);
+                  }}
                   style={({ pressed }) => [
                     { padding: 8, borderRadius: 20, backgroundColor: theme.colors.white + "20" },
                     pressed && { opacity: 0.7 }
@@ -138,7 +155,15 @@ export function DetailsScreen() {
                 </Pressable>
 
                 <Pressable
-                  onPress={() => Linking.openURL(`tel:${subscription.mobile}`)}
+                  onPress={() => {
+                    addActivityLog({
+                      module: ActivityModule.SUBSCRIPTION,
+                      action: ActivityAction.CALL,
+                      targetId: subscription.id,
+                      description: UI_TEXT.logCall.replace("{id}", subscription.id)
+                    });
+                    Linking.openURL(`tel:${subscription.mobile}`);
+                  }}
                   style={({ pressed }) => [
                     { padding: 8, borderRadius: 20, backgroundColor: theme.colors.white + "20" },
                     pressed && { opacity: 0.7 }

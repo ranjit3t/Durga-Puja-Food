@@ -2,7 +2,7 @@
  * Firebase Repository Layer
  * Handles data persistence, retrieval, and schema normalization.
  */
-import { get, ref, remove, set, update } from "firebase/database";
+import { get, ref, remove, set, update, push, query, limitToLast } from "firebase/database";
 import { ensureFirebaseAuth, firebaseConfigured } from "./firebase";
 import {
   SubscriptionRecord,
@@ -16,7 +16,8 @@ import {
   MealAllocation,
   MealType,
   DietType,
-  DietaryOption
+  DietaryOption,
+  ActivityLog
 } from "./domain";
 import { ConfigDay, AppConfig } from "./types";
 import { UI_TEXT } from "./strings";
@@ -36,12 +37,15 @@ export interface SubscriptionRepository {
   updateConfig(config: AppConfig): Promise<void>;
   updateSubscriptionStatus(flatId: string, dayId: string, personIndex: number, slot: string, taken: boolean): Promise<void>;
   getAuthConfig(): Promise<any>;
+  addActivityLog(log: Omit<ActivityLog, "id">): Promise<void>;
+  getActivityLogs(limit?: number): Promise<ActivityLog[]>;
 }
 
 const subscriptionsPath = "subscriptions";
 const menuPath = "menu";
 const configPath = "config";
 const authConfigPath = "auth_config";
+const logsPath = "logs";
 
 // --- Helper Functions ---
 
@@ -436,6 +440,23 @@ export function createFirebaseRepository(): SubscriptionRepository {
       if (!services) return undefined;
       const snapshot = await get(ref(services.db, authConfigPath));
       return snapshot.exists() ? snapshot.val() : undefined;
+    },
+    async addActivityLog(log) {
+      const services = await ensureFirebaseAuth();
+      if (!services) return;
+      const newLogRef = push(ref(services.db, logsPath));
+      await set(newLogRef, cleanUndefined({ ...log, id: newLogRef.key }));
+    },
+    async getActivityLogs(limitCount = 50) {
+      const services = await ensureFirebaseAuth();
+      if (!services) return [];
+      // Firebase Realtime DB doesn't support complex sorting/filtering natively for historical logs easily without indexed keys
+      // We'll fetch latest N logs and handle filtering in the UI/Logic layer as requested.
+      const logsRef = query(ref(services.db, logsPath), limitToLast(limitCount));
+      const snapshot = await get(logsRef);
+      const data = snapshot.val() as Record<string, ActivityLog> | null;
+      if (!data) return [];
+      return Object.values(data).sort((a, b) => b.timestamp - a.timestamp);
     },
   };
 }

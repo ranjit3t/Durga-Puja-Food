@@ -9,7 +9,7 @@ import { BackButton } from "../components/common/BackButton";
 import { useAppNavigation } from "../context/NavigationContext";
 import { useDatabase } from "../context/DatabaseContext";
 import { useUI } from "../context/UIContext";
-import { AppScreen, AppThemeMode } from "../types";
+import { AppScreen, AppThemeMode, ActivityModule, ActivityAction } from "../types";
 
 export function ScannerScreen() {
   const styles = useStyles();
@@ -18,7 +18,7 @@ export function ScannerScreen() {
   const [permission, requestPermission] = useCameraPermissions();
 
   const { openScannedValue, goBack, navigate } = useAppNavigation();
-  const { subscriptions } = useDatabase();
+  const { subscriptions, addActivityLog } = useDatabase();
   const { showAlert } = useUI();
 
   const scanSize = Math.min(width * 0.7, 260);
@@ -59,7 +59,19 @@ export function ScannerScreen() {
           isScanning.current = true;
 
           const found = openScannedValue(data, subscriptions);
-          if (!found) {
+          if (found) {
+            addActivityLog({
+              module: ActivityModule.SCANNER,
+              action: ActivityAction.SCAN,
+              targetId: data.split('/').pop(), // Extract ID from URL if possible
+              description: UI_TEXT.logScanSuccess.replace("{id}", data.split('/').pop() || "")
+            });
+          } else {
+            addActivityLog({
+              module: ActivityModule.SCANNER,
+              action: ActivityAction.SCAN,
+              description: UI_TEXT.logScanFail.replace("{data}", data)
+            });
             setError(UI_TEXT.scanError);
             showAlert(UI_TEXT.error, UI_TEXT.scanError, [
               {

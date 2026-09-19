@@ -169,7 +169,7 @@ Controlled via the `seasonEnabled` config flag. When disabled, the application e
 
 ### Layout Optimization
 - **Sleek Navigation Bar**: Top-level headers utilize a standardized height and icon-only interaction model. Back and Home actions are anchored to the left, while session management (Logout) is anchored to the far right.
-- **Compact Home Grid**: The action grid on the home page features space-saving **72px high tiles** with **20px icons**, optimized for high-density information display.
+- **Compact Home Grid**: The action grid on the home page features space-saving **64px high tiles** with **18px icons**, optimized for high-density information display using a flexible 4-column layout strategy.
 - **Dynamic Summary Card**: The dashboard header card automatically uses the global `seasonName` and dynamically hides 0-counts for dietary types that are disabled in the festival configuration.
 - **Colorful Premium Palette**: Primary info boxes use a high-contrast palette of pastel colors (`CARD_COLORS`) defined in `src/theme/` for instant visual segmentation.
 - **Quick-Action Tiles**: Home page grid replaces basic list views for a "sleek" entry experience.
@@ -181,12 +181,22 @@ Controlled via the `seasonEnabled` config flag. When disabled, the application e
 - **Adaptive Buttons**: "Add Item" button changes color based on the selected dietary type (Green/Red).
 - **Bug Reporting Engine**: Administrators have access to a "Report Bug" shortcut on the Home screen. This utility leverages the `Linking` API to open the native mail app with the support email and subject line retrieved from `src/strings.ts`.
 
-### J. Kids Support Implementation
-- **Data Model**: Updated `SubscriptionRecord` to include `kidsCount`. `MealMenu` and `MealAllocation` now track kids-specific metrics (`kidsVeg`, `kidsNonVeg`, `kidsVegTaken`, `kidsNonVegTaken`).
-- **Real-Time Price Calculation**: The pricing engine iterates through each member's meal choice for each day. It checks the index against `peopleCount` to determine if a member is an adult or a kid and applies the corresponding price from the `FoodMenu` or `dayConfig` fallback.
-- **Legend Logic**: Centralized in `getMemberLegend` helper. It dynamically calculates the prefix (A vs K) and localized index based on the global `kidsEnabled` setting and the pass's headcount distribution.
-- **Dashboard Aggregates**: The `dashboardData` useMemo hook in `DatabaseContext` performs dual-pass aggregation, summing adult and kids choices separately to populate the kitchen metrics grid and bar charts.
-- **Backward Compatibility Layer**: The `normalizeRecord` function in the repository ensures that older records (which only have `peopleCount`) are seamlessly converted. It defaults `kidsCount` to 0 and treats all existing `mealByPerson` and `takenByPerson` entries as adults.
+### K. Activity Log & Audit System
+The application maintains a permanent, asynchronous audit trail of all significant operations.
+- **Log Structure**: Each log entry (`ActivityLog`) includes a unique ID, high-resolution timestamp, the performing username, hardware metadata (OS and Version), the target module, the action type, and a user-friendly description. For failure events, the system also captures the full **JavaScript Stack Trace**.
+- **Asynchronous Capture**: To ensure zero impact on user experience, logs are dispatched to the repository in an asynchronous fire-and-forget manner (`void repository.addActivityLog(...)`).
+- **Live Monitoring Dashboard**: The `ActivityLogScreen` functions as a live status feed, auto-refreshing every 10 seconds with a visual "LIVE" indicator.
+- **Advanced Forensics**: Administrators can perform keyword searches over descriptions and apply granular filters by **User**, **Event Module**, **Target Object**, or **Errors Only**.
+- **Diagnostics**: Error logs are visually emphasized with red accents and feature an interactive toggle to expand technical stack traces directly within the UI.
+- **Forensic Export**: One-tap export of the active filtered view to a `.txt` file for external auditing.
+- **Event Coverage**:
+  - **Subscriptions**: Creation, updates (including headcounts/amounts), deletions, and direct communications (Chat/Call).
+  - **System Errors**: Automated reporting of database failures, validation errors, and runtime exceptions with technical context.
+  - **Menu Distribution**: Menu item updates, price changes, and operational status toggles.
+  - **Guest Management**: All manual adjustments to guest demand and collection counts.
+  - **Configuration**: All changes to global festival rules and day-specific settings.
+  - **Operations**: QR code scans (success/fail), pass image sharing, and downloads.
+  - **Security**: Successful logins, failed login attempts (tracking username), and Logouts.
 
 ---
 © 2026 Eternia Food Desk Technical Team

@@ -22,7 +22,7 @@ import { useAuth } from "../context/AuthContext";
 import { useDatabase } from "../context/DatabaseContext";
 import { useAppNavigation } from "../context/NavigationContext";
 import { getActiveDays, getPaymentModeLabel, isMealCurrent, isMealEnabled } from "../constants";
-import { AppScreen, Subscription, PaymentMode, UserRole, MealType, DietaryOption, FilterMode, AppThemeMode } from "../types";
+import { AppScreen, Subscription, PaymentMode, UserRole, MealType, DietaryOption, FilterMode, AppThemeMode, ActivityModule, ActivityAction } from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
@@ -38,7 +38,8 @@ const SubscriptionCard = React.memo(({
   hasCurrentMeal,
   hasParcel,
   isVegOnly,
-  onSelect
+  onSelect,
+  addActivityLog
 }: {
   item: Subscription;
   index: number;
@@ -51,6 +52,7 @@ const SubscriptionCard = React.memo(({
   hasParcel: boolean;
   isVegOnly: boolean;
   onSelect: (sub: Subscription) => void;
+  addActivityLog: any;
 }) => {
   const colorScheme = theme.cardColors[index % theme.cardColors.length];
 
@@ -127,7 +129,15 @@ const SubscriptionCard = React.memo(({
           <View style={{ height: 1, backgroundColor: colorScheme.border, marginVertical: 12, opacity: 0.5 }} />
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <Pressable
-              onPress={() => Linking.openURL(`https://wa.me/${whatsappCountryCode || "91"}${item.mobile}`)}
+              onPress={() => {
+                addActivityLog({
+                  module: ActivityModule.SUBSCRIPTION,
+                  action: ActivityAction.CHAT,
+                  targetId: item.id,
+                  description: UI_TEXT.logChat.replace("{id}", item.id)
+                });
+                Linking.openURL(`https://wa.me/${whatsappCountryCode || "91"}${item.mobile}`);
+              }}
               style={({ pressed }) => [
                 { padding: 6, borderRadius: 20, backgroundColor: theme.colors.successLight },
                 pressed && { opacity: 0.7 }
@@ -137,7 +147,15 @@ const SubscriptionCard = React.memo(({
             </Pressable>
 
             <Pressable
-              onPress={() => Linking.openURL(`tel:${item.mobile}`)}
+              onPress={() => {
+                addActivityLog({
+                  module: ActivityModule.SUBSCRIPTION,
+                  action: ActivityAction.CALL,
+                  targetId: item.id,
+                  description: UI_TEXT.logCall.replace("{id}", item.id)
+                });
+                Linking.openURL(`tel:${item.mobile}`);
+              }}
               style={({ pressed }) => [
                 { padding: 6, borderRadius: 20, backgroundColor: theme.colors.surfaceDark },
                 pressed && { opacity: 0.7 }
@@ -155,7 +173,7 @@ const SubscriptionCard = React.memo(({
 export function SubscriptionListScreen() {
   const { userRole, handleLogout } = useAuth();
   const {
-    subscriptions, dayConfig, paymentConfig, seasonEnabled, whatsappCountryCode, kidsEnabled
+    subscriptions, dayConfig, paymentConfig, seasonEnabled, whatsappCountryCode, kidsEnabled, addActivityLog
   } = useDatabase();
 
   const {
@@ -367,6 +385,7 @@ export function SubscriptionListScreen() {
         hasParcel={!!item._hasParcel}
         isVegOnly={!!item._isVegOnly}
         onSelect={onSelect}
+        addActivityLog={addActivityLog}
       />
     );
   }, [theme, styles, kidsEnabled, paymentConfig, whatsappCountryCode, onSelect]);

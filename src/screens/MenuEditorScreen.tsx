@@ -20,8 +20,9 @@ import {
   isMealDone,
   isMealCurrent,
   getSortedMealKeys,
+  getMealLabel,
 } from "../constants";
-import { Day, DayMenu, MealMenu, ConfigDay, MealType, AppScreen } from "../types";
+import { Day, DayMenu, MealMenu, ConfigDay, MealType, AppScreen, ActivityModule, ActivityAction } from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
@@ -36,7 +37,7 @@ import { useUI } from "../context/UIContext";
 export function MenuEditorScreen() {
   const { handleLogout } = useAuth();
   const {
-    foodMenu: menu, dayConfig: config, seasonEnabled, foodPriceEnabled, updateMenu, updateMealMenu, kidsEnabled
+    foodMenu: menu, dayConfig: config, seasonEnabled, foodPriceEnabled, updateMenu, updateMealMenu, kidsEnabled, addActivityLog
   } = useDatabase();
   const { showAlert } = useUI();
   const { navigate, goBack, targetDay, targetMeal, setTargetDay, setTargetMeal } = useAppNavigation();
@@ -104,6 +105,14 @@ export function MenuEditorScreen() {
     setSaving(true);
     try {
       await updateMealMenu(day, meal, localMenu[day][meal]);
+      addActivityLog({
+        module: ActivityModule.MENU,
+        action: ActivityAction.UPDATE,
+        targetId: `${day}-${meal}`,
+        description: UI_TEXT.logUpdateMenu
+          .replace("{day}", getDayLabel(day, config))
+          .replace("{meal}", getMealLabel(meal))
+      });
       showAlert(UI_TEXT.success, UI_TEXT.menuUpdated, [
         { text: UI_TEXT.ok, onPress: () => {
           setTargetDay(day);
@@ -124,6 +133,11 @@ export function MenuEditorScreen() {
   const handleSave = async () => {
     setSaving(true);
     await onSave(localMenu);
+    addActivityLog({
+      module: ActivityModule.MENU,
+      action: ActivityAction.UPDATE,
+      description: UI_TEXT.logUpdateMenuAll
+    });
     setSaving(false);
     showAlert(UI_TEXT.success, UI_TEXT.menuUpdated, [
       { text: UI_TEXT.ok, onPress: () => navigate(AppScreen.VIEW_MENU) }
