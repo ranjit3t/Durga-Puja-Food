@@ -42,7 +42,7 @@ export function GuestWiseReport({
                 const tTotal = (gm.guestVeg || 0) + (gm.guestNonVeg || 0);
                 const tTaken = (gm.guestVegTaken || 0) + (gm.guestNonVegTaken || 0);
                 return (
-                  <View key={mKey} style={{ backgroundColor: theme.colors.surface, borderRadius: 16, padding: 12, borderWidth: 1, borderColor: theme.colors.border }}>
+                  <View key={mKey} style={{ backgroundColor: theme.themeType === AppThemeMode.DARK ? "rgba(30, 30, 30, 0.4)" : "rgba(255, 255, 255, 0.5)", borderRadius: 16, padding: 12, borderWidth: 1, borderColor: theme.colors.border }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
                       <Ionicons name={mKey === MealType.BREAKFAST ? "sunny-outline" : mKey === MealType.LUNCH ? "restaurant-outline" : "moon-outline"} size={16} color={theme.colors.primary} />
                       <Text style={{ fontSize: 15, fontWeight: '800', color: theme.colors.textPrimary }}>{getMealLabel(mKey)}</Text>

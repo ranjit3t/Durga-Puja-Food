@@ -179,7 +179,7 @@ export function PaymentSummaryReport({
                     style={({ pressed }) => [
                       styles.dashboardCard,
                       {
-                        backgroundColor: theme.themeType === AppThemeMode.DARK ? theme.colors.surface : theme.colors.white,
+                        backgroundColor: theme.themeType === AppThemeMode.DARK ? "rgba(30, 30, 30, 0.4)" : "rgba(255, 255, 255, 0.5)",
                         borderColor: theme.colors.border,
                         borderWidth: 1,
                         marginBottom: 0,

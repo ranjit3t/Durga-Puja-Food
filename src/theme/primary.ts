@@ -24,12 +24,12 @@ export const primaryTheme: AppTheme = {
     whatsapp: "#25D366",
   },
   cardColors: [
-    { bg: "#FFF5F5", border: "#FFE3E3", accent: "#E31837", accentLight: "#FFF5F5" }, // Red
-    { bg: "#E7F5FF", border: "#D0EBFF", accent: "#007BFF", accentLight: "#E7F5FF" }, // Blue
-    { bg: "#EBFBEE", border: "#D3F9D8", accent: "#28A745", accentLight: "#EBFBEE" }, // Green
-    { bg: "#FFF4E6", border: "#FFE8CC", accent: "#FD7E14", accentLight: "#FFF4E6" }, // Orange
-    { bg: "#F8F0FC", border: "#F3D9FA", accent: "#6F42C1", accentLight: "#F8F0FC" }, // Purple
-    { bg: "#E3FAFC", border: "#C5F6FA", accent: "#17A2B8", accentLight: "#E3FAFC" }, // Cyan
+    { bg: "rgba(255, 245, 245, 0.6)", border: "#FFE3E3", accent: "#E31837", accentLight: "rgba(255, 245, 245, 0.5)" }, // Red
+    { bg: "rgba(231, 245, 255, 0.6)", border: "#D0EBFF", accent: "#007BFF", accentLight: "rgba(231, 245, 255, 0.5)" }, // Blue
+    { bg: "rgba(235, 251, 238, 0.6)", border: "#D3F9D8", accent: "#28A745", accentLight: "rgba(235, 251, 238, 0.5)" }, // Green
+    { bg: "rgba(255, 244, 230, 0.6)", border: "#FFE8CC", accent: "#FD7E14", accentLight: "rgba(255, 244, 230, 0.5)" }, // Orange
+    { bg: "rgba(248, 240, 252, 0.6)", border: "#F3D9FA", accent: "#6F42C1", accentLight: "rgba(248, 240, 252, 0.5)" }, // Purple
+    { bg: "rgba(227, 250, 252, 0.6)", border: "#C5F6FA", accent: "#17A2B8", accentLight: "rgba(227, 250, 252, 0.5)" }, // Cyan
   ],
   sizes: {
     buttonHeight: 52,

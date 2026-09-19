@@ -7,10 +7,11 @@ The application follows a **Serverless Modular Architecture** built on the **Exp
 
 ### High-Level Flow
 1.  **Bootstrapping**: `App.tsx` initializes the `ThemeProvider` (loading local preferences), global state, navigation history stack, and checks for session validity.
-2.  **Authentication**: `LoginScreen` (with theme toggle) verifies credentials against the `auth_config` DB node in real-time.
+2.  **Authentication**: `LoginScreen` (with theme toggle) verifies credentials against the `auth_config` DB node. It uses a **Two-Phase Transition Logic**: `verifying` (during credential fetch) and `loading` (after match, during data hydration).
 3.  **Hydration**: Upon login or screen transition, the app performs a full fetch of subscriptions, menu, and configuration.
-4.  **Navigation**: Custom history stack management allows predictable back navigation, including Android hardware button support. History is automatically purged upon returning to the root Home screen.
-5.  **Presentation**: UI elements are rendered dynamically using the `useStyles` hook, which reacts to theme changes and global `AppConfig` (Branding, Payment, Day Rules, and Season Status).
+4.  **Backdrop Layering**: The `AppNavigator` serves as a master layout shell, injecting **8 dynamic mesh gradient blobs** behind the `screenComponent`. These circles utilize high-contrast festive tones that adapt to theme modes.
+5.  **Navigation**: Custom history stack management allows predictable back navigation, including Android hardware button support. History is automatically purged upon returning to the root Home screen.
+6.  **Presentation**: UI elements are rendered dynamically using the `useStyles` hook, which reacts to theme changes and global `AppConfig`. All primary panels use **Glassmorphic Translucency** to allow background mesh glows to bleed through.
 
 ---
 
@@ -91,9 +92,17 @@ The application employs a **Zero-Hardcoding Policy** for UI text and Domain enti
 
 ### F. Layout & Scrollability Optimization
 - **Full-Width ScrollViews**: Every primary container uses `style={{ flex: 1, width: '100%' }}` and `contentContainerStyle={{ flexGrow: 1 }}` to ensure touch events are captured across the entire viewport and content remains scrollable even when vertically centered.
-- **Modern Safe Areas**: Implements generous bottom paddings (up to 150px) to prevent interactive components (Login buttons, FABs, footers) from being obscured by modern OS home indicators.
+- **Safe Area Insets**: Implements generous bottom paddings (up to 150px) to prevent interactive components (Login buttons, FABs, footers) from being obscured by modern OS home indicators.
 
-### G. Guest Management & Counter Logic
+### G. Immersive Mesh Background Implementation
+The premium "Festive Mesh" backdrop is achieved via absolute absolute-positioned circles with large radial coverage:
+- **Geometry**: Utilizes up to **8 dynamic circles** (`s(400)` to `s(700)` in diameter) with rounded corners (`borderRadius: 50%`).
+- **Positioning**: Pushed outside the viewport edges (`top: -240`, `left: -150`) to create soft corner blurs that eliminate sharp geometric outlines.
+- **Adaptive Contrast**: Uses higher alpha weights (`0.24`–`0.26`) in **Light Mode** to ensure visibility against white backgrounds and tuned glowing values in **Dark Mode** for neon immersion.
+- **Web-Aware Expansion**: Automatically mounts additional `<View style={styles.bgBlobWeb...} />` elements when `Platform.OS === 'web'`, ensuring the entire horizontal canvas of a 4K monitor remains visually interesting.
+- **Glassmorphic Integration**: Global style tokens for `card` and `dashboardCard` were transitioned from solid hex values to `rgba()` blurs, effectively turning them into translucent "Frosted Glass" layers.
+
+### H. Guest Management & Counter Logic
 - **Module Interface**: The `GuestManagementScreen` provides a high-density matrix for updating guest demand and collections in real-time. The interface utilizes a vertically-stacked input layout to maximize touch accuracy on mobile devices.
 - **Current Meal Flow**: Prioritizes the active "Current Meal" at the top of the list for rapid entry during peak hours. It adopts the same "LIVE" badge and focused styling used on the main kitchen dashboard to maintain a unified operational experience. For meals supporting dual diets (Veg + Non-Veg), the module provides aggregated Guest Total and Guest Taken summaries to help administrators visualize the total workload.
 - **Interactive People Counter**: The registration form utilizes the `CounterInput` for headcount management, enforcing a minimum of 1 member and automatically synchronizing with the person-wise dietary choice matrix.

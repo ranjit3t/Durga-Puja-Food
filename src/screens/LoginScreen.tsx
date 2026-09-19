@@ -33,13 +33,15 @@ export function LoginScreen() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [verifying, setVerifying] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const onLoginSubmit = async () => {
-    setLoading(true);
+    setVerifying(true);
     try {
       const authConfig = await getAuthConfig();
       if (!authConfig || !Array.isArray(authConfig.users)) {
+        setVerifying(false);
         showAlert(UI_TEXT.error, UI_TEXT.authConfigError);
         return;
       }
@@ -49,6 +51,8 @@ export function LoginScreen() {
       );
 
       if (user) {
+        setVerifying(false);
+        setLoading(true);
         addActivityLog({
           module: ActivityModule.AUTH,
           action: ActivityAction.LOGIN,
@@ -56,6 +60,7 @@ export function LoginScreen() {
         }, user.username);
         handleLogin(user.role as UserRole, user.username);
       } else {
+        setVerifying(false);
         addActivityLog({
           module: ActivityModule.AUTH,
           action: ActivityAction.ERROR,
@@ -64,6 +69,7 @@ export function LoginScreen() {
         showAlert(UI_TEXT.error, UI_TEXT.invalidCredentials);
       }
     } catch (err) {
+      setVerifying(false);
       console.error("Login fetch error:", err);
       addActivityLog({
         module: ActivityModule.AUTH,
@@ -73,7 +79,7 @@ export function LoginScreen() {
       }, username);
       showAlert(UI_TEXT.error, UI_TEXT.authServerError);
     } finally {
-      setLoading(false);
+      // We don't set loading/verifying false here to avoid flickers before screen transition if successful
     }
   };
 
@@ -139,11 +145,11 @@ export function LoginScreen() {
               </View>
 
               <Pressable
-                style={[styles.primary, (!username || !password || loading) && { opacity: 0.5 }, { marginTop: 40 }]}
+                style={[styles.primary, (!username || !password || loading || verifying) && { opacity: 0.5 }, { marginTop: 40 }]}
                 onPress={onLoginSubmit}
-                disabled={!username || !password || loading}
+                disabled={!username || !password || loading || verifying}
               >
-                <Text style={styles.primaryText}>{loading ? UI_TEXT.loading : UI_TEXT.loginButton}</Text>
+                <Text style={styles.primaryText}>{verifying ? UI_TEXT.verifying : loading ? UI_TEXT.loading : UI_TEXT.loginButton}</Text>
               </Pressable>
             </View>
           </View>

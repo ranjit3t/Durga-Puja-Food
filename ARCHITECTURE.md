@@ -73,8 +73,21 @@ The application implements **Role-Based Access Control (RBAC)**:
 - **Admin**: Full read/write/delete privileges on all modules, including global configuration and **Guest demand planning**.
 - **Vendor**: Operational access. Can mark food as taken, update **Guest collection counts** (Taken), and view Reports. Destructive actions, festival rule changes, and pass registration are restricted.
 - **Global Read-Only Enforcement**: When the `seasonEnabled` config flag is false, the application automatically locks all data-modifying components (text inputs, checkboxes, save buttons) across all roles, effectively archiving the season's data.
+- **Two-Phase Authentication Flow**: Implements a high-precision login sequence with explicit state transitions: `idle` -> `verifying` (backend credential match) -> `loading` (full data hydration) -> `authorized`. This ensures accurate UI feedback during the security handshake.
 
-## 6. Kids Support System
+## 5. Immersive Background Architecture
+The application features a multi-layered **Festive Mesh Backdrop** system managed at the router level:
+- **Layer 0 (Base)**: Solid background color (`COLORS.background`) from the active theme.
+- **Layer 1 (Mesh spots)**: Up to **8 dynamically positioned ambient blobs** (`bgBlob1` to `bgBlobWebTop`) rendered as absolute absolute-positioned circles with large radial blurs. 
+- **Layer 2 (Content Wrapper)**: A transparent screen-container layout that allows the background festive glows to remain visible behind interactive components.
+- **Responsive Injection**: The system uses a conditional rendering pattern in `AppNavigator.tsx` to mount additional central blobs specifically for web viewports to maintain horizontal immersion.
+
+## 6. Glassmorphism Design Pattern
+To complement the immersive background, the system employs a global **Glassmorphic Language**:
+- **Semi-Translucency**: Primary layout cards and report panels utilize `rgba()` background colors with opacities between **50% and 75%** instead of solid colors.
+- **Visual Depth**: This allows the festive background tones (Crimson, Marigold, Royal Blue, Violet) to flow through the UI, creating a sophisticated sense of depth and community celebration while retaining high-contrast accessibility.
+
+## 7. Kids Support System
 The application features a comprehensive Kids tracking system:
 - **Dual Headcounts**: Pass registration segregates Adults and Kids, providing more accurate kitchen planning.
 - **Dynamic Legends**: Legend identifiers automatically switch from `P1, P2...` (standard) to `A1, A2...` (Adults) and `K1, K2...` (Kids) when enabled.

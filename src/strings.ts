@@ -399,6 +399,7 @@ export const UI_TEXT = {
   passwordPlaceholder: "Enter password",
   loginButton: "Login",
   logoutButton: "Logout",
+  verifying: "Verifying...",
   invalidCredentials: "Invalid username or password",
   authConfigError: "Internal Error: Auth config missing in database.",
   authServerError: "Could not connect to authentication server.",

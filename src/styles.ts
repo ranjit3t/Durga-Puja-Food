@@ -214,7 +214,7 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
 
     // Cards (Modern "Sleek" Look)
     card: {
-      backgroundColor: COLORS.surface,
+      backgroundColor: theme?.themeType === 'dark' ? "rgba(30, 30, 30, 0.7)" : "rgba(255, 255, 255, 0.75)",
       padding: s(SIZES.paddingMedium),
       borderRadius: s(SIZES.borderRadiusLarge),
       marginBottom: s(16),
@@ -377,7 +377,7 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
 
     // Dashboard Sections
     dashboardCard: {
-      backgroundColor: COLORS.surface,
+      backgroundColor: theme?.themeType === 'dark' ? "rgba(44, 44, 44, 0.5)" : "rgba(241, 243, 245, 0.6)",
       borderRadius: s(SIZES.borderRadiusLarge),
       padding: v(s(SIZES.paddingMedium)),
       marginBottom: v(s(20)),
@@ -396,7 +396,7 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
       color: COLORS.textPrimary,
     },
     dashboardMealSection: {
-      backgroundColor: COLORS.surfaceDark,
+      backgroundColor: theme?.themeType === 'dark' ? "rgba(30, 30, 30, 0.5)" : "rgba(255, 255, 255, 0.5)",
       borderRadius: s(20),
       padding: v(s(16)),
       marginBottom: v(s(16)),

@@ -5,7 +5,7 @@ import { useStyles } from "../../styles";
 import { useAppTheme } from "../../theme";
 import { UI_TEXT } from "../../strings";
 import { getDayLabel, isMealEnabled, getSortedMealKeys, getMealLabel } from "../../constants";
-import { ConfigDay, MealType } from "../../domain";
+import { AppThemeMode, ConfigDay, MealType } from "../../domain";
 
 interface MealStats {
   veg: number;
@@ -59,7 +59,7 @@ export function MealWiseReport({
                 const tVeg = m.veg + m.guestVeg + m.kidsVeg, tNonVeg = m.nonVeg + m.guestNonVeg + m.kidsNonVeg;
                 const tTakenVeg = m.vegTaken + m.guestVegTaken + m.kidsVegTaken, tTakenNonVeg = m.nonVegTaken + m.guestNonVegTaken + m.kidsNonVegTaken;
                 return (
-                  <View key={mKey} style={{ backgroundColor: theme.colors.surface, borderRadius: 20, padding: 16, marginBottom: 16 }}>
+                  <View key={mKey} style={{ backgroundColor: theme.themeType === AppThemeMode.DARK ? "rgba(30, 30, 30, 0.4)" : "rgba(255, 255, 255, 0.5)", borderRadius: 20, padding: 16, marginBottom: 16 }}>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
                       <Ionicons name={mKey === MealType.BREAKFAST ? "sunny-outline" : mKey === MealType.LUNCH ? "restaurant-outline" : "moon-outline"} size={18} color={theme.colors.primary} />
                       <Text style={{ color: theme.colors.primary, fontWeight: "800", fontSize: 16 }}>{getMealLabel(mKey)}</Text>

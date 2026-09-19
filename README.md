@@ -18,6 +18,7 @@ A robust Expo React Native application designed for food admins and volunteers t
 - **Role-Based Permissions**:
     - **Admin**: Full access to register flats, update festival settings, edit menu items, report bugs via email, and delete records.
     - **Vendor**: Operational access to mark food and parcels as taken. Restricted from modifying registration data, financial records, or primary dietary choices.
+- **Two-Phase Verified Login**: The login button intelligently guides the user through two distinct phases: **"Verifying..."** (credential check against the database) followed by **"Loading data..."** (pre-fetching configuration and subscriptions) for a more transparent and precise authentication experience.
 - **Global Logout**: Quick-access logout button available in the header of every screen for secure session management.
 
 ### 📋 Subscription & Pass Management
@@ -86,6 +87,10 @@ A robust Expo React Native application designed for food admins and volunteers t
 - **Labels & Abbreviations**: Custom display names and legends are centrally managed.
 
 ### 🎨 Polished & Responsive UI/UX
+- **Immersive Festive Backdrop**: A premium, dynamic background system featuring multiple floating **Mesh Gradient Blobs**. These colorful glowing spots surround the screen from all corners, creating a majestic celebratory atmosphere.
+- **Dynamic Glassmorphism**: Every card, report panel, and dashboard section uses a semi-translucent **"Frosted Glass" design language**, allowing the underlying festive background glows to bleed through beautifully while maintaining absolute text legibility.
+- **Adaptive High-Contrast Tones**: Backdrop colors automatically adjust their intensity for Light and Dark themes, utilizing high-contrast alpha weights to ensure the marvelous glowing effect pops vividly on any screen.
+- **Web-Specific Background Optimization**: Specifically tuned for wide horizontal viewports, the system dynamically injects extra large **Central Mesh Circles** on web desktop monitors to ensure the entire wide-screen canvas is covered with immersive color gradients.
 - **Fully Responsive Design**: The UI intelligently adapts to all screen sizes, from small mobile phones to large tablets and desktop browsers.
 - **Adaptive Column Layout**: On wide native screens (Tablets), content is centered in a professional 600px column. On **Web**, the layout expands to the full browser width while keeping the internal content perfectly centered and readable.
 - **Intelligent Viewport Scaling**: Introduced a dual-axis scaling engine (`s` for horizontal/size and `v` for vertical) that ensures text isn't "tiny" on large monitors while compacting vertical space to help screens fit within the browser's viewable area.
