@@ -50,38 +50,64 @@ export function AppNavigator() {
     );
   }
 
+  let screenComponent;
+
   if (screen === AppScreen.LOGIN || !userRole) {
-    return <LoginScreen />;
+    screenComponent = <LoginScreen />;
+  } else {
+    // --- Router ---
+    switch (screen) {
+      case AppScreen.FORM:
+        screenComponent = <SubscriptionForm />;
+        break;
+      case AppScreen.DETAILS:
+        screenComponent = <DetailsScreen />;
+        break;
+      case AppScreen.QR:
+        screenComponent = <QrScreen />;
+        break;
+      case AppScreen.SCANNER:
+        screenComponent = <ScannerScreen />;
+        break;
+      case AppScreen.DASHBOARD:
+        screenComponent = <DashboardScreen />;
+        break;
+      case AppScreen.GUEST_MANAGEMENT:
+        screenComponent = <GuestManagementScreen />;
+        break;
+      case AppScreen.VIEW_MENU:
+        screenComponent = <ViewMenuScreen />;
+        break;
+      case AppScreen.MENU:
+        screenComponent = <MenuEditorScreen />;
+        break;
+      case AppScreen.REPORT:
+        screenComponent = <ReportScreen />;
+        break;
+      case AppScreen.SETTINGS:
+        screenComponent = <SettingsScreen />;
+        break;
+      case AppScreen.ACTIVITY_LOG:
+        screenComponent = <ActivityLogScreen />;
+        break;
+      case AppScreen.SUBSCRIPTION_LIST:
+        screenComponent = <SubscriptionListScreen />;
+        break;
+      case AppScreen.HOME:
+      default:
+        screenComponent = <HomeScreen />;
+        break;
+    }
   }
 
-  // --- Router ---
-  switch (screen) {
-    case AppScreen.FORM:
-      return <SubscriptionForm />;
-    case AppScreen.DETAILS:
-      return <DetailsScreen />;
-    case AppScreen.QR:
-      return <QrScreen />;
-    case AppScreen.SCANNER:
-      return <ScannerScreen />;
-    case AppScreen.DASHBOARD:
-      return <DashboardScreen />;
-    case AppScreen.GUEST_MANAGEMENT:
-      return <GuestManagementScreen />;
-    case AppScreen.VIEW_MENU:
-      return <ViewMenuScreen />;
-    case AppScreen.MENU:
-      return <MenuEditorScreen />;
-    case AppScreen.REPORT:
-      return <ReportScreen />;
-    case AppScreen.SETTINGS:
-      return <SettingsScreen />;
-    case AppScreen.ACTIVITY_LOG:
-      return <ActivityLogScreen />;
-    case AppScreen.SUBSCRIPTION_LIST:
-      return <SubscriptionListScreen />;
-    case AppScreen.HOME:
-    default:
-      return <HomeScreen />;
-  }
+  return (
+    <View style={styles.rootMainContainer}>
+      <View style={styles.bgBlob1} />
+      <View style={styles.bgBlob2} />
+      <View style={styles.bgBlob3} />
+      <View style={styles.bgBlob4} />
+      <View style={styles.bgBlob5} />
+      {screenComponent}
+    </View>
+  );
 }

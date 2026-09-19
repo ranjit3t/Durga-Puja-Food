@@ -52,7 +52,61 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
     // Root Containers
     root: {
       flex: 1,
+      backgroundColor: "transparent",
+    },
+    rootMainContainer: {
+      flex: 1,
       backgroundColor: COLORS.background,
+    },
+    bgBlob1: {
+      position: "absolute",
+      top: -240,
+      right: -160,
+      width: s(500),
+      height: s(500),
+      borderRadius: s(250),
+      backgroundColor: theme?.themeType === 'dark' ? "rgba(0, 123, 255, 0.18)" : "rgba(0, 123, 255, 0.12)",
+      pointerEvents: "none" as any,
+    },
+    bgBlob2: {
+      position: "absolute",
+      bottom: -100,
+      left: -120,
+      width: s(460),
+      height: s(460),
+      borderRadius: s(230),
+      backgroundColor: theme?.themeType === 'dark' ? "rgba(255, 179, 0, 0.2)" : "rgba(255, 179, 0, 0.18)",
+      pointerEvents: "none" as any,
+    },
+    bgBlob3: {
+      position: "absolute",
+      top: "30%" as any,
+      left: -150,
+      width: s(390),
+      height: s(390),
+      borderRadius: s(195),
+      backgroundColor: theme?.themeType === 'dark' ? "rgba(227, 24, 55, 0.18)" : "rgba(227, 24, 55, 0.14)",
+      pointerEvents: "none" as any,
+    },
+    bgBlob4: {
+      position: "absolute",
+      bottom: "35%" as any,
+      right: -150,
+      width: s(410),
+      height: s(410),
+      borderRadius: s(205),
+      backgroundColor: theme?.themeType === 'dark' ? "rgba(111, 66, 193, 0.2)" : "rgba(111, 66, 193, 0.15)",
+      pointerEvents: "none" as any,
+    },
+    bgBlob5: {
+      position: "absolute",
+      top: -240,
+      left: -160,
+      width: s(500),
+      height: s(500),
+      borderRadius: s(250),
+      backgroundColor: theme?.themeType === 'dark' ? "rgba(255, 179, 0, 0.16)" : "rgba(255, 179, 0, 0.12)",
+      pointerEvents: "none" as any,
     },
     rootOverlay: {
       flex: 1,
@@ -70,7 +124,7 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
 
     // Header & Navigation
     header: {
-      backgroundColor: theme?.themeType === 'dark' ? COLORS.surface : COLORS.white,
+      backgroundColor: "transparent",
       paddingTop: Platform.OS === "ios" ? 64 : (isWeb ? 16 : 54),
       paddingHorizontal: s(SIZES.paddingMedium),
       paddingBottom: v(s(SIZES.paddingLarge)),
@@ -648,7 +702,7 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
       padding: s(SIZES.paddingLarge),
       paddingTop: v(s(120)),
       paddingBottom: v(s(150)),
-      backgroundColor: COLORS.background,
+      backgroundColor: "transparent",
       ...maxWidthStyle,
     },
     loginLogo: {
