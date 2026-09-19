@@ -136,7 +136,7 @@ const SubscriptionCard = React.memo(({
                   targetId: item.id,
                   description: UI_TEXT.logChat.replace("{id}", item.id)
                 });
-                Linking.openURL(`https://wa.me/${whatsappCountryCode || "91"}${item.mobile}`);
+                Linking.openURL(`https://wa.me/${whatsappCountryCode || UI_TEXT.defaultCountryCode}${item.mobile}`);
               }}
               style={({ pressed }) => [
                 { padding: 6, borderRadius: 20, backgroundColor: theme.colors.successLight },

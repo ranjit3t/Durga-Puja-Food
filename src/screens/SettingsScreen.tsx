@@ -50,7 +50,7 @@ export function SettingsScreen() {
   const [localMobileEnabled, setLocalMobileEnabled] = useState(true);
   const [localFoodPriceEnabled, setLocalFoodPriceEnabled] = useState(false);
   const [localKidsEnabled, setLocalKidsEnabled] = useState(false);
-  const [localWhatsappCountryCode, setLocalWhatsappCountryCode] = useState("91");
+  const [localWhatsappCountryCode, setLocalWhatsappCountryCode] = useState(UI_TEXT.defaultCountryCode);
   const [saving, setSaving] = useState(false);
   const [initialized, setInitialized] = useState(false);
 
@@ -76,7 +76,7 @@ export function SettingsScreen() {
       setLocalMobileEnabled(mobileEnabled);
       setLocalFoodPriceEnabled(foodPriceEnabled);
       setLocalKidsEnabled(kidsEnabled || false);
-      setLocalWhatsappCountryCode(whatsappCountryCode || "91");
+      setLocalWhatsappCountryCode(whatsappCountryCode || UI_TEXT.defaultCountryCode);
       setInitialized(true);
     }
   }, [config, seasonName, seasonEnabled, payment, guestEnabled, mobileEnabled, foodPriceEnabled, whatsappCountryCode, initialized]);
@@ -179,9 +179,72 @@ export function SettingsScreen() {
     ]);
   };
 
+  const getSettingsChangeLog = () => {
+    const changes: string[] = [];
+    if (localSeasonName !== seasonName) changes.push(`Name: ${seasonName || 'None'} -> ${localSeasonName}`);
+    if (localSeasonEnabled !== seasonEnabled) changes.push(`Status: ${seasonEnabled ? 'Active' : 'Locked'} -> ${localSeasonEnabled ? 'Active' : 'Locked'}`);
+    if (localGuestEnabled !== guestEnabled) changes.push(`Guests: ${guestEnabled ? 'ON' : 'OFF'} -> ${localGuestEnabled ? 'ON' : 'OFF'}`);
+    if (localMobileEnabled !== mobileEnabled) changes.push(`Mobile: ${mobileEnabled ? 'ON' : 'OFF'} -> ${localMobileEnabled ? 'ON' : 'OFF'}`);
+    if (localFoodPriceEnabled !== foodPriceEnabled) changes.push(`Pricing: ${foodPriceEnabled ? 'ON' : 'OFF'} -> ${localFoodPriceEnabled ? 'ON' : 'OFF'}`);
+    if (localKidsEnabled !== kidsEnabled) changes.push(`Kids: ${kidsEnabled ? 'ON' : 'OFF'} -> ${localKidsEnabled ? 'ON' : 'OFF'}`);
+    if (localWhatsappCountryCode !== whatsappCountryCode) changes.push(`WA Code: ${whatsappCountryCode} -> ${localWhatsappCountryCode}`);
+
+    if (JSON.stringify(localPayment) !== JSON.stringify(payment)) {
+      if (localPayment.enabled !== payment.enabled) changes.push(`Payment: ${payment.enabled ? 'ON' : 'OFF'} -> ${localPayment.enabled ? 'ON' : 'OFF'}`);
+      // Simple summary for options
+      const oldOpts = Object.entries(payment.options).filter(([_, v]) => v).map(([k]) => k).join(',');
+      const newOpts = Object.entries(localPayment.options).filter(([_, v]) => v).map(([k]) => k).join(',');
+      if (oldOpts !== newOpts) changes.push(`Methods: [${oldOpts}] -> [${newOpts}]`);
+    }
+
+    if (JSON.stringify(localConfig) !== JSON.stringify(config)) {
+      const oldIds = (config || []).map(d => d.id);
+      const newIds = (localConfig || []).map(d => d.id);
+
+      const added = newIds.filter(id => !oldIds.includes(id));
+      const removed = oldIds.filter(id => !newIds.includes(id));
+
+      if (added.length > 0) changes.push(`Added Days: ${added.join(',')}`);
+      if (removed.length > 0) changes.push(`Removed Days: ${removed.join(',')}`);
+
+      localConfig.forEach(newDay => {
+        const oldDay = (config || []).find(d => d.id === newDay.id);
+        if (oldDay && JSON.stringify(oldDay) !== JSON.stringify(newDay)) {
+          const dayChanges: string[] = [];
+          if (newDay.label !== oldDay.label) dayChanges.push(`Label: ${oldDay.label} -> ${newDay.label}`);
+          if (newDay.enabled !== oldDay.enabled) dayChanges.push(`Enabled: ${oldDay.enabled ? 'ON' : 'OFF'}`);
+          if (newDay.vegOnly !== oldDay.vegOnly) dayChanges.push(`VegOnly: ${oldDay.vegOnly ? 'ON' : 'OFF'}`);
+
+          (['breakfast', 'lunch', 'dinner'] as const).forEach(m => {
+            const oldM = oldDay[m];
+            const newM = newDay[m];
+            if (JSON.stringify(oldM) !== JSON.stringify(newM)) {
+              const mChanges: string[] = [];
+              if (newM.enabled !== oldM.enabled) mChanges.push(`Enabled:${newM.enabled ? 'ON' : 'OFF'}`);
+              if (newM.veg !== oldM.veg) mChanges.push(`Veg:${newM.veg ? 'ON' : 'OFF'}`);
+              if (newM.nonVeg !== oldM.nonVeg) mChanges.push(`NonVeg:${newM.nonVeg ? 'ON' : 'OFF'}`);
+              if (newM.parcel !== oldM.parcel) mChanges.push(`Parcel:${newM.parcel ? 'ON' : 'OFF'}`);
+              if (newM.done !== oldM.done) mChanges.push(`Done:${newM.done ? 'ON' : 'OFF'}`);
+              if (newM.current !== oldM.current) mChanges.push(`Current:${newM.current ? 'ON' : 'OFF'}`);
+
+              if (mChanges.length > 0) {
+                dayChanges.push(`${getMealLabel(m).toUpperCase()}(${mChanges.join(',')})`);
+              }
+            }
+          });
+
+          if (dayChanges.length > 0) changes.push(`${newDay.label || newDay.id}: [${dayChanges.join('|')}]`);
+        }
+      });
+    }
+
+    return changes.join('; ');
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
+      const changeLog = getSettingsChangeLog();
       await updateConfig({
         seasonName: localSeasonName,
         seasonEnabled: localSeasonEnabled,
@@ -196,7 +259,7 @@ export function SettingsScreen() {
       addActivityLog({
         module: ActivityModule.CONFIG,
         action: ActivityAction.UPDATE,
-        description: UI_TEXT.logUpdateConfig
+        description: UI_TEXT.logUpdateConfigDetails.replace("{changes}", changeLog || UI_TEXT.logUpdateConfig)
       });
       setInitialized(false); // Allow re-syncing from DB
       showAlert(UI_TEXT.success, UI_TEXT.settingsUpdated, [
@@ -223,7 +286,7 @@ export function SettingsScreen() {
 
   return (
     <View style={styles.root}>
-      <StatusBar style={themeType === AppThemeMode.DARK ? "light" : "dark"} />
+      <StatusBar style={themeType === AppThemeMode.DARK ? StatusBarStyleMode.LIGHT : StatusBarStyleMode.DARK} />
       <View style={styles.header}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>

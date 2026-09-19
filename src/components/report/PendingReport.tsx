@@ -89,9 +89,9 @@ export function PendingReport({
                           module: ActivityModule.REPORT,
                           action: ActivityAction.CHAT,
                           targetId: item.id,
-                          description: `Started WhatsApp chat from report for ${item.id}`
+                          description: UI_TEXT.logChatReport.replace("{id}", item.id)
                         });
-                        Linking.openURL(`https://wa.me/${whatsappCountryCode || "91"}${item.mobile}`);
+                        Linking.openURL(`https://wa.me/${whatsappCountryCode || UI_TEXT.defaultCountryCode}${item.mobile}`);
                       }}
                       style={({ pressed }) => [
                         { padding: 6, borderRadius: 20, backgroundColor: theme.colors.successLight },
@@ -107,7 +107,7 @@ export function PendingReport({
                           module: ActivityModule.REPORT,
                           action: ActivityAction.CALL,
                           targetId: item.id,
-                          description: `Started phone call from report for ${item.id}`
+                          description: UI_TEXT.logCallReport.replace("{id}", item.id)
                         });
                         Linking.openURL(`tel:${item.mobile}`);
                       }}

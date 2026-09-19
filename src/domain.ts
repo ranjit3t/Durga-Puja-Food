@@ -132,6 +132,7 @@ export type ActivityLog = {
   device?: string;
   os?: string;
   stack?: string;
+  appVersion?: string;
 };
 
 export enum ReportType {

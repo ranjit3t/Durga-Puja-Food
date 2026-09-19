@@ -3,7 +3,7 @@
  * Displays a historical list of system operations with filtering and search.
  * Auto-refreshes every 10 seconds to serve as a live distribution dashboard.
  */
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, memo } from "react";
 import {
   View,
   Text,
@@ -20,7 +20,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useStyles } from "../styles";
 import { useAppTheme, StatusBarStyleMode } from "../theme";
 import { UI_TEXT } from "../strings";
-import { AppScreen, ActivityLog, ActivityModule, ActivityAction, AppThemeMode } from "../domain";
+import { AppScreen, ActivityLog, ActivityModule, ActivityAction, AppThemeMode, Subscription } from "../domain";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
@@ -30,10 +30,155 @@ import { useAuth } from "../context/AuthContext";
 import { useDatabase } from "../context/DatabaseContext";
 import { useAppNavigation } from "../context/NavigationContext";
 
+/**
+ * Memoized individual log item for performance optimization.
+ */
+const ActivityLogItem = memo(({
+  item,
+  index,
+  theme,
+  styles,
+  subscriptions,
+  onNavigateToDetails,
+  expanded,
+  onToggleStack
+}: {
+  item: ActivityLog;
+  index: number;
+  theme: any;
+  styles: any;
+  subscriptions: Subscription[];
+  onNavigateToDetails: (id: string) => void;
+  expanded: boolean;
+  onToggleStack: (id: string) => void;
+}) => {
+  const isError = item.action === ActivityAction.ERROR;
+  const colorScheme = theme.cardColors[index % theme.cardColors.length];
+
+  // Check if it's a pass-related event that should be clickable
+  const isPassEvent = item.module === ActivityModule.SUBSCRIPTION && item.action !== ActivityAction.DELETE && item.action !== ActivityAction.ERROR;
+  const existingPass = isPassEvent && item.targetId ? (subscriptions || []).find(s => s.id === item.targetId) : null;
+  const isClickable = !!existingPass;
+
+  const formatTimestamp = (ts: number) => {
+    const date = new Date(ts);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ', ' + date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  };
+
+  return (
+    <Pressable
+      onPress={() => item.targetId && onNavigateToDetails(item.targetId)}
+      disabled={!isClickable}
+      style={({ pressed }) => [
+        styles.card,
+        {
+          backgroundColor: theme.colors.surface,
+          borderColor: isError ? theme.colors.error : theme.colors.border,
+          marginBottom: 12,
+          padding: 16,
+          elevation: 2,
+          borderLeftWidth: isError ? 6 : (isClickable ? 4 : 1.5),
+          borderLeftColor: isClickable ? theme.colors.primary : (isError ? theme.colors.error : theme.colors.border),
+          borderRadius: 16,
+        },
+        isClickable && pressed && { opacity: 0.7, backgroundColor: theme.colors.surfaceDark }
+      ]}
+    >
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <View style={{ flex: 1 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+            <View style={{ backgroundColor: isError ? theme.colors.error + "20" : theme.colors.primary + "15", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 }}>
+              <Text style={{ fontSize: 12, fontWeight: '900', color: isError ? theme.colors.error : theme.colors.primary }}>{item.userName.toUpperCase()}</Text>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Ionicons name="time-outline" size={12} color={theme.colors.textMuted} />
+              <Text style={{ fontSize: 11, color: theme.colors.textMuted, fontWeight: '700' }}>{formatTimestamp(item.timestamp)}</Text>
+            </View>
+            {item.appVersion && (
+              <View style={{ backgroundColor: theme.colors.surfaceDark, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: 1, borderColor: theme.colors.border }}>
+                <Text style={{ fontSize: 9, fontWeight: '800', color: theme.colors.textMuted }}>v{item.appVersion}</Text>
+              </View>
+            )}
+          </View>
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+             <View style={{ backgroundColor: isError ? theme.colors.error + "10" : colorScheme.bg, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: isError ? theme.colors.error : colorScheme.border }}>
+                <Text style={{ fontSize: 11, fontWeight: '900', color: isError ? theme.colors.error : colorScheme.accent }}>{item.module.toUpperCase()}</Text>
+             </View>
+             <Ionicons name="chevron-forward" size={14} color={theme.colors.border} />
+             <Text style={{ fontSize: 15, fontWeight: '800', color: isError ? theme.colors.error : theme.colors.textPrimary }}>{item.action}</Text>
+             {item.targetId && (
+               <View style={{ backgroundColor: theme.colors.surfaceDark, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: theme.colors.border }}>
+                 <Text style={{ fontSize: 11, fontWeight: '900', color: theme.colors.secondary }}>{item.targetId}</Text>
+               </View>
+             )}
+             {isClickable && (
+               <Ionicons name="open-outline" size={14} color={theme.colors.primary} />
+             )}
+          </View>
+
+          <View style={{ backgroundColor: theme.colors.surfaceDark, padding: 12, borderRadius: 12, marginBottom: 12 }}>
+            <Text style={{ fontSize: 14, color: isError ? theme.colors.error : theme.colors.textPrimary, lineHeight: 20, fontWeight: '600' }}>{item.description}</Text>
+          </View>
+
+          {isError && item.stack && (
+            <View style={{ marginBottom: 12 }}>
+              <Pressable
+                onPress={() => onToggleStack(item.id)}
+                style={({ pressed }) => [
+                  { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: theme.colors.error + "15", paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, alignSelf: 'flex-start' },
+                  pressed && { opacity: 0.7 }
+                ]}
+              >
+                <Ionicons name={expanded ? "eye-off-outline" : "eye-outline"} size={14} color={theme.colors.error} />
+                <Text style={{ fontSize: 11, fontWeight: '900', color: theme.colors.error }}>{expanded ? UI_TEXT.hideStackTrace.toUpperCase() : UI_TEXT.viewStackTrace.toUpperCase()}</Text>
+              </Pressable>
+              {expanded && (
+                <View style={{ backgroundColor: theme.colors.shadow + "10", padding: 14, borderRadius: 10, marginTop: 8, borderWidth: 1, borderColor: theme.colors.error + "22" }}>
+                  <Text style={{ fontSize: 11, color: theme.colors.error, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', lineHeight: 16 }}>{item.stack}</Text>
+                </View>
+              )}
+            </View>
+          )}
+
+          {item.os && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, opacity: 0.6 }}>
+              <Ionicons name={item.os.toLowerCase() === 'ios' ? 'logo-apple' : item.os.toLowerCase() === 'android' ? 'logo-android' : 'globe-outline'} size={14} color={theme.colors.textMuted} />
+              <Text style={{ fontSize: 11, color: theme.colors.textMuted, fontWeight: '800', textTransform: 'uppercase' }}>{item.os} {item.device}</Text>
+            </View>
+          )}
+        </View>
+
+        <View style={{ backgroundColor: isError ? theme.colors.error + "10" : theme.colors.surfaceDark, padding: 10, borderRadius: 14, borderWidth: 1, borderColor: isError ? theme.colors.error + "20" : theme.colors.border }}>
+          <Ionicons
+            name={
+              item.action === ActivityAction.CREATE ? "add-circle-outline" :
+              item.action === ActivityAction.DELETE ? "trash-outline" :
+              item.action === ActivityAction.SCAN ? "qr-code-outline" :
+              item.action === ActivityAction.CHAT ? "logo-whatsapp" :
+              item.action === ActivityAction.CALL ? "call-outline" :
+              item.action === ActivityAction.LOGIN ? "log-in-outline" :
+              item.action === ActivityAction.LOGOUT ? "log-out-outline" :
+              item.action === ActivityAction.ERROR ? "alert-circle-outline" :
+              "pencil-outline"
+            }
+            size={22}
+            color={
+              item.action === ActivityAction.DELETE || item.action === ActivityAction.ERROR ? theme.colors.error :
+              item.action === ActivityAction.CREATE ? theme.colors.success :
+              theme.colors.primary
+            }
+          />
+        </View>
+      </View>
+    </Pressable>
+  );
+});
+
 export function ActivityLogScreen() {
   const { handleLogout } = useAuth();
-  const { getActivityLogs } = useDatabase();
-  const { navigate, goBack } = useAppNavigation();
+  const { getActivityLogs, subscriptions } = useDatabase();
+  const { navigate, goBack, setSelectedId, setSelectedRecord } = useAppNavigation();
 
   const styles = useStyles();
   const { theme, themeType } = useAppTheme();
@@ -48,15 +193,27 @@ export function ActivityLogScreen() {
   const [selectedUser, setSelectedUser] = useState(UI_TEXT.all);
   const [selectedModule, setSelectedModule] = useState(UI_TEXT.all);
   const [selectedTarget, setSelectedTarget] = useState(UI_TEXT.all);
+  const [selectedDate, setSelectedDate] = useState(UI_TEXT.all);
   const [errorsOnly, setErrorsOnly] = useState(false);
   const [searchText, setSearchText] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+  const [isAscending, setIsAscending] = useState(false);
 
   const userOptions = useMemo(() => {
     const users = new Set<string>();
     users.add(UI_TEXT.all);
     logs.forEach(log => users.add(log.userName));
     return Array.from(users).sort();
+  }, [logs]);
+
+  const dateOptions = useMemo(() => {
+    const dates = new Set<string>();
+    dates.add(UI_TEXT.all);
+    logs.forEach(log => {
+      const d = new Date(log.timestamp).toLocaleDateString();
+      dates.add(d);
+    });
+    return Array.from(dates).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
   }, [logs]);
 
   const moduleOptions = useMemo(() => {
@@ -101,24 +258,46 @@ export function ActivityLogScreen() {
   }, [loadLogs]);
 
   const filteredLogs = useMemo(() => {
-    return logs.filter(log => {
+    let result = logs.filter(log => {
       if (selectedUser !== UI_TEXT.all && log.userName !== selectedUser) return false;
       if (selectedModule !== UI_TEXT.all && log.module !== selectedModule) return false;
       if (selectedTarget !== UI_TEXT.all && log.targetId !== selectedTarget) return false;
+      if (selectedDate !== UI_TEXT.all && new Date(log.timestamp).toLocaleDateString() !== selectedDate) return false;
       if (errorsOnly && log.action !== ActivityAction.ERROR) return false;
       if (searchText && !log.description?.toLowerCase().includes(searchText.toLowerCase())) return false;
       return true;
-    }).slice(0, limit);
-  }, [logs, selectedUser, selectedModule, selectedTarget, errorsOnly, searchText, limit]);
+    });
 
-  const formatTimestamp = (ts: number) => {
-    const date = new Date(ts);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ', ' + date.toLocaleDateString([], { month: 'short', day: 'numeric' });
-  };
+    if (isAscending) {
+      result = [...result].sort((a, b) => a.timestamp - b.timestamp);
+    } else {
+      result = [...result].sort((a, b) => b.timestamp - a.timestamp);
+    }
+
+    return result.slice(0, limit);
+  }, [logs, selectedUser, selectedModule, selectedTarget, selectedDate, errorsOnly, searchText, limit, isAscending]);
+
+  const onNavigateToDetails = useCallback((id: string) => {
+    const match = (subscriptions || []).find(s => s.id === id);
+    if (match) {
+      setSelectedId(match.id);
+      setSelectedRecord(match);
+      navigate(AppScreen.DETAILS);
+    }
+  }, [subscriptions, navigate, setSelectedId, setSelectedRecord]);
+
+  const onToggleStack = useCallback((id: string) => {
+    setExpandedStacks(prev => ({ ...prev, [id]: !prev[id] }));
+  }, []);
 
   const handleExport = async () => {
+    const formatTs = (ts: number) => {
+      const date = new Date(ts);
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ', ' + date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    };
+
     const content = filteredLogs.map(log =>
-      `[${formatTimestamp(log.timestamp)}] ${log.userName} | ${log.os || ''} ${log.device || ''} | ${log.module} | ${log.action} | ${log.targetId || ''} | ${log.description || ''}${log.stack ? '\nSTACK:\n' + log.stack : ''}`
+      `[${formatTs(log.timestamp)}] ${log.userName} | ${log.os || ''} ${log.device || ''} | ${log.module} | ${log.action} | ${log.targetId || ''} | ${log.description || ''}${log.stack ? '\nSTACK:\n' + log.stack : ''}`
     ).join('\n\n' + '-'.repeat(40) + '\n\n');
 
     const title = `${UI_TEXT.activityLog}_${new Date().toISOString().slice(0, 10)}.txt`;
@@ -142,87 +321,18 @@ export function ActivityLogScreen() {
     }
   };
 
-  const renderItem = ({ item, index }: { item: ActivityLog; index: number }) => {
-    const colorScheme = theme.cardColors[index % theme.cardColors.length];
-    const isError = item.action === ActivityAction.ERROR;
-
-    return (
-      <View style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: isError ? theme.colors.error : theme.colors.border, marginBottom: 12, padding: 14, elevation: 2, borderLeftWidth: isError ? 4 : 1.5 }]}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <View style={{ flex: 1 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-              <View style={{ backgroundColor: isError ? theme.colors.error + "15" : theme.colors.primary + "15", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
-                <Text style={{ fontSize: 12, fontWeight: '800', color: isError ? theme.colors.error : theme.colors.primary }}>{item.userName}</Text>
-              </View>
-              <Text style={{ fontSize: 10, color: theme.colors.textMuted, fontWeight: '600' }}>{formatTimestamp(item.timestamp)}</Text>
-            </View>
-
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-               <View style={{ backgroundColor: isError ? theme.colors.error + "20" : colorScheme.bg, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, borderWidth: 1, borderColor: isError ? theme.colors.error : colorScheme.border }}>
-                  <Text style={{ fontSize: 10, fontWeight: '900', color: isError ? theme.colors.error : colorScheme.accent }}>{item.module.toUpperCase()}</Text>
-               </View>
-               <Text style={{ fontSize: 14, fontWeight: '700', color: isError ? theme.colors.error : theme.colors.textPrimary }}>{item.action}</Text>
-               {item.targetId && (
-                 <View style={{ backgroundColor: theme.colors.surfaceDark, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
-                   <Text style={{ fontSize: 10, fontWeight: '800', color: theme.colors.secondary }}>{item.targetId}</Text>
-                 </View>
-               )}
-            </View>
-
-            {item.description && (
-              <Text style={{ fontSize: 13, color: isError ? theme.colors.error : theme.colors.textSecondary, lineHeight: 18, marginBottom: 8 }}>{item.description}</Text>
-            )}
-
-            {isError && item.stack && (
-              <View style={{ marginTop: 4, marginBottom: 8 }}>
-                <Pressable
-                  onPress={() => setExpandedStacks(prev => ({ ...prev, [item.id]: !prev[item.id] }))}
-                  style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: theme.colors.error + "10", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, alignSelf: 'flex-start' }}
-                >
-                  <Ionicons name={expandedStacks[item.id] ? "chevron-up" : "chevron-down"} size={12} color={theme.colors.error} />
-                  <Text style={{ fontSize: 10, fontWeight: '800', color: theme.colors.error }}>STACK TRACE</Text>
-                </Pressable>
-                {expandedStacks[item.id] && (
-                  <View style={{ backgroundColor: theme.colors.surfaceDark, padding: 10, borderRadius: 8, marginTop: 6, borderWidth: 1, borderColor: theme.colors.error + "33" }}>
-                    <Text style={{ fontSize: 10, color: theme.colors.error, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace' }}>{item.stack}</Text>
-                  </View>
-                )}
-              </View>
-            )}
-
-            {item.os && (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <Ionicons name={item.os.toLowerCase() === 'ios' ? 'logo-apple' : item.os.toLowerCase() === 'android' ? 'logo-android' : 'globe-outline'} size={12} color={theme.colors.textMuted} />
-                <Text style={{ fontSize: 10, color: theme.colors.textMuted, fontWeight: '700', textTransform: 'uppercase' }}>{item.os} {item.device}</Text>
-              </View>
-            )}
-          </View>
-
-          <View style={{ backgroundColor: isError ? theme.colors.error + "10" : theme.colors.surfaceDark, padding: 8, borderRadius: 12 }}>
-            <Ionicons
-              name={
-                item.action === ActivityAction.CREATE ? "add-circle" :
-                item.action === ActivityAction.DELETE ? "trash" :
-                item.action === ActivityAction.SCAN ? "qr-code" :
-                item.action === ActivityAction.CHAT ? "logo-whatsapp" :
-                item.action === ActivityAction.CALL ? "call" :
-                item.action === ActivityAction.LOGIN ? "log-in" :
-                item.action === ActivityAction.LOGOUT ? "log-out" :
-                item.action === ActivityAction.ERROR ? "alert-circle" :
-                "pencil"
-              }
-              size={18}
-              color={
-                item.action === ActivityAction.DELETE || item.action === ActivityAction.ERROR ? theme.colors.error :
-                item.action === ActivityAction.CREATE ? theme.colors.success :
-                theme.colors.primary
-              }
-            />
-          </View>
-        </View>
-      </View>
-    );
-  };
+  const renderItem = useCallback(({ item, index }: { item: ActivityLog; index: number }) => (
+    <ActivityLogItem
+      item={item}
+      index={index}
+      theme={theme}
+      styles={styles}
+      subscriptions={subscriptions}
+      onNavigateToDetails={onNavigateToDetails}
+      expanded={!!expandedStacks[item.id]}
+      onToggleStack={onToggleStack}
+    />
+  ), [theme, styles, subscriptions, onNavigateToDetails, expandedStacks, onToggleStack]);
 
   return (
     <View style={styles.root}>
@@ -235,25 +345,25 @@ export function ActivityLogScreen() {
           </View>
           <LogoutButton onLogout={handleLogout} />
         </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
            <View>
               <Text style={styles.title}>{UI_TEXT.activityLog}</Text>
               <Text style={styles.subtitle}>{UI_TEXT.activityLogSubtitle}</Text>
            </View>
-           <View style={{ backgroundColor: theme.colors.success + "20", paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderColor: theme.colors.success + "40" }}>
-              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: theme.colors.success }} />
-              <Text style={{ fontSize: 11, fontWeight: '900', color: theme.colors.success }}>{UI_TEXT.live.toUpperCase()}</Text>
+           <View style={{ backgroundColor: theme.colors.success + "20", paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderColor: theme.colors.success + "40" }}>
+              <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: theme.colors.success }} />
+              <Text style={{ fontSize: 12, fontWeight: '900', color: theme.colors.success }}>{UI_TEXT.live.toUpperCase()}</Text>
            </View>
         </View>
       </View>
 
       <View style={{ backgroundColor: theme.colors.surface, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
-        <View style={{ padding: 20, gap: 12 }}>
-          <View style={{ flexDirection: 'row', gap: 10 }}>
-            <View style={[styles.searchBox, { flex: 1, marginBottom: 0, height: 48, borderRadius: 12 }]}>
-              <Ionicons name="search-outline" size={18} color={theme.colors.textMuted} />
+        <View style={{ padding: 20, gap: 16 }}>
+          <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+            <View style={[styles.searchBox, { flex: 1, marginBottom: 0, height: 52, borderRadius: 14 }]}>
+              <Ionicons name="search-outline" size={20} color={theme.colors.textMuted} />
               <TextInput
-                style={[styles.searchInput, { fontSize: 14 }]}
+                style={[styles.searchInput, { fontSize: 15 }]}
                 value={searchText}
                 onChangeText={setSearchText}
                 placeholder={UI_TEXT.searchActivities}
@@ -261,43 +371,59 @@ export function ActivityLogScreen() {
               />
             </View>
             <Pressable
-              onPress={() => setShowFilters(!showFilters)}
+              onPress={() => setIsAscending(!isAscending)}
               style={({ pressed }) => [
-                { width: 48, height: 48, borderRadius: 12, backgroundColor: showFilters ? theme.colors.primary : theme.colors.surfaceDark, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: theme.colors.border },
+                { width: 52, height: 52, borderRadius: 14, backgroundColor: theme.colors.surfaceDark, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: theme.colors.border },
                 pressed && { opacity: 0.7 }
               ]}
             >
-              <Ionicons name="filter-outline" size={20} color={showFilters ? theme.colors.white : theme.colors.textPrimary} />
+              <Ionicons name={isAscending ? "arrow-up-outline" : "arrow-down-outline"} size={22} color={theme.colors.primary} />
+            </Pressable>
+            <Pressable
+              onPress={() => setShowFilters(!showFilters)}
+              style={({ pressed }) => [
+                { width: 52, height: 52, borderRadius: 14, backgroundColor: showFilters ? theme.colors.primary : theme.colors.surfaceDark, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: theme.colors.border },
+                pressed && { opacity: 0.7 }
+              ]}
+            >
+              <Ionicons name="options-outline" size={22} color={showFilters ? theme.colors.white : theme.colors.textPrimary} />
             </Pressable>
           </View>
 
           {showFilters && (
-            <View style={{ gap: 12, paddingTop: 4 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: theme.colors.surfaceDark, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border }}>
-                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <Ionicons name="alert-circle-outline" size={18} color={theme.colors.error} />
-                    <Text style={{ fontSize: 13, fontWeight: '700', color: theme.colors.textPrimary }}>{UI_TEXT.filterErrors}</Text>
+            <View style={{ gap: 16, paddingTop: 4 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: theme.colors.surfaceDark, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 14, borderWidth: 1, borderColor: theme.colors.border }}>
+                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: theme.colors.error + "20", alignItems: 'center', justifyContent: 'center' }}>
+                      <Ionicons name="alert-circle" size={20} color={theme.colors.error} />
+                    </View>
+                    <Text style={{ fontSize: 14, fontWeight: '800', color: theme.colors.textPrimary }}>{UI_TEXT.filterErrors}</Text>
                  </View>
                  <Switch
                    value={errorsOnly}
                    onValueChange={setErrorsOnly}
                    trackColor={{ true: theme.colors.error }}
-                   style={{ transform: [{ scale: 0.8 }] }}
+                   style={{ transform: [{ scale: 0.9 }] }}
                  />
               </View>
 
               <View>
-                <Text style={{ fontSize: 10, fontWeight: '800', color: theme.colors.textSecondary, marginBottom: 6, textTransform: 'uppercase', marginLeft: 4 }}>{UI_TEXT.filterByUser}</Text>
+                <Text style={{ fontSize: 11, fontWeight: '800', color: theme.colors.textSecondary, marginBottom: 8, textTransform: 'uppercase', marginLeft: 4 }}>{UI_TEXT.filterByUser}</Text>
                 <Dropdown value={selectedUser} options={userOptions} onChange={setSelectedUser} />
               </View>
 
-              <View style={{ flexDirection: 'row', gap: 10 }}>
+              <View>
+                <Text style={{ fontSize: 11, fontWeight: '800', color: theme.colors.textSecondary, marginBottom: 8, textTransform: 'uppercase', marginLeft: 4 }}>{UI_TEXT.filterByDate}</Text>
+                <Dropdown value={selectedDate} options={dateOptions} onChange={setSelectedDate} />
+              </View>
+
+              <View style={{ flexDirection: 'row', gap: 12 }}>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 10, fontWeight: '800', color: theme.colors.textSecondary, marginBottom: 6, textTransform: 'uppercase', marginLeft: 4 }}>{UI_TEXT.filterByEvent}</Text>
+                  <Text style={{ fontSize: 11, fontWeight: '800', color: theme.colors.textSecondary, marginBottom: 8, textTransform: 'uppercase', marginLeft: 4 }}>{UI_TEXT.filterByEvent}</Text>
                   <Dropdown value={selectedModule} options={moduleOptions} onChange={setSelectedModule} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 10, fontWeight: '800', color: theme.colors.textSecondary, marginBottom: 6, textTransform: 'uppercase', marginLeft: 4 }}>{UI_TEXT.filterByTarget}</Text>
+                  <Text style={{ fontSize: 11, fontWeight: '800', color: theme.colors.textSecondary, marginBottom: 8, textTransform: 'uppercase', marginLeft: 4 }}>{UI_TEXT.filterByTarget}</Text>
                   <Dropdown value={selectedTarget} options={targetOptions} onChange={setSelectedTarget} />
                 </View>
               </View>
@@ -308,12 +434,12 @@ export function ActivityLogScreen() {
             onPress={handleExport}
             style={({ pressed }) => [
               styles.primary,
-              { height: 44, marginTop: 4, flexDirection: 'row', gap: 8, borderRadius: 12, backgroundColor: theme.colors.secondary },
+              { height: 48, marginTop: 4, flexDirection: 'row', gap: 10, borderRadius: 14, backgroundColor: theme.colors.secondary, shadowColor: theme.colors.secondary },
               pressed && { opacity: 0.7 }
             ]}
           >
-            <Ionicons name="cloud-download-outline" size={18} color={theme.colors.white} />
-            <Text style={[styles.primaryText, { fontSize: 14 }]}>{UI_TEXT.exportLog}</Text>
+            <Ionicons name="share-outline" size={20} color={theme.colors.white} />
+            <Text style={[styles.primaryText, { fontSize: 15 }]}>{UI_TEXT.exportLog.toUpperCase()}</Text>
           </Pressable>
         </View>
       </View>
@@ -331,6 +457,10 @@ export function ActivityLogScreen() {
           contentContainerStyle={{ padding: 20, paddingBottom: 100 }}
           refreshing={refreshing}
           onRefresh={() => { setRefreshing(true); loadLogs(); }}
+          removeClippedSubviews={Platform.OS === 'android'}
+          initialNumToRender={10}
+          maxToRenderPerBatch={10}
+          windowSize={5}
           ListEmptyComponent={
             <View style={{ alignItems: 'center', marginTop: 60 }}>
               <View style={{ backgroundColor: theme.colors.surfaceDark, padding: 20, borderRadius: 30, marginBottom: 16 }}>

@@ -9,7 +9,7 @@ import { useDatabase } from "../context/DatabaseContext";
 import { useUI } from "../context/UIContext";
 import { useAppNavigation } from "../context/NavigationContext";
 import { AppScreen, UserRole, MealType, AppThemeMode, DietaryOption, DietType } from "../types";
-import { getActiveDays, isSeasonDone, isMealCurrent, getDayLabel, isMealEnabled, isDietaryEnabled } from "../constants";
+import { getActiveDays, isSeasonDone, isMealCurrent, getDayLabel, isMealEnabled, isDietaryEnabled, getMealLabel } from "../constants";
 import { ActionLabel } from "../components/common/ActionLabel";
 import { LogoutButton } from "../components/common/LogoutButton";
 
@@ -47,7 +47,7 @@ export function HomeScreen() {
 
       activeDays.forEach(dayId => {
         const slots = sub.mealSlots[dayId] || [];
-        slots.forEach((slot, index) => {
+        slots.forEach((slot) => {
           [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].forEach(mType => {
             if (!isMealEnabled(dayId, mType, dayConfig)) return;
 
@@ -123,8 +123,7 @@ export function HomeScreen() {
     for (const dId of active) {
       for (const mType of [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER]) {
         if (isMealCurrent(dId, mType, dayConfig) && isMealEnabled(dId, mType, dayConfig)) {
-          const mLabel = mType === MealType.BREAKFAST ? UI_TEXT.breakfast : mType === MealType.LUNCH ? UI_TEXT.lunch : UI_TEXT.dinner;
-          return { dayLabel: getDayLabel(dId, dayConfig), mealLabel: mLabel };
+          return { dayLabel: getDayLabel(dId, dayConfig), mealLabel: getMealLabel(mType) };
         }
       }
     }
@@ -141,7 +140,7 @@ export function HomeScreen() {
           </Pressable>
           <LogoutButton onLogout={handleLogout} />
         </View>
-        <Text style={styles.title}>{UI_TEXT.appName}</Text>
+        <Text style={styles.title}>{UI_TEXT.headerTitle}</Text>
         <Text style={styles.subtitle}>{UI_TEXT.tagline}</Text>
       </View>
 

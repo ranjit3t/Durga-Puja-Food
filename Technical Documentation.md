@@ -33,7 +33,11 @@ The entire application is strictly **Config-Driven**. The `AppConfig` object con
   - In reporting, metadata is hidden if empty to maintain a clean audit trail.
 - **Functional Rules**: `days[]` controls enabled meals, dietary options, parcel support per slot, the **Done** lifecycle status, individual meal prices, and the **Current** active meal prioritization. **Only 1 Current Meal is allowed per season**, and toggling it ON in settings automatically deactivates others across all days. The system automatically enforces that a meal can only be "Current" if it is both enabled and not marked as "Done".
 - **Settings State Isolation & Configuration Safety Guard**: To ensure a smooth administrative experience, the `SettingsScreen` isolates its local form state from the application's 10-second periodic background synchronization. Every configuration block (e.g., Global Rules, Individual Festival Days) features its own **Save** button, allowing admins to persist changes immediately without full-page scrolling. Additionally, a **Safety Guard** is implemented: if at least one pass exists in the system, manually toggling **OFF** any enabled feature (Global switches, Day status, or Meal options) triggers a mandatory confirmation dialog ("Disabling the toggle may require some manual adjustments in the application. Are you sure to proceed?"). This ensures that critical operational rules are not accidentally changed mid-event.
-- **Smart Change Detection & Validation**: Employs a `pristine` state snapshot to detect modifications. Buttons are only enabled if the live form differs from the initial load (accounting for data normalization) and strict data integrity rules are met—specifically, at least one dietary meal must be selected for the pass to be valid for saving.
+- **Smart Change Detection & Validation**: Employs a `pristine` state snapshot to detect modifications. Buttons are only enabled if the live form differs from the initial load (accounting for data normalization) and strict data integrity rules are met.
+- **Pass Deletion Safeguards**: Implements a "Trust-Initial-Load" strategy for deletions. The delete button is functionally locked (disabled with 40% opacity) if the record was loaded with either:
+  1.  **Financial Value**: A non-zero `amount` (when payment tracking is active).
+  2.  **Operational History**: At least one `taken` entry in the food or parcel matrix.
+  This logic ignores local unsaved form edits, ensuring users cannot bypass distribution history rules to force a deletion.
 - **Global Feature Toggles**: Controlled by `guestEnabled` and `mobileEnabled` flags to streamline the UI based on event needs.
 - **WhatsApp Country Code**: `whatsappCountryCode` defines the default country code prefix appended to registered mobile numbers during direct pass distribution via WhatsApp, ensuring seamless messaging across global regions without manual formatting.
 
@@ -75,7 +79,7 @@ The application employs a **Zero-Hardcoding Policy** for UI text and Domain enti
 ### F. Dynamic Theme & Responsive Engine
 - **Context System**: Built on React Context API (`ThemeProvider`), facilitating instant styling updates without re-mounting the component tree.
 - **Hook Architecture**: `useAppTheme()` provides raw theme tokens, while `useStyles()` provides memoized, theme-specific and **dimension-aware** styles generated via `createStyles`.
-- **Responsive Logic**: Integrates `useWindowDimensions` to automatically apply a centered, 600px max-width layout on large displays (>768px), ensuring consistent UI density across mobile, web, and tablet.
+- **Responsive Logic**: Integrates `useWindowDimensions` to automatically apply a centered, 600px max-width layout on large native displays (iOS/Android Tablets), while enabling **100% full-width scaling on Web browsers** to maximize desktop monitor real estate.
 - **Local Persistence**: User-specific preferences (like theme) are decoupled from the Firebase global state and stored using `AsyncStorage`.
 
 ### F. Layout & Scrollability Optimization
@@ -183,12 +187,18 @@ Controlled via the `seasonEnabled` config flag. When disabled, the application e
 
 ### K. Activity Log & Audit System
 The application maintains a permanent, asynchronous audit trail of all significant operations.
-- **Log Structure**: Each log entry (`ActivityLog`) includes a unique ID, high-resolution timestamp, the performing username, hardware metadata (OS and Version), the target module, the action type, and a user-friendly description. For failure events, the system also captures the full **JavaScript Stack Trace**.
+- **Log Structure**: Each log entry (`ActivityLog`) includes a unique ID, high-resolution timestamp, the performing username, hardware metadata (OS and Version), **Application Version**, the target module, the action type, and a user-friendly description. For failure events, the system also captures the full **JavaScript Stack Trace**.
+- **Interactive Deep-Linking**: Logs for Pass creation and updates are now clickable, allowing administrators to instantly navigate to the `DetailsScreen` for the associated `targetId`.
+- **Rich Transaction Metadata**:
+  - **Subscriptions**: Logs include detailed demand breakdowns per day (Veg/Non-Veg/Parcel) and collection history (Total Taken vs. Previous state).
+  - **Menu Management**: Captures exactly which dishes were added or removed (e.g., `+V:[Kheer] | -N:[Egg Curry]`) and specific price adjustments for Adults and Kids.
+  - **Configuration**: Tracks state transitions for global flags (Season status, Guest/Kids support), accepted payment method modifications, and internal rule changes for festival days (e.g., `LUNCH(Enabled:OFF,Parcel:ON)`).
 - **Asynchronous Capture**: To ensure zero impact on user experience, logs are dispatched to the repository in an asynchronous fire-and-forget manner (`void repository.addActivityLog(...)`).
-- **Live Monitoring Dashboard**: The `ActivityLogScreen` functions as a live status feed, auto-refreshing every 10 seconds with a visual "LIVE" indicator.
-- **Advanced Forensics**: Administrators can perform keyword searches over descriptions and apply granular filters by **User**, **Event Module**, **Target Object**, or **Errors Only**.
+- **Live Monitoring Dashboard**: The `ActivityLogScreen` functions as a live status feed, auto-refreshing every 10 seconds with a visual "LIVE" indicator and heartbeat sync heartbeat.
+- **Advanced Forensics**: Administrators can perform keyword searches over descriptions and apply granular filters by **User**, **Event Module**, **Target Object**, **Date**, or **Errors Only**.
+- **Sorting**: Features toggleable **Chronological Sorting** (ASC/DESC) to view audit trails in either direction.
 - **Diagnostics**: Error logs are visually emphasized with red accents and feature an interactive toggle to expand technical stack traces directly within the UI.
-- **Forensic Export**: One-tap export of the active filtered view to a `.txt` file for external auditing.
+- **Forensic Export**: One-tap export of the active filtered view to a `.txt` file for external auditing. Supports native file saving on Web and Share API on Mobile.
 - **Event Coverage**:
   - **Subscriptions**: Creation, updates (including headcounts/amounts), deletions, and direct communications (Chat/Call).
   - **System Errors**: Automated reporting of database failures, validation errors, and runtime exceptions with technical context.

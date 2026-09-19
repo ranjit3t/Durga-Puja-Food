@@ -3,7 +3,6 @@ import { View, Text } from "react-native";
 import { useAppTheme } from "../../theme";
 import { UI_TEXT } from "../../strings";
 import { MealMetricProps } from "./MealMetricGrid";
-import { isParcelEnabled } from "../../constants";
 
 /**
  * A compact bar chart component for visualizing meal demand vs collections.
@@ -11,8 +10,8 @@ import { isParcelEnabled } from "../../constants";
 export function MealBarChart(props: MealMetricProps) {
   const { theme } = useAppTheme();
   const {
-    day, type, total, veg, nonVeg, parcel, parcelTaken, totalVegTaken, totalNonVegTaken,
-    guestVeg, guestNonVeg, guestVegTaken, guestNonVegTaken, config, kidsEnabled, guestEnabled, isBothEnabled,
+    total, veg, nonVeg, parcel, parcelTaken, totalVegTaken, totalNonVegTaken,
+    guestVeg, guestNonVeg, guestVegTaken, guestNonVegTaken, kidsEnabled, guestEnabled, isBothEnabled,
     kidsTotal, kidsTaken, kidsVeg, kidsNonVeg, kidsVegTaken, kidsNonVegTaken, totalMealTaken
   } = props;
 
@@ -94,11 +93,11 @@ export function MealBarChart(props: MealMetricProps) {
           />
         )}
 
-        {isParcelEnabled(day, type, config) && parcel > 0 && (
+        {parcel > 0 && (
           <Bar
             label={UI_TEXT.parcels}
             value={parcel}
-            color={theme.colors.warning || theme.colors.primary}
+            color={theme.colors.secondary}
             secondaryValue={parcelTaken}
           />
         )}

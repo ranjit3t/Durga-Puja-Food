@@ -265,7 +265,7 @@ export function ReportScreen() {
           <View style={[styles.card, { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary, elevation: 6, marginBottom: 24, paddingVertical: 16 }]}>
             <View style={styles.previewTop}>
               <View>
-                <Text style={[styles.previewLabel, { color: theme.colors.white, opacity: 0.7 }]}>{seasonName || UI_TEXT.appName}</Text>
+                <Text style={[styles.previewLabel, { color: theme.colors.white, opacity: 0.7 }]}>{seasonName}</Text>
                 <Text style={[styles.previewTitle, { color: theme.colors.white, fontSize: 22 }]}>
                   {reportType === ReportType.DAY && UI_TEXT.dayWiseReport}
                   {reportType === ReportType.MEAL && UI_TEXT.mealWiseReport}

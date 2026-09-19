@@ -3,8 +3,9 @@
  * Centralized dictionary for all application text.
  */
 export const UI_TEXT = {
-  appName: "Eternia Food Desk",
-  headerTitle: "ETERNIA FOOD DESK 2026",
+  appName: "Food Desk",
+  appVersion: "1.0.0",
+  headerTitle: "Eternia Food Desk",
   tagline: "Track every plate, flat by flat.",
   loading: "Loading data...",
   offlineMode: "Offline mode",
@@ -93,9 +94,12 @@ export const UI_TEXT = {
   noActivities: "No activities found for the selected criteria.",
   loadMore: "Load More",
   exportLog: "Export Log",
+  stackTrace: "Stack Trace",
+  viewStackTrace: "View Stack Trace",
+  hideStackTrace: "Hide Stack Trace",
   all: "All",
-  live: "LIVE",
   loginFailed: "Login failed",
+  defaultCountryCode: "91",
 
   // Activity Log Templates
   logAddPass: "Added pass {id} ({adults}A + {kids}K). Amount: {amount}",
@@ -103,13 +107,19 @@ export const UI_TEXT = {
   logDeletePass: "Deleted pass {id}",
   logChat: "Started WhatsApp chat with {id}",
   logCall: "Started phone call with {id}",
+  logChatReport: "Started WhatsApp chat from report for {id}",
+  logCallReport: "Started phone call from report for {id}",
   logViewPass: "Opened pass details for {id}",
+  logOpenEditor: "Opening editor for {day}",
+  logOpenMenuEditor: "Opening overall menu editor",
   logScanSuccess: "Successfully scanned QR for {id}",
   logScanFail: "Failed to scan QR (Invalid): {data}",
   logUpdateGuest: "Updated guest {field} to {value} for {day} {meal}",
   logUpdateMenu: "Updated menu items for {day} {meal}",
+  logUpdateMenuDetails: "{day} {meal}: {changes}",
   logUpdateMenuAll: "Updated overall festival menu",
   logUpdateConfig: "Updated global application settings",
+  logUpdateConfigDetails: "Settings updated: {changes}",
   logUpdateStatus: "{flatId}: Marked {meal} for {person} as {status}",
   logUpdateParcelStatus: "{flatId}: Marked {meal} Parcel for {person} as {status}",
   logLogin: "Logged in as {role}",
@@ -152,7 +162,6 @@ export const UI_TEXT = {
   noRecords: "No flat records found.",
   noMatches: "No matching flats.",
   flexibleMeals: "Flexible meals",
-  all: "All",
   vegOnly: "Veg Only",
   nonVegOnly: "Non-Veg Only",
   personSuffix: " person",
@@ -173,8 +182,8 @@ export const UI_TEXT = {
   foodChoiceByPerson: "Food choice by member",
   foodChoiceHelper: "B=Breakfast, L=Lunch, D=Dinner. Dot indicates Parcel. P=Person/Member.",
   foodTakenByPerson: "Food taken by member",
-  foodTakenHelper:
-    "Saved food collection status (B=Breakfast, L=Lunch, D=Dinner). P=Person/Member.",
+  foodTakenHelper: "Saved food collection status (B=Breakfast, L=Lunch, D=Dinner). P=Person/Member.",
+  parcelTakenByMember: "Parcel taken by member",
   editPass: "Edit",
   showQr: "Show QR",
 
@@ -194,9 +203,6 @@ export const UI_TEXT = {
   menuUpdated: "Menu updated successfully",
   error: "Error",
   couldNotUpdateMenu: "Could not update menu",
-  breakfastLabel: "B",
-  lunchLabel: "L",
-  dinnerLabel: "D",
 
   // Dashboard Screen
   dashboardTitle: "Food Dashboard",
@@ -207,7 +213,7 @@ export const UI_TEXT = {
   dailyDemandSummary: "Demand Summary",
   guestTotal: "Guest Total",
 
-  // Dashboard Metrics
+  // Dashboard Metrics (Legacy mappings, keeping for safety if referenced by dynamic keys)
   bVeg: "Veg",
   bNonVeg: "Non-Veg",
   bParcel: "Parcel",
@@ -281,8 +287,7 @@ export const UI_TEXT = {
   kidsCount: "Kids Count",
   members: "Members",
   foodChoice: "Food Choice",
-  foodChoiceInstruction:
-    "Select a member (A1, K1...), select a day, then choose the meal.",
+  foodChoiceInstruction: "Select a member (A1, K1...), select a day, then choose the meal.",
   person: "Member",
   personAbbr: "P",
   adultAbbr: "A",
@@ -301,8 +306,7 @@ export const UI_TEXT = {
   deleteButton: "Delete",
   flatExists: "Flat already exists",
   flatExistsMsgPrefix: "Flat ",
-  flatExistsMsgSuffix:
-    " is already registered. You can edit the existing record now.",
+  flatExistsMsgSuffix: " is already registered. You can edit the existing record now.",
   saveFailed: "Save failed",
   syncError: "Could not sync with database.",
   deleteError: "Could not delete record",
@@ -419,9 +423,6 @@ export const UI_TEXT = {
   newline: "\n",
   vegLabel: "Veg",
   nonVegLabel: "Non-Veg",
-  breakfastTitle: "Breakfast",
-  lunchTitle: "Lunch",
-  dinnerTitle: "Dinner",
   vegAbbr: "V",
   nonVegAbbr: "N",
   vegAbbrLabel: "V",

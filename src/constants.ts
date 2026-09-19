@@ -189,9 +189,9 @@ export const getPaymentModeLabel = (mode: PaymentMode) => {
  */
 export const getMealLabel = (meal: MealType) => {
   switch (meal) {
-    case MealType.BREAKFAST: return UI_TEXT.breakfastTitle;
-    case MealType.LUNCH: return UI_TEXT.lunchTitle;
-    case MealType.DINNER: return UI_TEXT.dinnerTitle;
+    case MealType.BREAKFAST: return UI_TEXT.breakfast;
+    case MealType.LUNCH: return UI_TEXT.lunch;
+    case MealType.DINNER: return UI_TEXT.dinner;
     default: return String(meal);
   }
 };
@@ -322,30 +322,6 @@ export const mealsFromChoices = (
       ];
     })
   ) as Subscription["meals"];
-
-/**
- * Resizes the meal choices array when headcount changes, preserving existing data.
- */
-export const resizeMealChoices = (
-  mealByPerson: Subscription["mealByPerson"],
-  oldAdultCount: number,
-  newAdultCount: number,
-  oldKidsCount: number,
-  newKidsCount: number,
-  config: ConfigDay[]
-) =>
-  Object.fromEntries(
-    getActiveDays(config).map((day) => {
-      const oldChoices = mealByPerson[day] || [];
-      const oldAdults = oldChoices.slice(0, oldAdultCount);
-      const oldKids = oldChoices.slice(oldAdultCount, oldAdultCount + oldKidsCount);
-
-      const newAdults = Array.from({ length: newAdultCount }, (_, i) => oldAdults[i] ?? DietaryOption.NONE);
-      const newKids = Array.from({ length: newKidsCount }, (_, i) => oldKids[i] ?? DietaryOption.NONE);
-
-      return [day, [...newAdults, ...newKids]];
-    })
-  ) as Subscription["mealByPerson"];
 
 /**
  * Resizes the meal slots array when headcount changes.

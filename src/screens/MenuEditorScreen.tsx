@@ -101,17 +101,43 @@ export function MenuEditorScreen() {
     return JSON.stringify(menu) !== JSON.stringify(localMenu);
   }, [menu, localMenu]);
 
+  const getMealChangeLog = (oldMeal: MealMenu, newMeal: MealMenu) => {
+    const changes: string[] = [];
+
+    const diffList = (oldList: string[], newList: string[], label: string) => {
+      const added = newList.filter(i => !oldList.includes(i));
+      const removed = oldList.filter(i => !newList.includes(i));
+      if (added.length > 0) changes.push(`+${label}:[${added.join(',')}]`);
+      if (removed.length > 0) changes.push(`-${label}:[${removed.join(',')}]`);
+    };
+
+    diffList(oldMeal.veg || [], newMeal.veg || [], UI_TEXT.vegAbbr);
+    diffList(oldMeal.nonVeg || [], newMeal.nonVeg || [], UI_TEXT.nonVegAbbr);
+
+    if (newMeal.vegPrice !== oldMeal.vegPrice) changes.push(`Price(V): ${oldMeal.vegPrice || '0'}->${newMeal.vegPrice}`);
+    if (newMeal.nonVegPrice !== oldMeal.nonVegPrice) changes.push(`Price(N): ${oldMeal.nonVegPrice || '0'}->${newMeal.nonVegPrice}`);
+    if (newMeal.kidsVegPrice !== oldMeal.kidsVegPrice) changes.push(`KidsPrice(V): ${oldMeal.kidsVegPrice || '0'}->${newMeal.kidsVegPrice}`);
+    if (newMeal.kidsNonVegPrice !== oldMeal.kidsNonVegPrice) changes.push(`KidsPrice(N): ${oldMeal.kidsNonVegPrice || '0'}->${newMeal.kidsNonVegPrice}`);
+
+    return changes.join(' | ');
+  };
+
   const handleIndividualSave = async (day: Day, meal: MealType) => {
     setSaving(true);
     try {
-      await updateMealMenu(day, meal, localMenu[day][meal]);
+      const oldMeal = menu[day]?.[meal] || emptyMeal;
+      const newMeal = localMenu[day][meal];
+      const changes = getMealChangeLog(oldMeal, newMeal);
+
+      await updateMealMenu(day, meal, newMeal);
       addActivityLog({
         module: ActivityModule.MENU,
         action: ActivityAction.UPDATE,
         targetId: `${day}-${meal}`,
-        description: UI_TEXT.logUpdateMenu
+        description: UI_TEXT.logUpdateMenuDetails
           .replace("{day}", getDayLabel(day, config))
           .replace("{meal}", getMealLabel(meal))
+          .replace("{changes}", changes || UI_TEXT.logUpdateMenu)
       });
       showAlert(UI_TEXT.success, UI_TEXT.menuUpdated, [
         { text: UI_TEXT.ok, onPress: () => {
@@ -132,11 +158,21 @@ export function MenuEditorScreen() {
    */
   const handleSave = async () => {
     setSaving(true);
+    const updatedMeals: string[] = [];
+    Object.keys(localMenu).forEach(dayId => {
+      ['breakfast', 'lunch', 'dinner'].forEach(m => {
+        const mKey = m as MealType;
+        if (JSON.stringify(localMenu[dayId]?.[mKey] || emptyMeal) !== JSON.stringify(menu[dayId]?.[mKey] || emptyMeal)) {
+          updatedMeals.push(`${getDayAbbr(dayId, config)} ${getMealLabel(mKey)}`);
+        }
+      });
+    });
+
     await onSave(localMenu);
     addActivityLog({
       module: ActivityModule.MENU,
       action: ActivityAction.UPDATE,
-      description: UI_TEXT.logUpdateMenuAll
+      description: `${UI_TEXT.logUpdateMenuAll}: ${updatedMeals.join(', ')}`
     });
     setSaving(false);
     showAlert(UI_TEXT.success, UI_TEXT.menuUpdated, [

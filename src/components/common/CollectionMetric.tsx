@@ -23,7 +23,7 @@ export function CollectionMetric({
     <View style={styles.collectionMetric}>
       <Ionicons name={icon} size={19} color={theme.colors.primary} />
       <Text style={styles.collectionMetricLabel}>{label}</Text>
-      <Text style={styles.collectionMetricValue}>{UI_TEXT.rs} {value.toFixed(2)}</Text>
+      <Text style={styles.collectionMetricValue}>{UI_TEXT.rs} {value.toFixed(0)}</Text>
     </View>
   );
 }

@@ -31,7 +31,7 @@ export function LoginScreen() {
   const styles = useStyles();
   const { theme, toggleTheme, themeType } = useAppTheme();
   const { width } = useWindowDimensions();
-  const isLargeScreen = width > 768;
+  const isLargeScreen = Platform.OS !== 'web' && width > 768;
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);

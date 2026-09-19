@@ -10,6 +10,9 @@ import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
 import { CounterInput } from "../components/common/CounterInput";
+import { useAuth } from "../context/AuthContext";
+import { useDatabase } from "../context/DatabaseContext";
+import { useAppNavigation } from "../context/NavigationContext";
 
 interface GuestMealCardProps {
   dayId: string;
@@ -160,10 +163,6 @@ const GuestMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, onUp
     </View>
   );
 });
-
-import { useAuth } from "../context/AuthContext";
-import { useDatabase } from "../context/DatabaseContext";
-import { useAppNavigation } from "../context/NavigationContext";
 
 export function GuestManagementScreen() {
   const { userRole, handleLogout } = useAuth();

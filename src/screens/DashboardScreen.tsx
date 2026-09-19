@@ -25,10 +25,9 @@ import {
   isParcelEnabled,
   isMealCurrent,
   getSortedMealKeys,
-  getPaymentModeLabel,
   getMealLabel,
 } from "../constants";
-import { MealMenu, UserRole, ConfigDay, MealType, DietType, AppScreen, PaymentMode, AppThemeMode } from "../types";
+import { MealMenu, UserRole, ConfigDay, MealType, DietType, AppScreen, AppThemeMode } from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
@@ -67,17 +66,6 @@ interface MealSectionProps {
   menu: MealMenu;
   userRole: UserRole;
   config: ConfigDay[];
-  onUpdateGuest: (
-    day: string,
-    type: MealType,
-    field:
-      | "guestVeg"
-      | "guestNonVeg"
-      | "guestTaken"
-      | "guestVegTaken"
-      | "guestNonVegTaken",
-    value: number
-  ) => void;
   guestEnabled: boolean;
   seasonEnabled: boolean;
   seasonName: string;
@@ -94,7 +82,6 @@ interface MealSectionProps {
     vegTaken: string;
     nonVegTaken: string;
   };
-  onFocus?: () => void;
 }
 
 /**
@@ -129,7 +116,6 @@ const DashboardMealSection = memo(
     guestEnabled,
     labels,
     seasonName,
-    onFocus,
   }: MealSectionProps) => {
     const [showChart, setShowChart] = React.useState(false);
     const [contentHeight, setContentHeight] = React.useState<number | null>(null);
@@ -897,13 +883,11 @@ export function DashboardScreen() {
                       menu={dayMenu[mKey]}
                       userRole={userRole || UserRole.VENDOR}
                       config={dayConfig}
-                      onUpdateGuest={updateGuestCount}
                       kidsEnabled={!!kidsEnabled}
                       guestEnabled={guestEnabled}
                       seasonEnabled={seasonEnabled}
                       labels={mealProps.labels as any}
                       seasonName={seasonName}
-                      onFocus={() => focusSection(`${day}-${mKey}`)}
                     />
                   </View>
                 );

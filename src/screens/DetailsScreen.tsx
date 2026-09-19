@@ -21,7 +21,6 @@ import {
   getDayAbbr,
   isMealEnabled,
   isDietaryEnabledForDay,
-  mealSummary,
   getPaymentModeLabel,
   getMemberLegend,
 } from "../constants";
@@ -46,7 +45,7 @@ export function DetailsScreen() {
   } = useDatabase();
   const { showAlert: showGlobalAlert } = useUI();
   const {
-    selectedId, selectedRecord, navigate, goBack, setEditing, setReportType
+    selectedId, selectedRecord, setSelectedId, setSelectedRecord, navigate, setEditing, setReportType
   } = useAppNavigation();
 
   const subscription = subscriptions.find(s => s.id === selectedId) || selectedRecord;
@@ -71,7 +70,25 @@ export function DetailsScreen() {
     navigate(AppScreen.FORM);
   };
   const onQr = () => navigate(AppScreen.QR);
-  const onDelete = () => deleteSubscription(subscription.id).then(() => navigate(AppScreen.HOME));
+
+  const hasNonZeroPayment = paymentConfig.enabled && (parseFloat(subscription.amount) > 0 || (subscription.payments && subscription.payments.some(p => parseFloat(p.amount) > 0)));
+  const hasAnyMealTaken = Object.values(subscription.takenByPerson || {}).some(dayList =>
+    dayList.some(t => t.breakfast || t.lunch || t.dinner || t.breakfastParcel || t.lunchParcel || t.dinnerParcel)
+  );
+
+  const canDeletePass = !hasNonZeroPayment && !hasAnyMealTaken;
+
+  const onDelete = () => deleteSubscription(subscription.id).then(() => {
+    addActivityLog({
+      module: ActivityModule.SUBSCRIPTION,
+      action: ActivityAction.DELETE,
+      targetId: subscription.id,
+      description: UI_TEXT.logDeletePass.replace("{id}", subscription.id)
+    });
+    setSelectedId("");
+    setSelectedRecord(null);
+    navigate(AppScreen.HOME);
+  });
 
   return (
     <View style={styles.root}>
@@ -144,7 +161,7 @@ export function DetailsScreen() {
                       targetId: subscription.id,
                       description: UI_TEXT.logChat.replace("{id}", subscription.id)
                     });
-                    Linking.openURL(`https://wa.me/${whatsappCountryCode || "91"}${subscription.mobile}`);
+                    Linking.openURL(`https://wa.me/${whatsappCountryCode || UI_TEXT.defaultCountryCode}${subscription.mobile}`);
                   }}
                   style={({ pressed }) => [
                     { padding: 8, borderRadius: 20, backgroundColor: theme.colors.white + "20" },
@@ -463,6 +480,7 @@ export function DetailsScreen() {
             </Pressable>
             {isAdmin && canEdit && (
                <Pressable
+                  disabled={!canDeletePass}
                   onPress={() =>
                   showGlobalAlert(
                      UI_TEXT.deleteConfirmTitle,
@@ -477,7 +495,7 @@ export function DetailsScreen() {
                      ]
                   )
                   }
-                  style={[styles.deleteButton, { flex: 1, marginTop: 0, height: 52, borderRadius: 16 }]}
+                  style={[styles.deleteButton, { flex: 1, marginTop: 0, height: 52, borderRadius: 16 }, !canDeletePass && { opacity: 0.4 }]}
                >
                   <ActionLabel
                   icon="trash-outline"

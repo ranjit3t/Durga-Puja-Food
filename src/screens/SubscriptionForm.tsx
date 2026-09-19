@@ -21,7 +21,6 @@ import {
   getActiveDays,
   blockOptions,
   mealsFromChoices,
-  resizeMealChoices,
   resizeMealSlots,
   resizeTaken,
   getDayLabel,
@@ -36,6 +35,7 @@ import {
   getMemberLegend,
   getMealLabel,
   getDietaryOptionLabel,
+  getDayAbbr,
 } from "../constants";
 import {
   Subscription,
@@ -107,46 +107,83 @@ export function SubscriptionForm() {
     }
   };
   const onHome = () => navigate(AppScreen.HOME);
+
+  const getLogDetails = (sub: Subscription, isEdit: boolean) => {
+    const activeDays = getActiveDays(dayConfig);
+
+    // 1. Build Demand Breakdown (Choices)
+    const daySummaries = activeDays.map(dayId => {
+      const slots = sub.mealSlots[dayId] || [];
+      const abbr = getDayAbbr(dayId, dayConfig);
+
+      let bV = 0, bN = 0, bP = 0;
+      let lV = 0, lN = 0, lP = 0;
+      let dV = 0, dN = 0, dP = 0;
+
+      slots.forEach(s => {
+        if (s.breakfast === DietaryOption.VEG) bV++;
+        if (s.breakfast === DietaryOption.NON_VEG) bN++;
+        if (s.breakfastParcel) bP++;
+
+        if (s.lunch === DietaryOption.VEG) lV++;
+        if (s.lunch === DietaryOption.NON_VEG) lN++;
+        if (s.lunchParcel) lP++;
+
+        if (s.dinner === DietaryOption.VEG) dV++;
+        if (s.dinner === DietaryOption.NON_VEG) dN++;
+        if (s.dinnerParcel) dP++;
+      });
+
+      const parts = [];
+      if (bV+bN > 0) parts.push(`B:${bV}${UI_TEXT.vegAbbr}${bN}${UI_TEXT.nonVegAbbr}${bP > 0 ? `(${bP}${UI_TEXT.parcelAbbr})` : ''}`);
+      if (lV+lN > 0) parts.push(`L:${lV}${UI_TEXT.vegAbbr}${lN}${UI_TEXT.nonVegAbbr}${lP > 0 ? `(${lP}${UI_TEXT.parcelAbbr})` : ''}`);
+      if (dV+dN > 0) parts.push(`D:${dV}${UI_TEXT.vegAbbr}${dN}${UI_TEXT.nonVegAbbr}${dP > 0 ? `(${dP}${UI_TEXT.parcelAbbr})` : ''}`);
+
+      return parts.length > 0 ? `${abbr}: ${parts.join(' ')}` : null;
+    }).filter(Boolean);
+
+    // 2. Calculate Collection Counts
+    const getCounts = (s: Subscription) => {
+      let ft = 0, pt = 0;
+      Object.values(s.takenByPerson || {}).forEach(dayList => {
+        dayList.forEach(t => {
+          if (t.breakfast) ft++;
+          if (t.lunch) ft++;
+          if (t.dinner) ft++;
+          if (t.breakfastParcel) pt++;
+          if (t.lunchParcel) pt++;
+          if (t.dinnerParcel) pt++;
+        });
+      });
+      return { ft, pt };
+    };
+
+    const oldCounts = getCounts(value);
+    const newCounts = getCounts(sub);
+
+    let detailedDesc = (isEdit ? UI_TEXT.logEditPass : UI_TEXT.logAddPass)
+      .replace("{id}", sub.id)
+      .replace("{adults}", String(sub.peopleCount))
+      .replace("{kids}", String(sub.kidsCount || 0))
+      .replace("{amount}", sub.amount);
+
+    detailedDesc += ` | ${daySummaries.join(' | ')}`;
+    detailedDesc += ` | Taken: ${newCounts.ft} (was ${oldCounts.ft})`;
+    if (newCounts.pt > 0 || oldCounts.pt > 0) {
+      detailedDesc += `, P-Taken: ${newCounts.pt} (was ${oldCounts.pt})`;
+    }
+
+    return detailedDesc;
+  };
+
   const onSave = async (next: Subscription) => {
     try {
       if (await upsertSubscription(next)) {
-        // Build detailed description for log
-        let parcelCount = 0;
-        let vegCount = 0;
-        let nonVegCount = 0;
-
-        Object.values(next.mealSlots).forEach(daySlots => {
-          daySlots.forEach(slot => {
-            if (slot.breakfastParcel) parcelCount++;
-            if (slot.lunchParcel) parcelCount++;
-            if (slot.dinnerParcel) parcelCount++;
-
-            if (slot.breakfast === DietaryOption.VEG) vegCount++;
-            if (slot.lunch === DietaryOption.VEG) vegCount++;
-            if (slot.dinner === DietaryOption.VEG) vegCount++;
-
-            if (slot.breakfast === DietaryOption.NON_VEG) nonVegCount++;
-            if (slot.lunch === DietaryOption.NON_VEG) nonVegCount++;
-            if (slot.dinner === DietaryOption.NON_VEG) nonVegCount++;
-          });
-        });
-
-        let detailedDesc = (lockIdentity ? UI_TEXT.logEditPass : UI_TEXT.logAddPass)
-          .replace("{id}", next.id)
-          .replace("{adults}", String(next.peopleCount))
-          .replace("{kids}", String(next.kidsCount || 0))
-          .replace("{amount}", next.amount);
-
-        detailedDesc += UI_TEXT.logMealSplitSuffix.replace("{v}", String(vegCount)).replace("{n}", String(nonVegCount));
-        if (parcelCount > 0) {
-          detailedDesc += UI_TEXT.logParcelSuffix.replace("{count}", String(parcelCount));
-        }
-
         addActivityLog({
           module: ActivityModule.SUBSCRIPTION,
           action: lockIdentity ? ActivityAction.UPDATE : ActivityAction.CREATE,
           targetId: next.id,
-          description: detailedDesc
+          description: getLogDetails(next, lockIdentity)
         });
         setSelectedId(next.id);
         setSelectedRecord(next);
@@ -161,44 +198,11 @@ export function SubscriptionForm() {
   const onSaveQr = async (next: Subscription) => {
     try {
       if (await upsertSubscription(next)) {
-        // Build detailed description for log
-        let parcelCount = 0;
-        let vegCount = 0;
-        let nonVegCount = 0;
-
-        Object.values(next.mealSlots).forEach(daySlots => {
-          daySlots.forEach(slot => {
-            if (slot.breakfastParcel) parcelCount++;
-            if (slot.lunchParcel) parcelCount++;
-            if (slot.dinnerParcel) parcelCount++;
-
-            if (slot.breakfast === DietaryOption.VEG) vegCount++;
-            if (slot.lunch === DietaryOption.VEG) vegCount++;
-            if (slot.dinner === DietaryOption.VEG) vegCount++;
-
-            if (slot.breakfast === DietaryOption.NON_VEG) nonVegCount++;
-            if (slot.lunch === DietaryOption.NON_VEG) nonVegCount++;
-            if (slot.dinner === DietaryOption.NON_VEG) nonVegCount++;
-          });
-        });
-
-        let detailedDesc = (lockIdentity ? UI_TEXT.logEditPass : UI_TEXT.logAddPass)
-          .replace("{id}", next.id)
-          .replace("{adults}", String(next.peopleCount))
-          .replace("{kids}", String(next.kidsCount || 0))
-          .replace("{amount}", next.amount);
-
-        detailedDesc += UI_TEXT.logMealSplitSuffix.replace("{v}", String(vegCount)).replace("{n}", String(nonVegCount));
-        if (parcelCount > 0) {
-          detailedDesc += UI_TEXT.logParcelSuffix.replace("{count}", String(parcelCount));
-        }
-        detailedDesc += " (QR)";
-
         addActivityLog({
           module: ActivityModule.SUBSCRIPTION,
           action: lockIdentity ? ActivityAction.UPDATE : ActivityAction.CREATE,
           targetId: next.id,
-          description: detailedDesc
+          description: getLogDetails(next, lockIdentity) + " (QR)"
         });
         setSelectedId(next.id);
         setSelectedRecord(next);
@@ -209,17 +213,29 @@ export function SubscriptionForm() {
     }
   };
 
+  const hasNonZeroPayment = paymentConfig.enabled && (parseFloat(value.amount) > 0 || (value.payments && value.payments.some(p => parseFloat(p.amount) > 0)));
+  const hasAnyMealTaken = Object.values(value.takenByPerson || {}).some(dayList =>
+    dayList.some(t => t.breakfast || t.lunch || t.dinner || t.breakfastParcel || t.lunchParcel || t.dinnerParcel)
+  );
+
+  const canDeletePass = !hasNonZeroPayment && !hasAnyMealTaken;
+
   const onDelete = lockIdentity ? () => showGlobalAlert(UI_TEXT.deleteConfirmTitle, `${UI_TEXT.deleteConfirmMessage}${value.id}${UI_TEXT.deleteConfirmMessageSuffix}`, [
     { text: UI_TEXT.cancel, style: "cancel" },
-    { text: UI_TEXT.deleteButton, style: "destructive", onPress: () => void deleteSubscription(value.id).then(() => {
-        addActivityLog({
-          module: ActivityModule.SUBSCRIPTION,
-          action: ActivityAction.DELETE,
-          targetId: value.id,
-          description: UI_TEXT.logDeletePass.replace("{id}", value.id)
+    { text: UI_TEXT.deleteButton, style: "destructive", onPress: () => {
+        if (!canDeletePass) return;
+        void deleteSubscription(value.id).then(() => {
+          addActivityLog({
+            module: ActivityModule.SUBSCRIPTION,
+            action: ActivityAction.DELETE,
+            targetId: value.id,
+            description: UI_TEXT.logDeletePass.replace("{id}", value.id)
+          });
+          setSelectedId("");
+          setSelectedRecord(null);
+          navigate(AppScreen.HOME);
         });
-        navigate(AppScreen.HOME);
-    }) },
+    } },
   ]) : undefined;
 
   const enabledMethods = getEnabledPaymentMethods({
@@ -965,7 +981,7 @@ export function SubscriptionForm() {
                 return (
                   <View style={{ marginTop: 20 }}>
                     <View style={{ marginBottom: 12 }}>
-                      <Text style={[styles.currentChoice, { marginTop: 0, fontSize: 16, marginBottom: 8 }]}>{UI_TEXT.parcelCollection || "Parcel taken by member"}</Text>
+                      <Text style={[styles.currentChoice, { marginTop: 0, fontSize: 16, marginBottom: 8 }]}>{UI_TEXT.parcelTakenByMember}</Text>
                     </View>
                     <View style={styles.choiceRow}>
                       {getSortedMealKeys(selectedDay, dayConfig)
@@ -1178,9 +1194,10 @@ export function SubscriptionForm() {
 
           {isAdmin && canEdit && onDelete ? (
             <Pressable
+              disabled={!canDeletePass}
               accessibilityLabel={UI_TEXT.deleteFlatRecord}
               onPress={onDelete}
-              style={[styles.deleteButton, { marginTop: 24 }]}
+              style={[styles.deleteButton, { marginTop: 24 }, !canDeletePass && { opacity: 0.4 }]}
             >
               <ActionLabel
                 icon="trash-outline"

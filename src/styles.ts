@@ -15,6 +15,7 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
   const TYPOGRAPHY = theme?.typography || defaultTheme.typography;
 
   const isLargeScreen = width > 768;
+  const isWeb = Platform.OS === 'web';
   const MAX_WIDTH = 600;
 
   if (!theme) return {} as any;
@@ -32,6 +33,11 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
     },
     center: { justifyContent: "center", alignItems: "center" },
     backgroundImage: { opacity: 0.15 },
+    loadingText: {
+      marginTop: 12,
+      color: COLORS.textSecondary,
+      fontWeight: "600",
+    },
 
     // Header & Navigation
     header: {
@@ -42,31 +48,8 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
       borderBottomWidth: 1,
       borderBottomColor: COLORS.border,
       width: "100%",
-      maxWidth: isLargeScreen ? MAX_WIDTH : undefined,
+      maxWidth: (isLargeScreen && !isWeb) ? MAX_WIDTH : undefined,
       alignSelf: "center",
-    },
-    headerFestive: {
-      backgroundColor: COLORS.primary,
-      paddingTop: Platform.OS === "ios" ? 64 : 54,
-      paddingHorizontal: SIZES.paddingMedium,
-      paddingBottom: 32,
-      width: "100%",
-      maxWidth: isLargeScreen ? MAX_WIDTH : undefined,
-      alignSelf: "center",
-    },
-    eyebrow: {
-      color: COLORS.secondary,
-      fontSize: 12,
-      fontWeight: "700",
-      letterSpacing: 2,
-      textTransform: "uppercase",
-    },
-    eyebrowLight: {
-      color: COLORS.white + "CC",
-      fontSize: 12,
-      fontWeight: "700",
-      letterSpacing: 2,
-      textTransform: "uppercase",
     },
     title: {
       color: COLORS.textPrimary,
@@ -75,21 +58,8 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
       marginTop: 8,
       letterSpacing: -0.5,
     },
-    titleLight: {
-      color: COLORS.white,
-      fontSize: TYPOGRAPHY.titleSize,
-      fontWeight: "900",
-      marginTop: 8,
-      letterSpacing: -0.5,
-    },
     subtitle: {
       color: COLORS.textSecondary,
-      fontSize: TYPOGRAPHY.subtitleSize,
-      marginTop: 6,
-      lineHeight: 22,
-    },
-    subtitleLight: {
-      color: COLORS.white + "D9",
       fontSize: TYPOGRAPHY.subtitleSize,
       marginTop: 6,
       lineHeight: 22,
@@ -102,14 +72,6 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
       alignItems: "center",
       justifyContent: "center",
     },
-    backButtonLight: {
-      height: 40,
-      paddingHorizontal: 8,
-      borderRadius: 20,
-      backgroundColor: COLORS.white + "33",
-      alignItems: "center",
-      justifyContent: "center",
-    },
 
     // Main Content
     content: {
@@ -117,7 +79,7 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
       padding: SIZES.paddingMedium,
       paddingBottom: 150,
       width: "100%",
-      maxWidth: isLargeScreen ? MAX_WIDTH : undefined,
+      maxWidth: (isLargeScreen && !isWeb) ? MAX_WIDTH : undefined,
       alignSelf: "center",
     },
 
@@ -233,51 +195,6 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
       marginTop: 4,
     },
 
-    // Dashboard Financial Card (Sleek Look)
-    collectionCard: {
-      backgroundColor: COLORS.surface,
-      borderRadius: 28,
-      padding: SIZES.paddingLarge,
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 20,
-      marginBottom: 32,
-      borderWidth: 1,
-      borderColor: COLORS.border,
-      ...Platform.select({
-        ios: {
-          shadowColor: COLORS.shadow,
-          shadowOffset: { width: 0, height: 12 },
-          shadowOpacity: 0.08,
-          shadowRadius: 20,
-        },
-        android: {
-          elevation: 6,
-        },
-      }),
-    },
-    collectionLabel: {
-      color: COLORS.secondary,
-      fontSize: 12,
-      fontWeight: "800",
-      letterSpacing: 1.2,
-      textTransform: "uppercase",
-      opacity: 0.7,
-    },
-    collectionAmount: {
-      color: COLORS.textPrimary,
-      fontSize: 32,
-      fontWeight: "900",
-      marginTop: 2,
-      letterSpacing: -0.5,
-    },
-    collectionBreakdown: {
-      color: COLORS.textSecondary,
-      fontSize: 13,
-      fontWeight: "600",
-      marginTop: 6,
-      opacity: 0.9,
-    },
     collectionMetric: {
       backgroundColor: COLORS.surface,
       borderRadius: 16,
@@ -622,7 +539,7 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
       alignItems: "center",
       padding: SIZES.paddingMedium,
       width: "100%",
-      maxWidth: isLargeScreen ? MAX_WIDTH : undefined,
+      maxWidth: (isLargeScreen && !isWeb) ? MAX_WIDTH : undefined,
       alignSelf: "center",
     },
     qrBox: {

@@ -39,7 +39,7 @@ export function ViewMenuScreen() {
       module: ActivityModule.MENU,
       action: ActivityAction.VIEW,
       targetId: day ? (meal ? `${day}-${meal}` : day) : "all",
-      description: day ? `Opening editor for ${getDayLabel(day, dayConfig)}` : "Opening overall menu editor"
+      description: day ? UI_TEXT.logOpenEditor.replace("{day}", getDayLabel(day, dayConfig)) : UI_TEXT.logOpenMenuEditor
     });
     if (day) setTargetDay(day);
     if (meal) setTargetMeal(meal);

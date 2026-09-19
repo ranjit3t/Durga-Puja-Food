@@ -93,7 +93,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
   const [mobileEnabled, setMobileEnabled] = useState(true);
   const [foodPriceEnabled, setFoodPriceEnabled] = useState(false);
   const [kidsEnabled, setKidsEnabled] = useState(false);
-  const [whatsappCountryCode, setWhatsappCountryCode] = useState("91");
+  const [whatsappCountryCode, setWhatsappCountryCode] = useState(UI_TEXT.defaultCountryCode);
 
   const getAuthConfig = useCallback(() => repository.getAuthConfig(), []);
 
@@ -105,7 +105,8 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       timestamp: Date.now(),
       userName: user,
       os: Platform.OS,
-      device: Platform.Version ? String(Platform.Version) : undefined
+      device: Platform.Version ? String(Platform.Version) : undefined,
+      appVersion: UI_TEXT.appVersion
     }).catch(err => console.error("Failed to add activity log:", err));
   }, [userName]);
 
@@ -186,9 +187,15 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
 
   const deleteSubscription = useCallback(async (id: string) => {
     try {
+      // Optimistic Update: Remove from local state first
+      setSubscriptions(prev => prev.filter(sub => sub.id !== id));
+
       await repository.remove(id);
+      // Optional: Full refresh to sync any other concurrent changes
       await refreshAllData(true);
     } catch (err: any) {
+      // If error occurs, we need to refresh to restore the potentially valid state
+      await refreshAllData(true);
       addActivityLog({
         module: ActivityModule.SUBSCRIPTION,
         action: ActivityAction.ERROR,
@@ -302,6 +309,23 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
        const isParcel = slot.includes("Parcel");
        const mealKey = isParcel ? slot.replace("Parcel", "") : slot;
 
+       const sub = subscriptions.find(s => s.id === flatId);
+       let collectionInfo = "";
+       if (sub) {
+         let ft = 0, pt = 0;
+         Object.values(sub.takenByPerson || {}).forEach(dayList => {
+           dayList.forEach(t => {
+             if (t.breakfast) ft++;
+             if (t.lunch) ft++;
+             if (t.dinner) ft++;
+             if (t.breakfastParcel) pt++;
+             if (t.lunchParcel) pt++;
+             if (t.dinnerParcel) pt++;
+           });
+         });
+         collectionInfo = ` | Total Taken: ${ft}, P-Taken: ${pt}`;
+       }
+
        addActivityLog({
          module: ActivityModule.SUBSCRIPTION,
          action: ActivityAction.UPDATE,
@@ -310,7 +334,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
            .replace("{flatId}", flatId)
            .replace("{meal}", getMealLabel(mealKey as MealType))
            .replace("{person}", `Member ${personIndex + 1}`)
-           .replace("{status}", taken ? UI_TEXT.taken : UI_TEXT.missed)
+           .replace("{status}", taken ? UI_TEXT.taken : UI_TEXT.missed) + collectionInfo
        });
      } catch (err: any) {
        addActivityLog({

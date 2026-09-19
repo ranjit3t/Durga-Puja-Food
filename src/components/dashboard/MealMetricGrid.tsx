@@ -4,8 +4,7 @@ import { useStyles } from "../../styles";
 import { useAppTheme } from "../../theme";
 import { UI_TEXT } from "../../strings";
 import { Metric } from "../common/Metric";
-import { isParcelEnabled } from "../../constants";
-import { ConfigDay, MealType } from "../../domain";
+import { MealType } from "../../domain";
 
 export interface MealMetricProps {
   day: string;
@@ -28,7 +27,6 @@ export interface MealMetricProps {
   kidsNonVeg: number;
   kidsVegTaken: number;
   kidsNonVegTaken: number;
-  config: ConfigDay[];
   kidsEnabled: boolean;
   guestEnabled: boolean;
   isBothEnabled: boolean;
@@ -54,11 +52,11 @@ export function MealMetricGrid(props: MealMetricProps) {
   const styles = useStyles();
   const { theme } = useAppTheme();
   const {
-    day, type, total, veg, nonVeg, parcel, parcelTaken,
+    total, veg, nonVeg, parcel, parcelTaken,
     totalVegTaken, totalNonVegTaken, guestVeg, guestNonVeg,
     guestVegTaken, guestNonVegTaken, totalMealTaken,
     kidsTotal, kidsTaken, kidsVeg, kidsNonVeg, kidsVegTaken, kidsNonVegTaken,
-    config, guestEnabled, kidsEnabled, isBothEnabled, labels
+    guestEnabled, kidsEnabled, isBothEnabled, labels
   } = props;
 
   const hasKids = kidsEnabled;
