@@ -1,7 +1,7 @@
 import React from "react";
 import { View, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useStyles } from "../../styles";
+import { useStyles, useScaling } from "../../styles";
 import { useAppTheme } from "../../theme";
 
 /**
@@ -21,12 +21,15 @@ export function ActionLabel({
   vertical?: boolean;
 }) {
   const styles = useStyles();
+  const { s, v } = useScaling();
   const { theme } = useAppTheme();
   const finalColor = color || theme.colors.textSecondary;
+  const iconSize = s(size);
+
   return (
-    <View style={[styles.actionLabel, vertical && { flexDirection: 'column', gap: 4 }]}>
-      <Ionicons name={icon} size={size} color={finalColor} />
-      <Text style={[styles.actionLabelText, { color: finalColor }, vertical && { fontSize: 11, textAlign: 'center' }]}>{label}</Text>
+    <View style={[styles.actionLabel, vertical && { flexDirection: 'column', gap: v(s(4)) }]}>
+      <Ionicons name={icon} size={iconSize} color={finalColor} />
+      <Text style={[styles.actionLabelText, { color: finalColor }, vertical && { fontSize: s(11), textAlign: 'center' }]}>{label}</Text>
     </View>
   );
 }

@@ -1,7 +1,7 @@
 import React from "react";
 import { View, Text, ScrollView, Pressable, StatusBar, useWindowDimensions, Linking } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useStyles } from "../styles";
+import { useStyles, useScaling } from "../styles";
 import { useAppTheme, StatusBarStyleMode } from "../theme";
 import { UI_TEXT } from "../strings";
 import { useAuth } from "../context/AuthContext";
@@ -15,6 +15,7 @@ import { LogoutButton } from "../components/common/LogoutButton";
 
 export function HomeScreen() {
   const styles = useStyles();
+  const { s, v, isWeb } = useScaling();
   const { theme, themeType, toggleTheme } = useAppTheme();
   const { userRole, handleLogout } = useAuth();
   const {
@@ -25,12 +26,15 @@ export function HomeScreen() {
   const { width } = useWindowDimensions();
 
   const isNarrow = width < 400;
-  const cardPadding = isNarrow ? 22 : 30;
-  const cardMinHeight = isNarrow ? 120 : 160;
-  const mainFontSize = isNarrow ? 24 : 32;
-  const secondaryFontSize = isNarrow ? 20 : 26;
-  const labelFontSize = isNarrow ? 11 : 13;
-  const rowGap = isNarrow ? 12 : 18;
+  const cardPadding = isNarrow ? 22 : s(30);
+  const cardMinHeight = isNarrow ? 120 : (isWeb ? s(140) : s(160));
+  const mainFontSize = isNarrow ? 24 : s(32);
+  const secondaryFontSize = isNarrow ? 20 : s(26);
+  const labelFontSize = isNarrow ? 11 : s(13);
+  const rowGap = isNarrow ? 12 : s(15);
+  const iconSize = s(18);
+  const actionIconSize = s(140);
+  const actionIconSizeLarge = s(180);
 
   // Find if there is an active current meal going on right now
   const summaryCounts = React.useMemo(() => {
@@ -152,27 +156,27 @@ export function HomeScreen() {
           </Pressable>
         ) : null}
 
-        <Pressable onPress={navigate.bind(null, AppScreen.SUBSCRIPTION_LIST)} style={[styles.summary, { padding: cardPadding, marginBottom: 16, overflow: 'hidden', minHeight: cardMinHeight }]}>
+        <Pressable onPress={navigate.bind(null, AppScreen.SUBSCRIPTION_LIST)} style={[styles.summary, { padding: cardPadding, marginBottom: s(16), overflow: 'hidden', minHeight: cardMinHeight }]}>
           <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center', opacity: 0.08 }}>
-            <Ionicons name="ticket-outline" size={isNarrow ? 140 : 180} color={theme.colors.white} />
+            <Ionicons name="ticket-outline" size={isNarrow ? 140 : actionIconSizeLarge} color={theme.colors.white} />
           </View>
 
           <View style={{ flex: 1, justifyContent: 'center' }}>
-            {!!seasonName && <Text style={[styles.summaryLabel, { marginBottom: isNarrow ? 10 : 16, color: theme.colors.secondary, fontSize: isNarrow ? 9 : 11 }]}>{seasonName}</Text>}
+            {!!seasonName && <Text style={[styles.summaryLabel, { marginBottom: isNarrow ? 10 : s(16), color: theme.colors.secondary, fontSize: isNarrow ? 9 : s(11) }]}>{seasonName}</Text>}
 
             <View style={{ gap: rowGap }}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flexWrap: 'wrap' }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: s(12), flexWrap: 'wrap' }}>
                 <Text style={[styles.summaryLabel, { fontSize: labelFontSize }]}>{UI_TEXT.activePasses}:</Text>
                 <Text style={[styles.summaryNumber, { fontSize: mainFontSize, marginTop: 0, lineHeight: mainFontSize + 4 }]}>{subscriptions.length}</Text>
               </View>
 
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flexWrap: 'wrap' }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: s(12), flexWrap: 'wrap' }}>
                 <Text style={[styles.summaryLabel, { opacity: 0.8, fontSize: labelFontSize }]}>{UI_TEXT.totalPeopleLabel}:</Text>
                 <Text style={[styles.summaryNumber, { fontSize: secondaryFontSize, marginTop: 0, lineHeight: secondaryFontSize + 4 }]}>
                   {totalPeople}
                 </Text>
                 {kidsEnabled && (
-                  <Text style={{ fontSize: labelFontSize, color: theme.colors.white, opacity: 0.7, fontWeight: '700', marginLeft: -4 }}>
+                  <Text style={{ fontSize: labelFontSize, color: theme.colors.white, opacity: 0.7, fontWeight: '700', marginLeft: s(-4) }}>
                     {UI_TEXT.openParen}
                     {summaryCounts.adults}{UI_TEXT.space}{summaryCounts.adults === 1 ? UI_TEXT.adult : UI_TEXT.adults}
                     {UI_TEXT.plus}
@@ -183,7 +187,7 @@ export function HomeScreen() {
               </View>
 
               {guestEnabled && (
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flexWrap: 'wrap' }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: s(12), flexWrap: 'wrap' }}>
                   <Text style={[styles.summaryLabel, { opacity: 0.8, fontSize: labelFontSize }]}>{UI_TEXT.totalGuests}{UI_TEXT.colon}</Text>
                   <Text style={[styles.summaryNumber, { fontSize: secondaryFontSize, marginTop: 0, lineHeight: secondaryFontSize + 4 }]}>
                     {guestSummary.seasonTotal}
@@ -191,13 +195,13 @@ export function HomeScreen() {
                 </View>
               )}
 
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flexWrap: 'wrap' }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: s(12), flexWrap: 'wrap' }}>
                 <Text style={[styles.summaryLabel, { opacity: 0.8, fontSize: labelFontSize }]}>{UI_TEXT.totalPlates.toUpperCase()}:</Text>
                 <Text style={[styles.summaryNumber, { fontSize: secondaryFontSize, marginTop: 0, lineHeight: secondaryFontSize + 4 }]}>
                   {summaryCounts.totalPlates}
                 </Text>
                 {isVegEnabledGlobally && isNonVegEnabledGlobally && (
-                  <Text style={{ fontSize: labelFontSize, color: theme.colors.white, opacity: 0.7, fontWeight: '700', marginLeft: -4 }}>
+                  <Text style={{ fontSize: labelFontSize, color: theme.colors.white, opacity: 0.7, fontWeight: '700', marginLeft: s(-4) }}>
                     {UI_TEXT.openParen}
                     {summaryCounts.vegPlates}{UI_TEXT.space}{UI_TEXT.vegLabel}
                     {UI_TEXT.pipe}
@@ -208,7 +212,7 @@ export function HomeScreen() {
               </View>
 
               {paymentConfig?.enabled && (
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flexWrap: 'wrap' }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: s(12), flexWrap: 'wrap' }}>
                   <Text style={[styles.summaryLabel, { opacity: 0.8, fontSize: labelFontSize }]}>{UI_TEXT.totalCollection}{UI_TEXT.colon}</Text>
                   <Text style={[styles.summaryNumber, { fontSize: secondaryFontSize, marginTop: 0, lineHeight: secondaryFontSize + 4 }]}>{UI_TEXT.rs}{UI_TEXT.space}{collections.total.toLocaleString()}</Text>
                 </View>
@@ -220,10 +224,10 @@ export function HomeScreen() {
             {currentMealInfo ? (
               <Pressable
                 onPress={() => navigate(AppScreen.DASHBOARD)}
-                style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: theme.colors.white + "33", paddingHorizontal: isNarrow ? 8 : 10, paddingVertical: 5, borderRadius: 8 }}
+                style={{ flexDirection: "row", alignItems: "center", gap: s(4), backgroundColor: theme.colors.white + "33", paddingHorizontal: isNarrow ? 8 : s(10), paddingVertical: s(5), borderRadius: s(8) }}
               >
-                <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: theme.colors.success }} />
-                <Text style={{ fontSize: isNarrow ? 9 : 10, fontWeight: "900", color: theme.colors.white }}>
+                <View style={{ width: s(5), height: s(5), borderRadius: s(2.5), backgroundColor: theme.colors.success }} />
+                <Text style={{ fontSize: isNarrow ? 9 : s(10), fontWeight: "900", color: theme.colors.white }}>
                   {currentMealInfo.dayLabel.toUpperCase()}{UI_TEXT.space}{currentMealInfo.mealLabel.toUpperCase()}
                 </Text>
               </Pressable>
@@ -234,43 +238,43 @@ export function HomeScreen() {
         <View style={styles.compactActions}>
           {userRole === UserRole.ADMIN && seasonEnabled && !isSeasonDone(dayConfig) && (
             <Pressable accessibilityLabel={UI_TEXT.addFlat} onPress={() => startNew(dayConfig, seasonName, paymentConfig, guestEnabled, true, seasonEnabled)} style={[styles.compactSecondary, { backgroundColor: theme.colors.success, borderColor: theme.colors.success }]} disabled={getActiveDays(dayConfig).length === 0}>
-              <ActionLabel icon="add-circle-outline" label={UI_TEXT.addFlat} color={theme.colors.white} size={18} vertical />
+              <ActionLabel icon="add-circle-outline" label={UI_TEXT.addFlat} color={theme.colors.white} size={iconSize} vertical />
             </Pressable>
           )}
           {guestEnabled && (
             <Pressable accessibilityLabel={UI_TEXT.guestButton} onPress={() => navigate(AppScreen.GUEST_MANAGEMENT)} style={[styles.compactSecondary, { backgroundColor: theme.cardColors[2].accent, borderColor: theme.cardColors[2].accent }]}>
-              <ActionLabel icon="people-circle-outline" label={UI_TEXT.guestButton} color={theme.colors.white} size={18} vertical />
+              <ActionLabel icon="people-circle-outline" label={UI_TEXT.guestButton} color={theme.colors.white} size={iconSize} vertical />
             </Pressable>
           )}
           <Pressable accessibilityLabel={UI_TEXT.subscriptions} onPress={() => navigate(AppScreen.SUBSCRIPTION_LIST)} style={[styles.compactSecondary, { backgroundColor: theme.cardColors[1].accent, borderColor: theme.cardColors[1].accent }]}>
-            <ActionLabel icon="list-outline" label={UI_TEXT.subscriptions} color={theme.colors.white} size={18} vertical />
+            <ActionLabel icon="list-outline" label={UI_TEXT.subscriptions} color={theme.colors.white} size={iconSize} vertical />
           </Pressable>
           <Pressable accessibilityLabel={UI_TEXT.scanQr} onPress={() => navigate(AppScreen.SCANNER)} style={[styles.compactSecondary, { backgroundColor: theme.cardColors[4].accent, borderColor: theme.cardColors[4].accent }]}>
-            <ActionLabel icon="scan-outline" label={UI_TEXT.scanQr} color={theme.colors.white} size={18} vertical />
+            <ActionLabel icon="scan-outline" label={UI_TEXT.scanQr} color={theme.colors.white} size={iconSize} vertical />
           </Pressable>
           <Pressable accessibilityLabel={UI_TEXT.dashboard} onPress={() => navigate(AppScreen.DASHBOARD)} style={[styles.compactSecondary, { backgroundColor: theme.cardColors[3].accent, borderColor: theme.cardColors[3].accent }]}>
-            <ActionLabel icon="stats-chart-outline" label={UI_TEXT.dashboard} color={theme.colors.white} size={18} vertical />
+            <ActionLabel icon="stats-chart-outline" label={UI_TEXT.dashboard} color={theme.colors.white} size={iconSize} vertical />
           </Pressable>
           <Pressable accessibilityLabel={UI_TEXT.report} onPress={() => navigate(AppScreen.REPORT)} style={[styles.compactSecondary, { backgroundColor: theme.cardColors[5].accent, borderColor: theme.cardColors[5].accent }]}>
-            <ActionLabel icon="document-text-outline" label={UI_TEXT.report} color={theme.colors.white} size={18} vertical />
+            <ActionLabel icon="document-text-outline" label={UI_TEXT.report} color={theme.colors.white} size={iconSize} vertical />
           </Pressable>
           <Pressable accessibilityLabel={UI_TEXT.viewMenu} onPress={() => navigate(AppScreen.VIEW_MENU)} style={[styles.compactSecondary, { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary }]}>
-            <ActionLabel icon="restaurant-outline" label={UI_TEXT.viewMenu} color={theme.colors.white} size={18} vertical />
+            <ActionLabel icon="restaurant-outline" label={UI_TEXT.viewMenu} color={theme.colors.white} size={iconSize} vertical />
           </Pressable>
           {userRole === UserRole.ADMIN && (
             <>
               <Pressable accessibilityLabel={UI_TEXT.activityLog} onPress={() => navigate(AppScreen.ACTIVITY_LOG)} style={[styles.compactSecondary, { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary }]}>
-                <ActionLabel icon="time-outline" label={UI_TEXT.activityLog} color={theme.colors.white} size={18} vertical />
+                <ActionLabel icon="time-outline" label={UI_TEXT.activityLog} color={theme.colors.white} size={iconSize} vertical />
               </Pressable>
               <Pressable accessibilityLabel={UI_TEXT.settings} onPress={() => navigate(AppScreen.SETTINGS)} style={[styles.compactSecondary, { backgroundColor: theme.colors.textMuted, borderColor: theme.colors.textMuted }]}>
-                <ActionLabel icon="settings-outline" label={UI_TEXT.settings} color={theme.colors.white} size={18} vertical />
+                <ActionLabel icon="settings-outline" label={UI_TEXT.settings} color={theme.colors.white} size={iconSize} vertical />
               </Pressable>
               <Pressable
                 accessibilityLabel={UI_TEXT.reportBug}
                 onPress={() => Linking.openURL(`mailto:${UI_TEXT.supportEmail}?subject=${encodeURIComponent(UI_TEXT.bugReportSubject)}`)}
                 style={[styles.compactSecondary, { backgroundColor: theme.colors.error, borderColor: theme.colors.error }]}
               >
-                <ActionLabel icon="bug-outline" label={UI_TEXT.reportBug} color={theme.colors.white} size={18} vertical />
+                <ActionLabel icon="bug-outline" label={UI_TEXT.reportBug} color={theme.colors.white} size={iconSize} vertical />
               </Pressable>
             </>
           )}

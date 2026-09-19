@@ -30,8 +30,6 @@ export function LoginScreen() {
   const { showAlert } = useUI();
   const styles = useStyles();
   const { theme, toggleTheme, themeType } = useAppTheme();
-  const { width } = useWindowDimensions();
-  const isLargeScreen = Platform.OS !== 'web' && width > 768;
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -96,7 +94,7 @@ export function LoginScreen() {
           contentContainerStyle={{ flexGrow: 1, paddingBottom: 100 }}
           keyboardShouldPersistTaps="handled"
         >
-          <View style={[styles.loginContainer, isLargeScreen && { alignSelf: 'center', width: '100%', maxWidth: 600 }]}>
+          <View style={styles.loginContainer}>
             <View style={styles.loginLogo}>
                <Ionicons name="restaurant" size={48} color={theme.colors.white} />
             </View>

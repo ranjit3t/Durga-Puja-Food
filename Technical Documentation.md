@@ -79,7 +79,14 @@ The application employs a **Zero-Hardcoding Policy** for UI text and Domain enti
 ### F. Dynamic Theme & Responsive Engine
 - **Context System**: Built on React Context API (`ThemeProvider`), facilitating instant styling updates without re-mounting the component tree.
 - **Hook Architecture**: `useAppTheme()` provides raw theme tokens, while `useStyles()` provides memoized, theme-specific and **dimension-aware** styles generated via `createStyles`.
-- **Responsive Logic**: Integrates `useWindowDimensions` to automatically apply a centered, 600px max-width layout on large native displays (iOS/Android Tablets), while enabling **100% full-width scaling on Web browsers** to maximize desktop monitor real estate.
+- **Scaling Utilities (`useScaling`)**: A core utility hook that provides two transformation functions used across all screens:
+    - **`s(size)`**: Scales a numeric value based on a `scalingFactor`. On Web, this increases by **15-30%** to ensure legibility on desktop monitors.
+    - **`v(size)`**: Applies a vertical compaction multiplier (**0.85x - 0.9x**) on Web. This allows dense screens like the Dashboard and Home grid to fit within a single viewport height.
+- **Responsive Logic**: Integrates `useWindowDimensions` to automatically apply a centered, 600px max-width layout on large native displays (iOS/Android Tablets). On **Web browsers**, it implements a flexible "Centered Column" pattern that expands to fill the monitor while maintaining a readable maximum width for core content.
+- **Web Polish**: Injects platform-specific CSS-like properties for web:
+    - **`cursor: 'pointer'`**: Applied to all interactive `Pressable` components.
+    - **`boxShadow`**: Higher fidelity shadows for cards and modals on desktop.
+    - **Centered Modals**: Dropdown selectors and alerts appear centered in the browser window rather than sliding from the bottom.
 - **Local Persistence**: User-specific preferences (like theme) are decoupled from the Firebase global state and stored using `AsyncStorage`.
 
 ### F. Layout & Scrollability Optimization

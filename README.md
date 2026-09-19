@@ -4,6 +4,13 @@ A robust Expo React Native application designed for food admins and volunteers t
 
 ## ✨ Key Features
 
+### 🌐 Cross-Platform Web Support
+- **First-Class Browser Experience**: Fully optimized for web browsers with a professional, desktop-class interface.
+- **Adaptive Screen Scaling**: The system detects high-resolution monitors and automatically scales typography and interactive elements for maximum legibility.
+- **High-Density Web Layout**: On wide screens, the UI intelligently uses the available space, expanding grids and centering content in a readable column.
+- **Vertical Optimization**: Specifically optimized to fit dense operational data (like the Kitchen Dashboard) within the browser viewport to minimize scrolling.
+- **Web Polish**: Includes desktop-specific enhancements like hover cursors for buttons, centered modal dialogs, and high-fidelity box shadows.
+
 ### 🔐 Security & Access Control
 - **Database-Driven Authentication**: All user credentials, passwords, and roles are managed centrally in the Firebase Realtime Database (`auth_config` node). This allows for instant staff updates without code changes.
 - **Session Security**: For maximum security, the app does not store persistent login state across app restarts. Users are prompted for a fresh login every time the app is launched.
@@ -79,7 +86,9 @@ A robust Expo React Native application designed for food admins and volunteers t
 - **Labels & Abbreviations**: Custom display names and legends are centrally managed.
 
 ### 🎨 Polished & Responsive UI/UX
-- **Fully Responsive Design**: The UI intelligently adapts to all screen sizes, from small mobile phones to large tablets and desktop browsers. On wide screens, content is automatically centered in a professional 600px column to maintain readability.
+- **Fully Responsive Design**: The UI intelligently adapts to all screen sizes, from small mobile phones to large tablets and desktop browsers.
+- **Adaptive Column Layout**: On wide native screens (Tablets), content is centered in a professional 600px column. On **Web**, the layout expands to the full browser width while keeping the internal content perfectly centered and readable.
+- **Intelligent Viewport Scaling**: Introduced a dual-axis scaling engine (`s` for horizontal/size and `v` for vertical) that ensures text isn't "tiny" on large monitors while compacting vertical space to help screens fit within the browser's viewable area.
 - **Global Error Notification Modal**: High-visibility error handling wrapper attached to the home action strip. Tapping database network exceptions surfaces details in a premium modal dialog box fully adhering to active light/dark design tokens.
 - **Optimized for Modern Devices**: Specifically tuned for modern aspect ratios (like iPhone 16). All screens use a `flexGrow` scroll strategy with generous bottom paddings to ensure that interactive elements like the Login button and footer are never clipped by home indicators.
 - **Dynamic Theming (Dark & Light Mode)**: Fully integrated theme system that supports high-contrast Dark Mode and a vibrant Light Mode. Users can toggle themes from both the Login and Home screens.

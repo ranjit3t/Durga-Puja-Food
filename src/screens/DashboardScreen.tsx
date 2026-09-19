@@ -14,7 +14,7 @@ import {
 } from "react-native";
 import { captureRef } from "react-native-view-shot";
 import { Ionicons } from "@expo/vector-icons";
-import { useStyles } from "../styles";
+import { useStyles, useScaling } from "../styles";
 import { useAppTheme, StatusBarStyleMode } from "../theme";
 import { UI_TEXT } from "../strings";
 import {
@@ -141,6 +141,7 @@ const DashboardMealSection = memo(
     const isDone = isMealDone(day, type, config);
 
     const styles = useStyles();
+    const { s, v } = useScaling();
     const { theme } = useAppTheme();
     const { shareQr } = useUI();
     const mealRef = useRef<View>(null);
@@ -177,24 +178,24 @@ const DashboardMealSection = memo(
         <View
           ref={mealRef}
           collapsable={false}
-          style={{ padding: 16, backgroundColor: theme.colors.surface }}
+          style={{ padding: v(s(16)), backgroundColor: theme.colors.surface }}
         >
-          <View style={[styles.mealDisplayHeader, { marginBottom: 12, justifyContent: "space-between", flexWrap: 'wrap', gap: 8 }]}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1, minWidth: '60%' }}>
-              <Ionicons name={icon} size={22} color={isCurrent ? theme.colors.primary : theme.colors.textSecondary} />
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap', flex: 1 }}>
-                <Text style={[styles.sectionTitle, { marginBottom: 0, fontSize: 18, color: isCurrent ? theme.colors.primary : theme.colors.textPrimary }]}>
+          <View style={[styles.mealDisplayHeader, { marginBottom: s(12), justifyContent: "space-between", flexWrap: 'wrap', gap: s(8) }]}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: s(8), flex: 1, minWidth: '60%' }}>
+              <Ionicons name={icon} size={s(22)} color={isCurrent ? theme.colors.primary : theme.colors.textSecondary} />
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(6), flexWrap: 'wrap', flex: 1 }}>
+                <Text style={[styles.sectionTitle, { marginBottom: 0, fontSize: s(18), color: isCurrent ? theme.colors.primary : theme.colors.textPrimary }]}>
                   {mealLabel}
                 </Text>
                 {isCurrent && (
-                  <View style={{ backgroundColor: theme.colors.primary, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
-                      <Text style={{ color: theme.colors.white, fontSize: 10, fontWeight: "900" }}>{UI_TEXT.live.toUpperCase()}</Text>
+                  <View style={{ backgroundColor: theme.colors.primary, paddingHorizontal: s(6), paddingVertical: s(2), borderRadius: s(4) }}>
+                      <Text style={{ color: theme.colors.white, fontSize: s(10), fontWeight: "900" }}>{UI_TEXT.live.toUpperCase()}</Text>
                   </View>
                 )}
                 {!isBothEnabled && (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: isVegEnabled ? theme.colors.successLight : theme.colors.errorLight, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: 0.5, borderColor: isVegEnabled ? theme.colors.veg : theme.colors.nonVeg }}>
-                      <Ionicons name={isVegEnabled ? "leaf" : "flame"} size={10} color={isVegEnabled ? theme.colors.veg : theme.colors.nonVeg} />
-                      <Text style={{ color: isVegEnabled ? theme.colors.veg : theme.colors.nonVeg, fontSize: 10, fontWeight: "800" }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(4), backgroundColor: isVegEnabled ? theme.colors.successLight : theme.colors.errorLight, paddingHorizontal: s(6), paddingVertical: s(2), borderRadius: s(4), borderWidth: 0.5, borderColor: isVegEnabled ? theme.colors.veg : theme.colors.nonVeg }}>
+                      <Ionicons name={isVegEnabled ? "leaf" : "flame"} size={s(10)} color={isVegEnabled ? theme.colors.veg : theme.colors.nonVeg} />
+                      <Text style={{ color: isVegEnabled ? theme.colors.veg : theme.colors.nonVeg, fontSize: s(10), fontWeight: "800" }}>
                         {(isVegEnabled ? UI_TEXT.vegOnly : UI_TEXT.nonVegOnly).toUpperCase()}
                       </Text>
                     </View>
@@ -202,15 +203,15 @@ const DashboardMealSection = memo(
               </View>
             </View>
             <View style={[styles.pill, { backgroundColor: isCurrent ? theme.colors.surfaceDark : theme.colors.surface, alignSelf: 'center' }]}>
-              <Text style={[styles.pillText, { color: isCurrent ? theme.colors.primary : theme.colors.textSecondary }]}>{total} {UI_TEXT.plates}</Text>
+              <Text style={[styles.pillText, { color: isCurrent ? theme.colors.primary : theme.colors.textSecondary, fontSize: s(12) }]}>{total} {UI_TEXT.plates}</Text>
             </View>
           </View>
 
           {/* Menu Quick-View */}
           {(vegItems.length > 0 || nonVegItems.length > 0) ? (
-            <View style={{ gap: 8, marginBottom: 16 }}>
+            <View style={{ gap: s(8), marginBottom: s(16) }}>
               {isVegEnabled && vegItems.length > 0 ? (
-                <View style={[styles.menuBox, { borderLeftWidth: 4, borderLeftColor: theme.colors.veg, paddingVertical: 8 }]}>
+                <View style={[styles.menuBox, { borderLeftWidth: s(4), borderLeftColor: theme.colors.veg, paddingVertical: s(8) }]}>
                   <MealSummaryInline
                     label={UI_TEXT.veg}
                     dayId={day}
@@ -222,7 +223,7 @@ const DashboardMealSection = memo(
               ) : null}
               {isNonVegEnabled && nonVegItems.length > 0 ? (
                   <View
-                    style={[styles.menuBox, { borderLeftWidth: 4, borderLeftColor: theme.colors.nonVeg, paddingVertical: 8 }]}
+                    style={[styles.menuBox, { borderLeftWidth: s(4), borderLeftColor: theme.colors.nonVeg, paddingVertical: s(8) }]}
                   >
                     <MealSummaryInline
                       label={UI_TEXT.nonVeg}
@@ -240,7 +241,7 @@ const DashboardMealSection = memo(
           <View
             style={[
               { minHeight: contentHeight || undefined, justifyContent: 'flex-end' },
-              showChart && { paddingBottom: 10 }
+              showChart && { paddingBottom: s(10) }
             ]}
             onLayout={(e) => {
               // Only update contentHeight if we are in Grid mode (standard view)
@@ -280,7 +281,7 @@ const DashboardMealSection = memo(
         <View style={{
           borderTopWidth: 1,
           borderTopColor: theme.colors.border,
-          padding: 8,
+          padding: s(8),
           flexDirection: 'row',
           justifyContent: 'space-between',
           alignItems: 'center',
@@ -291,21 +292,21 @@ const DashboardMealSection = memo(
               <Pressable
                 onPress={() => toggleChart(true)}
                 style={({ pressed }) => [
-                  { padding: 8, borderRadius: 20, backgroundColor: theme.colors.surfaceDark },
+                  { padding: s(8), borderRadius: s(20), backgroundColor: theme.colors.surfaceDark },
                   pressed && { opacity: 0.7 }
                 ]}
               >
-                <Ionicons name="bar-chart-outline" size={18} color={theme.colors.primary} />
+                <Ionicons name="bar-chart-outline" size={s(18)} color={theme.colors.primary} />
               </Pressable>
             ) : (
               <Pressable
                 onPress={() => toggleChart(false)}
                 style={({ pressed }) => [
-                  { padding: 8, borderRadius: 20, backgroundColor: theme.colors.surfaceDark },
+                  { padding: s(8), borderRadius: s(20), backgroundColor: theme.colors.surfaceDark },
                   pressed && { opacity: 0.7 }
                 ]}
               >
-                <Ionicons name="grid-outline" size={18} color={theme.colors.textMuted} />
+                <Ionicons name="grid-outline" size={s(18)} color={theme.colors.textMuted} />
               </Pressable>
             )}
           </View>
@@ -313,11 +314,11 @@ const DashboardMealSection = memo(
           <Pressable
             onPress={handleShare}
             style={({ pressed }) => [
-              { padding: 8, borderRadius: 20, backgroundColor: theme.colors.successLight },
+              { padding: s(8), borderRadius: s(20), backgroundColor: theme.colors.successLight },
               pressed && { opacity: 0.7 }
             ]}
           >
-            <Ionicons name="logo-whatsapp" size={18} color={theme.colors.success} />
+            <Ionicons name="logo-whatsapp" size={s(18)} color={theme.colors.success} />
           </Pressable>
         </View>
       </View>
@@ -336,6 +337,7 @@ export function DashboardScreen() {
   const { showAlert } = useUI();
 
   const styles = useStyles();
+  const { s } = useScaling();
   const { theme, themeType } = useAppTheme();
   const scrollRef = useRef<ScrollView>(null);
   const sectionRefs = useRef<Record<string, number>>({});
@@ -343,7 +345,7 @@ export function DashboardScreen() {
   const focusSection = (key: string) => {
     const y = sectionRefs.current[key];
     if (y !== undefined && scrollRef.current) {
-      scrollRef.current.scrollTo({ y: y - 20, animated: true });
+      scrollRef.current.scrollTo({ y: y - s(20), animated: true });
     }
   };
 
@@ -519,12 +521,12 @@ export function DashboardScreen() {
     <KeyboardAvoidingView
       style={styles.root}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : s(20)}
     >
       <StatusBar style={themeType === AppThemeMode.DARK ? StatusBarStyleMode.LIGHT : StatusBarStyleMode.DARK} />
       <View style={styles.header}>
-        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: s(16) }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(8) }}>
             <BackButton onPress={goBack} />
             <HomeButton onPress={() => navigate(AppScreen.HOME)} />
           </View>
@@ -544,70 +546,70 @@ export function DashboardScreen() {
           onPress={() => navigate(AppScreen.REPORT)}
           style={({ pressed }) => [
             styles.card,
-            { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary, elevation: 6, marginBottom: 24 },
+            { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary, elevation: 6, marginBottom: s(24) },
             pressed && { opacity: 0.8 }
           ]}
         >
-          <View style={[styles.previewTop, { flexWrap: 'wrap', gap: 8 }]}>
-            <View style={{ flex: 1, paddingRight: 10, minWidth: '60%' }}>
-              <Text style={[styles.previewLabel, { color: theme.colors.white, opacity: 0.7 }]}>{UI_TEXT.dailyDemandSummary}</Text>
+          <View style={[styles.previewTop, { flexWrap: 'wrap', gap: s(8) }]}>
+            <View style={{ flex: 1, paddingRight: s(10), minWidth: '60%' }}>
+              <Text style={[styles.previewLabel, { color: theme.colors.white, opacity: 0.7, fontSize: s(12) }]}>{UI_TEXT.dailyDemandSummary}</Text>
               {!!seasonName && (
-                <Text style={[styles.previewTitle, { color: theme.colors.white, fontSize: 22 }]} numberOfLines={2}>
+                <Text style={[styles.previewTitle, { color: theme.colors.white, fontSize: s(22) }]} numberOfLines={2}>
                   {seasonName}
                 </Text>
               )}
             </View>
             <View style={{ alignItems: 'flex-end', justifyContent: 'center' }}>
-               <Text style={[styles.previewAmount, { color: theme.colors.white, fontSize: 32 }]}>
+               <Text style={[styles.previewAmount, { color: theme.colors.white, fontSize: s(32) }]}>
                  {summaryTotals.total}
                </Text>
-               <Text style={{ color: theme.colors.white, opacity: 0.8, fontSize: 12, fontWeight: "700" }}>{UI_TEXT.plates.toUpperCase()}</Text>
+               <Text style={{ color: theme.colors.white, opacity: 0.8, fontSize: s(12), fontWeight: "700" }}>{UI_TEXT.plates.toUpperCase()}</Text>
             </View>
           </View>
 
-          <View style={{ height: 1, backgroundColor: theme.colors.white, opacity: 0.2, marginVertical: 12 }} />
+          <View style={{ height: 1, backgroundColor: theme.colors.white, opacity: 0.2, marginVertical: s(12) }} />
 
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: s(8) }}>
               <View style={{ flexShrink: 1 }}>
-                <View style={{ gap: 4 }}>
-                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      <Text style={{ fontSize: 13, fontWeight: '800', color: theme.colors.white }}>{kidsEnabled ? UI_TEXT.adults : UI_TEXT.members}:</Text>
-                      <Text style={{ fontSize: 14, fontWeight: '900', color: theme.colors.white }}>
+                <View style={{ gap: s(4) }}>
+                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(6) }}>
+                      <Text style={{ fontSize: s(13), fontWeight: '800', color: theme.colors.white }}>{kidsEnabled ? UI_TEXT.adults : UI_TEXT.members}:</Text>
+                      <Text style={{ fontSize: s(14), fontWeight: '900', color: theme.colors.white }}>
                         {summaryTotals.veg + summaryTotals.nonVeg}
                       </Text>
-                      <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.white, opacity: 0.8 }}>
+                      <Text style={{ fontSize: s(11), fontWeight: '700', color: theme.colors.white, opacity: 0.8 }}>
                         ({summaryTotals.veg}{UI_TEXT.vegAbbrLabel}{UI_TEXT.pipe}{summaryTotals.nonVeg}{UI_TEXT.nonVegAbbrLabel}) ({UI_TEXT.taken}{UI_TEXT.colon}{UI_TEXT.space}{summaryTotals.adultTaken})
                       </Text>
                    </View>
 
                   {kidsEnabled && summaryTotals.kidsTotal > 0 && (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      <Text style={{ fontSize: 12, fontWeight: '800', color: theme.colors.white, opacity: 0.9 }}>{UI_TEXT.kids}:</Text>
-                      <Text style={{ fontSize: 12, fontWeight: '900', color: theme.colors.white, opacity: 0.9 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(6) }}>
+                      <Text style={{ fontSize: s(12), fontWeight: '800', color: theme.colors.white, opacity: 0.9 }}>{UI_TEXT.kids}:</Text>
+                      <Text style={{ fontSize: s(12), fontWeight: '900', color: theme.colors.white, opacity: 0.9 }}>
                         {summaryTotals.kidsTotal}
                       </Text>
-                      <Text style={{ fontSize: 10, fontWeight: '700', color: theme.colors.white, opacity: 0.7 }}>
+                      <Text style={{ fontSize: s(10), fontWeight: '700', color: theme.colors.white, opacity: 0.7 }}>
                         ({summaryTotals.kidsVeg}{UI_TEXT.vegAbbrLabel}{UI_TEXT.pipe}{summaryTotals.kidsNonVeg}{UI_TEXT.nonVegAbbrLabel}) ({UI_TEXT.taken}{UI_TEXT.colon}{UI_TEXT.space}{summaryTotals.kidsTaken})
                       </Text>
                     </View>
                   )}
 
                   {guestEnabled && summaryTotals.guestTotal > 0 && (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      <Text style={{ fontSize: 12, fontWeight: '800', color: theme.colors.white, opacity: 0.9 }}>{UI_TEXT.guest}:</Text>
-                      <Text style={{ fontSize: 12, fontWeight: '900', color: theme.colors.white, opacity: 0.9 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(6) }}>
+                      <Text style={{ fontSize: s(12), fontWeight: '800', color: theme.colors.white, opacity: 0.9 }}>{UI_TEXT.guest}:</Text>
+                      <Text style={{ fontSize: s(12), fontWeight: '900', color: theme.colors.white, opacity: 0.9 }}>
                         {summaryTotals.guestTotal}
                       </Text>
-                      <Text style={{ fontSize: 10, fontWeight: '700', color: theme.colors.white, opacity: 0.7 }}>
+                      <Text style={{ fontSize: s(10), fontWeight: '700', color: theme.colors.white, opacity: 0.7 }}>
                         ({summaryTotals.guestVeg}{UI_TEXT.vegAbbrLabel}{UI_TEXT.pipe}{summaryTotals.guestNonVeg}{UI_TEXT.nonVegAbbrLabel}) ({UI_TEXT.taken}{UI_TEXT.colon}{UI_TEXT.space}{summaryTotals.guestTaken})
                       </Text>
                     </View>
                   )}
                 </View>
               </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-               <Ionicons name="checkmark-done-circle" size={16} color={theme.colors.white} />
-               <Text style={{ color: theme.colors.white, fontWeight: "800", fontSize: 14 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(4) }}>
+               <Ionicons name="checkmark-done-circle" size={s(16)} color={theme.colors.white} />
+               <Text style={{ color: theme.colors.white, fontWeight: "800", fontSize: s(14) }}>
                  {summaryTotals.taken} {UI_TEXT.taken.toUpperCase()}
                </Text>
             </View>
@@ -615,16 +617,16 @@ export function DashboardScreen() {
 
           {currentMealSummary && (
             <>
-              <View style={{ height: 1, backgroundColor: theme.colors.white, opacity: 0.2, marginVertical: 12 }} />
-              <View style={{ gap: 10 }}>
-                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                    <Text style={{ color: theme.colors.white, fontSize: 11, fontWeight: '800', opacity: 0.8, textTransform: 'uppercase' }}>
+              <View style={{ height: 1, backgroundColor: theme.colors.white, opacity: 0.2, marginVertical: s(12) }} />
+              <View style={{ gap: s(10) }}>
+                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(6), flexWrap: 'wrap' }}>
+                    <Text style={{ color: theme.colors.white, fontSize: s(11), fontWeight: '800', opacity: 0.8, textTransform: 'uppercase' }}>
                        {currentMealSummary.dayLabel}{UI_TEXT.space}{UI_TEXT.hyphen}{UI_TEXT.space}{currentMealSummary.mealLabel}
                     </Text>
                     {(!currentMealSummary.isVegEnabled || !currentMealSummary.isNonVegEnabled) && (
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: theme.colors.white + "33", paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4 }}>
-                        <Ionicons name={currentMealSummary.isVegEnabled ? "leaf" : "flame"} size={8} color={theme.colors.white} />
-                        <Text style={{ color: theme.colors.white, fontSize: 8, fontWeight: "900" }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(4), backgroundColor: theme.colors.white + "33", paddingHorizontal: s(6), paddingVertical: s(1), borderRadius: s(4) }}>
+                        <Ionicons name={currentMealSummary.isVegEnabled ? "leaf" : "flame"} size={s(8)} color={theme.colors.white} />
+                        <Text style={{ color: theme.colors.white, fontSize: s(8), fontWeight: "900" }}>
                           {(currentMealSummary.isVegEnabled ? UI_TEXT.vegOnly : UI_TEXT.nonVegOnly).toUpperCase()}
                         </Text>
                       </View>
@@ -632,33 +634,33 @@ export function DashboardScreen() {
                  </View>
 
                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
-                      <Text style={{ color: theme.colors.white, fontSize: 18, fontWeight: '900' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: s(6) }}>
+                      <Text style={{ color: theme.colors.white, fontSize: s(18), fontWeight: '900' }}>
                          {currentMealSummary.total}
                       </Text>
-                      <Text style={{ color: theme.colors.white, fontSize: 11, fontWeight: '700', opacity: 0.8 }}>
+                      <Text style={{ color: theme.colors.white, fontSize: s(11), fontWeight: '700', opacity: 0.8 }}>
                          {UI_TEXT.plates.toUpperCase()}
                       </Text>
                     </View>
 
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                       <Ionicons name="checkmark-done-circle" size={16} color={theme.colors.white} />
-                       <Text style={{ color: theme.colors.white, fontSize: 16, fontWeight: '900' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(6) }}>
+                       <Ionicons name="checkmark-done-circle" size={s(16)} color={theme.colors.white} />
+                       <Text style={{ color: theme.colors.white, fontSize: s(16), fontWeight: '900' }}>
                           {currentMealSummary.taken}
                        </Text>
-                       <Text style={{ color: theme.colors.white, fontSize: 11, fontWeight: '700', opacity: 0.8 }}>
+                       <Text style={{ color: theme.colors.white, fontSize: s(11), fontWeight: '700', opacity: 0.8 }}>
                           {UI_TEXT.taken.toUpperCase()}
                        </Text>
                     </View>
                  </View>
 
-                 <View style={{ gap: 6 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                       <Text style={{ fontSize: 13, fontWeight: '800', color: theme.colors.white }}>{kidsEnabled ? UI_TEXT.adults : UI_TEXT.members}:</Text>
-                       <Text style={{ fontSize: 14, fontWeight: '900', color: theme.colors.white }}>
+                 <View style={{ gap: s(6) }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(6) }}>
+                       <Text style={{ fontSize: s(13), fontWeight: '800', color: theme.colors.white }}>{kidsEnabled ? UI_TEXT.adults : UI_TEXT.members}:</Text>
+                       <Text style={{ fontSize: s(14), fontWeight: '900', color: theme.colors.white }}>
                           {currentMealSummary.veg + currentMealSummary.nonVeg}
                        </Text>
-                       <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.white, opacity: 0.8 }}>
+                       <Text style={{ fontSize: s(11), fontWeight: '700', color: theme.colors.white, opacity: 0.8 }}>
                           {currentMealSummary.isVegEnabled && currentMealSummary.isNonVegEnabled && (
                             `(${currentMealSummary.veg}${UI_TEXT.vegAbbrLabel}${UI_TEXT.pipe}${currentMealSummary.nonVeg}${UI_TEXT.nonVegAbbrLabel})${UI_TEXT.space}`
                           )}
@@ -667,12 +669,12 @@ export function DashboardScreen() {
                     </View>
 
                     {kidsEnabled && currentMealSummary.kidsTotal > 0 && (
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                         <Text style={{ fontSize: 12, fontWeight: '800', color: theme.colors.white, opacity: 0.9 }}>{UI_TEXT.kids}:</Text>
-                         <Text style={{ fontSize: 12, fontWeight: '900', color: theme.colors.white, opacity: 0.9 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(6) }}>
+                         <Text style={{ fontSize: s(12), fontWeight: '800', color: theme.colors.white, opacity: 0.9 }}>{UI_TEXT.kids}:</Text>
+                         <Text style={{ fontSize: s(12), fontWeight: '900', color: theme.colors.white, opacity: 0.9 }}>
                             {currentMealSummary.kidsTotal}
                          </Text>
-                         <Text style={{ fontSize: 10, fontWeight: '700', color: theme.colors.white, opacity: 0.7 }}>
+                         <Text style={{ fontSize: s(10), fontWeight: '700', color: theme.colors.white, opacity: 0.7 }}>
                             {currentMealSummary.isVegEnabled && currentMealSummary.isNonVegEnabled && (
                                `(${currentMealSummary.kidsVeg}{UI_TEXT.vegAbbrLabel}${UI_TEXT.pipe}${currentMealSummary.kidsNonVeg}{UI_TEXT.nonVegAbbrLabel})${UI_TEXT.space}`
                             )}
@@ -682,14 +684,14 @@ export function DashboardScreen() {
                     )}
 
                     {guestEnabled && currentMealSummary.guestTotal > 0 && (
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                         <Text style={{ fontSize: 12, fontWeight: '800', color: theme.colors.white, opacity: 0.9 }}>{UI_TEXT.guest}:</Text>
-                         <Text style={{ fontSize: 12, fontWeight: '900', color: theme.colors.white, opacity: 0.9 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(6) }}>
+                         <Text style={{ fontSize: s(12), fontWeight: '800', color: theme.colors.white, opacity: 0.9 }}>{UI_TEXT.guest}:</Text>
+                         <Text style={{ fontSize: s(12), fontWeight: '900', color: theme.colors.white, opacity: 0.9 }}>
                             {currentMealSummary.guestTotal}
                          </Text>
-                         <Text style={{ fontSize: 10, fontWeight: '700', color: theme.colors.white, opacity: 0.7 }}>
+                         <Text style={{ fontSize: s(10), fontWeight: '700', color: theme.colors.white, opacity: 0.7 }}>
                             {currentMealSummary.isVegEnabled && currentMealSummary.isNonVegEnabled && (
-                               `(${currentMealSummary.guestVeg}${UI_TEXT.vegAbbrLabel}${UI_TEXT.pipe}${currentMealSummary.guestNonVeg}${UI_TEXT.nonVegAbbrLabel})${UI_TEXT.space}`
+                               `(${currentMealSummary.guestVeg}{UI_TEXT.vegAbbrLabel}${UI_TEXT.pipe}${currentMealSummary.guestNonVeg}{UI_TEXT.nonVegAbbrLabel})${UI_TEXT.space}`
                             )}
                             ({UI_TEXT.taken}{UI_TEXT.colon}{UI_TEXT.space}{currentMealSummary.guestTaken})
                          </Text>
@@ -701,7 +703,7 @@ export function DashboardScreen() {
           )}
         </Pressable>
 
-        <Text style={[styles.sectionTitle, { marginBottom: 16 }]}>{UI_TEXT.dailyMealDemand}</Text>
+        <Text style={[styles.sectionTitle, { marginBottom: s(16), fontSize: s(22) }]}>{UI_TEXT.dailyMealDemand}</Text>
 
         {/* Daily Demand Matrices */}
         {sortedActiveDays.map((day, index) => {
@@ -717,13 +719,13 @@ export function DashboardScreen() {
           return (
             <View
               key={day}
-              style={[styles.dashboardCard, { backgroundColor: colorScheme.bg, borderColor: colorScheme.border, borderWidth: 1.5 }]}
+              style={[styles.dashboardCard, { backgroundColor: colorScheme.bg, borderColor: colorScheme.border, borderWidth: 1.5, padding: s(20), marginBottom: s(20) }]}
               onLayout={(e) => {
                 sectionRefs.current[day] = e.nativeEvent.layout.y;
               }}
             >
-              <View style={[styles.dashboardCardTop, { marginBottom: 16 }]}>
-                <Text style={[styles.dashboardDay, { color: colorScheme.accent }]}>{getDayLabel(day, dayConfig)}</Text>
+              <View style={[styles.dashboardCardTop, { marginBottom: s(16) }]}>
+                <Text style={[styles.dashboardDay, { color: colorScheme.accent, fontSize: s(18) }]}>{getDayLabel(day, dayConfig)}</Text>
               </View>
 
               {sortedMeals.map((mKey) => {
@@ -855,7 +857,7 @@ export function DashboardScreen() {
                     key={mKey}
                     onLayout={(e) => {
                       const dayY = sectionRefs.current[day] || 0;
-                      sectionRefs.current[`${day}-${mKey}`] = dayY + e.nativeEvent.layout.y + 40;
+                      sectionRefs.current[`${day}-${mKey}`] = dayY + e.nativeEvent.layout.y + s(40);
                     }}
                   >
                     <DashboardMealSection

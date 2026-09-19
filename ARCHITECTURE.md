@@ -42,7 +42,10 @@ The project follows a **Modular Layered Architecture**:
 - **Dynamic Theme & Responsive Provider (`src/theme/`)**: Implements a React Context-based theme and responsiveness system.
     - `ThemeProvider`: Wraps the app and manages `themeType` (Primary/Dark).
     - `useAppTheme` & `useStyles`: Custom hooks used by all components for dynamic, theme-aware and size-aware styling.
-    - **Responsive Engine**: The `useStyles` hook integrates `useWindowDimensions` to provide real-time screen metrics. On **Web**, the app scales to the full browser width; on native mobile/tablets, it applies a centered 600px max-width for optimal ergonomics.
+    - **Responsive Scaling Engine**: The `useStyles` hook utilizes a specialized `useScaling` hook to provide real-time dimension-aware scaling.
+        - **Size Scaling (`s`)**: Automatically increases typography, icon sizes, and component dimensions on large high-res displays to prevent a "tiny" UI on web.
+        - **Vertical Compacting (`v`)**: Specifically on web, vertical paddings and gaps are compacted to ensure high-density dashboards fit comfortably within the browser viewport.
+        - **Adaptive Layout**: On native tablets, it applies a centered 600px max-width. On **Web**, it expands to a flexible layout that centers content in an optimized column while allowing full-width decorative elements.
     - Persistence: Uses `AsyncStorage` to remember user's theme choice locally.
 - **Centralized String Resource System (`strings.ts`)**: Every single UI string, label, placeholder, and message is centralized in a constant object. This ensures architectural purity, prevents hardcoded "magic strings," and makes the entire app localization-ready.
 - **Report Data Hook (`useReportData.ts`)**: A centralized headless hook that performs all complex data aggregations and dietary splits, decoupling business logic from the reporting UI components.

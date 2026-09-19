@@ -17,7 +17,7 @@ import {
   Switch,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useStyles } from "../styles";
+import { useStyles, useScaling } from "../styles";
 import { useAppTheme, StatusBarStyleMode } from "../theme";
 import { UI_TEXT } from "../strings";
 import { AppScreen, ActivityLog, ActivityModule, ActivityAction, AppThemeMode, Subscription } from "../domain";
@@ -38,6 +38,8 @@ const ActivityLogItem = memo(({
   index,
   theme,
   styles,
+  s,
+  v,
   subscriptions,
   onNavigateToDetails,
   expanded,
@@ -47,6 +49,8 @@ const ActivityLogItem = memo(({
   index: number;
   theme: any;
   styles: any;
+  s: (n: number) => number;
+  v: (n: number) => number;
   subscriptions: Subscription[];
   onNavigateToDetails: (id: string) => void;
   expanded: boolean;
@@ -74,82 +78,82 @@ const ActivityLogItem = memo(({
         {
           backgroundColor: theme.colors.surface,
           borderColor: isError ? theme.colors.error : theme.colors.border,
-          marginBottom: 12,
-          padding: 16,
+          marginBottom: s(12),
+          padding: s(16),
           elevation: 2,
           borderLeftWidth: isError ? 6 : (isClickable ? 4 : 1.5),
           borderLeftColor: isClickable ? theme.colors.primary : (isError ? theme.colors.error : theme.colors.border),
-          borderRadius: 16,
+          borderRadius: s(16),
         },
         isClickable && pressed && { opacity: 0.7, backgroundColor: theme.colors.surfaceDark }
       ]}
     >
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <View style={{ flex: 1 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
-            <View style={{ backgroundColor: isError ? theme.colors.error + "20" : theme.colors.primary + "15", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 }}>
-              <Text style={{ fontSize: 12, fontWeight: '900', color: isError ? theme.colors.error : theme.colors.primary }}>{item.userName.toUpperCase()}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(8), marginBottom: s(8), flexWrap: 'wrap' }}>
+            <View style={{ backgroundColor: isError ? theme.colors.error + "20" : theme.colors.primary + "15", paddingHorizontal: s(10), paddingVertical: s(4), borderRadius: s(8) }}>
+              <Text style={{ fontSize: s(12), fontWeight: '900', color: isError ? theme.colors.error : theme.colors.primary }}>{item.userName.toUpperCase()}</Text>
             </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <Ionicons name="time-outline" size={12} color={theme.colors.textMuted} />
-              <Text style={{ fontSize: 11, color: theme.colors.textMuted, fontWeight: '700' }}>{formatTimestamp(item.timestamp)}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(4) }}>
+              <Ionicons name="time-outline" size={s(12)} color={theme.colors.textMuted} />
+              <Text style={{ fontSize: s(11), color: theme.colors.textMuted, fontWeight: '700' }}>{formatTimestamp(item.timestamp)}</Text>
             </View>
             {item.appVersion && (
-              <View style={{ backgroundColor: theme.colors.surfaceDark, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: 1, borderColor: theme.colors.border }}>
-                <Text style={{ fontSize: 9, fontWeight: '800', color: theme.colors.textMuted }}>v{item.appVersion}</Text>
+              <View style={{ backgroundColor: theme.colors.surfaceDark, paddingHorizontal: s(6), paddingVertical: s(2), borderRadius: s(4), borderWidth: 1, borderColor: theme.colors.border }}>
+                <Text style={{ fontSize: s(9), fontWeight: '800', color: theme.colors.textMuted }}>v{item.appVersion}</Text>
               </View>
             )}
           </View>
 
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
-             <View style={{ backgroundColor: isError ? theme.colors.error + "10" : colorScheme.bg, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: isError ? theme.colors.error : colorScheme.border }}>
-                <Text style={{ fontSize: 11, fontWeight: '900', color: isError ? theme.colors.error : colorScheme.accent }}>{item.module.toUpperCase()}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(8), marginBottom: s(12), flexWrap: 'wrap' }}>
+             <View style={{ backgroundColor: isError ? theme.colors.error + "10" : colorScheme.bg, paddingHorizontal: s(10), paddingVertical: s(4), borderRadius: s(8), borderWidth: 1, borderColor: isError ? theme.colors.error : colorScheme.border }}>
+                <Text style={{ fontSize: s(11), fontWeight: '900', color: isError ? theme.colors.error : colorScheme.accent }}>{item.module.toUpperCase()}</Text>
              </View>
-             <Ionicons name="chevron-forward" size={14} color={theme.colors.border} />
-             <Text style={{ fontSize: 15, fontWeight: '800', color: isError ? theme.colors.error : theme.colors.textPrimary }}>{item.action}</Text>
+             <Ionicons name="chevron-forward" size={s(14)} color={theme.colors.border} />
+             <Text style={{ fontSize: s(15), fontWeight: '800', color: isError ? theme.colors.error : theme.colors.textPrimary }}>{item.action}</Text>
              {item.targetId && (
-               <View style={{ backgroundColor: theme.colors.surfaceDark, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: theme.colors.border }}>
-                 <Text style={{ fontSize: 11, fontWeight: '900', color: theme.colors.secondary }}>{item.targetId}</Text>
+               <View style={{ backgroundColor: theme.colors.surfaceDark, paddingHorizontal: s(8), paddingVertical: s(4), borderRadius: s(6), borderWidth: 1, borderColor: theme.colors.border }}>
+                 <Text style={{ fontSize: s(11), fontWeight: '900', color: theme.colors.secondary }}>{item.targetId}</Text>
                </View>
              )}
              {isClickable && (
-               <Ionicons name="open-outline" size={14} color={theme.colors.primary} />
+               <Ionicons name="open-outline" size={s(14)} color={theme.colors.primary} />
              )}
           </View>
 
-          <View style={{ backgroundColor: theme.colors.surfaceDark, padding: 12, borderRadius: 12, marginBottom: 12 }}>
-            <Text style={{ fontSize: 14, color: isError ? theme.colors.error : theme.colors.textPrimary, lineHeight: 20, fontWeight: '600' }}>{item.description}</Text>
+          <View style={{ backgroundColor: theme.colors.surfaceDark, padding: s(12), borderRadius: s(12), marginBottom: s(12) }}>
+            <Text style={{ fontSize: s(14), color: isError ? theme.colors.error : theme.colors.textPrimary, lineHeight: s(20), fontWeight: '600' }}>{item.description}</Text>
           </View>
 
           {isError && item.stack && (
-            <View style={{ marginBottom: 12 }}>
+            <View style={{ marginBottom: s(12) }}>
               <Pressable
                 onPress={() => onToggleStack(item.id)}
                 style={({ pressed }) => [
-                  { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: theme.colors.error + "15", paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, alignSelf: 'flex-start' },
+                  { flexDirection: 'row', alignItems: 'center', gap: s(6), backgroundColor: theme.colors.error + "15", paddingHorizontal: s(10), paddingVertical: s(6), borderRadius: s(8), alignSelf: 'flex-start' },
                   pressed && { opacity: 0.7 }
                 ]}
               >
-                <Ionicons name={expanded ? "eye-off-outline" : "eye-outline"} size={14} color={theme.colors.error} />
-                <Text style={{ fontSize: 11, fontWeight: '900', color: theme.colors.error }}>{expanded ? UI_TEXT.hideStackTrace.toUpperCase() : UI_TEXT.viewStackTrace.toUpperCase()}</Text>
+                <Ionicons name={expanded ? "eye-off-outline" : "eye-outline"} size={s(14)} color={theme.colors.error} />
+                <Text style={{ fontSize: s(11), fontWeight: '900', color: theme.colors.error }}>{expanded ? UI_TEXT.hideStackTrace.toUpperCase() : UI_TEXT.viewStackTrace.toUpperCase()}</Text>
               </Pressable>
               {expanded && (
-                <View style={{ backgroundColor: theme.colors.shadow + "10", padding: 14, borderRadius: 10, marginTop: 8, borderWidth: 1, borderColor: theme.colors.error + "22" }}>
-                  <Text style={{ fontSize: 11, color: theme.colors.error, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', lineHeight: 16 }}>{item.stack}</Text>
+                <View style={{ backgroundColor: theme.colors.shadow + "10", padding: s(14), borderRadius: s(10), marginTop: s(8), borderWidth: 1, borderColor: theme.colors.error + "22" }}>
+                  <Text style={{ fontSize: s(11), color: theme.colors.error, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', lineHeight: s(16) }}>{item.stack}</Text>
                 </View>
               )}
             </View>
           )}
 
           {item.os && (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, opacity: 0.6 }}>
-              <Ionicons name={item.os.toLowerCase() === 'ios' ? 'logo-apple' : item.os.toLowerCase() === 'android' ? 'logo-android' : 'globe-outline'} size={14} color={theme.colors.textMuted} />
-              <Text style={{ fontSize: 11, color: theme.colors.textMuted, fontWeight: '800', textTransform: 'uppercase' }}>{item.os} {item.device}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(6), opacity: 0.6 }}>
+              <Ionicons name={item.os.toLowerCase() === 'ios' ? 'logo-apple' : item.os.toLowerCase() === 'android' ? 'logo-android' : 'globe-outline'} size={s(14)} color={theme.colors.textMuted} />
+              <Text style={{ fontSize: s(11), color: theme.colors.textMuted, fontWeight: '800', textTransform: 'uppercase' }}>{item.os} {item.device}</Text>
             </View>
           )}
         </View>
 
-        <View style={{ backgroundColor: isError ? theme.colors.error + "10" : theme.colors.surfaceDark, padding: 10, borderRadius: 14, borderWidth: 1, borderColor: isError ? theme.colors.error + "20" : theme.colors.border }}>
+        <View style={{ backgroundColor: isError ? theme.colors.error + "10" : theme.colors.surfaceDark, padding: s(10), borderRadius: s(14), borderWidth: 1, borderColor: isError ? theme.colors.error + "20" : theme.colors.border }}>
           <Ionicons
             name={
               item.action === ActivityAction.CREATE ? "add-circle-outline" :
@@ -162,7 +166,7 @@ const ActivityLogItem = memo(({
               item.action === ActivityAction.ERROR ? "alert-circle-outline" :
               "pencil-outline"
             }
-            size={22}
+            size={s(22)}
             color={
               item.action === ActivityAction.DELETE || item.action === ActivityAction.ERROR ? theme.colors.error :
               item.action === ActivityAction.CREATE ? theme.colors.success :
@@ -181,6 +185,7 @@ export function ActivityLogScreen() {
   const { navigate, goBack, setSelectedId, setSelectedRecord } = useAppNavigation();
 
   const styles = useStyles();
+  const { s, v } = useScaling();
   const { theme, themeType } = useAppTheme();
 
   const [logs, setLogs] = useState<ActivityLog[]>([]);
@@ -327,12 +332,14 @@ export function ActivityLogScreen() {
       index={index}
       theme={theme}
       styles={styles}
+      s={s}
+      v={v}
       subscriptions={subscriptions}
       onNavigateToDetails={onNavigateToDetails}
       expanded={!!expandedStacks[item.id]}
       onToggleStack={onToggleStack}
     />
-  ), [theme, styles, subscriptions, onNavigateToDetails, expandedStacks, onToggleStack]);
+  ), [theme, styles, s, v, subscriptions, onNavigateToDetails, expandedStacks, onToggleStack]);
 
   return (
     <View style={styles.root}>
@@ -358,9 +365,9 @@ export function ActivityLogScreen() {
       </View>
 
       <View style={{ backgroundColor: theme.colors.surface, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
-        <View style={{ padding: 20, gap: 16 }}>
+        <View style={[styles.maxWidthWrapper, { paddingVertical: 20, gap: 16 }]}>
           <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
-            <View style={[styles.searchBox, { flex: 1, marginBottom: 0, height: 52, borderRadius: 14 }]}>
+            <View style={[styles.searchBox, { flex: 1, marginBottom: 0, height: 52, borderRadius: 14, maxWidth: undefined }]}>
               <Ionicons name="search-outline" size={20} color={theme.colors.textMuted} />
               <TextInput
                 style={[styles.searchInput, { fontSize: 15 }]}
@@ -454,7 +461,7 @@ export function ActivityLogScreen() {
           data={filteredLogs}
           renderItem={renderItem}
           keyExtractor={item => item.id}
-          contentContainerStyle={{ padding: 20, paddingBottom: 100 }}
+          contentContainerStyle={[styles.content, { paddingTop: 20 }]}
           refreshing={refreshing}
           onRefresh={() => { setRefreshing(true); loadLogs(); }}
           removeClippedSubviews={Platform.OS === 'android'}

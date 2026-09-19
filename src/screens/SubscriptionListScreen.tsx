@@ -15,7 +15,7 @@ import {
   Linking,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useStyles } from "../styles";
+import { useStyles, useScaling } from "../styles";
 import { StatusBarStyleMode, useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
 import { useAuth } from "../context/AuthContext";
@@ -32,6 +32,7 @@ const SubscriptionCard = React.memo(({
   index,
   theme,
   styles,
+  s,
   kidsEnabled,
   paymentConfig,
   whatsappCountryCode,
@@ -45,6 +46,7 @@ const SubscriptionCard = React.memo(({
   index: number;
   theme: any;
   styles: any;
+  s: (n: number) => number;
   kidsEnabled: boolean;
   paymentConfig: PaymentConfig;
   whatsappCountryCode: string;
@@ -72,31 +74,31 @@ const SubscriptionCard = React.memo(({
         <View style={{ flex: 1 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <Text style={[styles.flatLabel, { color: colorScheme.accent, opacity: 0.8 }]}>{UI_TEXT.block} {item.block}</Text>
-            <View style={{ flexDirection: 'row', gap: 6 }}>
+            <View style={{ flexDirection: 'row', gap: s(6) }}>
               {kidsEnabled && item.kidsCount ? (
-                <View style={{ backgroundColor: theme.colors.nonVeg + "20", padding: 6, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.nonVeg + "40" }}>
-                  <Ionicons name="happy" size={14} color={theme.colors.nonVeg} />
+                <View style={{ backgroundColor: theme.colors.nonVeg + "20", padding: s(6), borderRadius: s(12), borderWidth: 1, borderColor: theme.colors.nonVeg + "40" }}>
+                  <Ionicons name="happy" size={s(14)} color={theme.colors.nonVeg} />
                 </View>
               ) : null}
               {hasParcel && (
-                <View style={{ backgroundColor: theme.colors.secondary + "20", padding: 6, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.secondary + "40" }}>
-                  <Ionicons name="briefcase" size={14} color={theme.colors.secondary} />
+                <View style={{ backgroundColor: theme.colors.secondary + "20", padding: s(6), borderRadius: s(12), borderWidth: 1, borderColor: theme.colors.secondary + "40" }}>
+                  <Ionicons name="briefcase" size={s(14)} color={theme.colors.secondary} />
                 </View>
               )}
               {isVegOnly && (
-                <View style={{ backgroundColor: theme.colors.veg + "20", padding: 6, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.veg + "40" }}>
-                  <Ionicons name="leaf" size={14} color={theme.colors.veg} />
+                <View style={{ backgroundColor: theme.colors.veg + "20", padding: s(6), borderRadius: s(12), borderWidth: 1, borderColor: theme.colors.veg + "40" }}>
+                  <Ionicons name="leaf" size={s(14)} color={theme.colors.veg} />
                 </View>
               )}
               {hasCurrentMeal && (
-                <View style={{ backgroundColor: theme.colors.successLight, padding: 6, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.success + "40" }}>
-                  <Ionicons name="restaurant" size={14} color={theme.colors.success} />
+                <View style={{ backgroundColor: theme.colors.successLight, padding: s(6), borderRadius: s(12), borderWidth: 1, borderColor: theme.colors.success + "40" }}>
+                  <Ionicons name="restaurant" size={s(14)} color={theme.colors.success} />
                 </View>
               )}
             </View>
           </View>
           <Text style={[styles.flatTitle, { color: theme.colors.textPrimary }]}>{UI_TEXT.flatUpper} {item.flat}</Text>
-          <Text style={{ color: theme.colors.textSecondary, marginTop: 4, fontWeight: "600" }}>
+          <Text style={{ color: theme.colors.textSecondary, marginTop: s(4), fontWeight: "600", fontSize: s(14) }}>
             {kidsEnabled ? (
               `${item.peopleCount}${UI_TEXT.space}${item.peopleCount === 1 ? UI_TEXT.adult : UI_TEXT.adults}${item.kidsCount ? `${UI_TEXT.plus}${item.kidsCount}${UI_TEXT.space}${item.kidsCount === 1 ? UI_TEXT.kid : UI_TEXT.kids}` : ""}`
             ) : (
@@ -106,19 +108,19 @@ const SubscriptionCard = React.memo(({
         </View>
       </View>
 
-      <View style={{ height: 1, backgroundColor: colorScheme.border, marginVertical: 16 }} />
+      <View style={{ height: 1, backgroundColor: colorScheme.border, marginVertical: s(16) }} />
 
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: s(6) }}>
           {paymentConfig.enabled && (
             <>
-              <Ionicons name="card-outline" size={16} color={colorScheme.accent} />
-              <Text style={{ fontWeight: "700", color: theme.colors.textPrimary }}>{getPaymentModeLabel(item.payments && item.payments.length > 0 ? item.payments[0].mode : (item.paymentMode as PaymentMode || PaymentMode.CASH))}</Text>
+              <Ionicons name="card-outline" size={s(16)} color={colorScheme.accent} />
+              <Text style={{ fontWeight: "700", color: theme.colors.textPrimary, fontSize: s(14) }}>{getPaymentModeLabel(item.payments && item.payments.length > 0 ? item.payments[0].mode : (item.paymentMode as PaymentMode || PaymentMode.CASH))}</Text>
             </>
           )}
         </View>
         {paymentConfig.enabled && (
-          <Text style={{ fontSize: 18, fontWeight: "900", color: colorScheme.accent }}>
+          <Text style={{ fontSize: s(18), fontWeight: "900", color: colorScheme.accent }}>
             {UI_TEXT.rs}{UI_TEXT.space}{item.amount || (item.payments && item.payments.reduce((sum: number, p: any) => sum + (parseFloat(p.amount) || 0), 0)) || UI_TEXT.zero}
           </Text>
         )}
@@ -126,7 +128,7 @@ const SubscriptionCard = React.memo(({
 
       {item.mobile && (
         <>
-          <View style={{ height: 1, backgroundColor: colorScheme.border, marginVertical: 12, opacity: 0.5 }} />
+          <View style={{ height: 1, backgroundColor: colorScheme.border, marginVertical: s(12), opacity: 0.5 }} />
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <Pressable
               onPress={() => {
@@ -139,11 +141,11 @@ const SubscriptionCard = React.memo(({
                 Linking.openURL(`https://wa.me/${whatsappCountryCode || UI_TEXT.defaultCountryCode}${item.mobile}`);
               }}
               style={({ pressed }) => [
-                { padding: 6, borderRadius: 20, backgroundColor: theme.colors.successLight },
+                { padding: s(6), borderRadius: s(20), backgroundColor: theme.colors.successLight },
                 pressed && { opacity: 0.7 }
               ]}
             >
-              <Ionicons name="logo-whatsapp" size={20} color={theme.colors.success} />
+              <Ionicons name="logo-whatsapp" size={s(20)} color={theme.colors.success} />
             </Pressable>
 
             <Pressable
@@ -157,11 +159,11 @@ const SubscriptionCard = React.memo(({
                 Linking.openURL(`tel:${item.mobile}`);
               }}
               style={({ pressed }) => [
-                { padding: 6, borderRadius: 20, backgroundColor: theme.colors.surfaceDark },
+                { padding: s(6), borderRadius: s(20), backgroundColor: theme.colors.surfaceDark },
                 pressed && { opacity: 0.7 }
               ]}
             >
-              <Ionicons name="call" size={20} color={theme.colors.primary} />
+              <Ionicons name="call" size={s(20)} color={theme.colors.primary} />
             </Pressable>
           </View>
         </>
@@ -190,6 +192,7 @@ export function SubscriptionListScreen() {
   const onAdd = () => startNew(dayConfig, "", paymentConfig, true, true, seasonEnabled);
 
   const styles = useStyles();
+  const { s } = useScaling();
   const { theme } = useAppTheme();
   const isAdmin = userRole === UserRole.ADMIN;
   const canAdd = getActiveDays(dayConfig).length > 0 && seasonEnabled;
@@ -378,6 +381,7 @@ export function SubscriptionListScreen() {
         index={index}
         theme={theme}
         styles={styles}
+        s={s}
         kidsEnabled={!!kidsEnabled}
         paymentConfig={paymentConfig}
         whatsappCountryCode={whatsappCountryCode}
@@ -388,7 +392,7 @@ export function SubscriptionListScreen() {
         addActivityLog={addActivityLog}
       />
     );
-  }, [theme, styles, kidsEnabled, paymentConfig, whatsappCountryCode, onSelect]);
+  }, [theme, styles, s, kidsEnabled, paymentConfig, whatsappCountryCode, onSelect]);
 
   const showFilters = (currentMealInfo && hasAnySubscribed) || (kidsEnabled && hasAnyKids) || hasAnyParcel || (isNonVegSeason && hasAnyVegOnly);
 
@@ -412,32 +416,33 @@ export function SubscriptionListScreen() {
         </View>
 
         {showFilters && (
-          <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 20, marginTop: 20, flexWrap: 'wrap' }}>
+          <View style={[styles.maxWidthWrapper, { marginTop: 20 }]}>
+            <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
             <Pressable
               onPress={() => setFilterMode(FilterMode.ALL)}
               style={({ pressed }) => [
                 {
                   flexDirection: 'row',
                   alignItems: 'center',
-                  gap: 6,
-                  paddingHorizontal: 12,
-                  paddingVertical: 8,
-                  borderRadius: 20,
+                  gap: s(6),
+                  paddingHorizontal: s(12),
+                  paddingVertical: s(8),
+                  borderRadius: s(20),
                   borderWidth: 1,
                   borderColor: filterMode === FilterMode.ALL ? theme.colors.primary : theme.colors.border,
                   backgroundColor: filterMode === FilterMode.ALL ? theme.colors.surfaceDark : theme.colors.surface,
-                  marginBottom: 8
+                  marginBottom: s(8)
                 },
                 pressed && { opacity: 0.7 }
               ]}
             >
               <Ionicons
                 name={filterMode === FilterMode.ALL ? "layers" : "layers-outline"}
-                size={16}
+                size={s(16)}
                 color={filterMode === FilterMode.ALL ? theme.colors.primary : theme.colors.textSecondary}
               />
               <Text style={{
-                fontSize: 13,
+                fontSize: s(13),
                 fontWeight: "700",
                 color: filterMode === FilterMode.ALL ? theme.colors.primary : theme.colors.textSecondary
               }}>
@@ -452,25 +457,25 @@ export function SubscriptionListScreen() {
                   {
                     flexDirection: 'row',
                     alignItems: 'center',
-                    gap: 6,
-                    paddingHorizontal: 12,
-                    paddingVertical: 8,
-                    borderRadius: 20,
+                    gap: s(6),
+                    paddingHorizontal: s(12),
+                    paddingVertical: s(8),
+                    borderRadius: s(20),
                     borderWidth: 1,
                     borderColor: filterMode === FilterMode.SUBSCRIBED ? theme.colors.success : theme.colors.border,
                     backgroundColor: filterMode === FilterMode.SUBSCRIBED ? theme.colors.successLight : theme.colors.surface,
-                    marginBottom: 8
+                    marginBottom: s(8)
                   },
                   pressed && { opacity: 0.7 }
                 ]}
               >
                 <Ionicons
                   name={filterMode === FilterMode.SUBSCRIBED ? "restaurant" : "restaurant-outline"}
-                  size={14}
+                  size={s(14)}
                   color={filterMode === FilterMode.SUBSCRIBED ? theme.colors.success : theme.colors.textSecondary}
                 />
                 <Text style={{
-                  fontSize: 13,
+                  fontSize: s(13),
                   fontWeight: "700",
                   color: filterMode === FilterMode.SUBSCRIBED ? theme.colors.primary : theme.colors.textSecondary
                 }}>
@@ -486,25 +491,25 @@ export function SubscriptionListScreen() {
                   {
                     flexDirection: 'row',
                     alignItems: 'center',
-                    gap: 6,
-                    paddingHorizontal: 12,
-                    paddingVertical: 8,
-                    borderRadius: 20,
+                    gap: s(6),
+                    paddingHorizontal: s(12),
+                    paddingVertical: s(8),
+                    borderRadius: s(20),
                     borderWidth: 1,
                     borderColor: filterMode === FilterMode.KIDS ? theme.colors.nonVeg : theme.colors.border,
                     backgroundColor: filterMode === FilterMode.KIDS ? theme.colors.errorLight : theme.colors.surface,
-                    marginBottom: 8
+                    marginBottom: s(8)
                   },
                   pressed && { opacity: 0.7 }
                 ]}
               >
                 <Ionicons
                   name={filterMode === FilterMode.KIDS ? "happy" : "happy-outline"}
-                  size={16}
+                  size={s(16)}
                   color={filterMode === FilterMode.KIDS ? theme.colors.nonVeg : theme.colors.textSecondary}
                 />
                 <Text style={{
-                  fontSize: 13,
+                  fontSize: s(13),
                   fontWeight: "700",
                   color: filterMode === FilterMode.KIDS ? theme.colors.nonVeg : theme.colors.textSecondary
                 }}>
@@ -520,25 +525,25 @@ export function SubscriptionListScreen() {
                   {
                     flexDirection: 'row',
                     alignItems: 'center',
-                    gap: 6,
-                    paddingHorizontal: 12,
-                    paddingVertical: 8,
-                    borderRadius: 20,
+                    gap: s(6),
+                    paddingHorizontal: s(12),
+                    paddingVertical: s(8),
+                    borderRadius: s(20),
                     borderWidth: 1,
                     borderColor: filterMode === FilterMode.PARCEL ? theme.colors.secondary : theme.colors.border,
                     backgroundColor: filterMode === FilterMode.PARCEL ? theme.colors.surfaceDark : theme.colors.surface,
-                    marginBottom: 8
+                    marginBottom: s(8)
                   },
                   pressed && { opacity: 0.7 }
                 ]}
               >
                 <Ionicons
                   name={filterMode === FilterMode.PARCEL ? "briefcase" : "briefcase-outline"}
-                  size={16}
+                  size={s(16)}
                   color={filterMode === FilterMode.PARCEL ? theme.colors.secondary : theme.colors.textSecondary}
                 />
                 <Text style={{
-                  fontSize: 13,
+                  fontSize: s(13),
                   fontWeight: "700",
                   color: filterMode === FilterMode.PARCEL ? theme.colors.secondary : theme.colors.textSecondary
                 }}>
@@ -554,25 +559,25 @@ export function SubscriptionListScreen() {
                   {
                     flexDirection: 'row',
                     alignItems: 'center',
-                    gap: 6,
-                    paddingHorizontal: 12,
-                    paddingVertical: 8,
-                    borderRadius: 20,
+                    gap: s(6),
+                    paddingHorizontal: s(12),
+                    paddingVertical: s(8),
+                    borderRadius: s(20),
                     borderWidth: 1,
                     borderColor: filterMode === FilterMode.VEG_ONLY ? theme.colors.veg : theme.colors.border,
                     backgroundColor: filterMode === FilterMode.VEG_ONLY ? theme.colors.veg + "10" : theme.colors.surface,
-                    marginBottom: 8
+                    marginBottom: s(8)
                   },
                   pressed && { opacity: 0.7 }
                 ]}
               >
                 <Ionicons
                   name={filterMode === FilterMode.VEG_ONLY ? "leaf" : "leaf-outline"}
-                  size={16}
+                  size={s(16)}
                   color={filterMode === FilterMode.VEG_ONLY ? theme.colors.veg : theme.colors.textSecondary}
                 />
                 <Text style={{
-                  fontSize: 13,
+                  fontSize: s(13),
                   fontWeight: "700",
                   color: filterMode === FilterMode.VEG_ONLY ? theme.colors.veg : theme.colors.textSecondary
                 }}>
@@ -580,20 +585,23 @@ export function SubscriptionListScreen() {
                 </Text>
               </Pressable>
             )}
+            </View>
           </View>
         )}
 
-        <View style={[styles.searchBox, { marginHorizontal: 20, marginTop: showFilters ? 4 : 20 }]}>
-          <Ionicons name="search-outline" size={22} color={theme.colors.textSecondary} />
-          <TextInput
-            value={subscriptionSearch}
-            onChangeText={setSubscriptionSearch}
-            placeholder={UI_TEXT.searchPlaceholder}
-            placeholderTextColor={theme.colors.textMuted}
-            style={styles.searchInput}
-            autoCapitalize="characters"
-            clearButtonMode="while-editing"
-          />
+        <View style={[styles.maxWidthWrapper, { marginTop: showFilters ? 4 : 20 }]}>
+          <View style={[styles.searchBox, { marginBottom: 0, maxWidth: undefined }]}>
+            <Ionicons name="search-outline" size={22} color={theme.colors.textSecondary} />
+            <TextInput
+              value={subscriptionSearch}
+              onChangeText={setSubscriptionSearch}
+              placeholder={UI_TEXT.searchPlaceholder}
+              placeholderTextColor={theme.colors.textMuted}
+              style={styles.searchInput}
+              autoCapitalize="characters"
+              clearButtonMode="while-editing"
+            />
+          </View>
         </View>
 
         <FlatList

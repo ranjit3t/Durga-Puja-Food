@@ -9,14 +9,42 @@ import { primaryTheme as defaultTheme } from "./theme/primary";
 import { AppTheme } from "./theme/types";
 import { useAppTheme } from "./theme";
 
+export const useScaling = () => {
+  const { width } = useWindowDimensions();
+  const isWeb = Platform.OS === 'web';
+  const isLargeScreen = width > 768;
+  const isDesktop = width > 1200;
+
+  const scalingFactor = isWeb ? (isDesktop ? 1.3 : (isLargeScreen ? 1.2 : 1.1)) : 1;
+  const s = (size: number) => Math.round(size * scalingFactor);
+  const v = (size: number) => isWeb ? Math.round(size * (isDesktop ? 0.85 : 0.9)) : size;
+
+  return { s, v, scalingFactor, isWeb, isLargeScreen, isDesktop };
+};
+
 export const createStyles = (theme: AppTheme, width: number, height: number) => {
   const COLORS = theme?.colors || defaultTheme.colors;
   const SIZES = theme?.sizes || defaultTheme.sizes;
   const TYPOGRAPHY = theme?.typography || defaultTheme.typography;
 
-  const isLargeScreen = width > 768;
   const isWeb = Platform.OS === 'web';
-  const MAX_WIDTH = 600;
+  const isLargeScreen = width > 768;
+  const isDesktop = width > 1200;
+
+  // Responsive scaling for Web: Increased legibility but balanced for vertical space
+  const scalingFactor = isWeb ? (isDesktop ? 1.3 : (isLargeScreen ? 1.2 : 1.1)) : 1;
+  const s = (size: number) => Math.round(size * scalingFactor);
+
+  // Vertical compact factor for web to help fit content in viewport
+  const v = (size: number) => isWeb ? Math.round(size * (isDesktop ? 0.85 : 0.9)) : size;
+
+  const MAX_WIDTH = isWeb ? undefined : 600;
+
+  const maxWidthStyle = {
+    width: "100%",
+    maxWidth: MAX_WIDTH,
+    alignSelf: "center" as const,
+  };
 
   if (!theme) return {} as any;
 
@@ -37,37 +65,36 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
       marginTop: 12,
       color: COLORS.textSecondary,
       fontWeight: "600",
+      fontSize: s(16),
     },
 
     // Header & Navigation
     header: {
       backgroundColor: theme?.themeType === 'dark' ? COLORS.surface : COLORS.white,
-      paddingTop: Platform.OS === "ios" ? 64 : 54,
-      paddingHorizontal: SIZES.paddingMedium,
-      paddingBottom: SIZES.paddingLarge,
+      paddingTop: Platform.OS === "ios" ? 64 : (isWeb ? 16 : 54),
+      paddingHorizontal: s(SIZES.paddingMedium),
+      paddingBottom: v(s(SIZES.paddingLarge)),
       borderBottomWidth: 1,
       borderBottomColor: COLORS.border,
-      width: "100%",
-      maxWidth: (isLargeScreen && !isWeb) ? MAX_WIDTH : undefined,
-      alignSelf: "center",
+      ...maxWidthStyle,
     },
     title: {
       color: COLORS.textPrimary,
-      fontSize: TYPOGRAPHY.titleSize,
+      fontSize: s(TYPOGRAPHY.titleSize),
       fontWeight: "900",
       marginTop: 8,
       letterSpacing: -0.5,
     },
     subtitle: {
       color: COLORS.textSecondary,
-      fontSize: TYPOGRAPHY.subtitleSize,
+      fontSize: s(TYPOGRAPHY.subtitleSize),
       marginTop: 6,
-      lineHeight: 22,
+      lineHeight: s(22),
     },
     backButton: {
-      height: 36,
-      paddingHorizontal: 12,
-      borderRadius: 18,
+      height: s(36),
+      paddingHorizontal: s(12),
+      borderRadius: s(18),
       backgroundColor: COLORS.surface,
       alignItems: "center",
       justifyContent: "center",
@@ -76,19 +103,23 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
     // Main Content
     content: {
       flexGrow: 1,
-      padding: SIZES.paddingMedium,
-      paddingBottom: 150,
-      width: "100%",
-      maxWidth: (isLargeScreen && !isWeb) ? MAX_WIDTH : undefined,
-      alignSelf: "center",
+      padding: s(SIZES.paddingMedium),
+      paddingBottom: v(150),
+      ...maxWidthStyle,
+    },
+
+    // Fixed width wrapper for elements outside scrollviews/flatlists
+    maxWidthWrapper: {
+      ...maxWidthStyle,
+      paddingHorizontal: s(SIZES.paddingMedium),
     },
 
     // Cards (Modern "Sleek" Look)
     card: {
       backgroundColor: COLORS.surface,
-      padding: SIZES.paddingMedium,
-      borderRadius: SIZES.borderRadiusLarge,
-      marginBottom: 16,
+      padding: s(SIZES.paddingMedium),
+      borderRadius: s(SIZES.borderRadiusLarge),
+      marginBottom: s(16),
       borderWidth: 1,
       borderColor: COLORS.border,
       ...Platform.select({
@@ -101,74 +132,83 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
         android: {
           elevation: 3,
         },
+        web: {
+          shadowColor: COLORS.shadow,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.1,
+          shadowRadius: 10,
+        }
       }),
     },
 
     // Search & Inputs
     searchBox: {
       backgroundColor: COLORS.surfaceDark,
-      borderRadius: 16,
-      paddingHorizontal: 16,
+      borderRadius: s(16),
+      paddingHorizontal: s(16),
       flexDirection: "row",
       alignItems: "center",
-      marginBottom: 24,
-      height: 56,
+      marginBottom: s(24),
+      height: s(56),
       borderWidth: 1,
       borderColor: COLORS.border,
+      ...maxWidthStyle,
     },
     searchInput: {
       flex: 1,
-      paddingVertical: 12,
-      paddingLeft: 12,
+      paddingVertical: s(12),
+      paddingLeft: s(12),
       color: COLORS.textPrimary,
-      fontSize: 16,
+      fontSize: s(16),
       fontWeight: "500",
     },
 
     input: {
       backgroundColor: COLORS.surfaceDark,
-      borderRadius: 14,
-      padding: 16,
-      fontSize: 16,
+      borderRadius: s(14),
+      padding: s(16),
+      fontSize: s(16),
       color: COLORS.textPrimary,
       borderWidth: 1,
       borderColor: COLORS.border,
-      height: 56,
+      height: s(56),
     },
 
     label: {
       color: COLORS.textPrimary,
-      fontSize: 14,
+      fontSize: s(14),
       fontWeight: "700",
-      marginTop: 20,
-      marginBottom: 8,
-      marginLeft: 4,
+      marginTop: s(20),
+      marginBottom: s(8),
+      marginLeft: s(4),
     },
 
     helper: {
       color: COLORS.textSecondary,
-      fontSize: 13,
-      marginBottom: 12,
-      marginLeft: 4,
+      fontSize: s(13),
+      marginBottom: s(12),
+      marginLeft: s(4),
     },
 
     row: {
       flexDirection: "row",
-      gap: 16,
+      gap: s(16),
+      flexWrap: isLargeScreen ? "wrap" : "nowrap",
     },
     fieldHalf: {
       flex: 1,
+      minWidth: isLargeScreen ? 300 : undefined,
     },
 
     // Stats & Summary (Swiggy-style summary tiles)
     summary: {
       backgroundColor: COLORS.primary,
-      borderRadius: SIZES.borderRadiusLarge,
-      padding: SIZES.paddingLarge,
+      borderRadius: s(SIZES.borderRadiusLarge),
+      padding: v(s(SIZES.paddingLarge)),
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      marginBottom: 28,
+      marginBottom: v(s(28)),
       ...Platform.select({
         ios: {
           shadowColor: COLORS.primary,
@@ -179,26 +219,32 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
         android: {
           elevation: 8,
         },
+        web: {
+          shadowColor: COLORS.primary,
+          shadowOffset: { width: 0, height: 6 },
+          shadowOpacity: 0.2,
+          shadowRadius: 12,
+        }
       }),
     },
     summaryLabel: {
       color: COLORS.white + "CC",
-      fontSize: 12,
+      fontSize: s(12),
       fontWeight: "800",
       letterSpacing: 1.5,
       textTransform: "uppercase",
     },
     summaryNumber: {
       color: COLORS.white,
-      fontSize: 44,
+      fontSize: s(44),
       fontWeight: "900",
       marginTop: 4,
     },
 
     collectionMetric: {
       backgroundColor: COLORS.surface,
-      borderRadius: 16,
-      padding: 12,
+      borderRadius: s(16),
+      padding: s(12),
       flex: 1,
       alignItems: "center",
       borderWidth: 1,
@@ -206,13 +252,13 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
     },
     collectionMetricLabel: {
       color: COLORS.textSecondary,
-      fontSize: 11,
+      fontSize: s(11),
       fontWeight: "600",
       marginTop: 4,
     },
     collectionMetricValue: {
       color: COLORS.success,
-      fontSize: 18,
+      fontSize: s(18),
       fontWeight: "800",
     },
 
@@ -222,27 +268,27 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
       alignItems: "center",
       justifyContent: "space-between",
       flexWrap: "wrap",
-      marginBottom: 32,
-      gap: 16,
+      marginBottom: s(32),
+      gap: s(16),
     },
     sectionTitle: {
       color: COLORS.textPrimary,
-      fontSize: TYPOGRAPHY.sectionTitleSize,
+      fontSize: s(TYPOGRAPHY.sectionTitleSize),
       fontWeight: "800",
       letterSpacing: -0.5,
     },
     compactActions: {
       flexDirection: "row",
       flexWrap: "wrap",
-      gap: 10,
+      gap: v(s(10)),
     },
 
     // Dashboard Sections
     dashboardCard: {
       backgroundColor: COLORS.surface,
-      borderRadius: SIZES.borderRadiusLarge,
-      padding: SIZES.paddingMedium,
-      marginBottom: 20,
+      borderRadius: s(SIZES.borderRadiusLarge),
+      padding: v(s(SIZES.paddingMedium)),
+      marginBottom: v(s(20)),
       borderWidth: 1,
       borderColor: COLORS.border,
     },
@@ -250,63 +296,66 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "center",
+      marginBottom: v(s(16)),
     },
     dashboardDay: {
-      fontSize: 18,
+      fontSize: s(18),
       fontWeight: "800",
       color: COLORS.textPrimary,
     },
     dashboardMealSection: {
       backgroundColor: COLORS.surfaceDark,
-      borderRadius: 20,
-      padding: 16,
-      marginBottom: 16,
+      borderRadius: s(20),
+      padding: v(s(16)),
+      marginBottom: v(s(16)),
     },
 
     // Metric Components
     metricGrid: {
       flexDirection: "row",
       flexWrap: "wrap",
-      gap: 8,
+      gap: v(s(8)),
       justifyContent: "space-between"
     },
     metric: {
       backgroundColor: COLORS.surface,
-      borderRadius: 12,
-      padding: 8,
-      width: isLargeScreen ? "23%" : "31%",
+      borderRadius: s(12),
+      padding: v(s(8)),
+      width: isDesktop ? "18%" : (isLargeScreen ? "23%" : "31%"),
       flexGrow: 1,
       alignItems: "center",
       borderWidth: 1,
       borderColor: COLORS.border,
+      minHeight: v(s(60)),
+      justifyContent: "center",
     },
-    metricValue: { color: COLORS.textPrimary, fontSize: 18, fontWeight: "800" },
-    metricLabel: { color: COLORS.textSecondary, fontSize: 10, fontWeight: "600", marginTop: 2, textAlign: "center" },
+    metricValue: { color: COLORS.textPrimary, fontSize: s(18), fontWeight: "800" },
+    metricLabel: { color: COLORS.textSecondary, fontSize: s(10), fontWeight: "600", marginTop: 2, textAlign: "center" },
 
     // List Items
     flatTitle: {
       color: COLORS.textPrimary,
-      fontSize: 24,
+      fontSize: s(24),
       fontWeight: "800",
       letterSpacing: -0.5,
     },
     flatLabel: {
       color: COLORS.textSecondary,
-      fontSize: 12,
+      fontSize: s(12),
       fontWeight: "700",
       textTransform: "uppercase",
       letterSpacing: 1,
     },
     pill: {
       backgroundColor: COLORS.successLight,
-      borderRadius: 10,
-      paddingVertical: 6,
-      paddingHorizontal: 10,
+      borderRadius: s(10),
+      paddingVertical: s(6),
+      paddingHorizontal: s(10),
     },
-    pillText: { color: COLORS.success, fontSize: 12, fontWeight: "700" },
+    pillText: { color: COLORS.success, fontSize: s(12), fontWeight: "700" },
 
     // Choice & Status Indicators
-    dot: { width: 8, height: 8, borderRadius: 4 },
+    dot: { width: s(8), height: s(8), borderRadius: s(4) },
     vegChoice: { backgroundColor: COLORS.veg, borderColor: COLORS.veg },
     nonVegChoice: { backgroundColor: COLORS.nonVeg, borderColor: COLORS.nonVeg },
     slotSelected: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
@@ -315,11 +364,12 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
     // Buttons
     primary: {
       backgroundColor: COLORS.success,
-      borderRadius: SIZES.borderRadiusMedium,
-      height: SIZES.buttonHeight,
+      borderRadius: s(SIZES.borderRadiusMedium),
+      height: s(SIZES.buttonHeight),
       alignItems: "center",
       justifyContent: "center",
-      marginTop: 24,
+      marginTop: s(24),
+      paddingHorizontal: s(24),
       ...Platform.select({
         ios: {
           shadowColor: COLORS.success,
@@ -330,27 +380,37 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
         android: {
           elevation: 4,
         },
+        web: {
+          cursor: 'pointer',
+          transition: 'all 0.2s ease',
+        }
       }),
     },
-    primaryText: { color: COLORS.white, fontSize: TYPOGRAPHY.primaryButtonTextSize, fontWeight: "800" },
+    primaryText: { color: COLORS.white, fontSize: s(TYPOGRAPHY.primaryButtonTextSize), fontWeight: "800" },
     secondary: {
       backgroundColor: COLORS.surface,
       borderColor: COLORS.border,
       borderWidth: 1.5,
-      borderRadius: SIZES.borderRadiusMedium,
-      height: SIZES.secondaryButtonHeight,
+      borderRadius: s(SIZES.borderRadiusMedium),
+      height: s(SIZES.secondaryButtonHeight),
       alignItems: "center",
       justifyContent: "center",
+      paddingHorizontal: s(16),
+      ...Platform.select({
+        web: {
+          cursor: 'pointer',
+        }
+      }),
     },
-    secondaryText: { color: COLORS.textPrimary, fontSize: TYPOGRAPHY.secondaryButtonTextSize, fontWeight: "700" },
+    secondaryText: { color: COLORS.textPrimary, fontSize: s(TYPOGRAPHY.secondaryButtonTextSize), fontWeight: "700" },
 
     deleteButton: {
       backgroundColor: COLORS.error,
-      borderRadius: SIZES.borderRadiusMedium,
-      height: SIZES.buttonHeight,
+      borderRadius: s(SIZES.borderRadiusMedium),
+      height: s(SIZES.buttonHeight),
       alignItems: "center",
       justifyContent: "center",
-      marginTop: 24,
+      marginTop: s(24),
       ...Platform.select({
         ios: {
           shadowColor: COLORS.error,
@@ -361,35 +421,41 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
         android: {
           elevation: 4,
         },
+        web: {
+          cursor: 'pointer',
+        }
       }),
     },
 
     addButton: {
       backgroundColor: COLORS.primary,
-      height: 48,
-      paddingHorizontal: SIZES.paddingMedium,
-      borderRadius: 14,
+      height: s(48),
+      paddingHorizontal: s(SIZES.paddingMedium),
+      borderRadius: s(14),
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
-      gap: 8,
+      gap: s(8),
+      ...Platform.select({
+        web: { cursor: 'pointer' }
+      }),
     },
 
     selectorRow: {
       flexDirection: "row",
       flexWrap: "wrap",
-      gap: SIZES.paddingSmall,
-      marginBottom: 4,
+      gap: s(SIZES.paddingSmall),
+      marginBottom: s(4),
     },
     selector: {
       backgroundColor: COLORS.surface,
       borderWidth: 1.5,
       borderColor: COLORS.border,
-      borderRadius: SIZES.borderRadiusSmall,
-      paddingVertical: SIZES.paddingSmall,
-      paddingHorizontal: 16,
-      marginBottom: 8,
-      minWidth: 100,
+      borderRadius: s(SIZES.borderRadiusSmall),
+      paddingVertical: s(SIZES.paddingSmall),
+      paddingHorizontal: s(16),
+      marginBottom: s(8),
+      minWidth: s(100),
       alignItems: "center",
       justifyContent: "center",
     },
@@ -397,139 +463,138 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
       backgroundColor: COLORS.primary,
       borderColor: COLORS.primary
     },
-    selectorText: { color: COLORS.textSecondary, fontSize: 14, fontWeight: "700" },
+    selectorText: { color: COLORS.textSecondary, fontSize: s(14), fontWeight: "700" },
     selectorTextOn: { color: COLORS.white },
 
-    choiceRow: { flexDirection: "row", gap: 10, marginTop: 4 },
+    choiceRow: { flexDirection: "row", gap: s(10), marginTop: s(4) },
     choice: {
       borderWidth: 1.5,
       borderColor: COLORS.border,
-      borderRadius: 14,
-      padding: 14,
+      borderRadius: s(14),
+      padding: s(14),
       flex: 1,
       alignItems: "center",
       backgroundColor: COLORS.surface,
     },
-    choiceText: { color: COLORS.textSecondary, fontWeight: "700", fontSize: 15 },
+    choiceText: { color: COLORS.textSecondary, fontWeight: "700", fontSize: s(15) },
     choiceTextOn: { color: COLORS.white },
 
     // Menu Management
     menuDayCard: {
       backgroundColor: COLORS.surface,
-      borderRadius: 24,
-      marginBottom: 20,
+      borderRadius: s(24),
+      marginBottom: s(20),
       borderWidth: 1,
       borderColor: COLORS.border,
       overflow: "hidden",
     },
     menuDayHeader: {
       backgroundColor: COLORS.surfaceDark,
-      paddingVertical: 14,
-      paddingHorizontal: SIZES.paddingMedium,
+      paddingVertical: s(14),
+      paddingHorizontal: s(SIZES.paddingMedium),
       borderBottomWidth: 1,
       borderBottomColor: COLORS.border,
     },
-    menuDayTitle: { color: COLORS.textPrimary, fontSize: 20, fontWeight: "800" },
-    menuDayBody: { padding: 20, gap: 20 },
+    menuDayTitle: { color: COLORS.textPrimary, fontSize: s(20), fontWeight: "800" },
+    menuDayBody: { padding: s(20), gap: s(20) },
     mealDisplayRow: {
-      paddingBottom: 16,
+      paddingBottom: s(16),
       borderBottomWidth: 1,
       borderBottomColor: COLORS.border,
     },
-    mealDisplayHeader: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 12 },
-    mealDisplayTitle: { color: COLORS.primary, fontSize: 18, fontWeight: "800" },
-    mealItemsContainer: { gap: 8, paddingLeft: 32 },
-    mealTypeSection: { flexDirection: "row", gap: 10, alignItems: "center" },
+    mealDisplayHeader: { flexDirection: "row", alignItems: "center", gap: s(10), marginBottom: s(12) },
+    mealDisplayTitle: { color: COLORS.primary, fontSize: s(18), fontWeight: "800" },
+    mealItemsContainer: { gap: v(s(8)), paddingLeft: s(32) },
+    mealTypeSection: { flexDirection: "row", gap: s(10), alignItems: "center" },
     mealItemsText: {
       color: COLORS.textPrimary,
-      fontSize: 15,
-      lineHeight: 22,
+      fontSize: s(15),
+      lineHeight: s(22),
       flex: 1,
       fontWeight: "500",
     },
-    dot: { width: 8, height: 8, borderRadius: 4 },
 
     // Menu Editor
-    mealEditor: { marginBottom: 24 },
+    mealEditor: { marginBottom: s(24) },
     mealEditorTitle: {
       color: COLORS.textSecondary,
-      fontSize: 14,
+      fontSize: s(14),
       fontWeight: "700",
       textTransform: "uppercase",
       letterSpacing: 1,
-      marginBottom: 12,
+      marginBottom: s(12),
     },
     mealEditorInputs: {
       flexDirection: "row",
-      gap: 10,
+      gap: s(10),
       alignItems: "center",
-      marginBottom: 16,
+      marginBottom: s(16),
     },
     mealInput: {
       flex: 1,
       backgroundColor: COLORS.surfaceDark,
-      borderRadius: SIZES.borderRadiusSmall,
-      padding: 14,
-      fontSize: 15,
+      borderRadius: s(SIZES.borderRadiusSmall),
+      padding: s(14),
+      fontSize: s(15),
       color: COLORS.textPrimary,
       borderWidth: 1,
       borderColor: COLORS.border,
     },
     typeToggle: {
-      paddingHorizontal: SIZES.paddingSmall,
-      height: 48,
-      borderRadius: SIZES.borderRadiusSmall,
+      paddingHorizontal: s(SIZES.paddingSmall),
+      height: s(48),
+      borderRadius: s(SIZES.borderRadiusSmall),
       justifyContent: "center",
       alignItems: "center",
-      minWidth: 80,
+      minWidth: s(80),
     },
-    typeToggleText: { color: COLORS.white, fontSize: 12, fontWeight: "800" },
+    typeToggleText: { color: COLORS.white, fontSize: s(12), fontWeight: "800" },
     addSmall: {
       backgroundColor: COLORS.primary,
-      width: 48,
-      height: 48,
-      borderRadius: 24,
+      width: s(48),
+      height: s(48),
+      borderRadius: s(24),
       alignItems: "center",
       justifyContent: "center",
     },
-    itemList: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+    itemList: { flexDirection: "row", flexWrap: "wrap", gap: s(8) },
     itemBadge: {
       backgroundColor: COLORS.surfaceDark,
-      borderRadius: 10,
-      paddingVertical: 8,
-      paddingHorizontal: SIZES.paddingSmall,
+      borderRadius: s(10),
+      paddingVertical: s(8),
+      paddingHorizontal: s(SIZES.paddingSmall),
       flexDirection: "row",
       alignItems: "center",
-      gap: 8,
+      gap: s(8),
       borderWidth: 1,
       borderColor: COLORS.border,
     },
-    itemBadgeText: { color: COLORS.textPrimary, fontSize: 14, fontWeight: "600" },
+    itemBadgeText: { color: COLORS.textPrimary, fontSize: s(14), fontWeight: "600" },
 
     // Summary Inline
     mealSummaryRow: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 8,
-      marginBottom: 4,
+      gap: s(8),
+      marginBottom: s(4),
     },
-    menuSummaryLabel: { color: COLORS.textPrimary, fontSize: 14, fontWeight: "800", minWidth: 20 },
+    menuSummaryLabel: { color: COLORS.textPrimary, fontSize: s(14), fontWeight: "800", minWidth: s(20) },
     inlineItemList: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 6,
+      gap: s(6),
       flexWrap: "wrap",
       flex: 1,
     },
     menuSummaryText: {
       color: COLORS.textSecondary,
-      fontSize: 14,
+      fontSize: s(14),
       fontWeight: "500",
     },
     menuBox: {
       backgroundColor: COLORS.surface,
-      borderRadius: SIZES.borderRadiusSmall,
-      padding: SIZES.paddingSmall,
+      borderRadius: s(SIZES.borderRadiusSmall),
+      padding: s(SIZES.paddingSmall),
       borderWidth: 1,
       borderColor: COLORS.border,
     },
@@ -537,16 +602,14 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
     // QR & Scanning
     qrContent: {
       alignItems: "center",
-      padding: SIZES.paddingMedium,
-      width: "100%",
-      maxWidth: (isLargeScreen && !isWeb) ? MAX_WIDTH : undefined,
-      alignSelf: "center",
+      padding: s(SIZES.paddingMedium),
+      ...maxWidthStyle,
     },
     qrBox: {
       backgroundColor: COLORS.white,
-      padding: 20,
-      borderRadius: 32,
-      marginTop: 20,
+      padding: s(20),
+      borderRadius: s(32),
+      marginTop: s(20),
       alignItems: "center",
       justifyContent: "center",
       ...Platform.select({
@@ -559,53 +622,57 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
         android: {
           elevation: 10,
         },
+        web: {
+          boxShadow: '0 10px 30px rgba(0,0,0,0.1)',
+        }
       }),
     },
     qrCaption: {
       color: COLORS.textPrimary,
       fontWeight: "800",
-      fontSize: 18,
-      marginTop: 32,
+      fontSize: s(18),
+      marginTop: s(32),
       textAlign: "center",
     },
     qrLink: {
       color: COLORS.textSecondary,
-      fontSize: 12,
-      marginTop: 12,
+      fontSize: s(12),
+      marginTop: s(12),
       textAlign: "center",
     },
 
     // Global Footer
-    footer: { paddingVertical: 40, alignItems: "center" },
-    footerText: { color: COLORS.textMuted, fontSize: 13, fontWeight: "600" },
+    footer: { paddingVertical: v(s(40)), alignItems: "center", ...maxWidthStyle },
+    footerText: { color: COLORS.textMuted, fontSize: s(13), fontWeight: "600" },
 
     // Login specific
     loginContainer: {
-      padding: SIZES.paddingLarge,
-      paddingTop: 120,
-      paddingBottom: 150,
+      padding: s(SIZES.paddingLarge),
+      paddingTop: v(s(120)),
+      paddingBottom: v(s(150)),
       backgroundColor: COLORS.background,
+      ...maxWidthStyle,
     },
     loginLogo: {
-      width: 100,
-      height: 100,
-      borderRadius: 50,
+      width: s(100),
+      height: s(100),
+      borderRadius: s(50),
       backgroundColor: COLORS.primary,
       alignItems: "center",
       justifyContent: "center",
       alignSelf: "center",
-      marginBottom: 32,
+      marginBottom: s(32),
     },
 
     // Floating Action Button
     fab: {
       position: "absolute",
-      bottom: 90,
-      right: 20,
+      bottom: isWeb ? 40 : 90,
+      right: isWeb ? 40 : 20,
       backgroundColor: COLORS.primary,
-      width: SIZES.fabSize,
-      height: SIZES.fabSize,
-      borderRadius: SIZES.fabRadius,
+      width: s(SIZES.fabSize),
+      height: s(SIZES.fabSize),
+      borderRadius: s(SIZES.fabRadius),
       alignItems: "center",
       justifyContent: "center",
       elevation: 8,
@@ -613,6 +680,9 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
       shadowOffset: { width: 0, height: 6 },
       shadowOpacity: 0.4,
       shadowRadius: 8,
+      ...Platform.select({
+        web: { cursor: 'pointer' }
+      })
     },
 
     // Custom Components
@@ -620,22 +690,23 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
       backgroundColor: COLORS.errorLight,
       borderColor: COLORS.error,
       borderWidth: 1,
-      borderRadius: 16,
-      padding: 16,
-      marginBottom: 20,
+      borderRadius: s(16),
+      padding: s(16),
+      marginBottom: s(20),
+      ...maxWidthStyle,
     },
-    firebaseBannerTitle: { color: COLORS.error, fontSize: 14, fontWeight: "800" },
-    firebaseBannerText: { color: COLORS.error, fontSize: 13, marginTop: 4 },
+    firebaseBannerTitle: { color: COLORS.error, fontSize: s(14), fontWeight: "800" },
+    firebaseBannerText: { color: COLORS.error, fontSize: s(13), marginTop: s(4) },
 
     compactSecondary: {
       backgroundColor: COLORS.surface,
       borderColor: COLORS.border,
       borderWidth: 1,
-      borderRadius: 14,
-      padding: 6,
+      borderRadius: s(14),
+      padding: s(6),
       flexGrow: 1,
-      minWidth: "23%",
-      height: 64,
+      minWidth: isDesktop ? "18%" : "23%",
+      height: v(s(64)),
       alignItems: "center",
       justifyContent: "center",
       ...Platform.select({
@@ -648,16 +719,17 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
         android: {
           elevation: 2,
         },
+        web: { cursor: 'pointer' }
       }),
     },
     actionLabel: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
-      gap: 8,
+      gap: s(8),
     },
     actionLabelText: {
-      fontSize: 15,
+      fontSize: s(15),
       fontWeight: "700",
     },
 
@@ -665,62 +737,71 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
     dropdownModalBackdrop: {
       flex: 1,
       backgroundColor: COLORS.shadow + "99",
-      justifyContent: "flex-end",
+      justifyContent: isWeb ? "center" : "flex-end",
+      alignItems: isWeb ? "center" : undefined,
     },
     dropdownModalCard: {
       backgroundColor: COLORS.surface,
-      borderTopLeftRadius: 32,
-      borderTopRightRadius: 32,
-      padding: SIZES.paddingLarge,
-      paddingBottom: 40,
+      borderTopLeftRadius: isWeb ? s(32) : 32,
+      borderTopRightRadius: isWeb ? s(32) : 32,
+      borderRadius: isWeb ? s(32) : undefined,
+      padding: s(SIZES.paddingLarge),
+      paddingBottom: s(40),
       maxHeight: "85%",
+      width: isWeb ? Math.min(width * 0.9, 500) : "100%",
     },
     dropdownWrap: {
       marginBottom: 0,
     },
     dropdownButton: {
       backgroundColor: COLORS.surfaceDark,
-      borderRadius: 14,
-      paddingHorizontal: 16,
-      height: 56,
+      borderRadius: s(14),
+      paddingHorizontal: s(16),
+      height: s(56),
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
       borderWidth: 1,
       borderColor: COLORS.border,
+      ...Platform.select({
+        web: { cursor: 'pointer' }
+      })
     },
     dropdownValue: {
-      fontSize: 16,
+      fontSize: s(16),
       color: COLORS.textPrimary,
       fontWeight: "600",
     },
     dropdownChevron: {
-      fontSize: 12,
+      fontSize: s(12),
       color: COLORS.textSecondary,
     },
     dropdownModalTitle: {
-      fontSize: 20,
+      fontSize: s(20),
       fontWeight: "900",
       color: COLORS.textPrimary,
-      marginBottom: 20,
+      marginBottom: s(20),
       textAlign: "center",
     },
     dropdownModalList: {
-      marginBottom: 20,
+      marginBottom: s(20),
     },
     dropdownOption: {
-      paddingVertical: 18,
+      paddingVertical: s(18),
       borderBottomWidth: 1,
       borderBottomColor: COLORS.border,
+      ...Platform.select({
+        web: { cursor: 'pointer' }
+      })
     },
     dropdownOptionSelected: {
       backgroundColor: COLORS.successLight,
-      borderRadius: SIZES.borderRadiusSmall,
+      borderRadius: s(SIZES.borderRadiusSmall),
       borderBottomColor: "transparent",
-      paddingHorizontal: SIZES.paddingSmall,
+      paddingHorizontal: s(SIZES.paddingSmall),
     },
     dropdownOptionText: {
-      fontSize: 18,
+      fontSize: s(18),
       color: COLORS.textSecondary,
       fontWeight: "600",
       textAlign: "center",
@@ -730,116 +811,124 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
       fontWeight: "800",
     },
     dropdownModalCancel: {
-      marginTop: 10,
-      height: 48,
+      marginTop: s(10),
+      height: s(48),
       alignItems: "center",
       justifyContent: "center",
       backgroundColor: COLORS.surfaceDark,
-      borderRadius: 16,
+      borderRadius: s(16),
+      ...Platform.select({
+        web: { cursor: 'pointer' }
+      })
     },
 
     // Subscription Details
     dayMenuSection: {
-      paddingVertical: SIZES.paddingSmall,
+      paddingVertical: s(SIZES.paddingSmall),
       borderBottomWidth: 1,
       borderBottomColor: COLORS.border,
     },
     menuSummaryInline: {
       flexDirection: "row",
       flexWrap: "wrap",
-      gap: SIZES.paddingSmall,
-      marginTop: 8,
+      gap: s(SIZES.paddingSmall),
+      marginTop: s(8),
     },
     personDays: {
       flexDirection: "row",
       flexWrap: "wrap",
-      gap: 8,
+      gap: s(8),
     },
     personDay: {
       borderWidth: 1.5,
       borderColor: COLORS.border,
-      borderRadius: 14,
-      paddingVertical: 8,
-      paddingHorizontal: 10,
+      borderRadius: s(14),
+      paddingVertical: s(8),
+      paddingHorizontal: s(10),
       alignItems: "center",
       justifyContent: "center",
-      minWidth: 55,
+      minWidth: s(55),
       backgroundColor: COLORS.surface,
     },
     personDayText: {
       color: COLORS.textSecondary,
-      fontSize: 11,
+      fontSize: s(11),
       fontWeight: "800",
       textTransform: "uppercase",
     },
     qrPassCard: {
       backgroundColor: COLORS.white,
-      padding: SIZES.paddingLarge,
-      borderRadius: 32,
+      padding: s(SIZES.paddingLarge),
+      borderRadius: s(32),
       alignItems: "center",
-      width: isLargeScreen ? 400 : Math.min(width * 0.9, 320),
+      width: isLargeScreen ? s(400) : Math.min(width * 0.9, 320),
       borderWidth: 1,
       borderColor: COLORS.border,
+      ...Platform.select({
+        web: {
+          boxShadow: '0 15px 40px rgba(0,0,0,0.1)',
+        }
+      })
     },
     qrPassHeader: {
       alignItems: "center",
-      marginBottom: 20,
+      marginBottom: s(20),
     },
     qrPassEvent: {
       color: COLORS.primary,
-      fontSize: 14,
+      fontSize: s(14),
       fontWeight: "900",
       letterSpacing: 2,
     },
     qrPassTitle: {
       color: COLORS.textPrimary,
-      fontSize: 24,
+      fontSize: s(24),
       fontWeight: "900",
-      marginTop: 4,
+      marginTop: s(4),
     },
     qrPassDetails: {
       alignItems: "center",
-      marginTop: 20,
-      gap: 4,
+      marginTop: s(20),
+      gap: s(4),
     },
     qrPassFlat: {
-      fontSize: 28,
+      fontSize: s(28),
       fontWeight: "900",
       color: COLORS.primary,
     },
     qrPassPeople: {
-      fontSize: 16,
+      fontSize: s(16),
       fontWeight: "700",
       color: COLORS.textSecondary,
     },
     qrPassSummary: {
-      fontSize: 13,
+      fontSize: s(13),
       fontWeight: "600",
       color: COLORS.textSecondary,
       textAlign: "center",
-      marginTop: 8,
+      marginTop: s(8),
     },
     qrPassFooter: {
-      marginTop: SIZES.paddingLarge,
-      paddingTop: 16,
+      marginTop: s(SIZES.paddingLarge),
+      paddingTop: s(16),
       borderTopWidth: 1,
       borderTopColor: COLORS.border,
       width: "100%",
       alignItems: "center",
     },
       qrPassInstruction: {
-      fontSize: 11,
+      fontSize: s(11),
       fontWeight: "700",
       color: COLORS.textSecondary,
       textAlign: "center",
-      marginBottom: 10,
+      marginBottom: s(10),
     },
     qrPassCopyright: {
-      fontSize: 14,
+      fontSize: s(14),
       fontWeight: "800",
       color: COLORS.textSecondary,
       textAlign: "center",
-      marginTop: 10,
+      marginTop: s(10),
     },
 
     // Preview Cards (Live Preview / Pass Identity)
@@ -849,22 +938,23 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
       alignItems: "center",
     },
     previewLabel: {
-      fontSize: 12,
+      fontSize: s(12),
       fontWeight: "800",
       letterSpacing: 1.2,
       textTransform: "uppercase",
-      marginBottom: 4,
+      marginBottom: s(4),
     },
     previewTitle: {
-      fontSize: 24,
+      fontSize: s(24),
       fontWeight: "900",
       letterSpacing: -0.5,
     },
     previewAmount: {
       fontWeight: "900",
+      fontSize: s(18),
     },
     previewMeta: {
-      fontSize: 14,
+      fontSize: s(14),
       fontWeight: "700",
       opacity: 0.9,
     },

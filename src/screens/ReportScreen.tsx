@@ -155,12 +155,12 @@ export function ReportScreen() {
         <Text style={styles.subtitle}>{UI_TEXT.reportSubtitle}</Text>
       </View>
 
-      <View style={{ marginTop: 12 }}>
+      <View style={[styles.maxWidthWrapper, { marginTop: 12 }]}>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           style={{ flexGrow: 0, marginBottom: 12 }}
-          contentContainerStyle={{ paddingHorizontal: 20, gap: 8 }}
+          contentContainerStyle={{ gap: 8 }}
         >
           {[
             { id: ReportType.DAY, label: UI_TEXT.day, icon: "calendar-outline" },
@@ -205,10 +205,10 @@ export function ReportScreen() {
 
       <ScrollView
         style={{ flex: 1, width: "100%" }}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingTop: 0 }]}
       >
         {(reportType === ReportType.SINGLE || reportType === ReportType.NOT_TAKEN || reportType === ReportType.KIDS_MEAL) && (
-          <View style={[styles.card, { marginBottom: 24 }]}>
+          <View style={[styles.card, { marginBottom: 24, marginTop: 10 }]}>
             <Text style={[styles.sectionTitle, { fontSize: 16, marginBottom: 12 }]}>{UI_TEXT.reportFilters}</Text>
 
             <Text style={[styles.selectorLabel, { marginTop: 0 }]}>{UI_TEXT.selectDay}</Text>
