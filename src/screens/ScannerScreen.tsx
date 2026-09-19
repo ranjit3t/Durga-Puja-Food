@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, Pressable, StatusBar, StyleSheet, useWindowDimensions } from "react-native";
+import { View, Text, Pressable, StatusBar, StyleSheet, useWindowDimensions, Platform } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useStyles } from "../styles";
 import { useAppTheme, StatusBarStyleMode } from "../theme";
@@ -89,11 +89,10 @@ export function ScannerScreen() {
       />
 
       {/* 2. UI Overlay on top of camera */}
-      <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
+      <View style={[StyleSheet.absoluteFill, { pointerEvents: "box-none" }]}>
 
         {/* Back Button Area */}
         <View
-          pointerEvents="box-none"
           style={{
             paddingTop: 60,
             paddingHorizontal: 20,
@@ -102,6 +101,7 @@ export function ScannerScreen() {
             left: 0,
             right: 0,
             zIndex: 999,
+            pointerEvents: "box-none",
           }}
         >
           <BackButton onPress={goBack} />
@@ -109,11 +109,11 @@ export function ScannerScreen() {
 
         {/* Center Target Box */}
         <View
-          pointerEvents="none"
           style={{
             flex: 1,
             alignItems: "center",
-            justifyContent: "center"
+            justifyContent: "center",
+            pointerEvents: "none",
           }}
         >
           <View
@@ -129,13 +129,13 @@ export function ScannerScreen() {
 
         {/* Bottom Hint Text */}
         <View
-          pointerEvents="none"
           style={{
             position: 'absolute',
             bottom: 80,
             left: 0,
             right: 0,
-            alignItems: "center"
+            alignItems: "center",
+            pointerEvents: "none",
           }}
         >
           <Text
@@ -143,9 +143,21 @@ export function ScannerScreen() {
               color: theme.colors.white,
               fontSize: 16,
               fontWeight: "700",
-              textShadowColor: theme.colors.shadow + "CC",
-              textShadowOffset: { width: 0, height: 1 },
-              textShadowRadius: 4
+              ...Platform.select({
+                ios: {
+                  textShadowColor: theme.colors.shadow + "CC",
+                  textShadowOffset: { width: 0, height: 1 },
+                  textShadowRadius: 4
+                },
+                android: {
+                  textShadowColor: theme.colors.shadow + "CC",
+                  textShadowOffset: { width: 0, height: 1 },
+                  textShadowRadius: 4
+                },
+                web: {
+                  textShadow: `0 1px 4px ${theme.colors.shadow}CC`,
+                }
+              })
             }}
           >
             {UI_TEXT.scanFrameHint}

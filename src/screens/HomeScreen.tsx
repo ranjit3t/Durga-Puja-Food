@@ -145,7 +145,6 @@ export function HomeScreen() {
           <LogoutButton onLogout={handleLogout} />
         </View>
         <Text style={styles.title}>{UI_TEXT.headerTitle}</Text>
-        <Text style={styles.subtitle}>{UI_TEXT.tagline}</Text>
       </View>
 
       <ScrollView style={{ flex: 1, width: "100%" }} contentContainerStyle={[styles.content, { paddingBottom: 150 }]}>

@@ -53,21 +53,29 @@ const logsPath = "logs";
  * Strips 'undefined' values from an object recursively.
  * Necessary because Firebase set() rejects undefined.
  */
-function cleanUndefined(obj: any): any {
+function cleanUndefined(obj: any, seen = new WeakSet()): any {
+  if (obj === null || typeof obj !== "object") return obj;
+  if (seen.has(obj)) return "[Circular]";
+
+  if (obj.constructor && obj.constructor.name !== 'Object' && !Array.isArray(obj)) {
+    return String(obj);
+  }
+
+  seen.add(obj);
+
   if (Array.isArray(obj)) {
     return obj
-      .map(cleanUndefined)
+      .map(v => cleanUndefined(v, seen))
       .filter((v) => v !== undefined && v !== null);
-  } else if (obj !== null && typeof obj === "object") {
+  } else {
     return Object.keys(obj).reduce((acc: any, key) => {
       const val = obj[key];
       if (val !== undefined && val !== null) {
-        acc[key] = cleanUndefined(val);
+        acc[key] = cleanUndefined(val, seen);
       }
       return acc;
     }, {});
   }
-  return obj;
 }
 
 /**

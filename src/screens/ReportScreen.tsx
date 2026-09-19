@@ -6,7 +6,7 @@ import React, { useMemo, useRef } from "react";
 import { View, Text, ScrollView, StatusBar, Pressable, Platform } from "react-native";
 import { captureRef } from "react-native-view-shot";
 import { Ionicons } from "@expo/vector-icons";
-import { useStyles } from "../styles";
+import { useStyles, useScaling } from "../styles";
 import { StatusBarStyleMode, useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
 import {
@@ -60,6 +60,7 @@ export function ReportScreen() {
   } = useReportData(subscriptions, foodMenu, dayConfig, guestEnabled, paymentConfig, !!kidsEnabled);
 
   const styles = useStyles();
+  const { s } = useScaling();
   const { theme, themeType } = useAppTheme();
 
   const onSelectFlat = (id: string) => {
@@ -262,7 +263,29 @@ export function ReportScreen() {
         )}
 
         <View ref={reportRef} collapsable={false} style={{ backgroundColor: theme.colors.background }}>
-          <View style={[styles.card, { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary, elevation: 6, marginBottom: 24, paddingVertical: 16 }]}>
+          <View style={[
+            styles.card,
+            {
+              backgroundColor: theme.colors.primary,
+              borderColor: theme.colors.primary,
+              marginBottom: s(24),
+              paddingVertical: s(16),
+              ...Platform.select({
+                ios: {
+                  shadowColor: theme.colors.primary,
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 6,
+                },
+                android: {
+                  elevation: 6,
+                },
+                web: {
+                  boxShadow: `0 4px 12px ${theme.colors.primary}40`,
+                }
+              })
+            }
+          ]}>
             <View style={styles.previewTop}>
               <View>
                 <Text style={[styles.previewLabel, { color: theme.colors.white, opacity: 0.7 }]}>{seasonName}</Text>

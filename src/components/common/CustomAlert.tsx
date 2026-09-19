@@ -52,6 +52,9 @@ export function CustomAlert({
           android: {
             elevation: 12,
           },
+          web: {
+            boxShadow: '0 12px 32px rgba(0,0,0,0.15)',
+          }
         }),
       },
       header: {

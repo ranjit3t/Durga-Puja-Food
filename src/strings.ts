@@ -6,7 +6,6 @@ export const UI_TEXT = {
   appName: "Food Desk",
   appVersion: "1.0.0",
   headerTitle: "Eternia Food Desk",
-  tagline: "Track every plate, flat by flat.",
   loading: "Loading data...",
   offlineMode: "Offline mode",
   day: "Day",

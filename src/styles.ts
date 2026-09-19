@@ -77,6 +77,7 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
       borderBottomWidth: 1,
       borderBottomColor: COLORS.border,
       ...maxWidthStyle,
+      width: isWeb ? "100%" : maxWidthStyle.width,
     },
     title: {
       color: COLORS.textPrimary,
@@ -106,6 +107,7 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
       padding: s(SIZES.paddingMedium),
       paddingBottom: v(150),
       ...maxWidthStyle,
+      width: isWeb ? "100%" : maxWidthStyle.width,
     },
 
     // Fixed width wrapper for elements outside scrollviews/flatlists
@@ -133,10 +135,7 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
           elevation: 3,
         },
         web: {
-          shadowColor: COLORS.shadow,
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.1,
-          shadowRadius: 10,
+          boxShadow: '0 4px 10px rgba(0,0,0,0.1)',
         }
       }),
     },
@@ -220,10 +219,7 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
           elevation: 8,
         },
         web: {
-          shadowColor: COLORS.primary,
-          shadowOffset: { width: 0, height: 6 },
-          shadowOpacity: 0.2,
-          shadowRadius: 12,
+          boxShadow: `0 6px 12px ${COLORS.primary}33`,
         }
       }),
     },
@@ -383,6 +379,7 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
         web: {
           cursor: 'pointer',
           transition: 'all 0.2s ease',
+          boxShadow: `0 4px 10px ${COLORS.success}40`,
         }
       }),
     },
@@ -423,6 +420,7 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
         },
         web: {
           cursor: 'pointer',
+          boxShadow: `0 4px 10px ${COLORS.error}40`,
         }
       }),
     },
@@ -675,13 +673,20 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
       borderRadius: s(SIZES.fabRadius),
       alignItems: "center",
       justifyContent: "center",
-      elevation: 8,
-      shadowColor: COLORS.primary,
-      shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: 0.4,
-      shadowRadius: 8,
       ...Platform.select({
-        web: { cursor: 'pointer' }
+        ios: {
+          shadowColor: COLORS.primary,
+          shadowOffset: { width: 0, height: 6 },
+          shadowOpacity: 0.4,
+          shadowRadius: 8,
+        },
+        android: {
+          elevation: 8,
+        },
+        web: {
+          cursor: 'pointer',
+          boxShadow: '0 6px 16px rgba(0,0,0,0.2)',
+        }
       })
     },
 
@@ -719,7 +724,10 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
         android: {
           elevation: 2,
         },
-        web: { cursor: 'pointer' }
+        web: {
+          cursor: 'pointer',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+        }
       }),
     },
     actionLabel: {

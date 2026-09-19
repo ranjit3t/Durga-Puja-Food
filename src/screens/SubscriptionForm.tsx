@@ -14,7 +14,7 @@ import {
   StatusBar,
 } from "react-native";
 import * as Contacts from "expo-contacts/legacy";
-import { useStyles } from "../styles";
+import { useStyles, useScaling } from "../styles";
 import { StatusBarStyleMode, useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
 import {
@@ -80,6 +80,7 @@ export function SubscriptionForm() {
   if (!value) return null;
 
   const styles = useStyles();
+  const { s } = useScaling();
   const { theme, themeType } = useAppTheme();
   const isAdmin = userRole === UserRole.ADMIN;
   const canEdit = seasonEnabled;
@@ -1168,12 +1169,21 @@ export function SubscriptionForm() {
               style={[
                 styles.primary,
                 {
-                  marginTop: 16,
+                  marginTop: s(16),
                   backgroundColor: theme.colors.primary,
-                  shadowOpacity: 0,
-                  elevation: 0,
-                  shadowRadius: 0,
-                  shadowOffset: { width: 0, height: 0 }
+                  ...Platform.select({
+                    ios: {
+                      shadowOpacity: 0,
+                      shadowRadius: 0,
+                      shadowOffset: { width: 0, height: 0 }
+                    },
+                    android: {
+                      elevation: 0,
+                    },
+                    web: {
+                      boxShadow: 'none',
+                    }
+                  })
                 },
                 !canSave && { opacity: 0.5 },
               ]}

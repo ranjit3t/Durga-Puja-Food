@@ -10,8 +10,9 @@ import {
   Pressable,
   StatusBar,
   Linking,
+  Platform,
 } from "react-native";
-import { useStyles } from "../styles";
+import { useStyles, useScaling } from "../styles";
 import { useAppTheme, StatusBarStyleMode } from "../theme";
 import { UI_TEXT } from "../strings";
 import {
@@ -52,6 +53,7 @@ export function DetailsScreen() {
   if (!subscription) return null;
 
   const styles = useStyles();
+  const { s } = useScaling();
   const { theme, themeType } = useAppTheme();
   const isAdmin = userRole === UserRole.ADMIN;
   const canEdit = seasonEnabled && !isSeasonDone(dayConfig);
@@ -109,7 +111,27 @@ export function DetailsScreen() {
         contentContainerStyle={styles.content}
       >
         {/* Pass Identity Card */}
-        <View style={[styles.card, { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary, elevation: 6 }]}>
+        <View style={[
+          styles.card,
+          {
+            backgroundColor: theme.colors.primary,
+            borderColor: theme.colors.primary,
+            ...Platform.select({
+              ios: {
+                shadowColor: theme.colors.primary,
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.3,
+                shadowRadius: 6,
+              },
+              android: {
+                elevation: 6,
+              },
+              web: {
+                boxShadow: `0 4px 12px ${theme.colors.primary}40`,
+              }
+            })
+          }
+        ]}>
           <View style={styles.previewTop}>
             <View>
               <Text style={[styles.previewLabel, { color: theme.colors.white, opacity: 0.7 }]}>{UI_TEXT.passIdentity}</Text>
