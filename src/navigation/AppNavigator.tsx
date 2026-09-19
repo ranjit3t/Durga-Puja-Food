@@ -107,6 +107,7 @@ export function AppNavigator() {
       <View style={styles.bgBlob3} />
       <View style={styles.bgBlob4} />
       <View style={styles.bgBlob5} />
+      <View style={styles.bgBlob6} />
       <View style={styles.bgBlobWeb1} />
       <View style={styles.bgBlobWeb2} />
       <View style={styles.bgBlobWebTop} />

@@ -108,6 +108,16 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
       backgroundColor: theme?.themeType === 'dark' ? "rgba(255, 179, 0, 0.16)" : "rgba(255, 179, 0, 0.24)",
       pointerEvents: "none" as any,
     },
+    bgBlob6: {
+      position: "absolute",
+      bottom: -150,
+      right: -150,
+      width: s(480),
+      height: s(480),
+      borderRadius: s(240),
+      backgroundColor: theme?.themeType === 'dark' ? "rgba(0, 123, 255, 0.2)" : "rgba(0, 123, 255, 0.25)",
+      pointerEvents: "none" as any,
+    },
     bgBlobWeb1: {
       position: "absolute",
       top: "45%" as any,
