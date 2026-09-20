@@ -78,14 +78,14 @@ The application implements **Role-Based Access Control (RBAC)**:
 ## 5. Immersive Background Architecture
 The application features a multi-layered **Festive Mesh Backdrop** system managed at the router level:
 - **Layer 0 (Base)**: Solid background color (`COLORS.background`) from the active theme.
-- **Layer 1 (Mesh spots)**: Up to **8 dynamically positioned ambient blobs** (`bgBlob1` to `bgBlobWebTop`) rendered as absolute absolute-positioned circles with large radial blurs. 
+- **Layer 1 (Mesh spots)**: Up to **9 dynamically positioned ambient blobs** (`bgBlob1` to `bgBlobWebTop`) rendered as absolute absolute-positioned circles with large radial blurs. 
 - **Layer 2 (Content Wrapper)**: A transparent screen-container layout that allows the background festive glows to remain visible behind interactive components.
-- **Responsive Injection**: The system uses a conditional rendering pattern in `AppNavigator.tsx` to mount additional central blobs specifically for web viewports to maintain horizontal immersion.
+- **Responsive Injection**: The system uses a conditional rendering pattern in `AppNavigator.tsx` to mount additional central and top-aligned blobs specifically for web viewports to maintain horizontal immersion.
 
 ## 6. Glassmorphism Design Pattern
 To complement the immersive background, the system employs a global **Glassmorphic Language**:
 - **Semi-Translucency**: Primary layout cards and report panels utilize `rgba()` background colors with opacities between **50% and 75%** instead of solid colors.
-- **Visual Depth**: This allows the festive background tones (Crimson, Marigold, Royal Blue, Violet) to flow through the UI, creating a sophisticated sense of depth and community celebration while retaining high-contrast accessibility.
+- **Shadow-Free Visual Depth**: All card elevations and solid shadows have been removed in favor of border-based segmentation (`1.5px` borders), allowing the festive background tones (Crimson, Marigold, Royal Blue, Violet) to flow through the UI cleanly. This creating a sophisticated sense of depth and community celebration while retaining high-contrast accessibility.
 
 ## 7. Kids Support System
 The application features a comprehensive Kids tracking system:

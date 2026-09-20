@@ -269,21 +269,7 @@ export function ReportScreen() {
               backgroundColor: theme.colors.primary,
               borderColor: theme.colors.primary,
               marginBottom: s(24),
-              paddingVertical: s(16),
-              ...Platform.select({
-                ios: {
-                  shadowColor: theme.colors.primary,
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.3,
-                  shadowRadius: 6,
-                },
-                android: {
-                  elevation: 6,
-                },
-                web: {
-                  boxShadow: `0 4px 12px ${theme.colors.primary}40`,
-                }
-              })
+              paddingVertical: s(16)
             }
           ]}>
             <View style={styles.previewTop}>

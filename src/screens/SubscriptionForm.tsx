@@ -557,7 +557,7 @@ export function SubscriptionForm() {
         keyboardDismissMode="on-drag"
       >
         {/* Real-time Summary Card */}
-        <View style={[styles.card, { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary, elevation: 6 }]}>
+        <View style={[styles.card, { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary }]}>
           <View style={styles.previewTop}>
             <View>
               <Text style={[styles.previewLabel, { color: theme.colors.white, opacity: 0.7 }]}>{UI_TEXT.livePreview}</Text>

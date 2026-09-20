@@ -105,9 +105,8 @@ export function LoginScreen() {
                <Ionicons name="restaurant" size={48} color={theme.colors.white} />
             </View>
 
-            <View style={{ alignItems: "center", marginBottom: 40 }}>
+            <View style={{ alignItems: "center", marginBottom: 20 }}>
               <Text style={[styles.title, { textAlign: "center", marginTop: 12 }]}>{UI_TEXT.loginTitle}</Text>
-              <Text style={[styles.subtitle, { textAlign: "center" }]}>{UI_TEXT.loginSubtitle}</Text>
             </View>
 
             <View>

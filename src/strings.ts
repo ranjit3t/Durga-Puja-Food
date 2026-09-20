@@ -392,7 +392,6 @@ export const UI_TEXT = {
 
   // Login Screen
   loginTitle: "Food Desk Login",
-  loginSubtitle: "Authorized access only.",
   username: "Username",
   password: "Password",
   usernamePlaceholder: "Enter username",

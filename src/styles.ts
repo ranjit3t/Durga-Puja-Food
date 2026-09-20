@@ -214,26 +214,12 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
 
     // Cards (Modern "Sleek" Look)
     card: {
-      backgroundColor: theme?.themeType === 'dark' ? "rgba(30, 30, 30, 0.7)" : "rgba(255, 255, 255, 0.75)",
+      backgroundColor: COLORS.surface,
       padding: s(SIZES.paddingMedium),
       borderRadius: s(SIZES.borderRadiusLarge),
       marginBottom: s(16),
-      borderWidth: 1,
+      borderWidth: 1.5,
       borderColor: COLORS.border,
-      ...Platform.select({
-        ios: {
-          shadowColor: COLORS.shadow,
-          shadowOffset: { width: 0, height: 8 },
-          shadowOpacity: 0.05,
-          shadowRadius: 12,
-        },
-        android: {
-          elevation: 3,
-        },
-        web: {
-          boxShadow: '0 4px 10px rgba(0,0,0,0.1)',
-        }
-      }),
     },
 
     // Search & Inputs
@@ -377,11 +363,11 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
 
     // Dashboard Sections
     dashboardCard: {
-      backgroundColor: theme?.themeType === 'dark' ? "rgba(44, 44, 44, 0.5)" : "rgba(241, 243, 245, 0.6)",
+      backgroundColor: COLORS.surface,
       borderRadius: s(SIZES.borderRadiusLarge),
       padding: v(s(SIZES.paddingMedium)),
       marginBottom: v(s(20)),
-      borderWidth: 1,
+      borderWidth: 1.5,
       borderColor: COLORS.border,
     },
     dashboardCardTop: {
@@ -396,10 +382,13 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
       color: COLORS.textPrimary,
     },
     dashboardMealSection: {
-      backgroundColor: theme?.themeType === 'dark' ? "rgba(30, 30, 30, 0.5)" : "rgba(255, 255, 255, 0.5)",
+      backgroundColor: COLORS.surfaceDark,
       borderRadius: s(20),
       padding: v(s(16)),
       marginBottom: v(s(16)),
+      borderWidth: 1,
+      borderColor: COLORS.border,
+      borderStyle: "dashed",
     },
 
     // Metric Components
@@ -742,7 +731,7 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
     // Login specific
     loginContainer: {
       padding: s(SIZES.paddingLarge),
-      paddingTop: v(s(120)),
+      paddingTop: v(s(50)),
       paddingBottom: v(s(150)),
       backgroundColor: "transparent",
       ...maxWidthStyle,

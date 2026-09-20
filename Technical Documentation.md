@@ -9,9 +9,9 @@ The application follows a **Serverless Modular Architecture** built on the **Exp
 1.  **Bootstrapping**: `App.tsx` initializes the `ThemeProvider` (loading local preferences), global state, navigation history stack, and checks for session validity.
 2.  **Authentication**: `LoginScreen` (with theme toggle) verifies credentials against the `auth_config` DB node. It uses a **Two-Phase Transition Logic**: `verifying` (during credential fetch) and `loading` (after match, during data hydration).
 3.  **Hydration**: Upon login or screen transition, the app performs a full fetch of subscriptions, menu, and configuration.
-4.  **Backdrop Layering**: The `AppNavigator` serves as a master layout shell, injecting **8 dynamic mesh gradient blobs** behind the `screenComponent`. These circles utilize high-contrast festive tones that adapt to theme modes.
+4.  **Backdrop Layering**: The `AppNavigator` serves as a master layout shell, injecting **9 dynamic mesh gradient blobs** behind the `screenComponent`. These circles utilize high-contrast festive tones (Crimson, Marigold, Royal Blue, Violet) that adapt to theme modes.
 5.  **Navigation**: Custom history stack management allows predictable back navigation, including Android hardware button support. History is automatically purged upon returning to the root Home screen.
-6.  **Presentation**: UI elements are rendered dynamically using the `useStyles` hook, which reacts to theme changes and global `AppConfig`. All primary panels use **Glassmorphic Translucency** to allow background mesh glows to bleed through.
+6.  **Presentation**: UI elements are rendered dynamically using the `useStyles` hook, which reacts to theme changes and global `AppConfig`. All primary panels use **Shadow-Free Glassmorphism** to allow background mesh glows to bleed through seamlessly.
 
 ---
 
@@ -96,13 +96,19 @@ The application employs a **Zero-Hardcoding Policy** for UI text and Domain enti
 
 ### G. Immersive Mesh Background Implementation
 The premium "Festive Mesh" backdrop is achieved via absolute absolute-positioned circles with large radial coverage:
-- **Geometry**: Utilizes up to **8 dynamic circles** (`s(400)` to `s(700)` in diameter) with rounded corners (`borderRadius: 50%`).
-- **Positioning**: Pushed outside the viewport edges (`top: -240`, `left: -150`) to create soft corner blurs that eliminate sharp geometric outlines.
+- **Geometry**: Utilizes up to **9 dynamic circles** (`s(400)` to `s(700)` in diameter).
+- **Positioning**: Pushed outside the viewport edges (`top: -240`, `left: -160`) to create soft corner blurs that eliminate sharp geometric outlines inside headers.
 - **Adaptive Contrast**: Uses higher alpha weights (`0.24`–`0.26`) in **Light Mode** to ensure visibility against white backgrounds and tuned glowing values in **Dark Mode** for neon immersion.
-- **Web-Aware Expansion**: Automatically mounts additional `<View style={styles.bgBlobWeb...} />` elements when `Platform.OS === 'web'`, ensuring the entire horizontal canvas of a 4K monitor remains visually interesting.
-- **Glassmorphic Integration**: Global style tokens for `card` and `dashboardCard` were transitioned from solid hex values to `rgba()` blurs, effectively turning them into translucent "Frosted Glass" layers.
+- **Festive Palette**: Features a **Premium Warm & Festive** color combination: Crimson Red, Marigold Gold, Soft Royal Blue, and Deep Violet.
+- **Web-Aware Expansion**: Automatically mounts 3 additional large `<View style={styles.bgBlobWeb...} />` elements when `Platform.OS === 'web'`, ensuring the entire horizontal canvas of a 4K monitor remains visually immersive.
+- **Shadow-Free UI**: Global style tokens for `card` and `dashboardCard` were transitioned to a shadow-free design. By removing all `elevation` and `shadowColor` properties, the app eliminates the "white glow" around content columns, allowing the background blurs to be the sole source of visual depth.
 
-### H. Guest Management & Counter Logic
+### H. High-Vibrancy Status Badges
+To maintain maximum visibility against the dynamic mesh background:
+- **LIVE Indicator**: The activity log and service windows now utilize a solid, high-contrast **Success Green** background with white text and 8px circular "heartbeat" icons for instant recognition.
+- **Dietary Markers**: Subscriptions and dashboard titles feature vibrant, color-coded badges (Leaf Green for Veg, Error Red for Non-Veg) with increased saturation.
+
+### I. Guest Management & Counter Logic
 - **Module Interface**: The `GuestManagementScreen` provides a high-density matrix for updating guest demand and collections in real-time. The interface utilizes a vertically-stacked input layout to maximize touch accuracy on mobile devices.
 - **Current Meal Flow**: Prioritizes the active "Current Meal" at the top of the list for rapid entry during peak hours. It adopts the same "LIVE" badge and focused styling used on the main kitchen dashboard to maintain a unified operational experience. For meals supporting dual diets (Veg + Non-Veg), the module provides aggregated Guest Total and Guest Taken summaries to help administrators visualize the total workload.
 - **Interactive People Counter**: The registration form utilizes the `CounterInput` for headcount management, enforcing a minimum of 1 member and automatically synchronizing with the person-wise dietary choice matrix.
