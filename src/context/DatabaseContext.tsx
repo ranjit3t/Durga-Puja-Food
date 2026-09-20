@@ -362,7 +362,6 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       addActivityLog({
         module: ActivityModule.NOTE,
         action: isEdit ? ActivityAction.UPDATE : ActivityAction.CREATE,
-        targetId: result.id,
         description: (isEdit ? UI_TEXT.logEditNote : UI_TEXT.logAddNote).replace("{subject}", note.subject)
       });
       await refreshAllData(true);
@@ -385,7 +384,6 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
         addActivityLog({
           module: ActivityModule.NOTE,
           action: ActivityAction.DELETE,
-          targetId: id,
           description: UI_TEXT.logDeleteNote.replace("{subject}", note.subject)
         });
       }

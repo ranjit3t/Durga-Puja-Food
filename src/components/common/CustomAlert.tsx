@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import { View, Text, Pressable, Modal, StyleSheet, Platform } from "react-native";
 import { useAppTheme } from "../../theme";
 import { UI_TEXT } from "../../strings";
+import { AppThemeMode } from "../../domain";
 
 export type AlertButton = {
   text: string;
@@ -37,7 +38,7 @@ export function CustomAlert({
         padding: 24,
       },
       card: {
-        backgroundColor: theme.themeType === 'dark' ? COLORS.surface : COLORS.white,
+        backgroundColor: theme.themeType === AppThemeMode.DARK ? COLORS.surface : COLORS.white,
         borderRadius: 28,
         width: "100%",
         maxWidth: 340,
@@ -53,7 +54,7 @@ export function CustomAlert({
             elevation: 12,
           },
           web: {
-            boxShadow: '0 12px 32px rgba(0,0,0,0.15)',
+            boxShadow: `0 12px 32px ${COLORS.shadow}26`,
           }
         }),
       },

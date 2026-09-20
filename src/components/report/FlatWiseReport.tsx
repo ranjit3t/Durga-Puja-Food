@@ -78,7 +78,7 @@ export function FlatWiseReport({
                 <Text style={{ fontWeight: "800", fontSize: 14, color: colorScheme.accent, marginBottom: 8 }}>{getDayLabel(ds.day, dayConfig)}</Text>
                 <View style={{ gap: 8 }}>
                   {ds.meals.map((m) => (
-                    <View key={m.type} style={{ backgroundColor: theme.themeType === AppThemeMode.DARK ? "rgba(30, 30, 30, 0.4)" : "rgba(255, 255, 255, 0.5)", borderRadius: 12, padding: 10, gap: 4 }}>
+                    <View key={m.type} style={{ backgroundColor: theme.colors.surfaceDark + (theme.themeType === AppThemeMode.DARK ? "66" : "80"), borderRadius: 12, padding: 10, gap: 4 }}>
                       <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
                          <Text style={{ fontSize: 13, fontWeight: "800" }}>{getMealLabel(m.type)}</Text>
                          <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.textSecondary }}>

@@ -141,7 +141,6 @@ export function NotesScreen() {
       addActivityLog({
         module: ActivityModule.NOTE,
         action: ActivityAction.VIEW,
-        targetId: editingNote.id,
         description: UI_TEXT.logViewNote.replace("{subject}", editingNote.subject)
       });
     }
@@ -285,7 +284,7 @@ export function NotesScreen() {
         </View>
       </View>
 
-      <View style={{ backgroundColor: theme.themeType === AppThemeMode.DARK ? "rgba(30, 30, 30, 0.4)" : "rgba(255, 255, 255, 0.5)", borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
+      <View style={{ backgroundColor: theme.colors.surfaceDark + (theme.themeType === AppThemeMode.DARK ? "66" : "80"), borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
         <View style={[styles.maxWidthWrapper, { paddingVertical: 20, gap: 16 }]}>
           <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
             <View style={[styles.searchBox, { flex: 1, marginBottom: 0, height: 52, borderRadius: 14, maxWidth: undefined }]}>
@@ -383,7 +382,7 @@ export function NotesScreen() {
       >
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }}
+          style={{ flex: 1, backgroundColor: theme.colors.shadow + "80", justifyContent: 'center', alignItems: 'center' }}
         >
           <View style={[styles.card, { width: '90%', maxHeight: '80%', padding: 20, backgroundColor: theme.colors.surface }]}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>

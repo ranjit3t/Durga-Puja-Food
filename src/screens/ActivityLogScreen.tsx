@@ -376,7 +376,7 @@ export function ActivityLogScreen() {
         </View>
       </View>
 
-      <View style={{ backgroundColor: theme.themeType === AppThemeMode.DARK ? "rgba(30, 30, 30, 0.4)" : "rgba(255, 255, 255, 0.5)", borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
+      <View style={{ backgroundColor: theme.colors.surfaceDark + (theme.themeType === AppThemeMode.DARK ? "66" : "80"), borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
         <View style={[styles.maxWidthWrapper, { paddingVertical: 20, gap: 16 }]}>
           <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
             <View style={[styles.searchBox, { flex: 1, marginBottom: 0, height: 52, borderRadius: 14, maxWidth: undefined }]}>

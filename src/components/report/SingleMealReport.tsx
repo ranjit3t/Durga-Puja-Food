@@ -102,7 +102,7 @@ export function SingleMealReport({
             </View>
           </View>
 
-          <View style={{ backgroundColor: theme.themeType === AppThemeMode.DARK ? "rgba(52, 211, 153, 0.15)" : "rgba(235, 251, 238, 0.6)", borderRadius: 16, padding: 16, flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+          <View style={{ backgroundColor: theme.cardColors[2].bg, borderRadius: 16, padding: 16, flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
             <Text style={{ color: theme.colors.veg, fontWeight: "800", fontSize: 16 }}>{UI_TEXT.mealTaken}</Text>
             <View style={{ alignItems: 'flex-end' }}>
               <Text style={{ color: theme.colors.veg, fontSize: 24, fontWeight: "900" }}>{totalTaken}</Text>
@@ -125,7 +125,7 @@ export function SingleMealReport({
             </View>
           </View>
 
-          <View style={{ backgroundColor: theme.themeType === AppThemeMode.DARK ? "rgba(248, 113, 113, 0.15)" : "rgba(255, 245, 245, 0.6)", borderRadius: 16, padding: 16, flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+          <View style={{ backgroundColor: theme.cardColors[0].bg, borderRadius: 16, padding: 16, flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
             <Text style={{ color: theme.colors.nonVeg, fontWeight: "800", fontSize: 16 }}>{UI_TEXT.mealNotTaken}</Text>
             <View style={{ alignItems: 'flex-end' }}>
               <Text style={{ color: theme.colors.nonVeg, fontSize: 24, fontWeight: "900" }}>{totalNotTaken}</Text>

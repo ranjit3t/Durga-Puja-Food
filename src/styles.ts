@@ -8,6 +8,7 @@ import { useMemo } from "react";
 import { primaryTheme as defaultTheme } from "./theme/primary";
 import { AppTheme } from "./theme/types";
 import { useAppTheme } from "./theme";
+import { AppThemeMode } from "./domain";
 
 export const useScaling = () => {
   const { width } = useWindowDimensions();
@@ -65,7 +66,7 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
       width: s(500),
       height: s(500),
       borderRadius: s(250),
-      backgroundColor: theme?.themeType === 'dark' ? "rgba(0, 123, 255, 0.18)" : "rgba(0, 123, 255, 0.24)",
+      backgroundColor: theme?.cardColors[1].accent + (theme?.themeType === AppThemeMode.DARK ? "2E" : "3D"),
       pointerEvents: "none" as any,
     },
     bgBlob2: {
@@ -75,7 +76,7 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
       width: s(460),
       height: s(460),
       borderRadius: s(230),
-      backgroundColor: theme?.themeType === 'dark' ? "rgba(255, 179, 0, 0.2)" : "rgba(255, 179, 0, 0.26)",
+      backgroundColor: theme?.cardColors[3].accent + (theme?.themeType === AppThemeMode.DARK ? "33" : "42"),
       pointerEvents: "none" as any,
     },
     bgBlob3: {
@@ -85,7 +86,7 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
       width: s(390),
       height: s(390),
       borderRadius: s(195),
-      backgroundColor: theme?.themeType === 'dark' ? "rgba(227, 24, 55, 0.18)" : "rgba(227, 24, 55, 0.24)",
+      backgroundColor: theme?.cardColors[0].accent + (theme?.themeType === AppThemeMode.DARK ? "2E" : "3D"),
       pointerEvents: "none" as any,
     },
     bgBlob4: {
@@ -95,7 +96,7 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
       width: s(410),
       height: s(410),
       borderRadius: s(205),
-      backgroundColor: theme?.themeType === 'dark' ? "rgba(111, 66, 193, 0.2)" : "rgba(111, 66, 193, 0.25)",
+      backgroundColor: theme?.cardColors[4].accent + (theme?.themeType === AppThemeMode.DARK ? "33" : "40"),
       pointerEvents: "none" as any,
     },
     bgBlob5: {
@@ -105,7 +106,7 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
       width: s(500),
       height: s(500),
       borderRadius: s(250),
-      backgroundColor: theme?.themeType === 'dark' ? "rgba(255, 179, 0, 0.16)" : "rgba(255, 179, 0, 0.24)",
+      backgroundColor: theme?.cardColors[3].accent + (theme?.themeType === AppThemeMode.DARK ? "29" : "3D"),
       pointerEvents: "none" as any,
     },
     bgBlob6: {
@@ -115,7 +116,7 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
       width: s(480),
       height: s(480),
       borderRadius: s(240),
-      backgroundColor: theme?.themeType === 'dark' ? "rgba(0, 123, 255, 0.2)" : "rgba(0, 123, 255, 0.25)",
+      backgroundColor: theme?.cardColors[1].accent + (theme?.themeType === AppThemeMode.DARK ? "33" : "40"),
       pointerEvents: "none" as any,
     },
     bgBlobWeb1: {
@@ -125,7 +126,7 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
       width: isWeb ? s(600) : 0,
       height: isWeb ? s(600) : 0,
       borderRadius: isWeb ? s(300) : 0,
-      backgroundColor: theme?.themeType === 'dark' ? "rgba(255, 179, 0, 0.12)" : "rgba(255, 179, 0, 0.16)",
+      backgroundColor: theme?.cardColors[3].accent + (theme?.themeType === AppThemeMode.DARK ? "1F" : "29"),
       pointerEvents: "none" as any,
       opacity: isWeb ? 1 : 0,
     },
@@ -136,7 +137,7 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
       width: isWeb ? s(550) : 0,
       height: isWeb ? s(550) : 0,
       borderRadius: isWeb ? s(275) : 0,
-      backgroundColor: theme?.themeType === 'dark' ? "rgba(227, 24, 55, 0.12)" : "rgba(227, 24, 55, 0.16)",
+      backgroundColor: theme?.cardColors[0].accent + (theme?.themeType === AppThemeMode.DARK ? "1F" : "29"),
       pointerEvents: "none" as any,
       opacity: isWeb ? 1 : 0,
     },
@@ -147,13 +148,13 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
       width: isWeb ? s(700) : 0,
       height: isWeb ? s(700) : 0,
       borderRadius: isWeb ? s(350) : 0,
-      backgroundColor: theme?.themeType === 'dark' ? "rgba(111, 66, 193, 0.14)" : "rgba(111, 66, 193, 0.18)",
+      backgroundColor: theme?.cardColors[4].accent + (theme?.themeType === AppThemeMode.DARK ? "24" : "2E"),
       pointerEvents: "none" as any,
       opacity: isWeb ? 1 : 0,
     },
     rootOverlay: {
       flex: 1,
-      backgroundColor: theme?.themeType === 'dark' ? COLORS.shadow + "D9" : COLORS.white + "EB",
+      backgroundColor: theme?.themeType === AppThemeMode.DARK ? COLORS.shadow + "D9" : COLORS.white + "EB",
       width: "100%" as any,
     },
     center: { justifyContent: "center", alignItems: "center" },
@@ -706,7 +707,7 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
           elevation: 10,
         },
         web: {
-          boxShadow: '0 10px 30px rgba(0,0,0,0.1)',
+          boxShadow: `0 10px 30px ${COLORS.shadow}1A`,
         }
       }),
     },
@@ -770,7 +771,7 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
         },
         web: {
           cursor: 'pointer',
-          boxShadow: '0 6px 16px rgba(0,0,0,0.2)',
+          boxShadow: `0 6px 16px ${COLORS.shadow}33`,
         }
       })
     },
@@ -811,7 +812,7 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
         },
         web: {
           cursor: 'pointer',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+          boxShadow: `0 2px 8px ${COLORS.shadow}0D`,
         }
       }),
     },
@@ -959,7 +960,7 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
       borderColor: COLORS.border,
       ...Platform.select({
         web: {
-          boxShadow: '0 15px 40px rgba(0,0,0,0.1)',
+          boxShadow: `0 15px 40px ${COLORS.shadow}1A`,
         }
       })
     },

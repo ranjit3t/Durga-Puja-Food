@@ -81,7 +81,7 @@ export const UI_TEXT = {
   yes: "Yes",
   no: "No",
   activityLog: "Activity Log",
-  activityLogSubtitle: "System-wide operation history.",
+  activityLogSubtitle: "System-wide operations history.",
   filterByUser: "Filter by User:",
   filterByEvent: "Filter by Event:",
   filterByTarget: "Filter by Target:",

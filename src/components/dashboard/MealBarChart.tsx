@@ -106,11 +106,11 @@ export function MealBarChart(props: MealMetricProps) {
       {/* Legend */}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 16, paddingTop: 12, borderTopWidth: 1, borderTopColor: theme.colors.border }}>
          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <View style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: "#99999930" }} />
+            <View style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: theme.colors.textMuted + "30" }} />
             <Text style={{ fontSize: 10, fontWeight: '600', color: theme.colors.textSecondary }}>{UI_TEXT.planned}</Text>
          </View>
          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <View style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: "#999999" }} />
+            <View style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: theme.colors.textMuted }} />
             <Text style={{ fontSize: 10, fontWeight: '600', color: theme.colors.textSecondary }}>{UI_TEXT.taken}</Text>
          </View>
       </View>
