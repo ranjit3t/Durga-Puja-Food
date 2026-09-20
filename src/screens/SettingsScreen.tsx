@@ -15,7 +15,7 @@ import {
 import { useStyles } from "../styles";
 import { useAppTheme, StatusBarStyleMode } from "../theme";
 import { UI_TEXT } from "../strings";
-import { ConfigDay, PaymentConfig, AppScreen, PaymentMode, AppThemeMode, ActivityModule, ActivityAction } from "../types";
+import { ConfigDay, PaymentConfig, AppScreen, PaymentMode, AppThemeMode, ActivityModule, ActivityAction, DietaryOption } from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
@@ -25,7 +25,7 @@ import { useAuth } from "../context/AuthContext";
 import { useDatabase } from "../context/DatabaseContext";
 import { useUI } from "../context/UIContext";
 import { useAppNavigation } from "../context/NavigationContext";
-import { getPaymentModeLabel, getMealLabel } from "../constants";
+import { getPaymentModeLabel, getMealLabel, getMealConstraints } from "../constants";
 import { MealConfig, MealType } from "../domain";
 
 export function SettingsScreen() {
@@ -111,6 +111,111 @@ export function SettingsScreen() {
         return d;
       })
     );
+  };
+
+  const validateAndSetSeasonEnabled = (val: boolean) => {
+    if (!val) { // Switching OFF
+      const anyMealNotDoneOrEnabled = localConfig.some(d =>
+        d.enabled && (
+          (d.breakfast.enabled && !d.breakfast.done) ||
+          (d.lunch.enabled && !d.lunch.done) ||
+          (d.dinner.enabled && !d.dinner.done)
+        )
+      );
+      if (anyMealNotDoneOrEnabled) {
+        showAlert(UI_TEXT.confirmDisableTitle, UI_TEXT.seasonDisabledError);
+        return;
+      }
+    }
+    setLocalSeasonEnabled(val);
+  };
+
+  const validateAndSetKidsEnabled = (val: boolean) => {
+    if (!val) { // Switching OFF
+      const hasKids = (subscriptions || []).some(sub => (sub.kidsCount || 0) > 0);
+      if (hasKids) {
+        showAlert(UI_TEXT.confirmDisableTitle, UI_TEXT.kidsDisabledError);
+        return;
+      }
+    }
+    setLocalKidsEnabled(val);
+  };
+
+  const validateAndSetGuestEnabled = (val: boolean) => setLocalGuestEnabled(val);
+  const validateAndSetMobileEnabled = (val: boolean) => setLocalMobileEnabled(val);
+  const validateAndSetFoodPriceEnabled = (val: boolean) => setLocalFoodPriceEnabled(val);
+
+  const validateAndSetPaymentEnabled = (val: boolean) => {
+    if (!val) { // Switching OFF
+      const hasPayment = (subscriptions || []).some(sub =>
+        (parseFloat(sub.amount) > 0) ||
+        (sub.payments && sub.payments.some(p => parseFloat(p.amount) > 0))
+      );
+      if (hasPayment) {
+        showAlert(UI_TEXT.confirmDisableTitle, UI_TEXT.paymentDisabledError);
+        return;
+      }
+    }
+    setLocalPayment({ ...localPayment, enabled: val });
+  };
+
+  const validateAndSetPaymentOption = (key: keyof PaymentConfig['options'], mode: PaymentMode, val: boolean) => {
+    if (!val) { // Switching OFF
+      const hasPaymentOnChannel = (subscriptions || []).some(sub =>
+        sub.payments && sub.payments.some(p => p.mode === mode && parseFloat(p.amount) > 0)
+      );
+      if (hasPaymentOnChannel) {
+        showAlert(UI_TEXT.confirmDisableTitle, UI_TEXT.paymentChannelDisabledError);
+        return;
+      }
+    }
+    setLocalPayment({ ...localPayment, options: { ...localPayment.options, [key]: val } });
+  };
+
+  const validateAndSetEnabled = (dayId: string, meal: MealType, val: boolean) => {
+    if (!val) { // Switching OFF
+      const hasSub = (subscriptions || []).some(sub =>
+        sub.mealSlots[dayId]?.some(slot => slot[meal] !== DietaryOption.NONE)
+      );
+      if (hasSub) {
+        showAlert(UI_TEXT.confirmDisableTitle, UI_TEXT.mealSubscribedError);
+        return;
+      }
+    }
+    updateMealConfig(dayId, meal as any, { enabled: val });
+  };
+
+  const validateAndSetDone = (dayId: string, meal: MealType, val: boolean) => {
+    const { canMarkDone, canUnmarkDone } = getMealConstraints(dayId, meal, localConfig);
+    if (val && !canMarkDone) {
+      showAlert(UI_TEXT.confirmDisableTitle, UI_TEXT.markDoneError);
+      return;
+    }
+    if (!val && !canUnmarkDone) {
+      showAlert(UI_TEXT.confirmDisableTitle, UI_TEXT.unmarkDoneError);
+      return;
+    }
+    const currentM = (localConfig.find(d => d.id === dayId) as any)?.[meal];
+    updateMealConfig(dayId, meal as any, { done: val, current: val ? false : currentM?.current });
+  };
+
+  const validateAndSetCurrent = (dayId: string, meal: MealType, val: boolean) => {
+    const { anyFutureDone, pastDone, canUnmarkCurrent } = getMealConstraints(dayId, meal, localConfig);
+    if (val) {
+      if (anyFutureDone) {
+        showAlert(UI_TEXT.confirmDisableTitle, UI_TEXT.enableCurrentError);
+        return;
+      }
+      if (!pastDone) {
+        showAlert(UI_TEXT.confirmDisableTitle, UI_TEXT.enableCurrentPastError);
+        return;
+      }
+    }
+    if (!val && !canUnmarkCurrent) {
+      showAlert(UI_TEXT.confirmDisableTitle, UI_TEXT.disableCurrentError);
+      return;
+    }
+    updateMealConfig(dayId, meal as any, { current: val });
   };
 
   const updateMealConfig = (
@@ -307,7 +412,7 @@ export function SettingsScreen() {
                  <Text style={{ fontSize: 18, fontWeight: '900', color: theme.cardColors[1].accent }}>{UI_TEXT.seasonNameLabel}</Text>
                  <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600', marginTop: 2 }}>{UI_TEXT.seasonNameHelper}</Text>
               </View>
-              <Switch value={localSeasonEnabled} onValueChange={(val) => withConfirm(localSeasonEnabled, val, () => setLocalSeasonEnabled(val))} trackColor={{ true: theme.colors.primary }} />
+              <Switch value={localSeasonEnabled} onValueChange={(val) => validateAndSetSeasonEnabled(val)} trackColor={{ true: theme.colors.primary }} />
            </View>
            <TextInput style={styles.input} value={localSeasonName} onChangeText={setLocalSeasonName} placeholder={UI_TEXT.seasonNamePlaceholder} placeholderTextColor={theme.colors.textMuted} selectTextOnFocus />
            <View style={{ height: 1, backgroundColor: theme.colors.border, marginVertical: 20 }} />
@@ -316,7 +421,7 @@ export function SettingsScreen() {
                  <Text style={{ fontSize: 16, fontWeight: '800', color: theme.colors.textPrimary }}>{UI_TEXT.paymentIntegration}</Text>
                  <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600' }}>{UI_TEXT.paymentIntegrationHelper}</Text>
               </View>
-              <Switch value={localPayment.enabled} onValueChange={(val) => withConfirm(localPayment.enabled, val, () => setLocalPayment({ ...localPayment, enabled: val }))} trackColor={{ true: theme.colors.primary }} />
+              <Switch value={localPayment.enabled} onValueChange={(val) => validateAndSetPaymentEnabled(val)} trackColor={{ true: theme.colors.primary }} />
            </View>
            {localPayment.enabled && (
              <View style={{ backgroundColor: theme.colors.surface, borderRadius: 16, padding: 12, gap: 12 }}>
@@ -324,7 +429,7 @@ export function SettingsScreen() {
                 {([['upi', PaymentMode.UPI], ['cash', PaymentMode.CASH], ['bankTransfer', PaymentMode.BANK_TRANSFER]] as const).map(([key, mode]) => (
                   <View key={key} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                      <Text style={{ fontSize: 14, fontWeight: '700', color: theme.colors.textPrimary }}>{getPaymentModeLabel(mode)}</Text>
-                     <Switch value={localPayment.options[key]} onValueChange={(val) => withConfirm(localPayment.options[key], val, () => setLocalPayment({ ...localPayment, options: { ...localPayment.options, [key]: val } }))} trackColor={{ true: theme.colors.success }} style={{ transform: [{ scale: 0.8 }] }} />
+                     <Switch value={localPayment.options[key]} onValueChange={(val) => validateAndSetPaymentOption(key, mode, val)} trackColor={{ true: theme.colors.success }} style={{ transform: [{ scale: 0.8 }] }} />
                   </View>
                 ))}
              </View>
@@ -335,7 +440,7 @@ export function SettingsScreen() {
                  <Text style={{ fontSize: 16, fontWeight: '800', color: theme.colors.textPrimary }}>{UI_TEXT.enableKidsSupport}</Text>
                  <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600' }}>{UI_TEXT.enableKidsSupportHelper}</Text>
               </View>
-              <Switch value={localKidsEnabled} onValueChange={(val) => withConfirm(localKidsEnabled, val, () => setLocalKidsEnabled(val))} trackColor={{ true: theme.colors.primary }} />
+              <Switch value={localKidsEnabled} onValueChange={(val) => validateAndSetKidsEnabled(val)} trackColor={{ true: theme.colors.primary }} />
            </View>
            <View style={{ height: 1, backgroundColor: theme.colors.border, marginVertical: 20 }} />
            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -385,7 +490,28 @@ export function SettingsScreen() {
             <View key={day.id} style={[styles.dashboardCard, { backgroundColor: colorScheme.bg, borderColor: colorScheme.border, borderWidth: 1.5 }, !day.enabled && { opacity: 0.6 }]}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                  <Text style={{ fontSize: 18, fontWeight: '900', color: colorScheme.accent }}>{UI_TEXT.dayConfigTitle}</Text>
-                 <Switch value={day.enabled} onValueChange={(val) => withConfirm(day.enabled, val, () => updateDay(day.id, { enabled: val }))} trackColor={{ true: theme.colors.primary }} />
+                 {(() => {
+                   const isDaySubscribed = (subscriptions || []).some(sub =>
+                     (sub.mealSlots[day.id] || []).some(slot =>
+                       slot[MealType.BREAKFAST] !== DietaryOption.NONE ||
+                       slot[MealType.LUNCH] !== DietaryOption.NONE ||
+                       slot[MealType.DINNER] !== DietaryOption.NONE
+                     )
+                   );
+                   return (
+                     <Switch
+                       value={day.enabled}
+                       onValueChange={(val) => {
+                          if (!val && isDaySubscribed) {
+                             showAlert(UI_TEXT.confirmDisableTitle, UI_TEXT.daySubscribedError);
+                             return;
+                          }
+                          updateDay(day.id, { enabled: val });
+                       }}
+                       trackColor={{ true: theme.colors.primary }}
+                     />
+                   );
+                 })()}
               </View>
               <View style={{ gap: 16, marginBottom: 20 }}>
                 <TextInput style={styles.input} value={day.label} onChangeText={(val) => updateDay(day.id, { label: val })} placeholder={UI_TEXT.dayNamePlaceholder} selectTextOnFocus />
@@ -398,7 +524,12 @@ export function SettingsScreen() {
                        <Text style={{ fontWeight: '800', color: theme.colors.primary, fontSize: 15 }}>{UI_TEXT.vegOnlyLabel}</Text>
                        <Text style={{ fontSize: 11, color: theme.colors.nonVeg, marginTop: 2 }}>{UI_TEXT.vegOnlyHelper}</Text>
                     </View>
-                    <Switch value={day.vegOnly || false} onValueChange={(val) => withConfirm(day.vegOnly || false, val, () => updateDay(day.id, { vegOnly: val }))} trackColor={{ true: theme.colors.primary }} />
+                    <Switch
+                      value={day.vegOnly || false}
+                      disabled={day.breakfast.done || day.lunch.done || day.dinner.done}
+                      onValueChange={(val) => withConfirm(day.vegOnly || false, val, () => updateDay(day.id, { vegOnly: val }))}
+                      trackColor={{ true: theme.colors.primary }}
+                    />
                   </View>
                   {(['breakfast', 'lunch', 'dinner'] as const).map((mKey) => {
                     const m = day[mKey] || { enabled: false, veg: true, nonVeg: true, parcel: false };
@@ -409,7 +540,24 @@ export function SettingsScreen() {
                              <Ionicons name={mKey === "breakfast" ? "sunny-outline" : mKey === "lunch" ? "restaurant-outline" : "moon-outline"} size={18} color={theme.colors.textPrimary} />
                              <Text style={{ fontWeight: "800", fontSize: 16, color: theme.colors.textPrimary, textTransform: "capitalize" }}>{getMealLabel(mKey as MealType)}</Text>
                           </View>
-                          <Switch value={m.enabled} onValueChange={(val) => withConfirm(m.enabled, val, () => updateMealConfig(day.id, mKey, { enabled: val }))} trackColor={{ true: theme.colors.primary }} />
+                          {(() => {
+                            const isMealSubscribed = (subscriptions || []).some(sub =>
+                              sub.mealSlots[day.id]?.some(slot => slot[mKey as MealType] !== DietaryOption.NONE)
+                            );
+                            return (
+                              <Switch
+                                value={m.enabled}
+                                onValueChange={(val) => {
+                                   if (!val && isMealSubscribed) {
+                                      showAlert(UI_TEXT.confirmDisableTitle, UI_TEXT.mealSubscribedError);
+                                      return;
+                                   }
+                                   updateMealConfig(day.id, mKey as any, { enabled: val });
+                                }}
+                                trackColor={{ true: theme.colors.primary }}
+                              />
+                            );
+                          })()}
                         </View>
                         {m.enabled && (
                           <View style={{ gap: 12 }}>
@@ -425,14 +573,20 @@ export function SettingsScreen() {
                             )}
                             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: theme.colors.background, padding: 10, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border }}>
                                <Text style={{ fontSize: 12, fontWeight: '800', color: theme.colors.textSecondary }}>{UI_TEXT.parcelSupportLabel.toUpperCase()}</Text>
-                               <Switch value={m.parcel} onValueChange={(val) => withConfirm(m.parcel, val, () => updateMealConfig(day.id, mKey, { parcel: val }))} trackColor={{ true: theme.colors.primary }} style={{ transform: [{ scale: 0.8 }] }} />
+                               <Switch
+                                 value={m.parcel}
+                                 disabled={m.done}
+                                 onValueChange={(val) => withConfirm(m.parcel, val, () => updateMealConfig(day.id, mKey, { parcel: val }))}
+                                 trackColor={{ true: theme.colors.primary }}
+                                 style={{ transform: [{ scale: 0.8 }] }}
+                               />
                             </View>
                             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: theme.colors.background, padding: 10, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border }}>
                                <View>
                                   <Text style={{ fontSize: 12, fontWeight: '800', color: theme.colors.textSecondary }}>{UI_TEXT.markDoneLabel.toUpperCase()}</Text>
                                   <Text style={{ fontSize: 9, fontWeight: '600', color: theme.colors.textMuted }}>{UI_TEXT.markDoneHelper}</Text>
                                </View>
-                               <Switch value={m.done || false} onValueChange={(val) => withConfirm(m.done || false, val, () => updateMealConfig(day.id, mKey, { done: val, current: val ? false : m.current }))} trackColor={{ true: theme.colors.success }} style={{ transform: [{ scale: 0.8 }] }} />
+                               <Switch value={m.done || false} onValueChange={(val) => validateAndSetDone(day.id, mKey as MealType, val)} trackColor={{ true: theme.colors.success }} style={{ transform: [{ scale: 0.8 }] }} />
                             </View>
                             {!m.done && (
                                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: theme.colors.background, padding: 10, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border }}>
@@ -440,7 +594,7 @@ export function SettingsScreen() {
                                      <Text style={{ fontSize: 12, fontWeight: '800', color: theme.colors.textSecondary }}>{UI_TEXT.currentMealLabel.toUpperCase()}</Text>
                                      <Text style={{ fontSize: 9, fontWeight: '600', color: theme.colors.textMuted }}>{UI_TEXT.currentMealHelper}</Text>
                                   </View>
-                                  <Switch value={m.current || false} onValueChange={(val) => withConfirm(m.current || false, val, () => updateMealConfig(day.id, mKey, { current: val }))} trackColor={{ true: theme.colors.primary }} style={{ transform: [{ scale: 0.8 }] }} />
+                                  <Switch value={m.current || false} onValueChange={(val) => validateAndSetCurrent(day.id, mKey as MealType, val)} trackColor={{ true: theme.colors.primary }} style={{ transform: [{ scale: 0.8 }] }} />
                                </View>
                             )}
                           </View>
@@ -457,9 +611,36 @@ export function SettingsScreen() {
                     <ActionLabel icon="save-outline" label={UI_TEXT.saveChanges} color={theme.colors.white} size={18} />
                   </Pressable>
 
-                  <Pressable onPress={() => removeDay(day.id)} style={{ marginTop: 12, alignSelf: 'center', padding: 8 }}>
-                    <Text style={{ color: theme.colors.nonVeg, fontWeight: '800', fontSize: 13, textDecorationLine: "underline" }}>{UI_TEXT.removeDayLabel}</Text>
-                  </Pressable>
+                  {(() => {
+                    const isDaySubscribed = (subscriptions || []).some(sub =>
+                      (sub.mealSlots[day.id] || []).some(slot =>
+                        slot[MealType.BREAKFAST] !== DietaryOption.NONE ||
+                        slot[MealType.LUNCH] !== DietaryOption.NONE ||
+                        slot[MealType.DINNER] !== DietaryOption.NONE
+                      )
+                    );
+
+                    return (
+                      <Pressable
+                        disabled={isDaySubscribed}
+                        onPress={() => removeDay(day.id)}
+                        style={({ pressed }) => [
+                          {
+                            marginTop: 12,
+                            alignSelf: 'center',
+                            paddingVertical: 10,
+                            paddingHorizontal: 20,
+                            borderRadius: 12,
+                            backgroundColor: theme.colors.nonVeg,
+                          },
+                          pressed && { opacity: 0.7 },
+                          isDaySubscribed && { opacity: 0.3 }
+                        ]}
+                      >
+                        <ActionLabel icon="trash-outline" label={UI_TEXT.removeDayLabel} color={theme.colors.white} size={14} />
+                      </Pressable>
+                    );
+                  })()}
                 </View>
               )}
             </View>

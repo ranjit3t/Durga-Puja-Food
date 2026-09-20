@@ -142,7 +142,7 @@ export function ViewMenuScreen() {
                 )}
               </View>
               <View style={styles.menuDayBody}>
-                {getSortedMealKeys(day, dayConfig)
+                {[MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER]
                   .filter((mKey) => isMealEnabled(day, mKey, dayConfig))
                   .filter((mKey) => {
                     const meal = dayMenu[mKey];

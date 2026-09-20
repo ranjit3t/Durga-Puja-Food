@@ -27,7 +27,6 @@ import {
   isMealEnabled,
   isMealDone,
   isMealInFuture,
-  getSortedMealKeys,
   getEnabledPaymentMethods,
   isDietaryEnabled,
   isParcelEnabled,
@@ -208,29 +207,6 @@ export function SubscriptionForm() {
   };
 
   const hasNonZeroPayment = paymentConfig.enabled && (parseFloat(value.amount) > 0 || (value.payments && value.payments.some(p => parseFloat(p.amount) > 0)));
-  const hasAnyMealTaken = Object.values(value.takenByPerson || {}).some(dayList =>
-    dayList.some(t => t.breakfast || t.lunch || t.dinner || t.breakfastParcel || t.lunchParcel || t.dinnerParcel)
-  );
-
-  const canDeletePass = !hasNonZeroPayment && !hasAnyMealTaken;
-
-  const onDelete = lockIdentity ? () => showGlobalAlert(UI_TEXT.deleteConfirmTitle, `${UI_TEXT.deleteConfirmMessage}${value.id}${UI_TEXT.deleteConfirmMessageSuffix}`, [
-    { text: UI_TEXT.cancel, style: "cancel" },
-    { text: UI_TEXT.deleteButton, style: "destructive", onPress: () => {
-        if (!canDeletePass) return;
-        void deleteSubscription(value.id).then(() => {
-          addActivityLog({
-            module: ActivityModule.SUBSCRIPTION,
-            action: ActivityAction.DELETE,
-            targetId: value.id,
-            description: UI_TEXT.logDeletePass.replace("{id}", value.id)
-          });
-          setSelectedId("");
-          setSelectedRecord(null);
-          navigate(AppScreen.HOME);
-        });
-    } },
-  ]) : undefined;
 
   const enabledMethods = getEnabledPaymentMethods({
     seasonName: "",
@@ -261,6 +237,45 @@ export function SubscriptionForm() {
   const [selectedPerson, setSelectedPerson] = useState(0);
   const [selectedDay, setSelectedDay] = useState<Day>(currentDayId || activeDays[0]);
   const [isManualAmount, setIsManualAmount] = useState(lockIdentity);
+
+  const hasAnyMealTaken = useMemo(() => {
+    // 1. Check explicit 'taken' flags
+    const explicitTaken = Object.values(form.takenByPerson || {}).some(dayList =>
+      dayList.some(t => t.breakfast || t.lunch || t.dinner || t.breakfastParcel || t.lunchParcel || t.dinnerParcel)
+    );
+    if (explicitTaken) return true;
+
+    // 2. Check 'done' meals where person was subscribed
+    return Object.entries(form.mealSlots || {}).some(([dayId, personsSlots]) => {
+      return personsSlots.some((slot) => {
+        return (
+          (slot.breakfast !== DietaryOption.NONE && isMealDone(dayId, MealType.BREAKFAST, dayConfig)) ||
+          (slot.lunch !== DietaryOption.NONE && isMealDone(dayId, MealType.LUNCH, dayConfig)) ||
+          (slot.dinner !== DietaryOption.NONE && isMealDone(dayId, MealType.DINNER, dayConfig))
+        );
+      });
+    });
+  }, [form.takenByPerson, form.mealSlots, dayConfig]);
+
+  const canDeletePass = !hasNonZeroPayment && !hasAnyMealTaken;
+
+  const onDelete = lockIdentity ? () => showGlobalAlert(UI_TEXT.deleteConfirmTitle, `${UI_TEXT.deleteConfirmMessage}${value.id}${UI_TEXT.deleteConfirmMessageSuffix}`, [
+    { text: UI_TEXT.cancel, style: "cancel" },
+    { text: UI_TEXT.deleteButton, style: "destructive", onPress: () => {
+        if (!canDeletePass) return;
+        void deleteSubscription(value.id).then(() => {
+          addActivityLog({
+            module: ActivityModule.SUBSCRIPTION,
+            action: ActivityAction.DELETE,
+            targetId: value.id,
+            description: UI_TEXT.logDeletePass.replace("{id}", value.id)
+          });
+          setSelectedId("");
+          setSelectedRecord(null);
+          navigate(AppScreen.HOME);
+        });
+    } },
+  ]) : undefined;
 
   const dayScrollRef = React.useRef<ScrollView>(null);
   const dayOffsets = React.useRef<Record<string, number>>({});
@@ -663,7 +678,7 @@ export function SubscriptionForm() {
             <CounterInput
               label={kidsEnabled ? UI_TEXT.adultCount : UI_TEXT.peopleCount}
               value={form.peopleCount}
-              min={1}
+              min={lockIdentity && hasAnyMealTaken ? value.peopleCount : 1}
               onChange={(count) => {
                 const oldPeople = form.peopleCount;
                 const kids = form.kidsCount || 0;
@@ -686,7 +701,7 @@ export function SubscriptionForm() {
             <CounterInput
               label={UI_TEXT.kidsCount}
               value={form.kidsCount || 0}
-              min={0}
+              min={lockIdentity && hasAnyMealTaken ? (value.kidsCount || 0) : 0}
               onChange={(count) => {
                 const adults = form.peopleCount;
                 const oldKids = form.kidsCount || 0;
@@ -774,7 +789,7 @@ export function SubscriptionForm() {
               <Text style={[styles.currentChoice, { marginTop: 0, fontSize: 16, marginBottom: 8 }]}>{UI_TEXT.foodPlan}</Text>
             </View>
 
-            {getSortedMealKeys(selectedDay, dayConfig)
+            {[MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER]
               .filter((slot) => isMealEnabled(selectedDay, slot, dayConfig))
               .map((slot) => {
                 const label = getMealLabel(slot);
@@ -782,23 +797,27 @@ export function SubscriptionForm() {
                   form.mealSlots[selectedDay]?.[selectedPerson]?.[slot] || DietaryOption.NONE;
                 const isVegOnly = isVegOnlyDay(selectedDay, dayConfig);
                 const isDone = isMealDone(selectedDay, slot, dayConfig);
+                const isCurrent = isMealCurrent(selectedDay, slot, dayConfig);
+                const isFuture = isMealInFuture(selectedDay, slot, dayConfig);
+                const isPast = !!currentDayId && !isCurrent && !isFuture;
+                const isLocked = isDone || (!lockIdentity && isPast);
 
                 return (
-                  <View key={slot} style={[{ marginBottom: 16 }, isDone && { opacity: 0.5 }]}>
+                  <View key={slot} style={[{ marginBottom: 16 }, isLocked && { opacity: 0.5 }]}>
                     <Text style={[styles.label, { marginTop: 0, marginBottom: 8, fontSize: 14, color: theme.colors.textPrimary }]}>
-                      {label} {isDone && `(${UI_TEXT.mealDoneLabel})`}
+                      {label} {isDone ? `(${UI_TEXT.mealDoneLabel})` : (!lockIdentity && isPast) ? `(${UI_TEXT.resSuffix})` : ""}
                     </Text>
                     <View style={styles.choiceRow}>
                       {/* Option: None */}
                       <Pressable
-                        onPress={() => isAdmin && canEdit && !isDone && setMealSlotChoice(slot, DietaryOption.NONE)}
+                        onPress={() => isAdmin && canEdit && !isLocked && setMealSlotChoice(slot, DietaryOption.NONE)}
                         style={[
                           styles.choice,
                           currentSlotChoice === DietaryOption.NONE ? styles.slotSelected : styles.noneChoice,
-                          (!isAdmin || isDone) && { opacity: currentSlotChoice === DietaryOption.NONE ? 1 : 0.3 },
+                          (!isAdmin || isLocked) && { opacity: currentSlotChoice === DietaryOption.NONE ? 1 : 0.3 },
                           { paddingVertical: 12, paddingHorizontal: 4 }
                         ]}
-                        disabled={!isAdmin || !canEdit || isDone}
+                        disabled={!isAdmin || !canEdit || isLocked}
                       >
                         <Text
                           style={[
@@ -814,14 +833,14 @@ export function SubscriptionForm() {
                       {/* Option: Veg */}
                       {isDietaryEnabled(selectedDay, slot, DietType.VEG, dayConfig) && (
                         <Pressable
-                          onPress={() => isAdmin && canEdit && !isDone && setMealSlotChoice(slot, DietaryOption.VEG)}
+                          onPress={() => isAdmin && canEdit && !isLocked && setMealSlotChoice(slot, DietaryOption.VEG)}
                           style={[
                             styles.choice,
                             currentSlotChoice === DietaryOption.VEG ? styles.vegChoice : styles.noneChoice,
-                            (!isAdmin || isDone) && { opacity: currentSlotChoice === DietaryOption.VEG ? 1 : 0.3 },
+                            (!isAdmin || isLocked) && { opacity: currentSlotChoice === DietaryOption.VEG ? 1 : 0.3 },
                             { paddingVertical: 12, paddingHorizontal: 4 }
                           ]}
-                          disabled={!isAdmin || !canEdit || isDone}
+                          disabled={!isAdmin || !canEdit || isLocked}
                         >
                           <Text
                             style={[
@@ -838,14 +857,14 @@ export function SubscriptionForm() {
                       {/* Option: Non-Veg */}
                       {!isVegOnly && isDietaryEnabled(selectedDay, slot, DietType.NON_VEG, dayConfig) && (
                         <Pressable
-                          onPress={() => isAdmin && canEdit && !isDone && setMealSlotChoice(slot, DietaryOption.NON_VEG)}
+                          onPress={() => isAdmin && canEdit && !isLocked && setMealSlotChoice(slot, DietaryOption.NON_VEG)}
                           style={[
                             styles.choice,
                             currentSlotChoice === DietaryOption.NON_VEG ? styles.nonVegChoice : styles.noneChoice,
-                            (!isAdmin || isDone) && { opacity: currentSlotChoice === DietaryOption.NON_VEG ? 1 : 0.3 },
+                            (!isAdmin || isLocked) && { opacity: currentSlotChoice === DietaryOption.NON_VEG ? 1 : 0.3 },
                             { paddingVertical: 12, paddingHorizontal: 4 }
                           ]}
-                          disabled={!isAdmin || !canEdit || isDone}
+                          disabled={!isAdmin || !canEdit || isLocked}
                         >
                           <Text
                             style={[
@@ -879,25 +898,29 @@ export function SubscriptionForm() {
                 </View>
 
                 <View style={styles.choiceRow}>
-                  {getSortedMealKeys(selectedDay, dayConfig)
+                  {[MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER]
                     .filter((slot) => isMealEnabled(selectedDay, slot, dayConfig) && isParcelEnabled(selectedDay, slot, dayConfig))
                     .map((slot) => {
                       const currentChoice = form.mealSlots[selectedDay]?.[selectedPerson]?.[slot] || DietaryOption.NONE;
                     const isParcel = !!form.mealSlots[selectedDay]?.[selectedPerson]?.[`${slot}Parcel` as keyof MealSlot];
                     const label = getMealLabel(slot);
                     const isDone = isMealDone(selectedDay, slot, dayConfig);
+                    const isCurrent = isMealCurrent(selectedDay, slot, dayConfig);
+                    const isFuture = isMealInFuture(selectedDay, slot, dayConfig);
+                    const isPast = !!currentDayId && !isCurrent && !isFuture;
+                    const isLocked = isDone || (!lockIdentity && isPast);
 
                     return (
                       <Pressable
                         key={slot}
-                        disabled={currentChoice === DietaryOption.NONE || isDone || !isAdmin}
-                        onPress={() => isAdmin && canEdit && !isDone && setMealParcel(slot, !isParcel)}
+                        disabled={currentChoice === DietaryOption.NONE || isLocked || !isAdmin}
+                        onPress={() => isAdmin && canEdit && !isLocked && setMealParcel(slot, !isParcel)}
                         style={[
                           styles.choice,
                           isParcel
                             ? (currentChoice === DietaryOption.NON_VEG ? styles.nonVegChoice : styles.vegChoice)
                             : styles.noneChoice,
-                          (currentChoice === DietaryOption.NONE || isDone || !isAdmin) && { opacity: 0.2 },
+                          (currentChoice === DietaryOption.NONE || isLocked || !isAdmin) && { opacity: 0.2 },
                           { paddingVertical: 12, paddingHorizontal: 4 }
                         ]}
                       >
@@ -928,7 +951,7 @@ export function SubscriptionForm() {
                 <Text style={[styles.currentChoice, { marginTop: 0, fontSize: 16, marginBottom: 8 }]}>{UI_TEXT.foodTakenByPerson}</Text>
               </View>
               <View style={styles.choiceRow}>
-                {getSortedMealKeys(selectedDay, dayConfig)
+                {[MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER]
                   .filter((slot) => {
                     const choice = form.mealSlots[selectedDay]?.[selectedPerson]?.[slot];
                     return isMealEnabled(selectedDay, slot, dayConfig) && choice !== DietaryOption.NONE;
@@ -999,7 +1022,7 @@ export function SubscriptionForm() {
                       <Text style={[styles.currentChoice, { marginTop: 0, fontSize: 16, marginBottom: 8 }]}>{UI_TEXT.parcelTakenByMember}</Text>
                     </View>
                     <View style={styles.choiceRow}>
-                      {getSortedMealKeys(selectedDay, dayConfig)
+                      {[MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER]
                         .filter((slot) => {
                            const isParcelRegistered = !!form.mealSlots[selectedDay]?.[selectedPerson]?.[`${slot}Parcel` as keyof MealSlot];
                            const isFoodTaken = !!form.takenByPerson[selectedDay]?.[selectedPerson]?.[slot];

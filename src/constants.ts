@@ -103,36 +103,79 @@ export const isMealInFuture = (
   meal: MealType,
   config: ConfigDay[]
 ) => {
-  // 1. Find the global CURRENT meal
-  let currentDayIdx = -1;
-  let currentMealIdx = -1;
-
   const mealOrder = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER];
-  const activeDays = (config || []).filter(d => d && d.enabled);
+  const activeDays = (config || []).filter((d) => d && d.enabled);
 
-  activeDays.forEach((d, dIdx) => {
-    mealOrder.forEach((m, mIdx) => {
-      if (d[m]?.current) {
-        currentDayIdx = dIdx;
-        currentMealIdx = mIdx;
+  const flattened: { dayId: string; meal: MealType; current: boolean }[] = [];
+  activeDays.forEach((d) => {
+    mealOrder.forEach((m) => {
+      if (d[m]?.enabled) {
+        flattened.push({
+          dayId: d.id,
+          meal: m,
+          current: !!d[m]?.current,
+        });
       }
     });
   });
 
-  // If no meal is CURRENT, nothing is considered "future" for this restriction
-  if (currentDayIdx === -1) return false;
+  const currentIdx = flattened.findIndex((f) => f.current);
+  if (currentIdx === -1) return false;
 
-  // 2. Find the index of the target meal
-  const targetDayIdx = activeDays.findIndex(d => d.id === dayId);
-  const targetMealIdx = mealOrder.indexOf(meal);
+  const targetIdx = flattened.findIndex((f) => f.dayId === dayId && f.meal === meal);
+  if (targetIdx === -1) return false;
 
-  if (targetDayIdx === -1) return false;
+  return targetIdx > currentIdx;
+};
 
-  // 3. Compare positions
-  if (targetDayIdx > currentDayIdx) return true;
-  if (targetDayIdx < currentDayIdx) return false;
+/**
+ * Validates operational state transitions for a meal slot.
+ */
+export const getMealConstraints = (dayId: string, meal: MealType, config: ConfigDay[]) => {
+  const mealOrder = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER];
+  const activeDays = (config || []).filter((d) => d && d.enabled);
 
-  return targetMealIdx > currentMealIdx;
+  const flattened: { dayId: string; meal: MealType; done: boolean; current: boolean }[] = [];
+  activeDays.forEach((d) => {
+    mealOrder.forEach((m) => {
+      if (d[m]?.enabled) {
+        flattened.push({
+          dayId: d.id,
+          meal: m,
+          done: !!d[m]?.done,
+          current: !!d[m]?.current,
+        });
+      }
+    });
+  });
+
+  const idx = flattened.findIndex((f) => f.dayId === dayId && f.meal === meal);
+  if (idx === -1) {
+    return {
+      canMarkDone: true,
+      canUnmarkDone: true,
+      canMarkCurrent: true,
+      canUnmarkCurrent: true,
+    };
+  }
+
+  const past = flattened.slice(0, idx);
+  const future = flattened.slice(idx + 1);
+
+  const allPastDone = past.every((p) => p.done);
+  const anyFutureDone = future.some((f) => f.done);
+  const allFutureUndone = future.every((f) => !f.done);
+
+  const isFuture = isMealInFuture(dayId, meal, config);
+
+  return {
+    canMarkDone: allPastDone && !isFuture,
+    canUnmarkDone: allFutureUndone,
+    pastDone: allPastDone,
+    anyFutureDone: anyFutureDone,
+    canMarkCurrent: allPastDone && !anyFutureDone,
+    canUnmarkCurrent: allFutureUndone,
+  };
 };
 
 /**

@@ -234,7 +234,7 @@ export function MenuEditorScreen() {
               ]}
             >
               <Text style={[styles.dashboardDay, { color: colorScheme.accent, marginBottom: 12 }]}>{getDayLabel(day, config)}</Text>
-              {getSortedMealKeys(day, config)
+              {[MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER]
                 .filter((mKey) => isMealEnabled(day, mKey, config))
                 .map((mKey) => {
                   const isDone = isMealDone(day, mKey, config);

@@ -69,8 +69,8 @@ export function MealBarChart(props: MealMetricProps) {
       <View style={{ flexDirection: 'row', height: chartHeight, alignItems: 'flex-end', gap: 8 }}>
         {isBothEnabled ? (
           <>
-            <Bar label={kidsEnabled ? `${UI_TEXT.adultsAbbr}${UI_TEXT.space}${UI_TEXT.veg}` : UI_TEXT.veg} value={veg - kidsVeg} color={theme.colors.veg} secondaryValue={totalVegTaken - kidsVegTaken} />
-            <Bar label={kidsEnabled ? `${UI_TEXT.adultsAbbr}${UI_TEXT.space}${UI_TEXT.nonVeg}` : UI_TEXT.nonVeg} value={nonVeg - kidsNonVeg} color={theme.colors.nonVeg} secondaryValue={totalNonVegTaken - kidsNonVegTaken} />
+            <Bar label={kidsEnabled ? `${UI_TEXT.adultsAbbr}${UI_TEXT.space}${UI_TEXT.veg}` : UI_TEXT.veg} value={veg} color={theme.colors.veg} secondaryValue={totalVegTaken - kidsVegTaken - guestVegTaken} />
+            <Bar label={kidsEnabled ? `${UI_TEXT.adultsAbbr}${UI_TEXT.space}${UI_TEXT.nonVeg}` : UI_TEXT.nonVeg} value={nonVeg} color={theme.colors.nonVeg} secondaryValue={totalNonVegTaken - kidsNonVegTaken - guestNonVegTaken} />
             {hasKids && (
                <Bar label={kidsTotal === 1 ? UI_TEXT.kid : UI_TEXT.kids} value={kidsTotal} color={theme.colors.primary} secondaryValue={kidsTaken} />
             )}

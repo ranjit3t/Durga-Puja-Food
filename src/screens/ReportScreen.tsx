@@ -243,7 +243,7 @@ export function ReportScreen() {
 
             <Text style={styles.selectorLabel}>{UI_TEXT.selectMeal}</Text>
             <View style={styles.selectorRow}>
-              {getSortedMealKeys(selectedDayId, dayConfig)
+              {[MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER]
                 .filter((mKey) => {
                   const enabled = isMealEnabled(selectedDayId, mKey, dayConfig);
                   if (!enabled) return false;

@@ -133,7 +133,7 @@ The application also enforces a **Natural Alphanumeric Sorting** policy globally
 ### I. Digital Pass, Analytics & Home Layout
 - **Intelligent Sorting & Navigation**:
     - **Current-Day-First Sort**: On the **Dashboard** and **Guest Management** screens, the day containing the active "Current Meal" is automatically hoisted to the top of the list for zero-scroll accessibility.
-    - **Chronological Form Order**: On the **Subscription Form**, days are displayed in their fixed chronological sequence (Day 1, 2, 3...) to maintain data entry stability.
+    - **Chronological Form Order**: On the **Subscription Form**, **Menu Viewer**, and **Reports**, days and meals (Breakfast $\rightarrow$ Lunch $\rightarrow$ Dinner) are displayed in their fixed chronological sequence to maintain data entry and viewing stability.
     - **Auto-Scroll Focus**: The form includes a `dayScrollRef` logic that automatically calculates the horizontal offset of the current day and performs an animated scroll to center it upon opening.
 - **High-Density Responsive Home Card**: The primary home page action summary tile leverages a high-density horizontal layout scheme. It dynamically adjusts font sizes, padding, and layout orientation based on device width to prevent breaking on smaller screens. It shifts pass and member counts (including grammar-aware adults/kids breakdown), total plates (with synchronized dietary split), and guest totals into parallel matrices and introduces a micro-partition divider for payment aggregation data, compressing card dimensions and increasing vertical space for action grids. Features a centered background watermark icon for enhanced branding.
 - **Responsive Dashboard & Menu Headers**: Individual meal sections, the primary event summary card, and menu display/editor screens utilize flexible wrapping headers (`flexWrap: 'wrap'`). This ensures that meal titles, active status badges (LIVE), dietary markers (Veg Only), and aggregated demand metrics adjust their layout gracefully on narrow screens without overflowing their container boundaries.
@@ -236,15 +236,32 @@ The application maintains a permanent, asynchronous audit trail of all significa
   - **Security**: Successful logins, failed login attempts (tracking username), and Logouts.
 
 ### L. Operational Sequencing & Write Protection
-The application implements strict **Temporal Data Governance** to prevent erroneous forward-dated entries during live operations:
+The application implements strict **Bi-Directional Temporal Data Governance** to ensure operational accuracy:
 - **Meal Ordering**: Established a strict chronological sort order: `DayIndex` $\rightarrow$ `MealIndex (B=0, L=1, D=2)`.
-- **isMealInFuture Helper**: A centralized utility in `constants.ts` that determines if a specific slot is scheduled after the globally active "Current Meal".
+- **Logic Helpers**: Centralized utilities in `constants.ts` determine if a specific slot is `current`, `in future`, or `done`.
 - **Dynamic Lock Propagation**:
-  - **Subscription Management**: The `SubscriptionForm` consumes the `isMealInFuture` logic to conditionally apply `disabled={true}` and `opacity: 0.5` to all `taken` and `takenParcel` toggles for future meals.
-  - **Guest Management**: In the `GuestManagementScreen`, all "Taken" counters (Guest Veg Taken, Guest Non-Veg Taken, etc.) are locked for future meals, ensuring that only current or past collection data can be recorded.
+  - **Future Meal Protection**: The `SubscriptionForm` and `GuestManagementScreen` lock all "Taken" collection counters for future slots relative to the "Current Meal", preventing forward-dated entries.
+  - **Add Pass Historical Lock**: The `SubscriptionForm` blocks **Meal Plan (Choice)** and **Parcel Registration** for past meals specifically when creating *new* records.
+  - **Edit Pass Granularity**: For *existing* records, historical meal plans remain editable until the slot is marked as **Done** in global settings, allowing for post-service corrections without compromising current kitchen counts.
   - **Analytical Reports**: The `ReportScreen` dynamically filters the Day and Meal selectors for the **"Food Not Taken"** report, ensuring that future service windows are hidden from the pending list for operational clarity.
-  - **State Stability**: If no meal is currently marked as "Current" in settings, all slots remain writable for historical correction or pre-event planning.
-- **Dependency Guard**: The `takenParcel` toggle visibility is strictly dependent on the primary `taken` status being `true`, ensuring takeaway is only recorded after member verification.
+  - **Operational & Financial Safety Rails**: The `SettingsScreen` prevents deactivation of features if active data exists.
+      - **Global Payment Lock**: Switching off "Payment Integration" is blocked if any pass has non-zero amount. Alert: *"Payment integration cannot be switched..."*.
+      - **Channel Lock**: Switching off UPI/Cash/Bank is blocked if any existing entry uses that mode. Alert: *"Payment channel cannot be switched off..."*.
+      - **Kids Support Lock**: Disabling is blocked if any pass has registered children. Alert: *"Kids support cannot be switched off..."*.
+      - **Subscription-Aware Status Lock**: Disabling a **Festival Day** or **Meal Slot** is blocked if active subscriptions depend on them. Alert: *"Day/Meal cannot be switched off..."*. The **Delete Day** button is Red and strictly disabled for such active days.
+  - **Season Lifecycle Safety**: The "Season Status" toggle can only be switched off if all enabled meals across the festival are marked as **Done**. Alert: *"Season cannot be switched off unless all meals... are marked done or disabled"*.
+  - **Veg-Only & Parcel Support Safety**: The `SettingsScreen` automatically disables the **Veg-Only** toggle for a day if any of its meals are marked as **Done**. Similarly, the **Parcel Support** toggle is disabled for individual meals once they are completed.
+  - **Headcount Reduction Guard**: The `SubscriptionForm` locks the Adult and Kid counters (using the `min` prop) to their **initial load values** if the pass is active (any member has `taken: true` or subscribed to a `Done` meal).
+  - **State Stability**: If no meal is currently active in settings, all slots remain writable for historical correction or pre-event planning.
+- **Dependency Guard**: The `takenParcel` toggle visibility is strictly dependent on the primary `taken` status being `true`.
+
+### M. Configuration Lifecycle Constraints
+To prevent operational data corruption, the `SettingsScreen` enforces strict chronological rules for meal lifecycle states:
+- **Marking as Done**: A meal can only be marked as `Done` if all preceding meals are already `Done` AND it is not a future meal (relative to the `Current` marker).
+- **Unmarking as Done**: A meal can only be unmarked as `Done` if all subsequent meals are already unmarked.
+- **Activating Current Meal**: A meal can only be set as `Current` if no future meal has already been marked as `Done`.
+- **Deactivating Current Meal**: A `Current` marker cannot be removed unless all subsequent meals are unmarked (not `Done`).
+- **Validation Alerts**: Violating these rules triggers specific operational alerts informing the administrator of the required sequence (Day 1 $\rightarrow$ Day N).
 
 ---
 © 2026 Eternia Food Desk Technical Team
