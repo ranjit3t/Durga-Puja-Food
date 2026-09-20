@@ -55,7 +55,7 @@ The application employs a **Zero-Hardcoding Policy** for UI text and Domain enti
 - **Periodic Background Refresh**: Runs every 10 seconds. This is critical for synchronizing "Food Taken" counts and "Guest Demand" in a multi-user environment.
 
 ### D. Navigation & View State Management
-- **History Stack**: A React-state-based array in `NavigationContext.tsx` tracks navigation depth using the `AppScreen` enum. `goBack()` pops the stack, while navigating to "home" clears it entirely. The **DetailsScreen** (View Pass) specifically implements a custom `onBack` handler that routes to Home, serving as a primary exit point during live operations.
+- **History Stack**: A React-state-based array in `NavigationContext.tsx` tracks navigation depth using the `AppScreen` enum. `goBack()` pops the stack, while navigating to "home" clears it entirely. To ensure a professional user experience, the system implements a **Unified Pass Lifecycle**—navigating between **View Pass**, **Edit Pass**, and **Digital Pass** replaces the current screen in history to prevent circular "back button" loops.
 - **State Hoisting**: Crucial UI states like the `ReportScreen` active tab/filters and the `SubscriptionListScreen` search text are hoisted to the `NavigationContext`. This ensures UI continuity during sub-navigation.
 - **Interactive Details & Menu Navigation**: The `DetailsScreen` and `ViewMenuScreen` feature multiple deep-linking entry points:
   - **Quick Edit (Pass)**: A pencil icon in the identity card routes to the `SubscriptionForm`.
@@ -274,6 +274,21 @@ The application includes a decentralized note-taking system for operational coor
     - **Users**: Can only edit or delete notes that they personally created (tracked via `userName`).
 - **Audit Integration**: Every note action (ADD, EDIT, DELETE, VIEW) automatically generates a corresponding entry in the global **Activity Log** for forensic tracking.
 - **UI Architecture**: Modeled after the `ActivityLogScreen`, the notes list features pagination (20 items per page), keyword search, and toggleable chronological sorting. The system utilizes a **Modal Window** within the Notes page to facilitate **Add**, **Edit**, and **Read-Only View** modes based on context. Note cards utilize the cyclical themed palette for visual consistency.
+
+### O. Admin Contacts Directory
+- **Data Filtering**: The `ContactsScreen` automatically scans the subscription database and displays only those flats that have a non-empty `mobile` field.
+- **Natural Sorting**: Implements the standard community-wide natural alphanumeric sorting (Block $\rightarrow$ Flat) to match the physical site layout.
+- **Communication Integration**: Leverages the `Linking` API for one-tap actions:
+    - **WhatsApp Chat**: Initializes a direct chat using the globally configured `whatsappCountryCode`.
+    - **Cellular Call**: Triggers the device's native dialer.
+- **Deep-Linking**: Clicking a contact card instantly navigates the administrator to the resident's full **Details Screen** for quick verification of their meal plan or payment status.
+- **Audit Integration**: All communication attempts from this screen are captured in the **Activity Log** for transparency.
+
+### P. High-Fidelity Theming System
+The application features a robust, reactive theme architecture:
+- **Zero Hard-Coded Colors**: A strict policy where UI components never use literal hex or RGB values. All colors are sourced from the `theme.colors` or `theme.cardColors` registries.
+- **Dynamic Backdrop**: Mesh gradient blobs automatically adjust their intensity and hue-shift based on the active theme, maintaining a festive atmosphere while ensuring absolute readability.
+- **Web Scaling**: The theme engine dynamically calculates scaling factors for desktop monitors, ensuring a "first-class" browser experience without the "tiny UI" common in mobile-to-web ports.
 
 ---
 © 2026 Eternia Food Desk Technical Team

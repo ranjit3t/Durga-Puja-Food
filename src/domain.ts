@@ -44,6 +44,7 @@ export enum AppScreen {
   LOGIN = "login",
   ACTIVITY_LOG = "activityLog",
   NOTES = "notes",
+  CONTACTS = "contacts",
 }
 
 export enum AppThemeMode {
@@ -103,6 +104,7 @@ export enum ActivityModule {
   SCANNER = "Scanner",
   AUTH = "Login",
   NOTE = "Note",
+  CONTACT = "Contact",
 }
 
 export enum ActivityAction {

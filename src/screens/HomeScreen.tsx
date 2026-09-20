@@ -265,6 +265,9 @@ export function HomeScreen() {
           </Pressable>
           {userRole === UserRole.ADMIN && (
             <>
+              <Pressable accessibilityLabel={UI_TEXT.contacts} onPress={() => navigate(AppScreen.CONTACTS)} style={[styles.compactSecondary, { backgroundColor: theme.cardColors[2].accent, borderColor: theme.cardColors[2].accent }]}>
+                <ActionLabel icon="people-outline" label={UI_TEXT.contacts} color={theme.colors.white} size={iconSize} vertical />
+              </Pressable>
               <Pressable accessibilityLabel={UI_TEXT.activityLog} onPress={() => navigate(AppScreen.ACTIVITY_LOG)} style={[styles.compactSecondary, { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary }]}>
                 <ActionLabel icon="time-outline" label={UI_TEXT.activityLog} color={theme.colors.white} size={iconSize} vertical />
               </Pressable>

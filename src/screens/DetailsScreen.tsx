@@ -46,20 +46,19 @@ export function DetailsScreen() {
   } = useDatabase();
   const { showAlert: showGlobalAlert } = useUI();
   const {
-    selectedId, selectedRecord, setSelectedId, setSelectedRecord, navigate, setEditing, setReportType
+    selectedId, selectedRecord, setSelectedId, setSelectedRecord, navigate, setEditing, setReportType, goBack
   } = useAppNavigation();
 
   const subscription = subscriptions.find(s => s.id === selectedId) || selectedRecord;
   if (!subscription) return null;
 
   const styles = useStyles();
-  const { s } = useScaling();
   const { theme, themeType } = useAppTheme();
   const isAdmin = userRole === UserRole.ADMIN;
   const canEdit = seasonEnabled && !isSeasonDone(dayConfig);
   const activeDays = getActiveDays(dayConfig);
 
-  const onBack = () => navigate(AppScreen.HOME);
+  const onBack = () => goBack();
   const onHome = () => navigate(AppScreen.HOME);
   const onEdit = () => {
     addActivityLog({

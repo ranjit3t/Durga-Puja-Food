@@ -61,7 +61,8 @@ const ActivityLogItem = memo(({
   const colorScheme = theme.cardColors[index % theme.cardColors.length];
 
   // Check if it's a pass-related event that should be clickable
-  const isPassEvent = item.module === ActivityModule.SUBSCRIPTION && item.action !== ActivityAction.DELETE && item.action !== ActivityAction.ERROR;
+  const clickableModules = [ActivityModule.SUBSCRIPTION, ActivityModule.CONTACT, ActivityModule.QR, ActivityModule.REPORT];
+  const isPassEvent = clickableModules.includes(item.module) && item.action !== ActivityAction.DELETE && item.action !== ActivityAction.ERROR;
   const existingPass = isPassEvent && item.targetId ? (subscriptions || []).find(s => s.id === item.targetId) : null;
   const isClickable = !!existingPass;
 

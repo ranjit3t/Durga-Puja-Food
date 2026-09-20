@@ -93,11 +93,7 @@ export function SubscriptionForm() {
   );
 
   const onCancel = () => {
-    if (lockIdentity) {
-      navigate(AppScreen.DETAILS);
-    } else {
-      goBack();
-    }
+    goBack();
   };
   const onHome = () => navigate(AppScreen.HOME);
 

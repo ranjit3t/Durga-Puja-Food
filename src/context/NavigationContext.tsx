@@ -110,7 +110,9 @@ export function NavigationProvider({ children }: { children: React.ReactNode }) 
       setSelectedId(match.id);
       setSelectedRecord(match);
       setEditing(match);
-      navigate(AppScreen.FORM);
+      // When scanning, we jump directly to FORM, leaving the previous history (e.g. HOME)
+      // so that pressing back from FORM returns to the dashboard, not the scanner.
+      setScreen(AppScreen.FORM);
       return true;
     }
     return false;
@@ -131,16 +133,23 @@ export function NavigationProvider({ children }: { children: React.ReactNode }) 
       resetViewStates();
     } else if (next !== screen) {
       if (screen === AppScreen.HOME) resetViewStates();
-      setHistory((prev) => [...prev, screen]);
+
+      // Pass Workflow Optimization:
+      // DETAILS, FORM, and QR are part of a single "Pass Lifecycle".
+      // When moving between them, we replace rather than stack to prevent circular loops.
+      const passScreens = [AppScreen.DETAILS, AppScreen.FORM, AppScreen.QR];
+      const isMovingWithinPass = passScreens.includes(next) && passScreens.includes(screen);
+
+      if (isMovingWithinPass || (next === AppScreen.DETAILS && screen === AppScreen.SCANNER)) {
+        // Replace: Do not add the current screen to history
+      } else {
+        setHistory((prev) => [...prev, screen]);
+      }
     }
     setScreen(next);
   };
 
   const goBack = () => {
-    if (screen === AppScreen.FORM && editing && editing.flat) {
-      navigate(AppScreen.HOME);
-      return true;
-    }
     if (history.length > 0) {
       const prev = history[history.length - 1];
       setHistory((current) => current.slice(0, -1));
