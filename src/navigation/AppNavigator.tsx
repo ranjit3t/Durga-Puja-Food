@@ -28,6 +28,7 @@ import { ReportScreen } from "../screens/ReportScreen";
 import { SettingsScreen } from "../screens/SettingsScreen";
 import { GuestManagementScreen } from "../screens/GuestManagementScreen";
 import { ActivityLogScreen } from "../screens/ActivityLogScreen";
+import { NotesScreen } from "../screens/NotesScreen";
 
 import { HomeScreen } from "../screens/HomeScreen";
 
@@ -89,6 +90,9 @@ export function AppNavigator() {
         break;
       case AppScreen.ACTIVITY_LOG:
         screenComponent = <ActivityLogScreen />;
+        break;
+      case AppScreen.NOTES:
+        screenComponent = <NotesScreen />;
         break;
       case AppScreen.SUBSCRIPTION_LIST:
         screenComponent = <SubscriptionListScreen />;

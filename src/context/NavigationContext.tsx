@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from "react";
 import { BackHandler, Platform } from "react-native";
-import { Screen, Subscription, Day, ReportType, ConfigDay, PaymentConfig, MealType, AppScreen, PaymentMode } from "../types";
+import { Screen, Subscription, Day, ReportType, ConfigDay, PaymentConfig, MealType, AppScreen, PaymentMode, Note } from "../types";
 import { useAuth } from "./AuthContext";
 import {
   getEnabledPaymentMethods,

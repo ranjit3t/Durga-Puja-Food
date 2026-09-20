@@ -43,6 +43,7 @@ export enum AppScreen {
   GUEST_MANAGEMENT = "guestManagement",
   LOGIN = "login",
   ACTIVITY_LOG = "activityLog",
+  NOTES = "notes",
 }
 
 export enum AppThemeMode {
@@ -101,6 +102,7 @@ export enum ActivityModule {
   REPORT = "Report",
   SCANNER = "Scanner",
   AUTH = "Login",
+  NOTE = "Note",
 }
 
 export enum ActivityAction {
@@ -220,4 +222,12 @@ export type SubscriptionRecord = {
   paymentMode: PaymentMode;
   transactionId?: string;
   takenByPerson: Record<EventDay, TakenState[]>;
+};
+
+export type Note = {
+  id: string;
+  timestamp: number;
+  userName: string;
+  subject: string;
+  content: string;
 };

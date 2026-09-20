@@ -343,7 +343,7 @@ export function ActivityLogScreen() {
   return (
     <View style={styles.root}>
       <StatusBar barStyle={themeType === AppThemeMode.DARK ? "light-content" : "dark-content"} />
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingBottom: s(20) }]}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", height: 40, marginBottom: 16 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <BackButton onPress={goBack} />

@@ -25,6 +25,7 @@ import {
   ConfigDay,
   AppConfig,
   PaymentConfig,
+  Note,
 } from "./domain";
 
 export enum FilterMode {
@@ -63,4 +64,5 @@ export {
   ConfigDay,
   AppConfig,
   PaymentConfig,
+  Note,
 };

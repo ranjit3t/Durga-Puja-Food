@@ -260,6 +260,9 @@ export function HomeScreen() {
           <Pressable accessibilityLabel={UI_TEXT.viewMenu} onPress={() => navigate(AppScreen.VIEW_MENU)} style={[styles.compactSecondary, { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary }]}>
             <ActionLabel icon="restaurant-outline" label={UI_TEXT.viewMenu} color={theme.colors.white} size={iconSize} vertical />
           </Pressable>
+          <Pressable accessibilityLabel={UI_TEXT.notes} onPress={() => navigate(AppScreen.NOTES)} style={[styles.compactSecondary, { backgroundColor: theme.cardColors[0].accent, borderColor: theme.cardColors[0].accent }]}>
+            <ActionLabel icon="document-text-outline" label={UI_TEXT.notes} color={theme.colors.white} size={iconSize} vertical />
+          </Pressable>
           {userRole === UserRole.ADMIN && (
             <>
               <Pressable accessibilityLabel={UI_TEXT.activityLog} onPress={() => navigate(AppScreen.ACTIVITY_LOG)} style={[styles.compactSecondary, { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary }]}>

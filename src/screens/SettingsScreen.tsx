@@ -32,7 +32,7 @@ export function SettingsScreen() {
   const { handleLogout } = useAuth();
   const {
     dayConfig: config, seasonName, seasonEnabled, paymentConfig: payment, guestEnabled, mobileEnabled, foodPriceEnabled,
-    whatsappCountryCode, updateConfig, kidsEnabled, subscriptions, addActivityLog
+    whatsappCountryCode, updateConfig, kidsEnabled, subscriptions, addActivityLog, foodMenu
   } = useDatabase();
   const { showAlert } = useUI();
   const { navigate, goBack } = useAppNavigation();
@@ -54,17 +54,6 @@ export function SettingsScreen() {
   const [localWhatsappCountryCode, setLocalWhatsappCountryCode] = useState(UI_TEXT.defaultCountryCode);
   const [saving, setSaving] = useState(false);
   const [initialized, setInitialized] = useState(false);
-
-  const withConfirm = (currentValue: boolean, newValue: boolean, onConfirm: () => void) => {
-    if (currentValue && !newValue && (subscriptions || []).length > 0) {
-      showAlert(UI_TEXT.confirmDisableTitle, UI_TEXT.confirmDisableMessage, [
-        { text: UI_TEXT.no, style: "cancel" },
-        { text: UI_TEXT.yes, style: "destructive", onPress: onConfirm }
-      ]);
-    } else {
-      onConfirm();
-    }
-  };
 
   // Sync local state when database config is loaded (Once only or when saved)
   React.useEffect(() => {
@@ -141,7 +130,21 @@ export function SettingsScreen() {
     setLocalKidsEnabled(val);
   };
 
-  const validateAndSetGuestEnabled = (val: boolean) => setLocalGuestEnabled(val);
+  const validateAndSetGuestEnabled = (val: boolean) => {
+    if (!val) { // Switching OFF
+      const hasGuestSubscriptions = Object.values(foodMenu || {}).some(dayMenu =>
+        [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].some(mKey => {
+           const m = dayMenu[mKey as keyof typeof dayMenu];
+           return m && ((m.guestVeg || 0) > 0 || (m.guestNonVeg || 0) > 0);
+        })
+      );
+      if (hasGuestSubscriptions) {
+        showAlert(UI_TEXT.confirmDisableTitle, UI_TEXT.guestDisabledError);
+        return;
+      }
+    }
+    setLocalGuestEnabled(val);
+  };
   const validateAndSetMobileEnabled = (val: boolean) => setLocalMobileEnabled(val);
   const validateAndSetFoodPriceEnabled = (val: boolean) => setLocalFoodPriceEnabled(val);
 
@@ -448,7 +451,7 @@ export function SettingsScreen() {
                  <Text style={{ fontSize: 16, fontWeight: '800', color: theme.colors.textPrimary }}>{UI_TEXT.guestManagementLabel}</Text>
                  <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600' }}>{UI_TEXT.guestManagementHelper}</Text>
               </View>
-              <Switch value={localGuestEnabled} onValueChange={(val) => withConfirm(localGuestEnabled, val, () => setLocalGuestEnabled(val))} trackColor={{ true: theme.colors.primary }} />
+              <Switch value={localGuestEnabled} onValueChange={(val) => validateAndSetGuestEnabled(val)} trackColor={{ true: theme.colors.primary }} />
            </View>
            <View style={{ height: 1, backgroundColor: theme.colors.border, marginVertical: 20 }} />
            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -456,7 +459,7 @@ export function SettingsScreen() {
                  <Text style={{ fontSize: 16, fontWeight: '800', color: theme.colors.textPrimary }}>{UI_TEXT.addMobileInPass}</Text>
                  <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600' }}>{UI_TEXT.addMobileInPassHelper}</Text>
               </View>
-              <Switch value={localMobileEnabled} onValueChange={(val) => withConfirm(localMobileEnabled, val, () => setLocalMobileEnabled(val))} trackColor={{ true: theme.colors.primary }} />
+              <Switch value={localMobileEnabled} onValueChange={setLocalMobileEnabled} trackColor={{ true: theme.colors.primary }} />
            </View>
            {localMobileEnabled && (
              <View style={{ marginTop: 20 }}>
@@ -471,7 +474,7 @@ export function SettingsScreen() {
                    <Text style={{ fontSize: 16, fontWeight: '800', color: theme.colors.textPrimary }}>{UI_TEXT.enableFoodPrice}</Text>
                    <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600' }}>{UI_TEXT.enableFoodPriceHelper}</Text>
                 </View>
-                <Switch value={localFoodPriceEnabled} onValueChange={(val) => withConfirm(localFoodPriceEnabled, val, () => setLocalFoodPriceEnabled(val))} trackColor={{ true: theme.colors.primary }} />
+                <Switch value={localFoodPriceEnabled} onValueChange={setLocalFoodPriceEnabled} trackColor={{ true: theme.colors.primary }} />
              </View>
            )}
 
@@ -527,7 +530,7 @@ export function SettingsScreen() {
                     <Switch
                       value={day.vegOnly || false}
                       disabled={day.breakfast.done || day.lunch.done || day.dinner.done}
-                      onValueChange={(val) => withConfirm(day.vegOnly || false, val, () => updateDay(day.id, { vegOnly: val }))}
+                      onValueChange={(val) => updateDay(day.id, { vegOnly: val })}
                       trackColor={{ true: theme.colors.primary }}
                     />
                   </View>
@@ -576,7 +579,7 @@ export function SettingsScreen() {
                                <Switch
                                  value={m.parcel}
                                  disabled={m.done}
-                                 onValueChange={(val) => withConfirm(m.parcel, val, () => updateMealConfig(day.id, mKey, { parcel: val }))}
+                                 onValueChange={(val) => updateMealConfig(day.id, mKey, { parcel: val })}
                                  trackColor={{ true: theme.colors.primary }}
                                  style={{ transform: [{ scale: 0.8 }] }}
                                />

@@ -233,6 +233,7 @@ The application maintains a permanent, asynchronous audit trail of all significa
   - **Guest Management**: All manual adjustments to guest demand and collection counts.
   - **Configuration**: All changes to global festival rules and day-specific settings.
   - **Operations**: QR code scans (success/fail), pass image sharing, and downloads.
+  - **Collaborative Notes**: Creation, updates, and deletion of operational notes by users, with full historical logging of these actions.
   - **Security**: Successful logins, failed login attempts (tracking username), and Logouts.
 
 ### L. Operational Sequencing & Write Protection
@@ -248,10 +249,12 @@ The application implements strict **Bi-Directional Temporal Data Governance** to
       - **Global Payment Lock**: Switching off "Payment Integration" is blocked if any pass has non-zero amount. Alert: *"Payment integration cannot be switched..."*.
       - **Channel Lock**: Switching off UPI/Cash/Bank is blocked if any existing entry uses that mode. Alert: *"Payment channel cannot be switched off..."*.
       - **Kids Support Lock**: Disabling is blocked if any pass has registered children. Alert: *"Kids support cannot be switched off..."*.
+      - **Guest Mode Lock**: Disabling is blocked if any guest plates are planned for any meal. Alert: *"Guest mode cannot be switched off as guest already subscribed"*.
       - **Subscription-Aware Status Lock**: Disabling a **Festival Day** or **Meal Slot** is blocked if active subscriptions depend on them. Alert: *"Day/Meal cannot be switched off..."*. The **Delete Day** button is Red and strictly disabled for such active days.
   - **Season Lifecycle Safety**: The "Season Status" toggle can only be switched off if all enabled meals across the festival are marked as **Done**. Alert: *"Season cannot be switched off unless all meals... are marked done or disabled"*.
   - **Veg-Only & Parcel Support Safety**: The `SettingsScreen` automatically disables the **Veg-Only** toggle for a day if any of its meals are marked as **Done**. Similarly, the **Parcel Support** toggle is disabled for individual meals once they are completed.
-  - **Headcount Reduction Guard**: The `SubscriptionForm` locks the Adult and Kid counters (using the `min` prop) to their **initial load values** if the pass is active (any member has `taken: true` or subscribed to a `Done` meal).
+  - **Headcount Reduction Guard**: The `SubscriptionForm` locks the Adult and Kid counters (using the `min` prop) to their **initial load values** if the pass is active.
+  - **Optimized Administrative Workflow**: Generic confirmation boxes have been removed for all logic-guarded toggles, including Season, Kids, Guest, Payment, and Meal availability, providing a faster and more professional administrative experience.
   - **State Stability**: If no meal is currently active in settings, all slots remain writable for historical correction or pre-event planning.
 - **Dependency Guard**: The `takenParcel` toggle visibility is strictly dependent on the primary `taken` status being `true`.
 
@@ -262,6 +265,15 @@ To prevent operational data corruption, the `SettingsScreen` enforces strict chr
 - **Activating Current Meal**: A meal can only be set as `Current` if no future meal has already been marked as `Done`.
 - **Deactivating Current Meal**: A `Current` marker cannot be removed unless all subsequent meals are unmarked (not `Done`).
 - **Validation Alerts**: Violating these rules triggers specific operational alerts informing the administrator of the required sequence (Day 1 $\rightarrow$ Day N).
+
+### N. Collaborative Notes Infrastructure
+The application includes a decentralized note-taking system for operational coordination:
+- **CRUD Operations**: Users can add, edit, and delete notes. A modal-based entry form captures a **Subject** and **Content**.
+- **Role-Based Permissions**:
+    - **Admins**: Can edit or delete any note in the system.
+    - **Users**: Can only edit or delete notes that they personally created (tracked via `userName`).
+- **Audit Integration**: Every note action (ADD, EDIT, DELETE, VIEW) automatically generates a corresponding entry in the global **Activity Log** for forensic tracking.
+- **UI Architecture**: Modeled after the `ActivityLogScreen`, the notes list features pagination (20 items per page), keyword search, and toggleable chronological sorting. The system utilizes a **Modal Window** within the Notes page to facilitate **Add**, **Edit**, and **Read-Only View** modes based on context. Note cards utilize the cyclical themed palette for visual consistency.
 
 ---
 © 2026 Eternia Food Desk Technical Team

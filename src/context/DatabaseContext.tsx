@@ -20,7 +20,8 @@ import {
   PaymentMode,
   ActivityLog,
   ActivityModule,
-  ActivityAction
+  ActivityAction,
+  Note
 } from "../types";
 import { useAuth } from "./AuthContext";
 
@@ -53,6 +54,7 @@ interface DatabaseContextType {
   foodPriceEnabled: boolean;
   kidsEnabled: boolean;
   whatsappCountryCode: string;
+  notes: Note[];
 
   // Derived Metrics
   dashboardData: any[];
@@ -70,6 +72,8 @@ interface DatabaseContextType {
   getAuthConfig: () => Promise<any>;
   addActivityLog: (log: Omit<ActivityLog, "id" | "timestamp" | "userName">, manualUser?: string) => void;
   getActivityLogs: (limit?: number) => Promise<ActivityLog[]>;
+  upsertNote: (note: Note) => Promise<void>;
+  deleteNote: (id: string) => Promise<void>;
 }
 
 const DatabaseContext = createContext<DatabaseContextType | undefined>(undefined);
@@ -94,6 +98,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
   const [foodPriceEnabled, setFoodPriceEnabled] = useState(false);
   const [kidsEnabled, setKidsEnabled] = useState(false);
   const [whatsappCountryCode, setWhatsappCountryCode] = useState(UI_TEXT.defaultCountryCode);
+  const [notes, setNotes] = useState<Note[]>([]);
 
   const getAuthConfig = useCallback(() => repository.getAuthConfig(), []);
 
@@ -121,10 +126,11 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
         setFirebaseError(firebaseMissingConfig.join(", "));
         return;
       }
-      const [subs, config, menu] = await Promise.all([
+      const [subs, config, menu, notesData] = await Promise.all([
         repository.list(),
         repository.getConfig(),
         repository.getMenu(),
+        repository.getNotes(),
       ]);
 
       // Natural sort by Block then Flat
@@ -145,6 +151,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       setKidsEnabled(config.kidsEnabled || false);
       setWhatsappCountryCode(config.whatsappCountryCode || "91");
       setFoodMenu(menu);
+      setNotes(notesData);
       setFirebaseError("");
     } catch (err: any) {
       console.error("Sync error:", err);
@@ -347,6 +354,53 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
        throw err;
      }
   }, [addActivityLog]);
+
+  const upsertNote = useCallback(async (note: Note) => {
+    try {
+      const isEdit = !!note.id;
+      const result = await repository.upsertNote(note);
+      addActivityLog({
+        module: ActivityModule.NOTE,
+        action: isEdit ? ActivityAction.UPDATE : ActivityAction.CREATE,
+        targetId: result.id,
+        description: (isEdit ? UI_TEXT.logEditNote : UI_TEXT.logAddNote).replace("{subject}", note.subject)
+      });
+      await refreshAllData(true);
+    } catch (err: any) {
+      addActivityLog({
+        module: ActivityModule.NOTE,
+        action: ActivityAction.ERROR,
+        description: UI_TEXT.logError.replace("{module}", ActivityModule.NOTE).replace("{message}", err.message || String(err)),
+        stack: err.stack
+      });
+      throw err;
+    }
+  }, [refreshAllData, addActivityLog]);
+
+  const deleteNote = useCallback(async (id: string) => {
+    try {
+      const note = notes.find(n => n.id === id);
+      await repository.removeNote(id);
+      if (note) {
+        addActivityLog({
+          module: ActivityModule.NOTE,
+          action: ActivityAction.DELETE,
+          targetId: id,
+          description: UI_TEXT.logDeleteNote.replace("{subject}", note.subject)
+        });
+      }
+      await refreshAllData(true);
+    } catch (err: any) {
+      addActivityLog({
+        module: ActivityModule.NOTE,
+        action: ActivityAction.ERROR,
+        targetId: id,
+        description: UI_TEXT.logError.replace("{module}", ActivityModule.NOTE).replace("{message}", err.message || String(err)),
+        stack: err.stack
+      });
+      throw err;
+    }
+  }, [refreshAllData, addActivityLog, notes]);
 
   const dashboardData = useMemo(() => {
     const uniqueSubscriptions = Array.from(new Map(subscriptions.map((s) => [s.id, s])).values());
@@ -570,17 +624,17 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo(() => ({
     loading, firebaseError, refreshAllData,
     subscriptions, foodMenu, dayConfig, seasonName, seasonEnabled, paymentConfig, guestEnabled, mobileEnabled, foodPriceEnabled,
-    kidsEnabled, whatsappCountryCode,
+    kidsEnabled, whatsappCountryCode, notes,
     dashboardData, collections, totalPeople,
     upsertSubscription, deleteSubscription, updateConfig, updateMenu, updateGuestCount, updateMealMenu, updateSubscriptionStatus,
-    getAuthConfig, addActivityLog, getActivityLogs
+    getAuthConfig, addActivityLog, getActivityLogs, upsertNote, deleteNote
   }), [
     loading, firebaseError, refreshAllData,
     subscriptions, foodMenu, dayConfig, seasonName, seasonEnabled, paymentConfig, guestEnabled, mobileEnabled, foodPriceEnabled,
-    whatsappCountryCode,
+    whatsappCountryCode, notes,
     dashboardData, collections, totalPeople,
     upsertSubscription, deleteSubscription, updateConfig, updateMenu, updateGuestCount, updateMealMenu, updateSubscriptionStatus,
-    getAuthConfig, addActivityLog, getActivityLogs
+    getAuthConfig, addActivityLog, getActivityLogs, upsertNote, deleteNote
   ]);
 
   return <DatabaseContext.Provider value={value}>{children}</DatabaseContext.Provider>;

@@ -24,6 +24,10 @@
     "logs": {
       ".read": "auth != null",
       ".write": "auth != null"
+    },
+    "notes": {
+      ".read": "auth != null",
+      ".write": "auth != null"
     }
   }
 }

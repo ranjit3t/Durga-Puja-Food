@@ -18,7 +18,8 @@ import {
   DietType,
   DietaryOption,
   ActivityLog,
-  PaymentMode
+  PaymentMode,
+  Note
 } from "./domain";
 import { ConfigDay, AppConfig } from "./types";
 import { UI_TEXT } from "./strings";
@@ -40,6 +41,9 @@ export interface SubscriptionRepository {
   getAuthConfig(): Promise<any>;
   addActivityLog(log: Omit<ActivityLog, "id">): Promise<void>;
   getActivityLogs(limit?: number): Promise<ActivityLog[]>;
+  getNotes(): Promise<Note[]>;
+  upsertNote(note: Note): Promise<Note>;
+  removeNote(id: string): Promise<void>;
 }
 
 const subscriptionsPath = "subscriptions";
@@ -47,6 +51,7 @@ const menuPath = "menu";
 const configPath = "config";
 const authConfigPath = "auth_config";
 const logsPath = "logs";
+const notesPath = "notes";
 
 // --- Helper Functions ---
 
@@ -466,6 +471,31 @@ export function createFirebaseRepository(): SubscriptionRepository {
       const data = snapshot.val() as Record<string, ActivityLog> | null;
       if (!data) return [];
       return Object.values(data).sort((a, b) => b.timestamp - a.timestamp);
+    },
+    async getNotes() {
+      const services = await ensureFirebaseAuth();
+      if (!services) return [];
+      const snapshot = await get(ref(services.db, notesPath));
+      const data = snapshot.val() as Record<string, Note> | null;
+      if (!data) return [];
+      return Object.values(data).sort((a, b) => b.timestamp - a.timestamp);
+    },
+    async upsertNote(note) {
+      const services = await ensureFirebaseAuth();
+      if (!services) return note;
+      let targetId = note.id;
+      if (!targetId) {
+        const newRef = push(ref(services.db, notesPath));
+        targetId = newRef.key as string;
+      }
+      const data = cleanUndefined({ ...note, id: targetId });
+      await set(ref(services.db, `${notesPath}/${targetId}`), data);
+      return { ...note, id: targetId };
+    },
+    async removeNote(id) {
+      const services = await ensureFirebaseAuth();
+      if (!services) return;
+      await remove(ref(services.db, `${notesPath}/${id}`));
     },
   };
 }
