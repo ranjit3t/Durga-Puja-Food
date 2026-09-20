@@ -97,6 +97,34 @@ export function SubscriptionForm() {
   };
   const onHome = () => navigate(AppScreen.HOME);
 
+  const currentMealInfo = useMemo(() => {
+    for (const d of dayConfig) {
+      if (!d.enabled) continue;
+      for (const mType of [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER]) {
+        if (d[mType].enabled && d[mType].current) {
+          return { dayId: d.id, type: mType };
+        }
+      }
+    }
+    return null;
+  }, [dayConfig]);
+
+  const checkParcelInconsistency = (sub: Subscription): boolean => {
+    if (!lockIdentity || !currentMealInfo) return false;
+    const { dayId, type } = currentMealInfo;
+    const personSlots = sub.mealSlots[dayId] || [];
+    const takenDays = sub.takenByPerson[dayId] || [];
+
+    return personSlots.some((slot, pIdx) => {
+      const t = takenDays[pIdx];
+      if (!t) return false;
+      const optedParcel = !!slot[`${type}Parcel` as keyof typeof slot];
+      const takenFood = !!t[type];
+      const takenParcel = !!t[`${type}Parcel` as keyof TakenState];
+      return optedParcel && takenFood && !takenParcel;
+    });
+  };
+
   const getLogDetails = (sub: Subscription, isEdit: boolean) => {
     const activeDays = getActiveDays(dayConfig);
 
@@ -449,13 +477,26 @@ export function SubscriptionForm() {
   /**
    * Toggles whether a specific meal has been 'taken' (collected) by the person.
    */
-  const setTakenChoice = (slot: string, taken: boolean) =>
+  const setTakenChoice = (slot: string, taken: boolean) => {
+    const isParcel = slot.includes("Parcel");
+    const mealKey = isParcel ? slot.replace("Parcel", "") : slot;
+    const parcelKey = `${mealKey}Parcel`;
+
     set("takenByPerson", {
       ...form.takenByPerson,
-      [selectedDay]: form.takenByPerson[selectedDay].map((item, index) =>
-        index === selectedPerson ? { ...item, [slot]: taken } : item
-      ),
+      [selectedDay]: form.takenByPerson[selectedDay].map((item, index) => {
+        if (index === selectedPerson) {
+          const updated = { ...item, [slot]: taken };
+          // Rule: If food taken is toggled OFF, also force parcel taken to OFF
+          if (!isParcel && !taken) {
+            updated[parcelKey as keyof TakenState] = false;
+          }
+          return updated;
+        }
+        return item;
+      }),
     });
+  };
 
   const addPayment = () => {
     if (payments.length < 3) {
@@ -604,17 +645,12 @@ export function SubscriptionForm() {
            <View style={styles.row}>
             <View style={styles.fieldHalf}>
               <Text style={styles.label}>{UI_TEXT.blockNo}</Text>
-              {isAdmin ? (
-                <Dropdown
-                  value={form.block}
-                  options={blockOptions}
-                  onChange={(block) => set("block", block)}
-                />
-              ) : (
-                <View style={[styles.input, { backgroundColor: theme.colors.surface, justifyContent: "center" }]}>
-                  <Text style={{ fontSize: 16, fontWeight: "600", color: theme.colors.textPrimary }}>{form.block}</Text>
-                </View>
-              )}
+              <Dropdown
+                value={form.block}
+                options={blockOptions}
+                onChange={(block) => set("block", block)}
+                disabled={!isAdmin || lockIdentity}
+              />
             </View>
             <View style={styles.fieldHalf}>
               <Text style={styles.label}>{UI_TEXT.flatNo}</Text>
@@ -627,7 +663,7 @@ export function SubscriptionForm() {
                 autoCapitalize="characters"
                 editable={isAdmin && !lockIdentity}
                 selectTextOnFocus={isAdmin && !lockIdentity}
-                style={[styles.input, !isAdmin && { backgroundColor: theme.colors.surface }]}
+                style={[styles.input, (!isAdmin || lockIdentity) && { backgroundColor: theme.colors.surface }]}
               />
             </View>
           </View>
@@ -1173,7 +1209,14 @@ export function SubscriptionForm() {
                   showGlobalAlert(UI_TEXT.error, UI_TEXT.mobileInvalid);
                   return;
                 }
-                onSave(prepared);
+                if (checkParcelInconsistency(prepared)) {
+                  showGlobalAlert(UI_TEXT.confirmDisableTitle, UI_TEXT.parcelMissedConfirm, [
+                    { text: UI_TEXT.no, style: "cancel" },
+                    { text: UI_TEXT.yes, style: "destructive", onPress: () => onSave(prepared) }
+                  ]);
+                } else {
+                  onSave(prepared);
+                }
               }}
               style={[styles.primary, !canSave && { opacity: 0.5 }]}
               disabled={!canSave}
@@ -1199,7 +1242,14 @@ export function SubscriptionForm() {
                   showGlobalAlert(UI_TEXT.error, UI_TEXT.mobileInvalid);
                   return;
                 }
-                onSaveQr(prepared);
+                if (checkParcelInconsistency(prepared)) {
+                  showGlobalAlert(UI_TEXT.confirmDisableTitle, UI_TEXT.parcelMissedConfirm, [
+                    { text: UI_TEXT.no, style: "cancel" },
+                    { text: UI_TEXT.yes, style: "destructive", onPress: () => onSaveQr(prepared) }
+                  ]);
+                } else {
+                  onSaveQr(prepared);
+                }
               }}
               style={[
                 styles.primary,

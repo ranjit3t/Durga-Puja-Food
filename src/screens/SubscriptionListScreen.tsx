@@ -22,7 +22,7 @@ import { useAuth } from "../context/AuthContext";
 import { useDatabase } from "../context/DatabaseContext";
 import { useAppNavigation } from "../context/NavigationContext";
 import { getActiveDays, getPaymentModeLabel, isMealCurrent, isMealEnabled } from "../constants";
-import { AppScreen, Subscription, PaymentMode, UserRole, MealType, DietaryOption, FilterMode, AppThemeMode, ActivityModule, ActivityAction, PaymentConfig } from "../types";
+import { AppScreen, Subscription, PaymentMode, UserRole, MealType, DietaryOption, FilterMode, AppThemeMode, ActivityModule, ActivityAction, PaymentConfig, TakenState } from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
@@ -40,7 +40,8 @@ const SubscriptionCard = React.memo(({
   hasParcel,
   isVegOnly,
   onSelect,
-  addActivityLog
+  addActivityLog,
+  missedCount
 }: {
   item: Subscription;
   index: number;
@@ -55,6 +56,7 @@ const SubscriptionCard = React.memo(({
   isVegOnly: boolean;
   onSelect: (sub: Subscription) => void;
   addActivityLog: any;
+  missedCount?: number;
 }) => {
   const colorScheme = theme.cardColors[index % theme.cardColors.length];
 
@@ -70,6 +72,11 @@ const SubscriptionCard = React.memo(({
         }
       ]}
     >
+      {missedCount ? (
+        <View style={{ position: 'absolute', top: -s(10), right: -s(10), width: s(28), height: s(28), borderRadius: s(14), backgroundColor: theme.colors.error, alignItems: 'center', justifyContent: 'center', zIndex: 10, elevation: 4, borderWidth: 2, borderColor: theme.colors.white }}>
+           <Text style={{ color: theme.colors.white, fontSize: s(12), fontWeight: '900' }}>{missedCount}</Text>
+        </View>
+      ) : null}
       <View style={styles.cardTop}>
         <View style={{ flex: 1 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -271,6 +278,29 @@ export function SubscriptionListScreen() {
 
   const hasAnySubscribed = subscribedCount > 0;
 
+  const missedData = useMemo(() => {
+    if (!currentMealInfo) return { count: 0, list: [] };
+    const list = subscriptions.map(sub => {
+      let missed = 0;
+      const slots = sub.mealSlots[currentMealInfo.dayId] || [];
+      const taken = sub.takenByPerson[currentMealInfo.dayId] || [];
+
+      slots.forEach((s, idx) => {
+        const hasChoice = s[currentMealInfo.type] !== DietaryOption.NONE;
+        const isTaken = !!taken[idx]?.[currentMealInfo.type] || !!taken[idx]?.[`${currentMealInfo.type}Parcel` as keyof TakenState];
+
+        if (hasChoice && !isTaken) {
+           missed++;
+        }
+      });
+      return missed > 0 ? { id: sub.id, missed } : null;
+    }).filter(Boolean) as { id: string, missed: number }[];
+
+    return { count: list.length, list };
+  }, [subscriptions, currentMealInfo]);
+
+  const hasAnyMissed = missedData.count > 0;
+
   const visibleSubscriptions = useMemo(() => {
     let filtered = subscriptions;
 
@@ -282,6 +312,11 @@ export function SubscriptionListScreen() {
             slot[currentMealInfo.type] === DietaryOption.NON_VEG
         )
       );
+    }
+
+    if (currentMealInfo && hasAnyMissed && filterMode === FilterMode.MISSED) {
+      const missedIds = missedData.list.map(m => m.id);
+      filtered = filtered.filter(sub => missedIds.includes(sub.id));
     }
 
     if (kidsEnabled && hasAnyKids && filterMode === FilterMode.KIDS) {
@@ -336,8 +371,9 @@ export function SubscriptionListScreen() {
            });
          });
          const isVegOnly = hasVeg && !hasNonVeg;
+         const missedItem = missedData.list.find(m => m.id === item.id);
 
-         return { ...item, _hasCurrentMeal: hasCurrentMeal, _hasParcel: hasParcel, _isVegOnly: isVegOnly };
+         return { ...item, _hasCurrentMeal: hasCurrentMeal, _hasParcel: hasParcel, _isVegOnly: isVegOnly, _missedCount: missedItem?.missed };
        });
     }
 
@@ -369,12 +405,13 @@ export function SubscriptionListScreen() {
           });
         });
         const isVegOnly = hasVeg && !hasNonVeg;
-        return { ...item, _hasCurrentMeal: hasCurrentMeal, _hasParcel: hasParcel, _isVegOnly: isVegOnly };
+        const missedItem = missedData.list.find(m => m.id === item.id);
+        return { ...item, _hasCurrentMeal: hasCurrentMeal, _hasParcel: hasParcel, _isVegOnly: isVegOnly, _missedCount: missedItem?.missed };
       });
-  }, [subscriptions, subscriptionSearch, filterMode, currentMealInfo, kidsEnabled, hasAnyKids, hasAnySubscribed, hasAnyParcel, hasAnyVegOnly]);
+  }, [subscriptions, subscriptionSearch, filterMode, currentMealInfo, kidsEnabled, hasAnyKids, hasAnySubscribed, hasAnyParcel, hasAnyVegOnly, missedData]);
 
 
-  const renderItem = useCallback(({ item, index }: { item: Subscription & { _hasCurrentMeal?: boolean; _hasParcel?: boolean; _isVegOnly?: boolean }; index: number }) => {
+  const renderItem = useCallback(({ item, index }: { item: Subscription & { _hasCurrentMeal?: boolean; _hasParcel?: boolean; _isVegOnly?: boolean; _missedCount?: number }; index: number }) => {
     return (
       <SubscriptionCard
         item={item}
@@ -390,11 +427,12 @@ export function SubscriptionListScreen() {
         isVegOnly={!!item._isVegOnly}
         onSelect={onSelect}
         addActivityLog={addActivityLog}
+        missedCount={item._missedCount}
       />
     );
   }, [theme, styles, s, kidsEnabled, paymentConfig, whatsappCountryCode, onSelect]);
 
-  const showFilters = (currentMealInfo && hasAnySubscribed) || (kidsEnabled && hasAnyKids) || hasAnyParcel || (isNonVegSeason && hasAnyVegOnly);
+  const showFilters = (currentMealInfo && hasAnySubscribed) || (kidsEnabled && hasAnyKids) || hasAnyParcel || (isNonVegSeason && hasAnyVegOnly) || (currentMealInfo && hasAnyMissed);
 
   return (
     <View style={styles.root}>
@@ -480,6 +518,40 @@ export function SubscriptionListScreen() {
                   color: filterMode === FilterMode.SUBSCRIBED ? theme.colors.primary : theme.colors.textSecondary
                 }}>
                   {UI_TEXT.mealSubscriberMarker} ({subscribedCount})
+                </Text>
+              </Pressable>
+            )}
+
+            {currentMealInfo && hasAnyMissed && (
+              <Pressable
+                onPress={() => setFilterMode(FilterMode.MISSED)}
+                style={({ pressed }) => [
+                  {
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: s(6),
+                    paddingHorizontal: s(12),
+                    paddingVertical: s(8),
+                    borderRadius: s(20),
+                    borderWidth: 1,
+                    borderColor: filterMode === FilterMode.MISSED ? theme.colors.error : theme.colors.border,
+                    backgroundColor: filterMode === FilterMode.MISSED ? theme.colors.errorLight : theme.colors.surface,
+                    marginBottom: s(8)
+                  },
+                  pressed && { opacity: 0.7 }
+                ]}
+              >
+                <Ionicons
+                  name={filterMode === FilterMode.MISSED ? "alert-circle" : "alert-circle-outline"}
+                  size={s(16)}
+                  color={filterMode === FilterMode.MISSED ? theme.colors.error : theme.colors.textSecondary}
+                />
+                <Text style={{
+                  fontSize: s(13),
+                  fontWeight: "700",
+                  color: filterMode === FilterMode.MISSED ? theme.colors.error : theme.colors.textSecondary
+                }}>
+                  {UI_TEXT.mealMissedMarker} ({missedData.count})
                 </Text>
               </Pressable>
             )}

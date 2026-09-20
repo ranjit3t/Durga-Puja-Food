@@ -171,6 +171,7 @@ export const UI_TEXT = {
   personsSuffix: " persons",
   rs: "Rs.",
   mealSubscriberMarker: "Current Meal",
+  mealMissedMarker: "Current Meal Missed",
 
   // Details Screen
   flatIdPrefix: "FLAT ",
@@ -311,6 +312,7 @@ export const UI_TEXT = {
   flatExistsMsgPrefix: "Flat ",
   flatExistsMsgSuffix: " is already registered. You can edit the existing record now.",
   saveFailed: "Save failed",
+  parcelMissedConfirm: "It seems member has opted for parcel but parcel taken was not chosen. Do you want to proceed?",
   syncError: "Could not sync with database.",
   deleteError: "Could not delete record",
   saveConfigError: "Could not save configuration",

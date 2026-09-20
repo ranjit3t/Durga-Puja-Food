@@ -12,11 +12,13 @@ export function Dropdown({
   value,
   options,
   onChange,
+  disabled,
 }: {
   label?: string;
   value: string;
   options: string[];
   onChange: (value: string) => void;
+  disabled?: boolean;
 }) {
   const styles = useStyles();
   const { theme } = useAppTheme();
@@ -26,11 +28,15 @@ export function Dropdown({
     <View style={styles.dropdownWrap}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
 
-      <Pressable onPress={() => setOpen(true)} style={styles.dropdownButton}>
+      <Pressable
+        onPress={() => !disabled && setOpen(true)}
+        style={[styles.dropdownButton, disabled && { opacity: 0.6, backgroundColor: theme.colors.surface }]}
+        disabled={disabled}
+      >
         <Text style={styles.dropdownValue}>
           {value || `${UI_TEXT.selectPrefix} ${(label ?? UI_TEXT.optionDefault).toLowerCase()}`}
         </Text>
-        <Text style={styles.dropdownChevron}>▼</Text>
+        {!disabled && <Text style={styles.dropdownChevron}>▼</Text>}
       </Pressable>
 
       <Modal

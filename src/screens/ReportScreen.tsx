@@ -64,6 +64,18 @@ export function ReportScreen() {
   const { s } = useScaling();
   const { theme, themeType } = useAppTheme();
 
+  const dayScrollRef = useRef<ScrollView>(null);
+  const dayOffsets = useRef<Record<string, number>>({});
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      if (selectedDayId && dayOffsets.current[selectedDayId] !== undefined) {
+        dayScrollRef.current?.scrollTo({ x: dayOffsets.current[selectedDayId] - s(20), animated: true });
+      }
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [selectedDayId, s, reportType]);
+
   const onSelectFlat = (id: string) => {
     const match = subscriptions.find((s) => s.id === id);
     if (match) {
@@ -73,7 +85,21 @@ export function ReportScreen() {
     }
   };
 
-  const onSetReportType = (type: ReportType) => setReportType(type);
+  const onSetReportType = (type: ReportType) => {
+    setReportType(type);
+    if (type === ReportType.NOT_TAKEN || type === ReportType.KIDS_MEAL) {
+      const active = activeDays;
+      for (const dId of active) {
+        for (const mType of [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER]) {
+          if (isMealCurrent(dId, mType, dayConfig) && isMealEnabled(dId, mType, dayConfig)) {
+            onSetSelectedDayId(dId);
+            onSetSelectedMealType(mType);
+            return;
+          }
+        }
+      }
+    }
+  };
 
   // Ensure selected day is valid if config changes
   React.useEffect(() => {
@@ -214,7 +240,12 @@ export function ReportScreen() {
             <Text style={[styles.sectionTitle, { fontSize: 16, marginBottom: 12 }]}>{UI_TEXT.reportFilters}</Text>
 
             <Text style={[styles.selectorLabel, { marginTop: 0 }]}>{UI_TEXT.selectDay}</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
+            <ScrollView
+              ref={dayScrollRef}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={{ marginBottom: 16 }}
+            >
               <View style={styles.selectorRow}>
                 {activeDays
                   .filter((day) => {
@@ -226,6 +257,7 @@ export function ReportScreen() {
                   .map((day) => (
                   <Pressable
                     key={day}
+                    onLayout={(e) => { dayOffsets.current[day] = e.nativeEvent.layout.x; }}
                     onPress={() => onSetSelectedDayId(day)}
                     style={[
                       styles.selector,

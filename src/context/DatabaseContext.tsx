@@ -21,7 +21,8 @@ import {
   ActivityLog,
   ActivityModule,
   ActivityAction,
-  Note
+  Note,
+  TakenState
 } from "../types";
 import { useAuth } from "./AuthContext";
 
@@ -299,22 +300,32 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
 
   const updateSubscriptionStatus = useCallback(async (flatId: string, dayId: string, personIndex: number, slot: string, taken: boolean) => {
      try {
+       const isParcel = slot.includes("Parcel");
+       const mealKey = isParcel ? slot.replace("Parcel", "") : slot;
+       const parcelKey = `${mealKey}Parcel`;
+
        await repository.updateSubscriptionStatus(flatId, dayId, personIndex, slot, taken);
+
+       // Rule: If food taken is toggled OFF, also force parcel taken to OFF in database
+       if (!isParcel && !taken) {
+         await repository.updateSubscriptionStatus(flatId, dayId, personIndex, parcelKey, false);
+       }
+
        // Optimistic update
        setSubscriptions(prev => prev.map(s => {
          if (s.id === flatId) {
             const updated = { ...s };
-            updated.takenByPerson[dayId][personIndex] = {
-              ...updated.takenByPerson[dayId][personIndex],
-              [slot as MealType]: taken
-            };
+            const personTaken = { ...updated.takenByPerson[dayId][personIndex], [slot as keyof TakenState]: taken };
+
+            if (!isParcel && !taken) {
+              personTaken[parcelKey as keyof TakenState] = false;
+            }
+
+            updated.takenByPerson[dayId][personIndex] = personTaken;
             return updated;
          }
          return s;
        }));
-
-       const isParcel = slot.includes("Parcel");
-       const mealKey = isParcel ? slot.replace("Parcel", "") : slot;
 
        const sub = subscriptions.find(s => s.id === flatId);
        let collectionInfo = "";

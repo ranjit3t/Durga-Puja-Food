@@ -34,6 +34,7 @@ export enum FilterMode {
   KIDS = "kids",
   PARCEL = "parcel",
   VEG_ONLY = "vegOnly",
+  MISSED = "missed",
 }
 
 export type Day = string;

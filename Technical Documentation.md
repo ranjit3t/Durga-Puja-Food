@@ -56,6 +56,7 @@ The application employs a **Zero-Hardcoding Policy** for UI text and Domain enti
 
 ### D. Navigation & View State Management
 - **History Stack**: A React-state-based array in `NavigationContext.tsx` tracks navigation depth using the `AppScreen` enum. `goBack()` pops the stack, while navigating to "home" clears it entirely. To ensure a professional user experience, the system implements a **Unified Pass Lifecycle**—navigating between **View Pass**, **Edit Pass**, and **Digital Pass** replaces the current screen in history to prevent circular "back button" loops.
+- **Identity Locking**: To maintain the permanent QR identity of each pass, the system automatically locks the **Block No.** and **Flat No.** fields in the `SubscriptionForm` when in Edit mode. This ensures that the primary key of the record (which is used to generate the QR code) remains immutable after creation.
 - **State Hoisting**: Crucial UI states like the `ReportScreen` active tab/filters and the `SubscriptionListScreen` search text are hoisted to the `NavigationContext`. This ensures UI continuity during sub-navigation.
 - **Interactive Details & Menu Navigation**: The `DetailsScreen` and `ViewMenuScreen` feature multiple deep-linking entry points:
   - **Quick Edit (Pass)**: A pencil icon in the identity card routes to the `SubscriptionForm`.
@@ -65,8 +66,9 @@ The application employs a **Zero-Hardcoding Policy** for UI text and Domain enti
   - **Menu verification**: Tapping the food plan card routes to the `ViewMenuScreen`.
 - **Contextual Pass Highlighting & Filtering**: The `SubscriptionListScreen` implements real-time subscription detection and filtering. It cross-references each pass's `mealSlots` with the globally active "Current Meal".
   - **Markers**: Cards are decorated with specialized icons: **"restaurant"** (active service window), **"happy face"** (kids included), **"briefcase"** (parcels registered), and **"leaf"** (strictly vegetarian plan).
-  - **Intelligent Filter bar**: The themed "Filter Chips" (`All`, `Current Meal`, `Kids`, `Parcels`, and `Veg Only`) intelligently collapse if no qualified passes exist, ensuring a clean interface during off-peak hours.
-  - **Visibility Rules**: The "Current Meal" chip only appears during an active service window, and the "Kids" chip only appears if at least one pass in the list contains children.
+  - **Missed Meal Badge**: When the "Current Meal Missed" filter is active, cards display a **Red Circular Badge** in the top-right corner indicating the total number of members who have not yet collected their food (dine-in or parcel).
+  - **Intelligent Filter bar**: The themed "Filter Chips" (`All`, `Current Meal`, `Current Meal Missed`, `Kids`, `Parcels`, and `Veg Only`) intelligently collapse if no qualified passes exist, ensuring a clean interface during off-peak hours.
+  - **Visibility Rules**: The "Current Meal" and "Missed" chips only appear during an active service window and if relevant pending collections exist.
 
 - **Integrated Resident Communication**: Both the `SubscriptionListScreen` and `DetailsScreen` leverage the `Linking` API to provide direct communication paths.
   - **Auto-Injection**: If a pass contains a valid mobile number, the system automatically injects WhatsApp and Phone icons into the UI.
@@ -256,7 +258,10 @@ The application implements strict **Bi-Directional Temporal Data Governance** to
   - **Headcount Reduction Guard**: The `SubscriptionForm` locks the Adult and Kid counters (using the `min` prop) to their **initial load values** if the pass is active.
   - **Optimized Administrative Workflow**: Generic confirmation boxes have been removed for all logic-guarded toggles, including Season, Kids, Guest, Payment, and Meal availability, providing a faster and more professional administrative experience.
   - **State Stability**: If no meal is currently active in settings, all slots remain writable for historical correction or pre-event planning.
-- **Dependency Guard**: The `takenParcel` toggle visibility is strictly dependent on the primary `taken` status being `true`.
+- **Dependency Guard**: The `takenParcel` toggle visibility is strictly dependent on the primary `taken` status being `true`. The application logic ensures that if a primary meal is unmarked as taken, its associated parcel collection flag is also automatically reset to `false`.
+- **Missed Collection Logic**: The "Current Meal Missed" filter identifies flats where at least one member has an active dietary choice for the current window but has collected neither the dine-in plate nor the takeaway parcel.
+- **Intelligent Report Focus**: Upon selecting the **"Meal Not Taken"** (Pending) or **"Kids Meal"** report tabs, the system automatically detects, selects, and scrolls to the globally active **Current Meal**, providing administrators with immediate access to relevant service data.
+- **Parcel Inconsistency Alert**: During pass editing, if a globally active **Current Meal** is enabled, the system checks for inconsistencies. If a member has opted for a parcel but only the primary meal (dine-in) was marked as taken, a mandatory confirmation alert triggers before saving, ensuring comprehensive data capture for the active service window.
 
 ### M. Configuration Lifecycle Constraints
 To prevent operational data corruption, the `SettingsScreen` enforces strict chronological rules for meal lifecycle states:
