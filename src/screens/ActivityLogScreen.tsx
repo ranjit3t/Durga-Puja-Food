@@ -77,27 +77,12 @@ const ActivityLogItem = memo(({
       style={({ pressed }) => [
         styles.card,
         {
-          backgroundColor: theme.colors.surface,
-          borderColor: isError ? theme.colors.error : theme.colors.border,
+          backgroundColor: isError ? theme.colors.error + "10" : colorScheme.bg,
+          borderColor: isError ? theme.colors.error : colorScheme.border,
           marginBottom: s(12),
           padding: s(16),
-          ...Platform.select({
-            ios: {
-              shadowColor: theme.colors.shadow,
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.1,
-              shadowRadius: 4,
-            },
-            android: {
-              elevation: 2,
-            },
-            web: {
-              boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-            }
-          }),
           borderLeftWidth: isError ? 6 : (isClickable ? 4 : 1.5),
-          borderLeftColor: isClickable ? theme.colors.primary : (isError ? theme.colors.error : theme.colors.border),
-          borderRadius: s(16),
+          borderLeftColor: isClickable ? theme.colors.primary : (isError ? theme.colors.error : colorScheme.border),
         },
         isClickable && pressed && { opacity: 0.7, backgroundColor: theme.colors.surfaceDark }
       ]}
@@ -391,7 +376,7 @@ export function ActivityLogScreen() {
         </View>
       </View>
 
-      <View style={{ backgroundColor: theme.colors.surface, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
+      <View style={{ backgroundColor: theme.themeType === AppThemeMode.DARK ? "rgba(30, 30, 30, 0.4)" : "rgba(255, 255, 255, 0.5)", borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
         <View style={[styles.maxWidthWrapper, { paddingVertical: 20, gap: 16 }]}>
           <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
             <View style={[styles.searchBox, { flex: 1, marginBottom: 0, height: 52, borderRadius: 14, maxWidth: undefined }]}>
@@ -475,20 +460,6 @@ export function ActivityLogScreen() {
                 gap: s(10),
                 borderRadius: s(14),
                 backgroundColor: theme.colors.secondary,
-                ...Platform.select({
-                  ios: {
-                    shadowColor: theme.colors.secondary,
-                    shadowOffset: { width: 0, height: 4 },
-                    shadowOpacity: 0.3,
-                    shadowRadius: 6,
-                  },
-                  android: {
-                    elevation: 4,
-                  },
-                  web: {
-                    boxShadow: `0 4px 10px ${theme.colors.secondary}40`,
-                  }
-                })
               },
               pressed && { opacity: 0.7 }
             ]}

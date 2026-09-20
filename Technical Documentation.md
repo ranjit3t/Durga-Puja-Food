@@ -210,6 +210,7 @@ Controlled via the `seasonEnabled` config flag. When disabled, the application e
 ### K. Activity Log & Audit System
 The application maintains a permanent, asynchronous audit trail of all significant operations.
 - **Log Structure**: Each log entry (`ActivityLog`) includes a unique ID, high-resolution timestamp, the performing username, hardware metadata (OS and Version), **Application Version**, the target module, the action type, and a user-friendly description. For failure events, the system also captures the full **JavaScript Stack Trace**.
+- **Unified Visual Language**: To ensure seamless architectural consistency, the Activity Log utilizes the same **Festive Mesh Backdrop** and **Shadow-Free Glassmorphic Cards** as the rest of the application. Individual log items dynamically cycle through the `cardColors` registry (Crimson, Marigold, Royal Blue, Violet) and feature high-contrast `1.5px` borders.
 - **Interactive Deep-Linking**: Logs for Pass creation and updates are now clickable, allowing administrators to instantly navigate to the `DetailsScreen` for the associated `targetId`.
 - **Rich Transaction Metadata**:
   - **Subscriptions**: Logs include detailed demand breakdowns per day (Veg/Non-Veg/Parcel) and collection history (Total Taken vs. Previous state).
