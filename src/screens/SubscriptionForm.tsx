@@ -26,6 +26,7 @@ import {
   getDayLabel,
   isMealEnabled,
   isMealDone,
+  isMealInFuture,
   getSortedMealKeys,
   getEnabledPaymentMethods,
   isDietaryEnabled,
@@ -86,15 +87,7 @@ export function SubscriptionForm() {
   const canEdit = seasonEnabled;
   const activeDays = getActiveDays(dayConfig);
 
-  const sortedActiveDays = useMemo(() => {
-    return [...activeDays].sort((a, b) => {
-      const aHasCurrent = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].some(m => isMealCurrent(a, m, dayConfig));
-      const bHasCurrent = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].some(m => isMealCurrent(b, m, dayConfig));
-      if (aHasCurrent && !bHasCurrent) return -1;
-      if (!aHasCurrent && bHasCurrent) return 1;
-      return 0;
-    });
-  }, [activeDays, dayConfig]);
+  const sortedActiveDays = activeDays;
 
   const currentDayId = activeDays.find(day =>
     [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].some(m => isMealCurrent(day, m, dayConfig))
@@ -268,6 +261,18 @@ export function SubscriptionForm() {
   const [selectedPerson, setSelectedPerson] = useState(0);
   const [selectedDay, setSelectedDay] = useState<Day>(currentDayId || activeDays[0]);
   const [isManualAmount, setIsManualAmount] = useState(lockIdentity);
+
+  const dayScrollRef = React.useRef<ScrollView>(null);
+  const dayOffsets = React.useRef<Record<string, number>>({});
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (selectedDay && dayOffsets.current[selectedDay] !== undefined) {
+        dayScrollRef.current?.scrollTo({ x: dayOffsets.current[selectedDay] - s(20), animated: true });
+      }
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [selectedDay, s]);
 
   // Payment State (supporting up to 3 payments)
   const [payments, setPayments] = useState<PaymentEntry[]>(() => {
@@ -733,11 +738,17 @@ export function SubscriptionForm() {
           </ScrollView>
 
           <Text style={styles.selectorLabel}>{UI_TEXT.day}</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+          <ScrollView
+            ref={dayScrollRef}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={{ marginBottom: 12 }}
+          >
             <View style={styles.selectorRow}>
               {sortedActiveDays.map((day) => (
                 <Pressable
                   key={day}
+                  onLayout={(e) => { dayOffsets.current[day] = e.nativeEvent.layout.x; }}
                   onPress={() => setSelectedDay(day)}
                   style={[
                     styles.selector,
@@ -940,17 +951,20 @@ export function SubscriptionForm() {
 
                     const label = getMealLabel(slot);
                     const isDone = isMealDone(selectedDay, slot, dayConfig);
+                    const isFuture = isMealInFuture(selectedDay, slot, dayConfig);
+                    const isDisabled = isDone || isFuture;
+
                     return (
                       <Pressable
                         key={slot}
-                        onPress={() => canEdit && !isDone && setTakenChoice(slot, !isTaken)}
+                        onPress={() => canEdit && !isDisabled && setTakenChoice(slot, !isTaken)}
                         style={[
                           styles.choice,
                           isTaken ? slotColorStyle : styles.noneChoice,
-                          isDone && { opacity: 0.5 },
+                          isDisabled && { opacity: 0.5 },
                           { paddingVertical: 12, paddingHorizontal: 4 }
                         ]}
-                        disabled={isDone}
+                        disabled={isDisabled}
                       >
                         <Text
                           style={[
@@ -998,18 +1012,20 @@ export function SubscriptionForm() {
                           const slotColorStyle = choice === DietaryOption.NON_VEG ? styles.nonVegChoice : styles.vegChoice;
                           const label = getMealLabel(slot);
                           const isDone = isMealDone(selectedDay, slot, dayConfig);
+                          const isFuture = isMealInFuture(selectedDay, slot, dayConfig);
+                          const isDisabled = isDone || isFuture;
 
                           return (
                             <Pressable
                               key={slot}
-                              onPress={() => canEdit && !isDone && setTakenChoice(parcelTakenKey, !isParcelTaken)}
+                              onPress={() => canEdit && !isDisabled && setTakenChoice(parcelTakenKey, !isParcelTaken)}
                               style={[
                                 styles.choice,
                                 isParcelTaken ? slotColorStyle : styles.noneChoice,
-                                isDone && { opacity: 0.5 },
+                                isDisabled && { opacity: 0.5 },
                                 { paddingVertical: 12, paddingHorizontal: 4 }
                               ]}
-                              disabled={isDone}
+                              disabled={isDisabled}
                             >
                               <Text
                                 style={[

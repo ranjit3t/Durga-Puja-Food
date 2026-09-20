@@ -358,7 +358,7 @@ export function DashboardScreen() {
       if (aHasCurrent && !bHasCurrent) return -1;
       if (!aHasCurrent && bHasCurrent) return 1;
 
-      // If neither or both (shouldn't happen) have current, maintain original config order
+      // Maintain original order for other days
       const aIdx = dayConfig.findIndex(d => d.id === a);
       const bIdx = dayConfig.findIndex(d => d.id === b);
       return aIdx - bIdx;

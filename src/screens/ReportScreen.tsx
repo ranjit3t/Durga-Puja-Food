@@ -18,6 +18,7 @@ import {
   getMealLabel,
   isParcelEnabled,
   isMealCurrent,
+  isMealInFuture,
 } from "../constants";
 import { ReportType, MealType, AppScreen, UserRole, ActivityModule, ActivityAction, AppThemeMode, ConfigDay, AppConfig, PaymentConfig } from "../domain";
 import { BackButton } from "../components/common/BackButton";
@@ -215,7 +216,14 @@ export function ReportScreen() {
             <Text style={[styles.selectorLabel, { marginTop: 0 }]}>{UI_TEXT.selectDay}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
               <View style={styles.selectorRow}>
-                {activeDays.map((day) => (
+                {activeDays
+                  .filter((day) => {
+                    if (reportType !== ReportType.NOT_TAKEN) return true;
+                    // For "Not Taken" report, only show days that have at least one meal that is NOT in the future
+                    const meals = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER];
+                    return meals.some(m => isMealEnabled(day, m, dayConfig) && !isMealInFuture(day, m, dayConfig));
+                  })
+                  .map((day) => (
                   <Pressable
                     key={day}
                     onPress={() => onSetSelectedDayId(day)}
@@ -236,7 +244,14 @@ export function ReportScreen() {
             <Text style={styles.selectorLabel}>{UI_TEXT.selectMeal}</Text>
             <View style={styles.selectorRow}>
               {getSortedMealKeys(selectedDayId, dayConfig)
-                .filter((mKey) => isMealEnabled(selectedDayId, mKey, dayConfig))
+                .filter((mKey) => {
+                  const enabled = isMealEnabled(selectedDayId, mKey, dayConfig);
+                  if (!enabled) return false;
+                  if (reportType === ReportType.NOT_TAKEN) {
+                    return !isMealInFuture(selectedDayId, mKey, dayConfig);
+                  }
+                  return true;
+                })
                 .map((mKey) => (
                   <Pressable
                     key={mKey}

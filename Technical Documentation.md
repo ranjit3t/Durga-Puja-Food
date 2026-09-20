@@ -131,6 +131,10 @@ The application also enforces a **Natural Alphanumeric Sorting** policy globally
 - **Logical Ordering**: This ensures that Block "2" correctly precedes Block "10", and alphanumeric flats (e.g., "3S", "30N") are sorted intuitively, matching the physical layout of the community.
 
 ### I. Digital Pass, Analytics & Home Layout
+- **Intelligent Sorting & Navigation**:
+    - **Current-Day-First Sort**: On the **Dashboard** and **Guest Management** screens, the day containing the active "Current Meal" is automatically hoisted to the top of the list for zero-scroll accessibility.
+    - **Chronological Form Order**: On the **Subscription Form**, days are displayed in their fixed chronological sequence (Day 1, 2, 3...) to maintain data entry stability.
+    - **Auto-Scroll Focus**: The form includes a `dayScrollRef` logic that automatically calculates the horizontal offset of the current day and performs an animated scroll to center it upon opening.
 - **High-Density Responsive Home Card**: The primary home page action summary tile leverages a high-density horizontal layout scheme. It dynamically adjusts font sizes, padding, and layout orientation based on device width to prevent breaking on smaller screens. It shifts pass and member counts (including grammar-aware adults/kids breakdown), total plates (with synchronized dietary split), and guest totals into parallel matrices and introduces a micro-partition divider for payment aggregation data, compressing card dimensions and increasing vertical space for action grids. Features a centered background watermark icon for enhanced branding.
 - **Responsive Dashboard & Menu Headers**: Individual meal sections, the primary event summary card, and menu display/editor screens utilize flexible wrapping headers (`flexWrap: 'wrap'`). This ensures that meal titles, active status badges (LIVE), dietary markers (Veg Only), and aggregated demand metrics adjust their layout gracefully on narrow screens without overflowing their container boundaries.
 - **Live Service Deep-Linking**: Integrates a `Pressable` shortcut layout within the card structure positioned at the top-right. If a specific event meal is globally marked as active, volunteers can tap the live status indicator badge (which explicitly displays the active day and meal) to route straight to the kitchen metrics layout.
@@ -230,6 +234,17 @@ The application maintains a permanent, asynchronous audit trail of all significa
   - **Configuration**: All changes to global festival rules and day-specific settings.
   - **Operations**: QR code scans (success/fail), pass image sharing, and downloads.
   - **Security**: Successful logins, failed login attempts (tracking username), and Logouts.
+
+### L. Operational Sequencing & Write Protection
+The application implements strict **Temporal Data Governance** to prevent erroneous forward-dated entries during live operations:
+- **Meal Ordering**: Established a strict chronological sort order: `DayIndex` $\rightarrow$ `MealIndex (B=0, L=1, D=2)`.
+- **isMealInFuture Helper**: A centralized utility in `constants.ts` that determines if a specific slot is scheduled after the globally active "Current Meal".
+- **Dynamic Lock Propagation**:
+  - **Subscription Management**: The `SubscriptionForm` consumes the `isMealInFuture` logic to conditionally apply `disabled={true}` and `opacity: 0.5` to all `taken` and `takenParcel` toggles for future meals.
+  - **Guest Management**: In the `GuestManagementScreen`, all "Taken" counters (Guest Veg Taken, Guest Non-Veg Taken, etc.) are locked for future meals, ensuring that only current or past collection data can be recorded.
+  - **Analytical Reports**: The `ReportScreen` dynamically filters the Day and Meal selectors for the **"Food Not Taken"** report, ensuring that future service windows are hidden from the pending list for operational clarity.
+  - **State Stability**: If no meal is currently marked as "Current" in settings, all slots remain writable for historical correction or pre-event planning.
+- **Dependency Guard**: The `takenParcel` toggle visibility is strictly dependent on the primary `taken` status being `true`, ensuring takeaway is only recorded after member verification.
 
 ---
 © 2026 Eternia Food Desk Technical Team

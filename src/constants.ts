@@ -95,6 +95,47 @@ export const getSortedMealKeys = (dayId: string, config: ConfigDay[]) => {
 };
 
 /**
+ * Checks if a specific meal slot is in the future relative to the globally active CURRENT meal.
+ * If no meal is marked as CURRENT, returns false (everything is editable).
+ */
+export const isMealInFuture = (
+  dayId: string,
+  meal: MealType,
+  config: ConfigDay[]
+) => {
+  // 1. Find the global CURRENT meal
+  let currentDayIdx = -1;
+  let currentMealIdx = -1;
+
+  const mealOrder = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER];
+  const activeDays = (config || []).filter(d => d && d.enabled);
+
+  activeDays.forEach((d, dIdx) => {
+    mealOrder.forEach((m, mIdx) => {
+      if (d[m]?.current) {
+        currentDayIdx = dIdx;
+        currentMealIdx = mIdx;
+      }
+    });
+  });
+
+  // If no meal is CURRENT, nothing is considered "future" for this restriction
+  if (currentDayIdx === -1) return false;
+
+  // 2. Find the index of the target meal
+  const targetDayIdx = activeDays.findIndex(d => d.id === dayId);
+  const targetMealIdx = mealOrder.indexOf(meal);
+
+  if (targetDayIdx === -1) return false;
+
+  // 3. Compare positions
+  if (targetDayIdx > currentDayIdx) return true;
+  if (targetDayIdx < currentDayIdx) return false;
+
+  return targetMealIdx > currentMealIdx;
+};
+
+/**
  * Checks if a day is configured as Veg Only.
  */
 export const isVegOnlyDay = (dayId: string, config: ConfigDay[]) => {

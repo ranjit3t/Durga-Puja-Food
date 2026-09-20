@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useStyles } from "../styles";
 import { StatusBarStyleMode, useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
-import { getDayLabel, isMealEnabled, isMealDone, getSortedMealKeys, isDietaryEnabled, isMealCurrent, getMealLabel } from "../constants";
+import { getDayLabel, isMealEnabled, isMealDone, getSortedMealKeys, isDietaryEnabled, isMealCurrent, getMealLabel, isMealInFuture } from "../constants";
 import { MealMenu, ConfigDay, UserRole, MealType, DietType, AppScreen, AppThemeMode, ActivityModule, ActivityAction } from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
@@ -37,6 +37,7 @@ const GuestMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, onUp
   const isNonVegEnabled = isDietaryEnabled(dayId, type, DietType.NON_VEG, config);
   const isDone = isMealDone(dayId, type, config);
   const isCurrent = isMealCurrent(dayId, type, config);
+  const isFuture = isMealInFuture(dayId, type, config);
   const showDetailed = isVegEnabled && isNonVegEnabled;
 
   const mealLabel = getMealLabel(type);
@@ -112,7 +113,7 @@ const GuestMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, onUp
                 value={guestVegTaken}
                 max={guestVeg}
                 onChange={(val) => onUpdate(dayId, type, "guestVegTaken", val)}
-                disabled={disabled || isDone}
+                disabled={disabled || isDone || isFuture}
               />
             </View>
             <View style={{ width: '100%' }}>
@@ -121,7 +122,7 @@ const GuestMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, onUp
                 value={guestNonVegTaken}
                 max={guestNonVeg}
                 onChange={(val) => onUpdate(dayId, type, "guestNonVegTaken", val)}
-                disabled={disabled || isDone}
+                disabled={disabled || isDone || isFuture}
               />
             </View>
 
@@ -154,7 +155,7 @@ const GuestMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, onUp
                 min={0}
                 max={guestTotal}
                 onChange={(val) => onUpdate(dayId, type, isVegEnabled ? "guestVegTaken" : "guestNonVegTaken", val)}
-                disabled={disabled || isDone}
+                disabled={disabled || isDone || isFuture}
               />
             </View>
           </>
@@ -181,7 +182,11 @@ export function GuestManagementScreen() {
       const bHasCurrent = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].some(m => isMealCurrent(b, m, dayConfig));
       if (aHasCurrent && !bHasCurrent) return -1;
       if (!aHasCurrent && bHasCurrent) return 1;
-      return 0;
+
+      // Maintain original order for other days
+      const aIdx = dayConfig.findIndex(d => d.id === a);
+      const bIdx = dayConfig.findIndex(d => d.id === b);
+      return aIdx - bIdx;
     });
   }, [dayConfig]);
 
