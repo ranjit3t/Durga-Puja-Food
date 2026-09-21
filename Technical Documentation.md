@@ -67,8 +67,8 @@ The application employs a **Zero-Hardcoding Policy** for UI text and Domain enti
 - **Contextual Pass Highlighting & Filtering**: The `SubscriptionListScreen` implements real-time subscription detection and filtering. It cross-references each pass's `mealSlots` with the globally active "Current Meal".
   - **Markers**: Cards are decorated with specialized icons: **"restaurant"** (active service window), **"happy face"** (kids included), **"briefcase"** (parcels registered), and **"leaf"** (strictly vegetarian plan).
   - **Missed Meal Badge**: When the "Current Meal Missed" filter is active, cards display a **Red Circular Badge** in the top-right corner indicating the total number of members who have not yet collected their food (dine-in or parcel).
-  - **Intelligent Filter bar**: The themed "Filter Chips" (`All`, `Current Meal`, `Current Meal Missed`, `Kids`, `Parcels`, and `Veg Only`) intelligently collapse if no qualified passes exist, ensuring a clean interface during off-peak hours.
-  - **Visibility Rules**: The "Current Meal" and "Missed" chips only appear during an active service window and if relevant pending collections exist.
+  - **Multi-Select Filter bar**: The themed "Filter Chips" (`All`, `Current Meal`, `Current Meal Missed`, `Kids`, `Parcels`, and `Veg Only`) support combined selection. Activating multiple chips fires a logical `AND` query across the dataset. The **"All"** chip acts as a master anchor, clearing all specific filters when clicked.
+  - **Visibility Rules**: Filters only appear if relevant data subsets exist (e.g., the "Kids" chip is hidden if no children are registered in any pass).
 
 - **Integrated Resident Communication**: Both the `SubscriptionListScreen` and `DetailsScreen` leverage the `Linking` API to provide direct communication paths.
   - **Auto-Injection**: If a pass contains a valid mobile number, the system automatically injects WhatsApp and Phone icons into the UI.
@@ -258,10 +258,13 @@ The application implements strict **Bi-Directional Temporal Data Governance** to
   - **Headcount Reduction Guard**: The `SubscriptionForm` locks the Adult and Kid counters (using the `min` prop) to their **initial load values** if the pass is active.
   - **Optimized Administrative Workflow**: Generic confirmation boxes have been removed for all logic-guarded toggles, including Season, Kids, Guest, Payment, and Meal availability, providing a faster and more professional administrative experience.
   - **State Stability**: If no meal is currently active in settings, all slots remain writable for historical correction or pre-event planning.
-- **Dependency Guard**: The `takenParcel` toggle visibility is strictly dependent on the primary `taken` status being `true`. The application logic ensures that if a primary meal is unmarked as taken, its associated parcel collection flag is also automatically reset to `false`.
-- **Missed Collection Logic**: The "Current Meal Missed" filter identifies flats where at least one member has an active dietary choice for the current window but has collected neither the dine-in plate nor the takeaway parcel.
-- **Intelligent Report Focus**: Upon selecting the **"Meal Not Taken"** (Pending) or **"Kids Meal"** report tabs, the system automatically detects, selects, and scrolls to the globally active **Current Meal**, providing administrators with immediate access to relevant service data.
-- **Parcel Inconsistency Alert**: During pass editing, if a globally active **Current Meal** is enabled, the system checks for inconsistencies. If a member has opted for a parcel but only the primary meal (dine-in) was marked as taken, a mandatory confirmation alert triggers before saving, ensuring comprehensive data capture for the active service window.
+- **Dependency Guard**: The `takenParcel` toggle visibility is strictly dependent on the primary `taken` status being `true`. The application logic ensures that if a primary meal is unmarked as taken, its associated parcel collection flag is also automatically reset to `false`. **Takeaway collection is now tracked as an independent operational metric (Taken vs. Planned) in specialized reports**.
+- **Missed Collection Logic**: 
+    - **Pending Report**: Identifies flats where members have an active dietary choice but have collected neither the dine-in plate nor the takeaway parcel.
+    - **Missed Parcels Report**: Specifically identifies **inconsistencies** where a member opted for a parcel and collected their primary dine-in meal, but did NOT collect their takeaway container.
+- **Intelligent Report Focus**: Upon selecting the **"Meal Not Taken"** (Pending), **"Kids Meal"**, or **"Missed Parcels"** report tabs, the system automatically detects, selects, and scrolls to the globally active **Current Meal**, providing administrators with immediate access to relevant service data.
+- **Parcel Inconsistency Alert**: During pass editing, if a globally active **Current Meal** is enabled, the system checks for inconsistencies. If a member has opted for a parcel but only the primary meal (dine-in) was marked as taken, a mandatory confirmation alert triggers before saving. If the administrator chooses to proceed, the system generates a specialized **MISSED_PARCEL** activity log, allowing for forensic tracking of service gaps.
+- **Proactive Parcel Alert**: A new configuration field `parcelAlert` in `MealConfig` allows admins to enable on-open alerts in the `SubscriptionForm`. If enabled, the app proactively warns the volunteer upon opening a pass if any member has an uncollected takeaway parcel for the active "Current Meal" window.
 
 ### M. Configuration Lifecycle Constraints
 To prevent operational data corruption, the `SettingsScreen` enforces strict chronological rules for meal lifecycle states:
@@ -292,6 +295,7 @@ The application includes a decentralized note-taking system for operational coor
 ### P. High-Fidelity Theming System
 The application features a robust, reactive theme architecture:
 - **Zero Hard-Coded Colors**: A strict policy where UI components never use literal hex or RGB values. All colors are sourced from the `theme.colors` or `theme.cardColors` registries.
+- **Enum-Driven Configuration**: The application utilizes the `MealType` enum for all internal property access and configuration state management. This ensures 100% synchronization between the database schema, business logic, and UI rendering, eliminating risks associated with hardcoded string literals.
 - **Dynamic Backdrop**: Mesh gradient blobs automatically adjust their intensity and hue-shift based on the active theme, maintaining a festive atmosphere while ensuring absolute readability.
 - **Web Scaling**: The theme engine dynamically calculates scaling factors for desktop monitors, ensuring a "first-class" browser experience without the "tiny UI" common in mobile-to-web ports.
 

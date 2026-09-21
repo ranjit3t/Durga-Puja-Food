@@ -33,6 +33,7 @@ import { GuestWiseReport } from "../components/report/GuestWiseReport";
 import { ParcelWiseReport } from "../components/report/ParcelWiseReport";
 import { SingleMealReport } from "../components/report/SingleMealReport";
 import { PendingReport } from "../components/report/PendingReport";
+import { MissedParcelReport } from "../components/report/MissedParcelReport";
 import { FlatWiseReport } from "../components/report/FlatWiseReport";
 import { PaymentSummaryReport } from "../components/report/PaymentSummaryReport";
 import { KidsReport } from "../components/report/KidsReport";
@@ -57,7 +58,7 @@ export function ReportScreen() {
   } = useAppNavigation();
 
   const {
-    sortedActiveDays, activeDays, dayWiseData, mealWiseData, flatWiseData, paymentData, getNotTakenData, getKidsMealData
+    sortedActiveDays, activeDays, dayWiseData, mealWiseData, flatWiseData, paymentData, getNotTakenData, getKidsMealData, getMissedParcelData
   } = useReportData(subscriptions, foodMenu, dayConfig, guestEnabled, paymentConfig, !!kidsEnabled);
 
   const styles = useStyles();
@@ -87,7 +88,7 @@ export function ReportScreen() {
 
   const onSetReportType = (type: ReportType) => {
     setReportType(type);
-    if (type === ReportType.NOT_TAKEN || type === ReportType.KIDS_MEAL) {
+    if (type === ReportType.NOT_TAKEN || type === ReportType.KIDS_MEAL || type === ReportType.PARCEL) {
       const active = activeDays;
       for (const dId of active) {
         for (const mType of [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER]) {
@@ -163,6 +164,11 @@ export function ReportScreen() {
     return getNotTakenData(selectedDayId, selectedMealType);
   }, [reportType, selectedDayId, selectedMealType, getNotTakenData]);
 
+  const missedParcelFlatsData = useMemo(() => {
+    if (reportType !== ReportType.MISSED_PARCEL) return [];
+    return getMissedParcelData(selectedDayId, selectedMealType);
+  }, [reportType, selectedDayId, selectedMealType, getMissedParcelData]);
+
   return (
     <View style={styles.root}>
       <StatusBar barStyle={themeType === AppThemeMode.DARK ? "light-content" : "dark-content"} />
@@ -235,7 +241,7 @@ export function ReportScreen() {
         style={{ flex: 1, width: "100%" }}
         contentContainerStyle={[styles.content, { paddingTop: 0 }]}
       >
-        {(reportType === ReportType.SINGLE || reportType === ReportType.NOT_TAKEN || reportType === ReportType.KIDS_MEAL) && (
+        {(reportType === ReportType.SINGLE || reportType === ReportType.NOT_TAKEN || reportType === ReportType.KIDS_MEAL || reportType === ReportType.PARCEL) && (
           <View style={[styles.card, { marginBottom: 24, marginTop: 10 }]}>
             <Text style={[styles.sectionTitle, { fontSize: 16, marginBottom: 12 }]}>{UI_TEXT.reportFilters}</Text>
 
@@ -249,8 +255,8 @@ export function ReportScreen() {
               <View style={styles.selectorRow}>
                 {activeDays
                   .filter((day) => {
-                    if (reportType !== ReportType.NOT_TAKEN) return true;
-                    // For "Not Taken" report, only show days that have at least one meal that is NOT in the future
+                    if (reportType !== ReportType.NOT_TAKEN && reportType !== ReportType.PARCEL) return true;
+                    // For "Not Taken" and "Parcel" (Missed view) reports, only show days that have at least one meal that is NOT in the future
                     const meals = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER];
                     return meals.some(m => isMealEnabled(day, m, dayConfig) && !isMealInFuture(day, m, dayConfig));
                   })
@@ -279,7 +285,7 @@ export function ReportScreen() {
                 .filter((mKey) => {
                   const enabled = isMealEnabled(selectedDayId, mKey, dayConfig);
                   if (!enabled) return false;
-                  if (reportType === ReportType.NOT_TAKEN) {
+                  if (reportType === ReportType.NOT_TAKEN || reportType === ReportType.PARCEL) {
                     return !isMealInFuture(selectedDayId, mKey, dayConfig);
                   }
                   return true;
@@ -329,6 +335,7 @@ export function ReportScreen() {
                   {reportType === ReportType.PARCEL && UI_TEXT.parcelReport}
                   {reportType === ReportType.SINGLE && `${getDayLabel(selectedDayId, dayConfig)}${UI_TEXT.space}${UI_TEXT.hyphen}${UI_TEXT.space}${getMealLabel(selectedMealType)}`}
                   {reportType === ReportType.KIDS_MEAL && UI_TEXT.kidsMealReport}
+                  {reportType === ReportType.MISSED_PARCEL && UI_TEXT.missedParcelReport}
                   {reportType === ReportType.NOT_TAKEN && `${UI_TEXT.notTakenReport}`}
                   {reportType === ReportType.FLAT && UI_TEXT.flatWiseReport}
                   {reportType === ReportType.PAYMENT && UI_TEXT.paymentReport}
@@ -362,7 +369,18 @@ export function ReportScreen() {
           )}
 
           {reportType === ReportType.PARCEL && (
-            <ParcelWiseReport data={mealWiseData} dayConfig={dayConfig} />
+            <ParcelWiseReport
+              data={mealWiseData}
+              dayConfig={dayConfig}
+              getMissedParcelData={getMissedParcelData}
+              selectedDayId={selectedDayId}
+              selectedMealType={selectedMealType}
+              onSelectFlat={onSelectFlat}
+              kidsEnabled={!!kidsEnabled}
+              whatsappCountryCode={whatsappCountryCode}
+              mobileEnabled={!!mobileEnabled}
+              addActivityLog={addActivityLog}
+            />
           )}
 
           {reportType === ReportType.SINGLE && (
@@ -392,7 +410,7 @@ export function ReportScreen() {
               selectedDayId={selectedDayId}
               selectedMealType={selectedMealType}
               dayConfig={dayConfig}
-              onSelectFlat={onSelectFlat}
+              onSelectFlat={id => onSelectFlat(id)}
               kidsEnabled={!!kidsEnabled}
               whatsappCountryCode={whatsappCountryCode}
               mobileEnabled={!!mobileEnabled}

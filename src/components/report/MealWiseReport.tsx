@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useStyles } from "../../styles";
 import { useAppTheme } from "../../theme";
 import { UI_TEXT } from "../../strings";
-import { getDayLabel, isMealEnabled, getSortedMealKeys, getMealLabel } from "../../constants";
+import { getDayLabel, isMealEnabled, getSortedMealKeys, getMealLabel, isParcelEnabled } from "../../constants";
 import { AppThemeMode, ConfigDay, MealType } from "../../domain";
 
 interface MealStats {
@@ -20,6 +20,10 @@ interface MealStats {
   nonVegParcel: number;
   kidsVegParcel: number;
   kidsNonVegParcel: number;
+  vegParcelTaken: number;
+  nonVegParcelTaken: number;
+  kidsVegParcelTaken: number;
+  kidsNonVegParcelTaken: number;
   guestVeg: number;
   guestNonVeg: number;
   guestVegTaken: number;
@@ -52,7 +56,7 @@ export function MealWiseReport({
             <View style={{ borderBottomWidth: 1, borderBottomColor: colorScheme.border, paddingBottom: 12, marginBottom: 12 }}>
               <Text style={[styles.dashboardDay, { color: colorScheme.accent }]}>{getDayLabel(item.day, dayConfig)}</Text>
             </View>
-            {getSortedMealKeys(item.day, dayConfig)
+            {[MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER]
               .filter((mKey) => isMealEnabled(item.day, mKey, dayConfig))
               .map((mKey) => {
                 const m = item.meals[mKey];
@@ -83,6 +87,15 @@ export function MealWiseReport({
                         <Text style={{ color: theme.colors.textPrimary, fontWeight: "900", fontSize: 14 }}>{UI_TEXT.total}</Text>
                         <Text style={{ color: theme.colors.veg, fontWeight: "900", fontSize: 14 }}>{tTakenVeg + tTakenNonVeg}{UI_TEXT.space}{UI_TEXT.slash}{UI_TEXT.space}{tVeg + tNonVeg}</Text>
                       </View>
+                      {isParcelEnabled(item.day, mKey, dayConfig) && (m.vegParcel + m.nonVegParcel + m.kidsVegParcel + m.kidsNonVegParcel) > 0 && (
+                        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: 'center', marginTop: 4 }}>
+                          <Text style={{ fontSize: 13, fontWeight: "700", color: theme.colors.textSecondary }}>{UI_TEXT.parcels}</Text>
+                          <Text style={{ fontSize: 14, fontWeight: "900", color: theme.colors.primary }}>
+                            {(m.vegParcelTaken + m.nonVegParcelTaken + m.kidsVegParcelTaken + m.kidsNonVegParcelTaken)}{UI_TEXT.space}{UI_TEXT.slash}{UI_TEXT.space}
+                            {(m.vegParcel + m.nonVegParcel + m.kidsVegParcel + m.kidsNonVegParcel)}{UI_TEXT.space}{UI_TEXT.parcelAbbr}
+                          </Text>
+                        </View>
+                      )}
                     </View>
                   </View>
                 );

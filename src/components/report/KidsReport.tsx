@@ -14,6 +14,10 @@ interface KidsMealItem {
   nonVeg: number;
   vegTaken: number;
   nonVegTaken: number;
+  vegParcel: number;
+  nonVegParcel: number;
+  vegParcelTaken: number;
+  nonVegParcelTaken: number;
   total: number;
 }
 
@@ -73,6 +77,12 @@ export function KidsReport({
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
                            <Text style={{ fontSize: 11, fontWeight: '800', color: theme.colors.textSecondary }}>{UI_TEXT.nonVeg}{UI_TEXT.colon}</Text>
                            <Text style={{ fontSize: 13, fontWeight: '900', color: theme.colors.nonVeg }}>{item.nonVegTaken}{UI_TEXT.slash}{item.nonVeg}</Text>
+                        </View>
+                      )}
+                      {(item.vegParcel + item.nonVegParcel) > 0 && (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, justifyContent: 'flex-end', marginTop: 2 }}>
+                           <Text style={{ fontSize: 11, fontWeight: '800', color: theme.colors.primary }}>{UI_TEXT.parcelAbbr}{UI_TEXT.colon}</Text>
+                           <Text style={{ fontSize: 13, fontWeight: '900', color: theme.colors.primary }}>{item.vegParcelTaken + item.nonVegParcelTaken}{UI_TEXT.slash}{item.vegParcel + item.nonVegParcel}</Text>
                         </View>
                       )}
                    </View>

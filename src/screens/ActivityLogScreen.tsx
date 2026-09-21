@@ -164,6 +164,7 @@ const ActivityLogItem = memo(({
               item.action === ActivityAction.LOGIN ? "log-in-outline" :
               item.action === ActivityAction.LOGOUT ? "log-out-outline" :
               item.action === ActivityAction.ERROR ? "alert-circle-outline" :
+              item.action === ActivityAction.MISSED_PARCEL ? "cube-outline" :
               "pencil-outline"
             }
             size={s(22)}

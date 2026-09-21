@@ -79,20 +79,20 @@ export function SettingsScreen() {
 
           // If day is disabled, no meal can be current
           if (next.enabled === false) {
-            updated.breakfast = { ...updated.breakfast, current: false };
-            updated.lunch = { ...updated.lunch, current: false };
-            updated.dinner = { ...updated.dinner, current: false };
+            updated[MealType.BREAKFAST] = { ...updated[MealType.BREAKFAST], current: false };
+            updated[MealType.LUNCH] = { ...updated[MealType.LUNCH], current: false };
+            updated[MealType.DINNER] = { ...updated[MealType.DINNER], current: false };
           }
 
           if (next.hasOwnProperty("vegOnly")) {
             if (next.vegOnly) {
-              updated.breakfast = { ...updated.breakfast, veg: true, nonVeg: false };
-              updated.lunch = { ...updated.lunch, veg: true, nonVeg: false };
-              updated.dinner = { ...updated.dinner, veg: true, nonVeg: false };
+              updated[MealType.BREAKFAST] = { ...updated[MealType.BREAKFAST], veg: true, nonVeg: false };
+              updated[MealType.LUNCH] = { ...updated[MealType.LUNCH], veg: true, nonVeg: false };
+              updated[MealType.DINNER] = { ...updated[MealType.DINNER], veg: true, nonVeg: false };
             } else {
-              updated.breakfast = { ...updated.breakfast, veg: true, nonVeg: true };
-              updated.lunch = { ...updated.lunch, veg: true, nonVeg: true };
-              updated.dinner = { ...updated.dinner, veg: true, nonVeg: true };
+              updated[MealType.BREAKFAST] = { ...updated[MealType.BREAKFAST], veg: true, nonVeg: true };
+              updated[MealType.LUNCH] = { ...updated[MealType.LUNCH], veg: true, nonVeg: true };
+              updated[MealType.DINNER] = { ...updated[MealType.DINNER], veg: true, nonVeg: true };
             }
           }
           return updated;
@@ -106,9 +106,9 @@ export function SettingsScreen() {
     if (!val) { // Switching OFF
       const anyMealNotDoneOrEnabled = localConfig.some(d =>
         d.enabled && (
-          (d.breakfast.enabled && !d.breakfast.done) ||
-          (d.lunch.enabled && !d.lunch.done) ||
-          (d.dinner.enabled && !d.dinner.done)
+          (d[MealType.BREAKFAST].enabled && !d[MealType.BREAKFAST].done) ||
+          (d[MealType.LUNCH].enabled && !d[MealType.LUNCH].done) ||
+          (d[MealType.DINNER].enabled && !d[MealType.DINNER].done)
         )
       );
       if (anyMealNotDoneOrEnabled) {
@@ -223,33 +223,45 @@ export function SettingsScreen() {
 
   const updateMealConfig = (
     dayId: string,
-    meal: "breakfast" | "lunch" | "dinner",
+    meal: MealType,
     next: Partial<MealConfig>
   ) => {
-    setLocalConfig((currentConfig) => {
-      let updatedConfig = [...currentConfig];
-      if (next.current) {
-        updatedConfig = updatedConfig.map((d) => ({
+    setLocalConfig((prev) => {
+      const updated = prev.map((d) => {
+        if (d.id !== dayId) return d;
+        return {
           ...d,
-          breakfast: { ...d.breakfast, current: false },
-          lunch: { ...d.lunch, current: false },
-          dinner: { ...d.dinner, current: false },
-        }));
-      }
+          [meal]: { ...d[meal], ...next }
+        };
+      });
 
-      return updatedConfig.map((d) => {
-        if (d.id === dayId) {
-          const mealConfig = { ...d[meal], ...next };
-
-          // If meal is disabled or marked as done, it cannot be the current meal
-          if (mealConfig.enabled === false || mealConfig.done === true) {
-            mealConfig.current = false;
-          }
-
+      if (next.current) {
+        return updated.map((d) => {
+          const isTargetDay = d.id === dayId;
           return {
             ...d,
-            [meal]: mealConfig,
+            [MealType.BREAKFAST]: {
+              ...d[MealType.BREAKFAST],
+              current: isTargetDay && meal === MealType.BREAKFAST
+            },
+            [MealType.LUNCH]: {
+              ...d[MealType.LUNCH],
+              current: isTargetDay && meal === MealType.LUNCH
+            },
+            [MealType.DINNER]: {
+              ...d[MealType.DINNER],
+              current: isTargetDay && meal === MealType.DINNER
+            },
           };
+        });
+      }
+
+      // If meal was disabled or marked done, ensure current is off
+      return updated.map(d => {
+        if (d.id !== dayId) return d;
+        const m = d[meal];
+        if (m.enabled === false || m.done === true) {
+          return { ...d, [meal]: { ...m, current: false } };
         }
         return d;
       });
@@ -263,15 +275,15 @@ export function SettingsScreen() {
     }, 0);
 
     const id = `Day${maxSuffix + 1}`;
-    const emptyMeal: MealConfig = { enabled: false, veg: true, nonVeg: true, parcel: false, vegParcelPrice: UI_TEXT.zero, nonVegParcelPrice: UI_TEXT.zero };
+    const emptyMeal: MealConfig = { enabled: false, veg: true, nonVeg: true, parcel: false, parcelAlert: false, vegParcelPrice: UI_TEXT.zero, nonVegParcelPrice: UI_TEXT.zero };
     const newDay: ConfigDay = {
       id,
       label: UI_TEXT.newDayLabel,
       abbr: UI_TEXT.newDayAbbr,
       enabled: true,
-      breakfast: { ...emptyMeal },
-      lunch: { ...emptyMeal },
-      dinner: { ...emptyMeal },
+      [MealType.BREAKFAST]: { ...emptyMeal },
+      [MealType.LUNCH]: { ...emptyMeal },
+      [MealType.DINNER]: { ...emptyMeal },
     };
     setLocalConfig([...localConfig, newDay]);
   };
@@ -324,7 +336,7 @@ export function SettingsScreen() {
           if (newDay.enabled !== oldDay.enabled) dayChanges.push(`Enabled: ${oldDay.enabled ? 'ON' : 'OFF'}`);
           if (newDay.vegOnly !== oldDay.vegOnly) dayChanges.push(`VegOnly: ${oldDay.vegOnly ? 'ON' : 'OFF'}`);
 
-          (['breakfast', 'lunch', 'dinner'] as const).forEach(m => {
+          ([MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER]).forEach(m => {
             const oldM = oldDay[m];
             const newM = newDay[m];
             if (JSON.stringify(oldM) !== JSON.stringify(newM)) {
@@ -333,6 +345,7 @@ export function SettingsScreen() {
               if (newM.veg !== oldM.veg) mChanges.push(`Veg:${newM.veg ? 'ON' : 'OFF'}`);
               if (newM.nonVeg !== oldM.nonVeg) mChanges.push(`NonVeg:${newM.nonVeg ? 'ON' : 'OFF'}`);
               if (newM.parcel !== oldM.parcel) mChanges.push(`Parcel:${newM.parcel ? 'ON' : 'OFF'}`);
+              if (newM.parcelAlert !== oldM.parcelAlert) mChanges.push(`ParcelAlert:${newM.parcelAlert ? 'ON' : 'OFF'}`);
               if (newM.done !== oldM.done) mChanges.push(`Done:${newM.done ? 'ON' : 'OFF'}`);
               if (newM.current !== oldM.current) mChanges.push(`Current:${newM.current ? 'ON' : 'OFF'}`);
 
@@ -534,7 +547,7 @@ export function SettingsScreen() {
                       trackColor={{ true: theme.colors.primary }}
                     />
                   </View>
-                  {(['breakfast', 'lunch', 'dinner'] as const).map((mKey) => {
+                  {[MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].map((mKey) => {
                     const m = day[mKey] || { enabled: false, veg: true, nonVeg: true, parcel: false };
                     return (
                       <View key={mKey} style={[styles.dashboardMealSection, { marginBottom: 12, padding: 12, backgroundColor: theme.colors.surface }, !m.enabled && { opacity: 0.6 }]}>
@@ -577,13 +590,30 @@ export function SettingsScreen() {
                             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: theme.colors.background, padding: 10, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border }}>
                                <Text style={{ fontSize: 12, fontWeight: '800', color: theme.colors.textSecondary }}>{UI_TEXT.parcelSupportLabel.toUpperCase()}</Text>
                                <Switch
-                                 value={m.parcel}
+                                 value={m.parcel || false}
                                  disabled={m.done}
-                                 onValueChange={(val) => updateMealConfig(day.id, mKey, { parcel: val })}
+                                 onValueChange={(val) => {
+                                   updateMealConfig(day.id, mKey, {
+                                     parcel: val,
+                                     parcelAlert: val ? m.parcelAlert : false
+                                   });
+                                 }}
                                  trackColor={{ true: theme.colors.primary }}
                                  style={{ transform: [{ scale: 0.8 }] }}
                                />
                             </View>
+                            {m.parcel && (
+                               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: theme.colors.background, padding: 10, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border }}>
+                                  <Text style={{ fontSize: 12, fontWeight: '800', color: theme.colors.textSecondary }}>{UI_TEXT.parcelAlertLabel.toUpperCase()}</Text>
+                                  <Switch
+                                    value={!!m.parcelAlert}
+                                    disabled={m.done}
+                                    onValueChange={(val) => updateMealConfig(day.id, mKey, { parcelAlert: val })}
+                                    trackColor={{ true: theme.colors.primary }}
+                                    style={{ transform: [{ scale: 0.8 }] }}
+                                  />
+                               </View>
+                            )}
                             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: theme.colors.background, padding: 10, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border }}>
                                <View>
                                   <Text style={{ fontSize: 12, fontWeight: '800', color: theme.colors.textSecondary }}>{UI_TEXT.markDoneLabel.toUpperCase()}</Text>

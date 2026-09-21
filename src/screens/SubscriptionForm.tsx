@@ -2,7 +2,7 @@
  * Form screen for adding or editing a flat's subscription.
  * Handles headcounts, daily meal choices, and payment information.
  */
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import {
   View,
   Text,
@@ -15,7 +15,7 @@ import {
 } from "react-native";
 import * as Contacts from "expo-contacts/legacy";
 import { useStyles, useScaling } from "../styles";
-import { StatusBarStyleMode, useAppTheme } from "../theme";
+import { useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
 import {
   getActiveDays,
@@ -86,6 +86,7 @@ export function SubscriptionForm() {
   const canEdit = seasonEnabled;
   const activeDays = getActiveDays(dayConfig);
 
+  const lockIdentity = Boolean(value.flat);
   const sortedActiveDays = activeDays;
 
   const currentDayId = activeDays.find(day =>
@@ -108,129 +109,6 @@ export function SubscriptionForm() {
     }
     return null;
   }, [dayConfig]);
-
-  const checkParcelInconsistency = (sub: Subscription): boolean => {
-    if (!lockIdentity || !currentMealInfo) return false;
-    const { dayId, type } = currentMealInfo;
-    const personSlots = sub.mealSlots[dayId] || [];
-    const takenDays = sub.takenByPerson[dayId] || [];
-
-    return personSlots.some((slot, pIdx) => {
-      const t = takenDays[pIdx];
-      if (!t) return false;
-      const optedParcel = !!slot[`${type}Parcel` as keyof typeof slot];
-      const takenFood = !!t[type];
-      const takenParcel = !!t[`${type}Parcel` as keyof TakenState];
-      return optedParcel && takenFood && !takenParcel;
-    });
-  };
-
-  const getLogDetails = (sub: Subscription, isEdit: boolean) => {
-    const activeDays = getActiveDays(dayConfig);
-
-    // 1. Build Demand Breakdown (Choices)
-    const daySummaries = activeDays.map(dayId => {
-      const slots = sub.mealSlots[dayId] || [];
-      const abbr = getDayAbbr(dayId, dayConfig);
-
-      let bV = 0, bN = 0, bP = 0;
-      let lV = 0, lN = 0, lP = 0;
-      let dV = 0, dN = 0, dP = 0;
-
-      slots.forEach(s => {
-        if (s.breakfast === DietaryOption.VEG) bV++;
-        if (s.breakfast === DietaryOption.NON_VEG) bN++;
-        if (s.breakfastParcel) bP++;
-
-        if (s.lunch === DietaryOption.VEG) lV++;
-        if (s.lunch === DietaryOption.NON_VEG) lN++;
-        if (s.lunchParcel) lP++;
-
-        if (s.dinner === DietaryOption.VEG) dV++;
-        if (s.dinner === DietaryOption.NON_VEG) dN++;
-        if (s.dinnerParcel) dP++;
-      });
-
-      const parts = [];
-      if (bV+bN > 0) parts.push(`B:${bV}${UI_TEXT.vegAbbr}${bN}${UI_TEXT.nonVegAbbr}${bP > 0 ? `(${bP}${UI_TEXT.parcelAbbr})` : ''}`);
-      if (lV+lN > 0) parts.push(`L:${lV}${UI_TEXT.vegAbbr}${lN}${UI_TEXT.nonVegAbbr}${lP > 0 ? `(${lP}${UI_TEXT.parcelAbbr})` : ''}`);
-      if (dV+dN > 0) parts.push(`D:${dV}${UI_TEXT.vegAbbr}${dN}${UI_TEXT.nonVegAbbr}${dP > 0 ? `(${dP}${UI_TEXT.parcelAbbr})` : ''}`);
-
-      return parts.length > 0 ? `${abbr}: ${parts.join(' ')}` : null;
-    }).filter(Boolean);
-
-    // 2. Calculate Collection Counts
-    const getCounts = (s: Subscription) => {
-      let ft = 0, pt = 0;
-      Object.values(s.takenByPerson || {}).forEach(dayList => {
-        dayList.forEach(t => {
-          if (t.breakfast) ft++;
-          if (t.lunch) ft++;
-          if (t.dinner) ft++;
-          if (t.breakfastParcel) pt++;
-          if (t.lunchParcel) pt++;
-          if (t.dinnerParcel) pt++;
-        });
-      });
-      return { ft, pt };
-    };
-
-    const oldCounts = getCounts(value);
-    const newCounts = getCounts(sub);
-
-    let detailedDesc = (isEdit ? UI_TEXT.logEditPass : UI_TEXT.logAddPass)
-      .replace("{id}", sub.id)
-      .replace("{adults}", String(sub.peopleCount))
-      .replace("{kids}", String(sub.kidsCount || 0))
-      .replace("{amount}", sub.amount);
-
-    detailedDesc += ` | ${daySummaries.join(' | ')}`;
-    detailedDesc += ` | Taken: ${newCounts.ft} (was ${oldCounts.ft})`;
-    if (newCounts.pt > 0 || oldCounts.pt > 0) {
-      detailedDesc += `, P-Taken: ${newCounts.pt} (was ${oldCounts.pt})`;
-    }
-
-    return detailedDesc;
-  };
-
-  const onSave = async (next: Subscription) => {
-    try {
-      if (await upsertSubscription(next)) {
-        addActivityLog({
-          module: ActivityModule.SUBSCRIPTION,
-          action: lockIdentity ? ActivityAction.UPDATE : ActivityAction.CREATE,
-          targetId: next.id,
-          description: getLogDetails(next, lockIdentity)
-        });
-        setSelectedId(next.id);
-        setSelectedRecord(next);
-        navigate(AppScreen.DETAILS);
-      }
-    } catch (err) {
-      console.error("Save error:", err);
-    }
-  };
-  const lockIdentity = Boolean(value.flat);
-
-  const onSaveQr = async (next: Subscription) => {
-    try {
-      if (await upsertSubscription(next)) {
-        addActivityLog({
-          module: ActivityModule.SUBSCRIPTION,
-          action: lockIdentity ? ActivityAction.UPDATE : ActivityAction.CREATE,
-          targetId: next.id,
-          description: getLogDetails(next, lockIdentity) + " (QR)"
-        });
-        setSelectedId(next.id);
-        setSelectedRecord(next);
-        navigate(AppScreen.QR);
-      }
-    } catch (err) {
-      console.error("Save QR error:", err);
-    }
-  };
-
-  const hasNonZeroPayment = paymentConfig.enabled && (parseFloat(value.amount) > 0 || (value.payments && value.payments.some(p => parseFloat(p.amount) > 0)));
 
   const enabledMethods = getEnabledPaymentMethods({
     seasonName: "",
@@ -262,16 +140,183 @@ export function SubscriptionForm() {
   const [selectedDay, setSelectedDay] = useState<Day>(currentDayId || activeDays[0]);
   const [isManualAmount, setIsManualAmount] = useState(lockIdentity);
 
+  const checkParcelInconsistency = (sub: Subscription): boolean => {
+    if (!lockIdentity || !currentMealInfo) return false;
+    const { dayId, type } = currentMealInfo;
+    const personSlots = sub.mealSlots[dayId] || [];
+    const takenDays = sub.takenByPerson[dayId] || [];
+
+    return personSlots.some((slot: MealSlot, pIdx: number) => {
+      const t = takenDays[pIdx];
+      if (!t) return false;
+      const optedParcel = !!slot[`${type}Parcel` as keyof MealSlot];
+      const takenFood = !!t[type];
+      const takenParcel = !!t[`${type}Parcel` as keyof TakenState];
+      return optedParcel && takenFood && !takenParcel;
+    });
+  };
+
+  const alertShown = useRef(false);
+
+  useEffect(() => {
+    if (lockIdentity && currentMealInfo && !alertShown.current) {
+      const { dayId, type } = currentMealInfo;
+      const dayConf = dayConfig.find(d => d.id === dayId);
+      const mealConf = dayConf ? dayConf[type] : null;
+
+      if (mealConf?.enabled && mealConf.parcel && mealConf.parcelAlert) {
+         const personSlots = form.mealSlots[dayId] || [];
+         const takenDays = form.takenByPerson[dayId] || [];
+
+         const hasPendingParcel = personSlots.some((slot: MealSlot, pIdx: number) => {
+            const t = takenDays[pIdx];
+            if (!t) return false;
+            const optedParcel = !!slot[`${type}Parcel` as keyof MealSlot];
+            const takenParcel = !!t[`${type}Parcel` as keyof TakenState];
+            const takenFood = !!t[type];
+            return optedParcel && !takenFood && !takenParcel;
+         });
+
+         if (hasPendingParcel) {
+            alertShown.current = true;
+            showGlobalAlert(UI_TEXT.appName, UI_TEXT.parcelAlertActive);
+         }
+      }
+    }
+  }, [lockIdentity, currentMealInfo, dayConfig, showGlobalAlert, form.mealSlots, form.takenByPerson]);
+
+  const getLogDetails = (sub: Subscription, isEdit: boolean) => {
+    const activeDaysLog = getActiveDays(dayConfig);
+
+    // 1. Build Demand Breakdown (Choices)
+    const daySummaries = activeDaysLog.map(dayId => {
+      const slots = sub.mealSlots[dayId] || [];
+      const abbr = getDayAbbr(dayId, dayConfig);
+
+      let bV = 0, bN = 0, bP = 0;
+      let lV = 0, lN = 0, lP = 0;
+      let dV = 0, dN = 0, dP = 0;
+
+      slots.forEach(s => {
+        if (s[MealType.BREAKFAST] === DietaryOption.VEG) bV++;
+        if (s[MealType.BREAKFAST] === DietaryOption.NON_VEG) bN++;
+        if (s.breakfastParcel) bP++;
+
+        if (s[MealType.LUNCH] === DietaryOption.VEG) lV++;
+        if (s[MealType.LUNCH] === DietaryOption.NON_VEG) lN++;
+        if (s.lunchParcel) lP++;
+
+        if (s[MealType.DINNER] === DietaryOption.VEG) dV++;
+        if (s[MealType.DINNER] === DietaryOption.NON_VEG) dN++;
+        if (s.dinnerParcel) dP++;
+      });
+
+      const parts = [];
+      if (bV+bN > 0) parts.push(`B:${bV}${UI_TEXT.vegAbbr}${bN}${UI_TEXT.nonVegAbbr}${bP > 0 ? `(${bP}${UI_TEXT.parcelAbbr})` : ''}`);
+      if (lV+lN > 0) parts.push(`L:${lV}${UI_TEXT.vegAbbr}${lN}${UI_TEXT.nonVegAbbr}${lP > 0 ? `(${lP}${UI_TEXT.parcelAbbr})` : ''}`);
+      if (dV+dN > 0) parts.push(`D:${dV}${UI_TEXT.vegAbbr}${dN}${UI_TEXT.nonVegAbbr}${dP > 0 ? `(${dP}${UI_TEXT.parcelAbbr})` : ''}`);
+
+      return parts.length > 0 ? `${abbr}: ${parts.join(' ')}` : null;
+    }).filter(Boolean);
+
+    // 2. Calculate Collection Counts
+    const getCounts = (s: Subscription) => {
+      let ft = 0, pt = 0;
+      Object.values(s.takenByPerson || {}).forEach(dayList => {
+        dayList.forEach((t: TakenState) => {
+          if (t.breakfast) ft++;
+          if (t.lunch) ft++;
+          if (t.dinner) ft++;
+          if (t.breakfastParcel) pt++;
+          if (t.lunchParcel) pt++;
+          if (t.dinnerParcel) pt++;
+        });
+      });
+      return { ft, pt };
+    };
+
+    const oldCounts = getCounts(value);
+    const newCounts = getCounts(sub);
+
+    let detailedDesc = (isEdit ? UI_TEXT.logEditPass : UI_TEXT.logAddPass)
+      .replace("{id}", sub.id)
+      .replace("{adults}", String(sub.peopleCount))
+      .replace("{kids}", String(sub.kidsCount || 0))
+      .replace("{amount}", sub.amount);
+
+    detailedDesc += ` | ${daySummaries.join(' | ')}`;
+    detailedDesc += ` | Taken: ${newCounts.ft} (was ${oldCounts.ft})`;
+    if (newCounts.pt > 0 || oldCounts.pt > 0) {
+      detailedDesc += `, P-Taken: ${newCounts.pt} (was ${oldCounts.pt})`;
+    }
+
+    return detailedDesc;
+  };
+
+  const onSave = async (next: Subscription, acknowledgedMissedParcel = false) => {
+    try {
+      if (await upsertSubscription(next)) {
+        addActivityLog({
+          module: ActivityModule.SUBSCRIPTION,
+          action: lockIdentity ? ActivityAction.UPDATE : ActivityAction.CREATE,
+          targetId: next.id,
+          description: getLogDetails(next, lockIdentity)
+        });
+        if (acknowledgedMissedParcel && currentMealInfo) {
+          addActivityLog({
+            module: ActivityModule.SUBSCRIPTION,
+            action: ActivityAction.MISSED_PARCEL,
+            targetId: next.id,
+            description: UI_TEXT.logMissedParcel.replace("{flatId}", next.id).replace("{meal}", getMealLabel(currentMealInfo.type))
+          });
+        }
+        setSelectedId(next.id);
+        setSelectedRecord(next);
+        navigate(AppScreen.DETAILS);
+      }
+    } catch (err: any) {
+      console.error("Save error:", err);
+    }
+  };
+
+  const onSaveQr = async (next: Subscription, acknowledgedMissedParcel = false) => {
+    try {
+      if (await upsertSubscription(next)) {
+        addActivityLog({
+          module: ActivityModule.SUBSCRIPTION,
+          action: lockIdentity ? ActivityAction.UPDATE : ActivityAction.CREATE,
+          targetId: next.id,
+          description: getLogDetails(next, lockIdentity) + " (QR)"
+        });
+        if (acknowledgedMissedParcel && currentMealInfo) {
+          addActivityLog({
+            module: ActivityModule.SUBSCRIPTION,
+            action: ActivityAction.MISSED_PARCEL,
+            targetId: next.id,
+            description: UI_TEXT.logMissedParcel.replace("{flatId}", next.id).replace("{meal}", getMealLabel(currentMealInfo.type))
+          });
+        }
+        setSelectedId(next.id);
+        setSelectedRecord(next);
+        navigate(AppScreen.QR);
+      }
+    } catch (err: any) {
+      console.error("Save QR error:", err);
+    }
+  };
+
+  const hasNonZeroPayment = paymentConfig.enabled && (parseFloat(value.amount) > 0 || (value.payments && value.payments.some((p: PaymentEntry) => parseFloat(p.amount) > 0)));
+
   const hasAnyMealTaken = useMemo(() => {
     // 1. Check explicit 'taken' flags
     const explicitTaken = Object.values(form.takenByPerson || {}).some(dayList =>
-      dayList.some(t => t.breakfast || t.lunch || t.dinner || t.breakfastParcel || t.lunchParcel || t.dinnerParcel)
+      dayList.some((t: any) => t.breakfast || t.lunch || t.dinner || t.breakfastParcel || t.lunchParcel || t.dinnerParcel)
     );
     if (explicitTaken) return true;
 
     // 2. Check 'done' meals where person was subscribed
     return Object.entries(form.mealSlots || {}).some(([dayId, personsSlots]) => {
-      return personsSlots.some((slot) => {
+      return (personsSlots as any[]).some((slot) => {
         return (
           (slot.breakfast !== DietaryOption.NONE && isMealDone(dayId, MealType.BREAKFAST, dayConfig)) ||
           (slot.lunch !== DietaryOption.NONE && isMealDone(dayId, MealType.LUNCH, dayConfig)) ||
@@ -301,8 +346,8 @@ export function SubscriptionForm() {
     } },
   ]) : undefined;
 
-  const dayScrollRef = React.useRef<ScrollView>(null);
-  const dayOffsets = React.useRef<Record<string, number>>({});
+  const dayScrollRef = useRef<ScrollView>(null);
+  const dayOffsets = useRef<Record<string, number>>({});
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -322,7 +367,7 @@ export function SubscriptionForm() {
 
   // Helper to ensure stable and normalized JSON comparison.
   // This removes undefined/null values and trims strings.
-  const normalizeForComparison = React.useCallback((obj: any) => {
+  const normalizeForComparison = useCallback((obj: any) => {
     return JSON.stringify(obj, (key, value) => {
       if (value === undefined || value === null) return undefined;
       if (typeof value === 'string') return value.trim();
@@ -332,7 +377,7 @@ export function SubscriptionForm() {
 
   // Capture the truly initial state after all state initializers have run.
   // We use a ref to ensure this "snapshot" never changes during the component lifecycle.
-  const pristine = React.useRef({
+  const pristine = useRef({
     block: form.block,
     flat: form.flat.trim(),
     mobile: mobileInput.trim(),
@@ -449,7 +494,7 @@ export function SubscriptionForm() {
       ...form,
       mealSlots: {
         ...form.mealSlots,
-        [selectedDay]: form.mealSlots[selectedDay].map((item, index) =>
+        [selectedDay]: (form.mealSlots[selectedDay] as any[]).map((item, index) =>
           index === selectedPerson ? { ...item, [slot]: choice } : item
         ),
       },
@@ -466,7 +511,7 @@ export function SubscriptionForm() {
       ...form,
       mealSlots: {
         ...form.mealSlots,
-        [selectedDay]: form.mealSlots[selectedDay].map((item, index) =>
+        [selectedDay]: (form.mealSlots[selectedDay] as any[]).map((item, index) =>
           index === selectedPerson ? { ...item, [parcelKey]: enabled } : item
         ),
       },
@@ -484,7 +529,7 @@ export function SubscriptionForm() {
 
     set("takenByPerson", {
       ...form.takenByPerson,
-      [selectedDay]: form.takenByPerson[selectedDay].map((item, index) => {
+      [selectedDay]: (form.takenByPerson[selectedDay] as any[]).map((item, index) => {
         if (index === selectedPerson) {
           const updated = { ...item, [slot]: taken };
           // Rule: If food taken is toggled OFF, also force parcel taken to OFF
@@ -500,7 +545,7 @@ export function SubscriptionForm() {
 
   const addPayment = () => {
     if (payments.length < 3) {
-      setPayments([...payments, { amount: UI_TEXT.zero, mode: enabledMethods[0] as any }]);
+      setPayments([...payments, { amount: UI_TEXT.zero, mode: (enabledMethods[0] as any) || PaymentMode.CASH }]);
     }
   };
 
@@ -531,7 +576,7 @@ export function SubscriptionForm() {
       const dayMenu = foodMenu[dayId];
 
       const slots = form.mealSlots[dayId] || [];
-      slots.forEach((personSlot, index) => {
+      (slots as any[]).forEach((personSlot, index) => {
         const isKid = kidsEnabled && index >= form.peopleCount;
 
         // Breakfast
@@ -584,7 +629,7 @@ export function SubscriptionForm() {
         setPayments([{ ...payments[0], amount: String(total) }]);
       }
     }
-  }, [form.mealSlots, foodPriceEnabled, dayConfig, isManualAmount, paymentConfig.enabled, payments.length]);
+  }, [form.mealSlots, foodPriceEnabled, dayConfig, isManualAmount, paymentConfig.enabled, payments.length, foodMenu, kidsEnabled, form.peopleCount, lockIdentity, payments]);
 
   return (
     <KeyboardAvoidingView
@@ -1212,7 +1257,7 @@ export function SubscriptionForm() {
                 if (checkParcelInconsistency(prepared)) {
                   showGlobalAlert(UI_TEXT.confirmDisableTitle, UI_TEXT.parcelMissedConfirm, [
                     { text: UI_TEXT.no, style: "cancel" },
-                    { text: UI_TEXT.yes, style: "destructive", onPress: () => onSave(prepared) }
+                    { text: UI_TEXT.yes, style: "destructive", onPress: () => onSave(prepared, true) }
                   ]);
                 } else {
                   onSave(prepared);
@@ -1245,7 +1290,7 @@ export function SubscriptionForm() {
                 if (checkParcelInconsistency(prepared)) {
                   showGlobalAlert(UI_TEXT.confirmDisableTitle, UI_TEXT.parcelMissedConfirm, [
                     { text: UI_TEXT.no, style: "cancel" },
-                    { text: UI_TEXT.yes, style: "destructive", onPress: () => onSaveQr(prepared) }
+                    { text: UI_TEXT.yes, style: "destructive", onPress: () => onSaveQr(prepared, true) }
                   ]);
                 } else {
                   onSaveQr(prepared);

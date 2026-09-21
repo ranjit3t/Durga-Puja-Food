@@ -57,6 +57,7 @@ export type MealConfig = {
   veg: boolean;
   nonVeg: boolean;
   parcel: boolean;
+  parcelAlert?: boolean;
   done?: boolean;
   current?: boolean;
   vegPrice?: string;
@@ -121,6 +122,7 @@ export enum ActivityAction {
   LOGIN = "Logged In",
   LOGOUT = "Logged Out",
   ERROR = "Error",
+  MISSED_PARCEL = "Missed Parcel",
 }
 
 export type ActivityLog = {
@@ -149,6 +151,7 @@ export enum ReportType {
   SINGLE = "single",
   NOT_TAKEN = "notTaken",
   KIDS_MEAL = "kidsMeal",
+  MISSED_PARCEL = "missedParcel",
 }
 
 export enum UserRole {

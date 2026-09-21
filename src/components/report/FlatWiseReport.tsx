@@ -20,6 +20,10 @@ interface FlatDayMeal {
   nonVegParcel: number;
   kidsVegParcel: number;
   kidsNonVegParcel: number;
+  vegParcelTaken: number;
+  nonVegParcelTaken: number;
+  kidsVegParcelTaken: number;
+  kidsNonVegParcelTaken: number;
 }
 
 interface FlatDayStat {
@@ -81,14 +85,28 @@ export function FlatWiseReport({
                     <View key={m.type} style={{ backgroundColor: theme.colors.surfaceDark + (theme.themeType === AppThemeMode.DARK ? "66" : "80"), borderRadius: 12, padding: 10, gap: 4 }}>
                       <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
                          <Text style={{ fontSize: 13, fontWeight: "800" }}>{getMealLabel(m.type)}</Text>
-                         <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.textSecondary }}>
-                           {kidsEnabled ? `${UI_TEXT.adultAbbrLabel}${UI_TEXT.colon}${UI_TEXT.space}` : ""}
-                           {m.vegTaken}{UI_TEXT.slash}{m.veg}{UI_TEXT.vegAbbr}{UI_TEXT.space}{UI_TEXT.pipe}{UI_TEXT.space}{m.nonVegTaken}{UI_TEXT.slash}{m.nonVeg}{UI_TEXT.nonVegAbbr}
-                         </Text>
+                         <View style={{ alignItems: 'flex-end' }}>
+                           <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.textSecondary }}>
+                             {kidsEnabled ? `${UI_TEXT.adultAbbrLabel}${UI_TEXT.colon}${UI_TEXT.space}` : ""}
+                             {m.vegTaken}{UI_TEXT.slash}{m.veg}{UI_TEXT.vegAbbr}{UI_TEXT.space}{UI_TEXT.pipe}{UI_TEXT.space}{m.nonVegTaken}{UI_TEXT.slash}{m.nonVeg}{UI_TEXT.nonVegAbbr}
+                           </Text>
+                           {(m.vegParcel + m.nonVegParcel) > 0 && (
+                             <Text style={{ fontSize: 10, fontWeight: '800', color: theme.colors.primary, marginTop: 2 }}>
+                               {UI_TEXT.parcelAbbr}{UI_TEXT.colon}{UI_TEXT.space}{m.vegParcelTaken + m.nonVegParcelTaken}{UI_TEXT.slash}{m.vegParcel + m.nonVegParcel}
+                             </Text>
+                           )}
+                         </View>
                       </View>
                       {kidsEnabled && (
                         <View style={{ flexDirection: "row", justifyContent: "flex-end" }}>
-                           <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.textMuted }}>{UI_TEXT.kidsAbbrLabel}{UI_TEXT.colon}{UI_TEXT.space}{m.kidsVegTaken}{UI_TEXT.slash}{m.kidsVeg}{UI_TEXT.vegAbbr}{UI_TEXT.space}{UI_TEXT.pipe}{UI_TEXT.space}{m.kidsNonVegTaken}{UI_TEXT.slash}{m.kidsNonVeg}{UI_TEXT.nonVegAbbr}</Text>
+                           <View style={{ alignItems: 'flex-end' }}>
+                             <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.textMuted }}>{UI_TEXT.kidsAbbrLabel}{UI_TEXT.colon}{UI_TEXT.space}{m.kidsVegTaken}{UI_TEXT.slash}{m.kidsVeg}{UI_TEXT.vegAbbr}{UI_TEXT.space}{UI_TEXT.pipe}{UI_TEXT.space}{m.kidsNonVegTaken}{UI_TEXT.slash}{m.kidsNonVeg}{UI_TEXT.nonVegAbbr}</Text>
+                             {(m.kidsVegParcel + m.kidsNonVegParcel) > 0 && (
+                               <Text style={{ fontSize: 10, fontWeight: '800', color: theme.colors.primary, opacity: 0.8, marginTop: 2 }}>
+                                 {UI_TEXT.parcelAbbr}{UI_TEXT.colon}{UI_TEXT.space}{m.kidsVegParcelTaken + m.kidsNonVegParcelTaken}{UI_TEXT.slash}{m.kidsVegParcel + m.kidsNonVegParcel}
+                               </Text>
+                             )}
+                           </View>
                         </View>
                       )}
                     </View>

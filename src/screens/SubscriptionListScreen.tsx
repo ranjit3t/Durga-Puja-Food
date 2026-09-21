@@ -216,7 +216,24 @@ export function SubscriptionListScreen() {
     return null;
   }, [dayConfig]);
 
-  const [filterMode, setFilterMode] = useState<FilterMode>(FilterMode.ALL);
+  const [activeFilters, setActiveFilters] = useState<FilterMode[]>([FilterMode.ALL]);
+
+  const toggleFilter = (mode: FilterMode) => {
+    if (mode === FilterMode.ALL) {
+      setActiveFilters([FilterMode.ALL]);
+      return;
+    }
+
+    setActiveFilters(prev => {
+      let next = prev.filter(m => m !== FilterMode.ALL);
+      if (next.includes(mode)) {
+        next = next.filter(m => m !== mode);
+      } else {
+        next = [...next, mode];
+      }
+      return next.length === 0 ? [FilterMode.ALL] : next;
+    });
+  };
 
   const passesWithKidsCount = useMemo(() => {
     return subscriptions.filter(sub => (sub.kidsCount || 0) > 0).length;
@@ -304,49 +321,51 @@ export function SubscriptionListScreen() {
   const visibleSubscriptions = useMemo(() => {
     let filtered = subscriptions;
 
-    if (currentMealInfo && hasAnySubscribed && filterMode === FilterMode.SUBSCRIBED) {
-      filtered = filtered.filter((sub) =>
-        (sub.mealSlots?.[currentMealInfo.dayId] || []).some(
-          (slot) =>
-            slot[currentMealInfo.type] === DietaryOption.VEG ||
-            slot[currentMealInfo.type] === DietaryOption.NON_VEG
-        )
-      );
-    }
+    if (!activeFilters.includes(FilterMode.ALL)) {
+      if (activeFilters.includes(FilterMode.SUBSCRIBED) && currentMealInfo) {
+        filtered = filtered.filter((sub) =>
+          (sub.mealSlots?.[currentMealInfo.dayId] || []).some(
+            (slot) =>
+              slot[currentMealInfo.type] === DietaryOption.VEG ||
+              slot[currentMealInfo.type] === DietaryOption.NON_VEG
+          )
+        );
+      }
 
-    if (currentMealInfo && hasAnyMissed && filterMode === FilterMode.MISSED) {
-      const missedIds = missedData.list.map(m => m.id);
-      filtered = filtered.filter(sub => missedIds.includes(sub.id));
-    }
+      if (activeFilters.includes(FilterMode.MISSED) && currentMealInfo) {
+        const missedIds = missedData.list.map(m => m.id);
+        filtered = filtered.filter(sub => missedIds.includes(sub.id));
+      }
 
-    if (kidsEnabled && hasAnyKids && filterMode === FilterMode.KIDS) {
-      filtered = filtered.filter(sub => (sub.kidsCount || 0) > 0);
-    }
+      if (activeFilters.includes(FilterMode.KIDS) && kidsEnabled) {
+        filtered = filtered.filter(sub => (sub.kidsCount || 0) > 0);
+      }
 
-    if (hasAnyParcel && filterMode === FilterMode.PARCEL) {
-      filtered = filtered.filter(sub =>
-        Object.values(sub.mealSlots || {}).some(daySlots =>
-          daySlots.some(slot => slot.breakfastParcel || slot.lunchParcel || slot.dinnerParcel)
-        )
-      );
-    }
+      if (activeFilters.includes(FilterMode.PARCEL)) {
+        filtered = filtered.filter(sub =>
+          Object.values(sub.mealSlots || {}).some(daySlots =>
+            daySlots.some(slot => slot.breakfastParcel || slot.lunchParcel || slot.dinnerParcel)
+          )
+        );
+      }
 
-    if (hasAnyVegOnly && filterMode === FilterMode.VEG_ONLY) {
-      filtered = filtered.filter(sub => {
-        let hasVeg = false;
-        let hasNonVeg = false;
-        Object.values(sub.mealSlots || {}).forEach(daySlots => {
-          daySlots.forEach(slot => {
-            if (slot[MealType.BREAKFAST] === DietaryOption.VEG) hasVeg = true;
-            if (slot[MealType.LUNCH] === DietaryOption.VEG) hasVeg = true;
-            if (slot[MealType.DINNER] === DietaryOption.VEG) hasVeg = true;
-            if (slot[MealType.BREAKFAST] === DietaryOption.NON_VEG) hasNonVeg = true;
-            if (slot[MealType.LUNCH] === DietaryOption.NON_VEG) hasNonVeg = true;
-            if (slot[MealType.DINNER] === DietaryOption.NON_VEG) hasNonVeg = true;
+      if (activeFilters.includes(FilterMode.VEG_ONLY)) {
+        filtered = filtered.filter(sub => {
+          let hasVeg = false;
+          let hasNonVeg = false;
+          Object.values(sub.mealSlots || {}).forEach(daySlots => {
+            daySlots.forEach(slot => {
+              if (slot[MealType.BREAKFAST] === DietaryOption.VEG) hasVeg = true;
+              if (slot[MealType.LUNCH] === DietaryOption.VEG) hasVeg = true;
+              if (slot[MealType.DINNER] === DietaryOption.VEG) hasVeg = true;
+              if (slot[MealType.BREAKFAST] === DietaryOption.NON_VEG) hasNonVeg = true;
+              if (slot[MealType.LUNCH] === DietaryOption.NON_VEG) hasNonVeg = true;
+              if (slot[MealType.DINNER] === DietaryOption.NON_VEG) hasNonVeg = true;
+            });
           });
+          return hasVeg && !hasNonVeg;
         });
-        return hasVeg && !hasNonVeg;
-      });
+      }
     }
 
     if (!subscriptionSearch) {
@@ -408,7 +427,7 @@ export function SubscriptionListScreen() {
         const missedItem = missedData.list.find(m => m.id === item.id);
         return { ...item, _hasCurrentMeal: hasCurrentMeal, _hasParcel: hasParcel, _isVegOnly: isVegOnly, _missedCount: missedItem?.missed };
       });
-  }, [subscriptions, subscriptionSearch, filterMode, currentMealInfo, kidsEnabled, hasAnyKids, hasAnySubscribed, hasAnyParcel, hasAnyVegOnly, missedData]);
+  }, [subscriptions, subscriptionSearch, activeFilters, currentMealInfo, kidsEnabled, missedData]);
 
 
   const renderItem = useCallback(({ item, index }: { item: Subscription & { _hasCurrentMeal?: boolean; _hasParcel?: boolean; _isVegOnly?: boolean; _missedCount?: number }; index: number }) => {
@@ -457,7 +476,7 @@ export function SubscriptionListScreen() {
           <View style={[styles.maxWidthWrapper, { marginTop: 20 }]}>
             <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
             <Pressable
-              onPress={() => setFilterMode(FilterMode.ALL)}
+              onPress={() => toggleFilter(FilterMode.ALL)}
               style={({ pressed }) => [
                 {
                   flexDirection: 'row',
@@ -467,22 +486,22 @@ export function SubscriptionListScreen() {
                   paddingVertical: s(8),
                   borderRadius: s(20),
                   borderWidth: 1,
-                  borderColor: filterMode === FilterMode.ALL ? theme.colors.primary : theme.colors.border,
-                  backgroundColor: filterMode === FilterMode.ALL ? theme.colors.surfaceDark : theme.colors.surface,
+                  borderColor: activeFilters.includes(FilterMode.ALL) ? theme.colors.primary : theme.colors.border,
+                  backgroundColor: activeFilters.includes(FilterMode.ALL) ? theme.colors.surfaceDark : theme.colors.surface,
                   marginBottom: s(8)
                 },
                 pressed && { opacity: 0.7 }
               ]}
             >
               <Ionicons
-                name={filterMode === FilterMode.ALL ? "layers" : "layers-outline"}
+                name={activeFilters.includes(FilterMode.ALL) ? "layers" : "layers-outline"}
                 size={s(16)}
-                color={filterMode === FilterMode.ALL ? theme.colors.primary : theme.colors.textSecondary}
+                color={activeFilters.includes(FilterMode.ALL) ? theme.colors.primary : theme.colors.textSecondary}
               />
               <Text style={{
                 fontSize: s(13),
                 fontWeight: "700",
-                color: filterMode === FilterMode.ALL ? theme.colors.primary : theme.colors.textSecondary
+                color: activeFilters.includes(FilterMode.ALL) ? theme.colors.primary : theme.colors.textSecondary
               }}>
                 {UI_TEXT.all} ({subscriptions.length})
               </Text>
@@ -490,7 +509,7 @@ export function SubscriptionListScreen() {
 
             {currentMealInfo && hasAnySubscribed && (
               <Pressable
-                onPress={() => setFilterMode(FilterMode.SUBSCRIBED)}
+                onPress={() => toggleFilter(FilterMode.SUBSCRIBED)}
                 style={({ pressed }) => [
                   {
                     flexDirection: 'row',
@@ -500,22 +519,22 @@ export function SubscriptionListScreen() {
                     paddingVertical: s(8),
                     borderRadius: s(20),
                     borderWidth: 1,
-                    borderColor: filterMode === FilterMode.SUBSCRIBED ? theme.colors.success : theme.colors.border,
-                    backgroundColor: filterMode === FilterMode.SUBSCRIBED ? theme.colors.successLight : theme.colors.surface,
+                    borderColor: activeFilters.includes(FilterMode.SUBSCRIBED) ? theme.colors.success : theme.colors.border,
+                    backgroundColor: activeFilters.includes(FilterMode.SUBSCRIBED) ? theme.colors.successLight : theme.colors.surface,
                     marginBottom: s(8)
                   },
                   pressed && { opacity: 0.7 }
                 ]}
               >
                 <Ionicons
-                  name={filterMode === FilterMode.SUBSCRIBED ? "restaurant" : "restaurant-outline"}
+                  name={activeFilters.includes(FilterMode.SUBSCRIBED) ? "restaurant" : "restaurant-outline"}
                   size={s(14)}
-                  color={filterMode === FilterMode.SUBSCRIBED ? theme.colors.success : theme.colors.textSecondary}
+                  color={activeFilters.includes(FilterMode.SUBSCRIBED) ? theme.colors.success : theme.colors.textSecondary}
                 />
                 <Text style={{
                   fontSize: s(13),
                   fontWeight: "700",
-                  color: filterMode === FilterMode.SUBSCRIBED ? theme.colors.primary : theme.colors.textSecondary
+                  color: activeFilters.includes(FilterMode.SUBSCRIBED) ? theme.colors.primary : theme.colors.textSecondary
                 }}>
                   {UI_TEXT.mealSubscriberMarker} ({subscribedCount})
                 </Text>
@@ -524,7 +543,7 @@ export function SubscriptionListScreen() {
 
             {currentMealInfo && hasAnyMissed && (
               <Pressable
-                onPress={() => setFilterMode(FilterMode.MISSED)}
+                onPress={() => toggleFilter(FilterMode.MISSED)}
                 style={({ pressed }) => [
                   {
                     flexDirection: 'row',
@@ -534,22 +553,22 @@ export function SubscriptionListScreen() {
                     paddingVertical: s(8),
                     borderRadius: s(20),
                     borderWidth: 1,
-                    borderColor: filterMode === FilterMode.MISSED ? theme.colors.error : theme.colors.border,
-                    backgroundColor: filterMode === FilterMode.MISSED ? theme.colors.errorLight : theme.colors.surface,
+                    borderColor: activeFilters.includes(FilterMode.MISSED) ? theme.colors.error : theme.colors.border,
+                    backgroundColor: activeFilters.includes(FilterMode.MISSED) ? theme.colors.errorLight : theme.colors.surface,
                     marginBottom: s(8)
                   },
                   pressed && { opacity: 0.7 }
                 ]}
               >
                 <Ionicons
-                  name={filterMode === FilterMode.MISSED ? "alert-circle" : "alert-circle-outline"}
+                  name={activeFilters.includes(FilterMode.MISSED) ? "alert-circle" : "alert-circle-outline"}
                   size={s(16)}
-                  color={filterMode === FilterMode.MISSED ? theme.colors.error : theme.colors.textSecondary}
+                  color={activeFilters.includes(FilterMode.MISSED) ? theme.colors.error : theme.colors.textSecondary}
                 />
                 <Text style={{
                   fontSize: s(13),
                   fontWeight: "700",
-                  color: filterMode === FilterMode.MISSED ? theme.colors.error : theme.colors.textSecondary
+                  color: activeFilters.includes(FilterMode.MISSED) ? theme.colors.error : theme.colors.textSecondary
                 }}>
                   {UI_TEXT.mealMissedMarker} ({missedData.count})
                 </Text>
@@ -558,7 +577,7 @@ export function SubscriptionListScreen() {
 
             {kidsEnabled && hasAnyKids && (
               <Pressable
-                onPress={() => setFilterMode(FilterMode.KIDS)}
+                onPress={() => toggleFilter(FilterMode.KIDS)}
                 style={({ pressed }) => [
                   {
                     flexDirection: 'row',
@@ -568,22 +587,22 @@ export function SubscriptionListScreen() {
                     paddingVertical: s(8),
                     borderRadius: s(20),
                     borderWidth: 1,
-                    borderColor: filterMode === FilterMode.KIDS ? theme.colors.nonVeg : theme.colors.border,
-                    backgroundColor: filterMode === FilterMode.KIDS ? theme.colors.errorLight : theme.colors.surface,
+                    borderColor: activeFilters.includes(FilterMode.KIDS) ? theme.colors.nonVeg : theme.colors.border,
+                    backgroundColor: activeFilters.includes(FilterMode.KIDS) ? theme.colors.errorLight : theme.colors.surface,
                     marginBottom: s(8)
                   },
                   pressed && { opacity: 0.7 }
                 ]}
               >
                 <Ionicons
-                  name={filterMode === FilterMode.KIDS ? "happy" : "happy-outline"}
+                  name={activeFilters.includes(FilterMode.KIDS) ? "happy" : "happy-outline"}
                   size={s(16)}
-                  color={filterMode === FilterMode.KIDS ? theme.colors.nonVeg : theme.colors.textSecondary}
+                  color={activeFilters.includes(FilterMode.KIDS) ? theme.colors.nonVeg : theme.colors.textSecondary}
                 />
                 <Text style={{
                   fontSize: s(13),
                   fontWeight: "700",
-                  color: filterMode === FilterMode.KIDS ? theme.colors.nonVeg : theme.colors.textSecondary
+                  color: activeFilters.includes(FilterMode.KIDS) ? theme.colors.nonVeg : theme.colors.textSecondary
                 }}>
                   {UI_TEXT.kids} ({passesWithKidsCount})
                 </Text>
@@ -592,7 +611,7 @@ export function SubscriptionListScreen() {
 
             {hasAnyParcel && (
               <Pressable
-                onPress={() => setFilterMode(FilterMode.PARCEL)}
+                onPress={() => toggleFilter(FilterMode.PARCEL)}
                 style={({ pressed }) => [
                   {
                     flexDirection: 'row',
@@ -602,22 +621,22 @@ export function SubscriptionListScreen() {
                     paddingVertical: s(8),
                     borderRadius: s(20),
                     borderWidth: 1,
-                    borderColor: filterMode === FilterMode.PARCEL ? theme.colors.secondary : theme.colors.border,
-                    backgroundColor: filterMode === FilterMode.PARCEL ? theme.colors.surfaceDark : theme.colors.surface,
+                    borderColor: activeFilters.includes(FilterMode.PARCEL) ? theme.colors.secondary : theme.colors.border,
+                    backgroundColor: activeFilters.includes(FilterMode.PARCEL) ? theme.colors.surfaceDark : theme.colors.surface,
                     marginBottom: s(8)
                   },
                   pressed && { opacity: 0.7 }
                 ]}
               >
                 <Ionicons
-                  name={filterMode === FilterMode.PARCEL ? "briefcase" : "briefcase-outline"}
+                  name={activeFilters.includes(FilterMode.PARCEL) ? "briefcase" : "briefcase-outline"}
                   size={s(16)}
-                  color={filterMode === FilterMode.PARCEL ? theme.colors.secondary : theme.colors.textSecondary}
+                  color={activeFilters.includes(FilterMode.PARCEL) ? theme.colors.secondary : theme.colors.textSecondary}
                 />
                 <Text style={{
                   fontSize: s(13),
                   fontWeight: "700",
-                  color: filterMode === FilterMode.PARCEL ? theme.colors.secondary : theme.colors.textSecondary
+                  color: activeFilters.includes(FilterMode.PARCEL) ? theme.colors.secondary : theme.colors.textSecondary
                 }}>
                   {UI_TEXT.parcels} ({passesWithParcelCount})
                 </Text>
@@ -626,7 +645,7 @@ export function SubscriptionListScreen() {
 
             {isNonVegSeason && hasAnyVegOnly && (
               <Pressable
-                onPress={() => setFilterMode(FilterMode.VEG_ONLY)}
+                onPress={() => toggleFilter(FilterMode.VEG_ONLY)}
                 style={({ pressed }) => [
                   {
                     flexDirection: 'row',
@@ -636,22 +655,22 @@ export function SubscriptionListScreen() {
                     paddingVertical: s(8),
                     borderRadius: s(20),
                     borderWidth: 1,
-                    borderColor: filterMode === FilterMode.VEG_ONLY ? theme.colors.veg : theme.colors.border,
-                    backgroundColor: filterMode === FilterMode.VEG_ONLY ? theme.colors.veg + "10" : theme.colors.surface,
+                    borderColor: activeFilters.includes(FilterMode.VEG_ONLY) ? theme.colors.veg : theme.colors.border,
+                    backgroundColor: activeFilters.includes(FilterMode.VEG_ONLY) ? theme.colors.veg + "10" : theme.colors.surface,
                     marginBottom: s(8)
                   },
                   pressed && { opacity: 0.7 }
                 ]}
               >
                 <Ionicons
-                  name={filterMode === FilterMode.VEG_ONLY ? "leaf" : "leaf-outline"}
+                  name={activeFilters.includes(FilterMode.VEG_ONLY) ? "leaf" : "leaf-outline"}
                   size={s(16)}
-                  color={filterMode === FilterMode.VEG_ONLY ? theme.colors.veg : theme.colors.textSecondary}
+                  color={activeFilters.includes(FilterMode.VEG_ONLY) ? theme.colors.veg : theme.colors.textSecondary}
                 />
                 <Text style={{
                   fontSize: s(13),
                   fontWeight: "700",
-                  color: filterMode === FilterMode.VEG_ONLY ? theme.colors.veg : theme.colors.textSecondary
+                  color: activeFilters.includes(FilterMode.VEG_ONLY) ? theme.colors.veg : theme.colors.textSecondary
                 }}>
                   {UI_TEXT.vegOnly} ({passesWithVegOnlyCount})
                 </Text>

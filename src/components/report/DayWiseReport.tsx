@@ -20,6 +20,10 @@ interface DayWiseData {
   nonVegParcel: number;
   kidsVegParcel: number;
   kidsNonVegParcel: number;
+  vegParcelTaken: number;
+  nonVegParcelTaken: number;
+  kidsVegParcelTaken: number;
+  kidsNonVegParcelTaken: number;
   guestVeg: number;
   guestNonVeg: number;
   guestVegTaken: number;
@@ -94,10 +98,13 @@ export function DayWiseReport({
                 <Text style={{ color: theme.colors.nonVeg, fontWeight: "800", fontSize: 16 }}>{UI_TEXT.mealNotTaken}</Text>
                 <Text style={{ color: theme.colors.nonVeg, fontSize: 24, fontWeight: "900" }}>{totalNotTaken}</Text>
               </View>
-              {hasParcelSupport && (item.vegParcel + item.nonVegParcel) > 0 && (
+              {hasParcelSupport && (item.vegParcel + item.nonVegParcel + item.kidsVegParcel + item.kidsNonVegParcel) > 0 && (
                 <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", borderTopWidth: 1, borderTopColor: colorScheme.border, paddingTop: 16 }}>
                   <Text style={{ fontSize: 15, fontWeight: "700", color: theme.colors.textSecondary }}>{UI_TEXT.totalParcels}</Text>
-                  <Text style={{ fontSize: 18, fontWeight: "800", color: theme.colors.primary }}>{item.vegParcel + item.nonVegParcel}{UI_TEXT.space}{UI_TEXT.parcelAbbr}</Text>
+                  <Text style={{ fontSize: 18, fontWeight: "900", color: theme.colors.primary }}>
+                    {(item.vegParcelTaken + item.nonVegParcelTaken + item.kidsVegParcelTaken + item.kidsNonVegParcelTaken)}{UI_TEXT.space}{UI_TEXT.slash}{UI_TEXT.space}
+                    {(item.vegParcel + item.nonVegParcel + item.kidsVegParcel + item.kidsNonVegParcel)}{UI_TEXT.space}{UI_TEXT.parcelAbbr}
+                  </Text>
                 </View>
               )}
             </View>

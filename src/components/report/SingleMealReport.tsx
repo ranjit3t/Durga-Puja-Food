@@ -19,6 +19,10 @@ interface MealStats {
   nonVegParcel: number;
   kidsVegParcel: number;
   kidsNonVegParcel: number;
+  vegParcelTaken: number;
+  nonVegParcelTaken: number;
+  kidsVegParcelTaken: number;
+  kidsNonVegParcelTaken: number;
   guestVeg: number;
   guestNonVeg: number;
   guestVegTaken: number;
@@ -148,16 +152,19 @@ export function SingleMealReport({
             </View>
           </View>
 
-          {parcelEnabled && (m.vegParcel + m.nonVegParcel) > 0 ? (
+          {parcelEnabled && (m.vegParcel + m.nonVegParcel + (m.kidsVegParcel || 0) + (m.kidsNonVegParcel || 0)) > 0 ? (
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", borderTopWidth: 1, borderTopColor: colorScheme.border, paddingTop: 16 }}>
               <Text style={{ fontSize: 15, fontWeight: "700", color: theme.colors.textSecondary }}>{UI_TEXT.parcelsNeeded}</Text>
               <View style={{ alignItems: 'flex-end' }}>
-                <Text style={{ fontSize: 18, fontWeight: "800", color: theme.colors.primary }}>{m.vegParcel + m.nonVegParcel}{UI_TEXT.space}{UI_TEXT.parcelAbbr}</Text>
+                <Text style={{ fontSize: 18, fontWeight: "900", color: theme.colors.primary }}>
+                  {(m.vegParcelTaken + m.nonVegParcelTaken + (m.kidsVegParcelTaken || 0) + (m.kidsNonVegParcelTaken || 0))}{UI_TEXT.space}{UI_TEXT.slash}{UI_TEXT.space}
+                  {(m.vegParcel + m.nonVegParcel + (m.kidsVegParcel || 0) + (m.kidsNonVegParcel || 0))}{UI_TEXT.space}{UI_TEXT.parcelAbbr}
+                </Text>
                 <Text style={{ fontSize: 11, fontWeight: "600" }}>
                   {UI_TEXT.openParen}
-                  {vegEnabled && m.vegParcel > 0 && <Text style={{ color: theme.colors.veg }}>{m.vegParcel}{UI_TEXT.space}{UI_TEXT.veg}</Text>}
-                  {vegEnabled && m.vegParcel > 0 && nonVegEnabled && m.nonVegParcel > 0 && <Text>{UI_TEXT.comma}{UI_TEXT.space}</Text>}
-                  {nonVegEnabled && m.nonVegParcel > 0 && <Text style={{ color: theme.colors.nonVeg }}>{m.nonVegParcel}{UI_TEXT.space}{UI_TEXT.nonVeg}</Text>}
+                  {vegEnabled && (m.vegParcel + (m.kidsVegParcel || 0)) > 0 && <Text style={{ color: theme.colors.veg }}>{(m.vegParcelTaken + (m.kidsVegParcelTaken || 0))}{UI_TEXT.slash}{(m.vegParcel + (m.kidsVegParcel || 0))}{UI_TEXT.space}{UI_TEXT.veg}</Text>}
+                  {vegEnabled && (m.vegParcel + (m.kidsVegParcel || 0)) > 0 && nonVegEnabled && (m.nonVegParcel + (m.kidsNonVegParcel || 0)) > 0 && <Text>{UI_TEXT.comma}{UI_TEXT.space}</Text>}
+                  {nonVegEnabled && (m.nonVegParcel + (m.kidsNonVegParcel || 0)) > 0 && <Text style={{ color: theme.colors.nonVeg }}>{(m.nonVegParcelTaken + (m.kidsNonVegParcelTaken || 0))}{UI_TEXT.slash}{(m.nonVegParcel + (m.kidsNonVegParcel || 0))}{UI_TEXT.space}{UI_TEXT.nonVeg}</Text>}
                   {UI_TEXT.closeParen}
                 </Text>
               </View>
