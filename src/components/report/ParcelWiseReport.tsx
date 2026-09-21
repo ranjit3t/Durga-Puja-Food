@@ -45,9 +45,6 @@ export function ParcelWiseReport({
   selectedMealType,
   onSelectFlat,
   kidsEnabled,
-  whatsappCountryCode,
-  mobileEnabled,
-  addActivityLog,
 }: {
   data: MealWiseData[];
   dayConfig: ConfigDay[];
@@ -56,9 +53,6 @@ export function ParcelWiseReport({
   selectedMealType: MealType;
   onSelectFlat: (id: string) => void;
   kidsEnabled: boolean;
-  whatsappCountryCode: string;
-  mobileEnabled: boolean;
-  addActivityLog: any;
 }) {
   const styles = useStyles();
   const { theme } = useAppTheme();
@@ -165,9 +159,6 @@ export function ParcelWiseReport({
           dayConfig={dayConfig}
           onSelectFlat={onSelectFlat}
           kidsEnabled={kidsEnabled}
-          whatsappCountryCode={whatsappCountryCode}
-          mobileEnabled={mobileEnabled}
-          addActivityLog={addActivityLog}
         />
       )}
     </View>

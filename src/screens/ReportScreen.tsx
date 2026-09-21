@@ -49,7 +49,7 @@ import { useAppNavigation } from "../context/NavigationContext";
 export function ReportScreen() {
   const { userRole, handleLogout } = useAuth();
   const {
-    subscriptions, foodMenu, dayConfig, seasonName, paymentConfig, guestEnabled, kidsEnabled, whatsappCountryCode, mobileEnabled, addActivityLog
+    subscriptions, foodMenu, dayConfig, seasonName, paymentConfig, guestEnabled, kidsEnabled
   } = useDatabase();
   const { shareQr } = useUI();
   const {
@@ -377,9 +377,6 @@ export function ReportScreen() {
               selectedMealType={selectedMealType}
               onSelectFlat={onSelectFlat}
               kidsEnabled={!!kidsEnabled}
-              whatsappCountryCode={whatsappCountryCode}
-              mobileEnabled={!!mobileEnabled}
-              addActivityLog={addActivityLog}
             />
           )}
 
@@ -412,9 +409,6 @@ export function ReportScreen() {
               dayConfig={dayConfig}
               onSelectFlat={id => onSelectFlat(id)}
               kidsEnabled={!!kidsEnabled}
-              whatsappCountryCode={whatsappCountryCode}
-              mobileEnabled={!!mobileEnabled}
-              addActivityLog={addActivityLog}
             />
           )}
 

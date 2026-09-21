@@ -1,10 +1,9 @@
 import React from "react";
-import { View, Text, Pressable, Linking } from "react-native";
+import { View, Text, Pressable } from "react-native";
 import { useStyles } from "../../styles";
 import { useAppTheme } from "../../theme";
 import { UI_TEXT } from "../../strings";
-import { ConfigDay, MealType, AppThemeMode, ActivityModule, ActivityAction } from "../../domain";
-import { Ionicons } from "@expo/vector-icons";
+import { ConfigDay, MealType } from "../../domain";
 
 interface MissedParcelItem {
   id: string;
@@ -17,14 +16,8 @@ interface MissedParcelItem {
 
 export function MissedParcelReport({
   data,
-  selectedDayId,
-  selectedMealType,
-  dayConfig,
   onSelectFlat,
   kidsEnabled,
-  whatsappCountryCode,
-  mobileEnabled,
-  addActivityLog,
 }: {
   data: MissedParcelItem[];
   selectedDayId: string;
@@ -32,9 +25,6 @@ export function MissedParcelReport({
   dayConfig: ConfigDay[];
   onSelectFlat: (id: string) => void;
   kidsEnabled: boolean;
-  whatsappCountryCode: string;
-  mobileEnabled: boolean;
-  addActivityLog: any;
 }) {
   const styles = useStyles();
   const { theme } = useAppTheme();
@@ -68,49 +58,6 @@ export function MissedParcelReport({
                   </Text>
                 </View>
               </View>
-
-              {mobileEnabled && item.mobile && (
-                <>
-                  <View style={{ height: 1, backgroundColor: colorScheme.border, marginVertical: 12, opacity: 0.5 }} />
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Pressable
-                      onPress={() => {
-                        addActivityLog({
-                          module: ActivityModule.REPORT,
-                          action: ActivityAction.CHAT,
-                          targetId: item.id,
-                          description: UI_TEXT.logChatReport.replace("{id}", item.id)
-                        });
-                        Linking.openURL(`https://wa.me/${whatsappCountryCode || UI_TEXT.defaultCountryCode}${item.mobile}`);
-                      }}
-                      style={({ pressed }) => [
-                        { padding: 6, borderRadius: 20, backgroundColor: theme.colors.successLight },
-                        pressed && { opacity: 0.7 }
-                      ]}
-                    >
-                      <Ionicons name="logo-whatsapp" size={20} color={theme.colors.success} />
-                    </Pressable>
-
-                    <Pressable
-                      onPress={() => {
-                        addActivityLog({
-                          module: ActivityModule.REPORT,
-                          action: ActivityAction.CALL,
-                          targetId: item.id,
-                          description: UI_TEXT.logCallReport.replace("{id}", item.id)
-                        });
-                        Linking.openURL(`tel:${item.mobile}`);
-                      }}
-                      style={({ pressed }) => [
-                        { padding: 6, borderRadius: 20, backgroundColor: theme.colors.surfaceDark },
-                        pressed && { opacity: 0.7 }
-                      ]}
-                    >
-                      <Ionicons name="call" size={20} color={theme.colors.primary} />
-                    </Pressable>
-                  </View>
-                </>
-              )}
             </Pressable>
           );
         })

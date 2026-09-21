@@ -261,8 +261,8 @@ The application implements strict **Bi-Directional Temporal Data Governance** to
 - **Dependency Guard**: The `takenParcel` toggle visibility is strictly dependent on the primary `taken` status being `true`. The application logic ensures that if a primary meal is unmarked as taken, its associated parcel collection flag is also automatically reset to `false`. **Takeaway collection is now tracked as an independent operational metric (Taken vs. Planned) in specialized reports**.
 - **Missed Collection Logic**: 
     - **Pending Report**: Identifies flats where members have an active dietary choice but have collected neither the dine-in plate nor the takeaway parcel.
-    - **Missed Parcels Report**: Specifically identifies **inconsistencies** where a member opted for a parcel and collected their primary dine-in meal, but did NOT collect their takeaway container.
-- **Intelligent Report Focus**: Upon selecting the **"Meal Not Taken"** (Pending), **"Kids Meal"**, or **"Missed Parcels"** report tabs, the system automatically detects, selects, and scrolls to the globally active **Current Meal**, providing administrators with immediate access to relevant service data.
+    - **Parcel Missed Tab**: A forensic view within the Parcel Report that specifically identifies **inconsistencies** where a member opted for a parcel and collected their primary dine-in meal, but did NOT collect their takeaway container.
+- **Intelligent Report Focus**: Upon selecting the **"Meal Not Taken"** (Pending), **"Kids Meal"**, or **"Parcels"** report tabs, the system automatically detects, selects, and scrolls to the globally active **Current Meal**, providing administrators with immediate access to relevant service data.
 - **Parcel Inconsistency Alert**: During pass editing, if a globally active **Current Meal** is enabled, the system checks for inconsistencies. If a member has opted for a parcel but only the primary meal (dine-in) was marked as taken, a mandatory confirmation alert triggers before saving. If the administrator chooses to proceed, the system generates a specialized **MISSED_PARCEL** activity log, allowing for forensic tracking of service gaps.
 - **Proactive Parcel Alert**: A new configuration field `parcelAlert` in `MealConfig` allows admins to enable on-open alerts in the `SubscriptionForm`. If enabled, the app proactively warns the volunteer upon opening a pass if any member has an uncollected takeaway parcel for the active "Current Meal" window.
 
@@ -295,6 +295,7 @@ The application includes a decentralized note-taking system for operational coor
 ### P. High-Fidelity Theming System
 The application features a robust, reactive theme architecture:
 - **Zero Hard-Coded Colors**: A strict policy where UI components never use literal hex or RGB values. All colors are sourced from the `theme.colors` or `theme.cardColors` registries.
+- **High-Visibility Branding**: The global footer utilizes bold weights and primary theme tokens to maintain anchor stability and legibility against the multi-layered mesh backdrop.
 - **Enum-Driven Configuration**: The application utilizes the `MealType` enum for all internal property access and configuration state management. This ensures 100% synchronization between the database schema, business logic, and UI rendering, eliminating risks associated with hardcoded string literals.
 - **Dynamic Backdrop**: Mesh gradient blobs automatically adjust their intensity and hue-shift based on the active theme, maintaining a festive atmosphere while ensuring absolute readability.
 - **Web Scaling**: The theme engine dynamically calculates scaling factors for desktop monitors, ensuring a "first-class" browser experience without the "tiny UI" common in mobile-to-web ports.
