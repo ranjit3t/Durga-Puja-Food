@@ -157,7 +157,7 @@ The application also enforces a **Natural Alphanumeric Sorting** policy globally
 - **Guest & Parcel Report Tabs**: Features specialized summaries for extra guest plates and meal-wise parcel requirements. These tabs are conditionally rendered based on the global `guestEnabled` flag and the `isParcelEnabled` setting within the festival configuration.
 - **Financial Breakdown Logic**: The collection report implements a **"Parcel-First"** attribution logic: `Food Collection = Actual Total Paid - Calculated Parcel Price` (clamped at zero). This treats parcel surcharges as fixed hard costs, providing a conservative audit of food revenue.
 - **Strongly Typed Payments**: Uses the `PaymentMode` enum for all financial logic. UI display mapping is handled by the `getPaymentModeLabel` helper to maintain localization consistency.
-- **Scanner Workflow**: Employs a `ref`-based synchronous lock to prevent duplicate scans. Invalid QR codes trigger a blocking alert that redirects to the Subscriptions list for manual intervention.
+- **Scanner Workflow**: Employs a `ref`-based synchronous lock to prevent duplicate scans. Supports dual validation via camera QR scanning or manual 4-digit passcode entry (`TextInput` overlay). Invalid QR codes or passcodes trigger a blocking alert with options to retry or return to the Subscriptions list.
 
 ---
 
@@ -235,7 +235,7 @@ The application maintains a permanent, asynchronous audit trail of all significa
   - **Menu Distribution**: Menu item updates, price changes, and operational status toggles.
   - **Guest Management**: All manual adjustments to guest demand and collection counts.
   - **Configuration**: All changes to global festival rules and day-specific settings.
-  - **Operations**: QR code scans (success/fail), pass image sharing, and downloads.
+  - **Operations**: QR code scans (success/fail), 4-digit Passcode entry validations (success/fail via `ActivityAction.PASS`), pass image sharing, and downloads.
   - **Collaborative Notes**: Creation, updates, and deletion of operational notes by users, with full historical logging of these actions.
   - **Security**: Successful logins, failed login attempts (tracking username), and Logouts.
 
@@ -306,14 +306,21 @@ The application features a robust, reactive theme architecture:
 - **Dynamic Backdrop**: Mesh gradient blobs automatically adjust their intensity and hue-shift based on the active theme, maintaining a festive atmosphere while ensuring absolute readability.
 - **Web Scaling**: The theme engine dynamically calculates scaling factors for desktop monitors, ensuring a "first-class" browser experience without the "tiny UI" common in mobile-to-web ports.
 
-### Q. 4-Digit Passcode Logic
-To provide a fail-safe validation method, the system implements a unique 4-digit passcode for every pass:
-- **Generation**: The `generatePasscode()` utility in `constants.ts` creates a random 4-digit numeric string (0000-9999) upon new pass registration.
-- **Uniqueness**: While the numeric space is 10,000, the system is designed for community scales where collisions are statistically negligible. The passcode is stored in the `passcode` field of the `SubscriptionRecord`.
+### Q. 4-Digit Passcode Logic & Uniqueness Enforcement
+To provide a fail-safe validation method when camera scanning is hindered or physical screens are dim or damaged, the system implements a unique 4-digit passcode for every registered pass:
+- **Collision-Free Generation (`generateUniquePasscode`)**: The `generateUniquePasscode()` utility in `constants.ts` collects all active passcodes currently used across the `subscriptions` database (excluding the current pass ID during updates).
+    - **Seed Mode**: If a seed (e.g. `pass.id`) is provided, it generates a hash modulo 10,000 as an initial candidate. If a collision is detected with an existing pass, it sequentially probes offset candidates (`(hash + offset) % 10000`) until a free 4-digit code is found.
+    - **Random Mode**: For new registrations in [SubscriptionForm.tsx](file:///D:/Code/Durga-Puja-Food/src/screens/SubscriptionForm.tsx), it generates random 4-digit numbers (`0000-9999`) and checks them against the `usedPasscodes` set.
+    - **Linear Fallback**: In the mathematically unlikely scenario of dense coverage, it performs a linear search across `0000` to `9999` to guarantee an available unique passcode is returned.
+- **Normalization & Persistence**: Upon pass creation or edit, `form.passcode || generateUniquePasscode(subscriptions, form.id)` is saved in the `passcode` property of `SubscriptionRecord` in Firebase. In `repository.ts`, `normalizeRecord` ensures legacy database records without a passcode receive a fallback passcode derived deterministically from the pass ID.
+- **Single Match Guarantee**: Because passcodes are strictly unique across all active registrations, scanning or typing a 4-digit passcode in [ScannerScreen.tsx](file:///D:/Code/Durga-Puja-Food/src/screens/ScannerScreen.tsx) via `openScannedValue()` deterministically matches exactly one subscription record without ambiguity.
 - **UI Integration**:
-    - **QR Card**: Displayed in the `QrScreen` using a bold, primary-colored typeface for high legibility.
-    - **Scanner Page**: The `ScannerScreen` features a `TextInput` (numeric) at the top. Entering a 4th digit triggers an immediate lookup in the `subscriptions` array.
-- **Action Parity**: Successfully entering a valid passcode performs the exact same action as scanning a valid QR code: it logs a `SCAN` activity and navigates to the pass's details view.
+    - **Digital QR Pass (`QrScreen.tsx`)**: Prominently displayed directly below the QR code image in bold primary/accent theme typography (`{UI_TEXT.passCodeLabel}: {subscription.passcode || generateUniquePasscode(subscriptions, subscription.id)}`).
+    - **Dual-Mode Scanner (`ScannerScreen.tsx`)**: The scanner interface (`UI_TEXT.scanQr` = "Scan/Pass Code") features a numeric `TextInput` with a 4-character limit (`maxLength={4}`, `keyboardType="number-pad"`), placeholder (`XXXX`), and hint text (`Enter 4 digit Pass Code`) centered in the top header overlay above the camera preview.
+- **Validation & Navigation Flow**:
+    - Entering the 4th digit in `ScannerScreen` triggers `handlePassCode()`, which evaluates the code via `openScannedValue()`.
+    - If a matching pass is found, `NavigationContext` selects the pass and navigates seamlessly using `navigate(AppScreen.DETAILS)`.
+- **Action Parity & Audit Logging**: Successfully entering a valid passcode performs full functional parity with QR scanning, recording a dedicated `PASS` activity (`ActivityAction.PASS`) with description `Successfully scanned Pass Code for {id}` in the Activity Log. Invalid passcodes log a failed attempt (`Invalid Pass Code: {code}`) and display an interactive `passCodeError` alert.
 
 ---
 © 2026 Eternia Food Desk Technical Team

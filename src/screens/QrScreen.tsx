@@ -5,7 +5,7 @@ import QRCode from "react-native-qrcode-svg";
 import { useStyles } from "../styles";
 import { StatusBarStyleMode, useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
-import { qrValueFor, generatePasscode } from "../constants";
+import { qrValueFor, generatePasscode, generateUniquePasscode } from "../constants";
 import { AppScreen, AppThemeMode, ActivityModule, ActivityAction } from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
@@ -84,7 +84,7 @@ export function QrScreen() {
                 fontWeight: "900",
                 fontSize: 18,
               }}>
-                {UI_TEXT.passCodeLabel}: {subscription.passcode || generatePasscode(subscription.id)}
+                {UI_TEXT.passCodeLabel}: {subscription.passcode || generateUniquePasscode(subscriptions, subscription.id, subscription.id)}
               </Text>
             </View>
 

@@ -489,21 +489,63 @@ export const qrValueFor = (id: string) =>
   `https://durga-puja-food.app/flat/${encodeURIComponent(id)}`;
 
 /**
- * Generates a unique 4-digit passcode for a pass.
- * If a seed is provided, it generates a deterministic passcode.
+ * Generates a guaranteed unique 4-digit passcode for a pass.
+ * Checks against existing subscriptions to eliminate collisions/duplicates.
+ * @param existingSubscriptions Array of active subscriptions to check against
+ * @param currentPassId Optional current pass ID to exclude from collision check during editing
+ * @param seed Optional seed (e.g. pass ID) for deterministic candidate generation
  * @returns 4-digit numeric string (0000-9999)
  */
-export const generatePasscode = (seed?: string) => {
+export const generateUniquePasscode = (
+  existingSubscriptions: { id?: string; passcode?: string }[] = [],
+  currentPassId?: string,
+  seed?: string
+): string => {
+  const usedPasscodes = new Set<string>();
+  for (const s of existingSubscriptions) {
+    if (s && s.passcode && s.id !== currentPassId) {
+      usedPasscodes.add(String(s.passcode));
+    }
+  }
+
   if (seed) {
-    // Simple deterministic hash for 4 digits
     let hash = 0;
     for (let i = 0; i < seed.length; i++) {
       hash = (hash << 5) - hash + seed.charCodeAt(i);
       hash |= 0;
     }
-    return Math.abs(hash % 10000).toString().padStart(4, "0");
+    const baseCandidateVal = Math.abs(hash) % 10000;
+    const baseCandidate = baseCandidateVal.toString().padStart(4, "0");
+    if (!usedPasscodes.has(baseCandidate)) {
+      return baseCandidate;
+    }
+    for (let offset = 1; offset < 10000; offset++) {
+      const nextCandidate = ((baseCandidateVal + offset) % 10000).toString().padStart(4, "0");
+      if (!usedPasscodes.has(nextCandidate)) {
+        return nextCandidate;
+      }
+    }
   }
-  return Math.floor(Math.random() * 10000).toString().padStart(4, "0");
+
+  for (let attempt = 0; attempt < 10000; attempt++) {
+    const candidate = Math.floor(Math.random() * 10000).toString().padStart(4, "0");
+    if (!usedPasscodes.has(candidate)) {
+      return candidate;
+    }
+  }
+
+  for (let i = 0; i < 10000; i++) {
+    const candidate = i.toString().padStart(4, "0");
+    if (!usedPasscodes.has(candidate)) {
+      return candidate;
+    }
+  }
+
+  return "0000";
+};
+
+export const generatePasscode = (seed?: string) => {
+  return generateUniquePasscode([], undefined, seed);
 };
 
 /**

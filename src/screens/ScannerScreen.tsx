@@ -63,15 +63,15 @@ export function ScannerScreen() {
       if (found) {
         addActivityLog({
           module: ActivityModule.SCANNER,
-          action: ActivityAction.SCAN,
+          action: ActivityAction.PASS,
           targetId: code,
-          description: UI_TEXT.logScanSuccess.replace("{id}", code) + " (Pass Code)"
+          description: UI_TEXT.logPassSuccess.replace("{id}", code) + " (Pass Code)"
         });
         // Navigation is handled inside openScannedValue
       } else {
         addActivityLog({
           module: ActivityModule.SCANNER,
-          action: ActivityAction.SCAN,
+          action: ActivityAction.PASS,
           description: "Invalid Pass Code: " + code
         });
         setError(UI_TEXT.passCodeError);

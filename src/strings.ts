@@ -113,6 +113,7 @@ export const UI_TEXT = {
   logOpenEditor: "Opening editor for {day}",
   logOpenMenuEditor: "Opening overall menu editor",
   logScanSuccess: "Successfully scanned QR for {id}",
+  logPassSuccess: "Successfully scanned Pass Code for {id}",
   logScanFail: "Failed to scan QR (Invalid): {data}",
   logAddNote: "Added note: {subject}",
   logEditNote: "Updated note: {subject}",

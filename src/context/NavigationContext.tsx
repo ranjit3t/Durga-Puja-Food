@@ -114,8 +114,8 @@ export function NavigationProvider({ children }: { children: React.ReactNode }) 
       setSelectedId(match.id);
       setSelectedRecord(match);
       setEditing(match);
-      // Ensure we navigate to the details/form
-      setScreen(AppScreen.DETAILS);
+      // Use navigate to ensure proper history management and UI update
+      navigate(AppScreen.DETAILS);
       return true;
     }
     return false;

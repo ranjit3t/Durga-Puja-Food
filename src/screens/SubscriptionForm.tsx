@@ -37,6 +37,7 @@ import {
   getDietaryOptionLabel,
   getDayAbbr,
   generatePasscode,
+  generateUniquePasscode,
 } from "../constants";
 import {
   MealChoice,
@@ -71,7 +72,7 @@ export function SubscriptionForm() {
   const { userRole, handleLogout } = useAuth();
   const {
     dayConfig, paymentConfig, seasonEnabled, foodPriceEnabled, foodMenu, mobileEnabled,
-    upsertSubscription, deleteSubscription, kidsEnabled, addActivityLog
+    upsertSubscription, deleteSubscription, kidsEnabled, addActivityLog, subscriptions
   } = useDatabase();
   const { showAlert: showGlobalAlert } = useUI();
   const {
@@ -466,19 +467,21 @@ export function SubscriptionForm() {
 
   // Prepare data for saving, ensuring normalized IDs and aggregated counts
   // We filter out undefined values because Firebase set() does not allow them
+  const passId = lockIdentity
+    ? value.id
+    : `${form.block}-${form.flat.trim().toUpperCase()}`;
+
   const prepared: Subscription = {
     ...form,
     mobile: mobileInput ? Number(mobileInput) : undefined,
     flat: form.flat.trim().toUpperCase(),
-    id: lockIdentity
-      ? value.id
-      : `${form.block}-${form.flat.trim().toUpperCase()}`,
+    id: passId,
     meals: mealsFromChoices(form.mealSlots, dayConfig, form.peopleCount, !!kidsEnabled),
     payments: payments,
     amount: totalAmount.toFixed(0),
     paymentMode: payments[0]?.mode || PaymentMode.CASH,
     transactionId: payments[0]?.transactionId || "",
-    passcode: form.passcode || generatePasscode(),
+    passcode: form.passcode || generateUniquePasscode(subscriptions, passId, passId),
   };
 
   if (prepared.mobile === undefined) {

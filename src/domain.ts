@@ -119,6 +119,7 @@ export enum ActivityAction {
   DOWNLOAD = "Downloaded",
   PRINT = "Printed",
   SCAN = "Scanned",
+  PASS = "Pass Code",
   LOGIN = "Logged In",
   LOGOUT = "Logged Out",
   ERROR = "Error",

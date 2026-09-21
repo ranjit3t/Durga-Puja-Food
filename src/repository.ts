@@ -23,6 +23,7 @@ import {
 } from "./domain";
 import { ConfigDay, AppConfig } from "./types";
 import { UI_TEXT } from "./strings";
+import { generatePasscode } from "./constants";
 
 // --- Repository Interface ---
 
@@ -127,7 +128,7 @@ function normalizeRecord(
   const id = String(value.id || "");
   const mobile = value.mobile ? Number(value.mobile) : undefined;
   const transactionId = value.transactionId ? String(value.transactionId) : undefined;
-  const passcode = value.passcode ? String(value.passcode) : undefined;
+  const passcode = value.passcode ? String(value.passcode) : (id ? generatePasscode(id) : undefined);
 
   // 1. Amount Normalization
   const storedAmount =
