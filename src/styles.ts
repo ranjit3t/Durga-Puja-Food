@@ -727,7 +727,7 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
 
     // Global Footer
     footer: { paddingVertical: v(s(40)), alignItems: "center", ...maxWidthStyle },
-    footerText: { color: COLORS.textMuted, fontSize: s(13), fontWeight: "600" },
+    footerText: { color: COLORS.primary, fontSize: s(13), fontWeight: "800" },
 
     // Login specific
     loginContainer: {
