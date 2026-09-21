@@ -87,6 +87,19 @@ export function ContactsScreen() {
     });
   };
 
+  const handleSMS = (item: SubscriptionRecord) => {
+    if (!item.mobile) return;
+    const url = `sms:${item.mobile}`;
+    void Linking.openURL(url).then(() => {
+      addActivityLog({
+        module: ActivityModule.CONTACT,
+        action: ActivityAction.SMS,
+        targetId: item.id,
+        description: UI_TEXT.logSms.replace("{id}", item.id)
+      });
+    });
+  };
+
   const renderItem = ({ item, index }: { item: SubscriptionRecord, index: number }) => {
     const colorScheme = theme.cardColors[index % theme.cardColors.length];
 
@@ -148,6 +161,18 @@ export function ContactsScreen() {
                   ]}
                 >
                   <Ionicons name="call-outline" size={s(22)} color={theme.colors.primary} />
+                </Pressable>
+                <Pressable
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    handleSMS(item);
+                  }}
+                  style={({ pressed }) => [
+                    { width: s(44), height: s(44), borderRadius: s(12), backgroundColor: theme.colors.success + "15", alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: theme.colors.success + "40" },
+                    pressed && { opacity: 0.7, backgroundColor: theme.colors.success + "30" }
+                  ]}
+                >
+                  <Ionicons name="mail-outline" size={s(22)} color={theme.colors.success} />
                 </Pressable>
              </View>
              <View style={{ backgroundColor: theme.colors.surfaceDark, paddingHorizontal: s(12), paddingVertical: s(6), borderRadius: s(10), borderWidth: 1, borderColor: theme.colors.border, width: '100%', alignItems: 'center' }}>

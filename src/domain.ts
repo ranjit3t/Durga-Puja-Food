@@ -123,6 +123,7 @@ export enum ActivityAction {
   LOGOUT = "Logged Out",
   ERROR = "Error",
   MISSED_PARCEL = "Missed Parcel",
+  SMS = "Sent SMS",
 }
 
 export type ActivityLog = {

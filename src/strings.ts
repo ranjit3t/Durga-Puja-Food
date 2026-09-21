@@ -106,6 +106,7 @@ export const UI_TEXT = {
   logDeletePass: "Deleted pass {id}",
   logChat: "Started WhatsApp chat with {id}",
   logCall: "Started phone call with {id}",
+  logSms: "Sent SMS to {id}",
   logChatReport: "Started WhatsApp chat from report for {id}",
   logCallReport: "Started phone call from report for {id}",
   logViewPass: "Opened pass details for {id}",

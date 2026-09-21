@@ -71,9 +71,10 @@ The application employs a **Zero-Hardcoding Policy** for UI text and Domain enti
   - **Visibility Rules**: Filters only appear if relevant data subsets exist (e.g., the "Kids" chip is hidden if no children are registered in any pass).
 
 - **Integrated Resident Communication**: Both the `SubscriptionListScreen` and `DetailsScreen` leverage the `Linking` API to provide direct communication paths.
-  - **Auto-Injection**: If a pass contains a valid mobile number, the system automatically injects WhatsApp and Phone icons into the UI.
-  - **Placement**: Icons are positioned at the bottom of pass cards in the subscription list, and within the themed **Pass Identity card** (bottom section) in the details view. This provides high-density access while maintaining brand aesthetics.
+  - **Auto-Injection**: If a pass contains a valid mobile number, the system automatically injects WhatsApp, Phone, and SMS icons into the UI.
+  - **Placement**: Icons are positioned at the bottom of pass cards in the subscription list, within the themed **Pass Identity card** in the details view, and as specialized action buttons in the **Contacts Directory**. This provides high-density access while maintaining brand aesthetics.
   - **Contextual Formatting**: WhatsApp links utilize the globally configured `whatsappCountryCode` for seamless message initialization.
+  - **Audit Logging**: Every communication attempt (Chat, Call, SMS) is captured as a forensic event in the Activity Log.
 
 ### E. Global Error Handling Infrastructure
 - **UI Error Interceptor**: Integrates `showGlobalError()` within `UIContext.tsx`. This headless layer translates runtime database synchronization warnings (`firebaseError`) into interactive modal cards that inherit high-contrast text and layout padding variants depending on active theme states.
