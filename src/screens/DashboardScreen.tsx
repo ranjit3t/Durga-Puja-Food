@@ -390,7 +390,9 @@ export function DashboardScreen() {
         const gVeg = (day.breakfastGuestVeg || 0) + (day.lunchGuestVeg || 0) + (day.dinnerGuestVeg || 0);
         const gNonVeg = (day.breakfastGuestNonVeg || 0) + (day.lunchGuestNonVeg || 0) + (day.dinnerGuestNonVeg || 0);
         const mealGuests = gVeg + gNonVeg;
-        const mealGuestsTaken = (day.breakfastGuestTaken || 0) + (day.lunchGuestTaken || 0) + (day.dinnerGuestTaken || 0);
+        const mealGuestsTaken = (day.breakfastGuestVegTaken || 0) + (day.breakfastGuestNonVegTaken || 0) +
+                                (day.lunchGuestVegTaken || 0) + (day.lunchGuestNonVegTaken || 0) +
+                                (day.dinnerGuestVegTaken || 0) + (day.dinnerGuestNonVegTaken || 0);
 
         acc.guestTotal += mealGuests;
         acc.guestVeg += gVeg;
@@ -431,7 +433,7 @@ export function DashboardScreen() {
             guestVeg = item.breakfastGuestVeg || 0;
             guestNonVeg = item.breakfastGuestNonVeg || 0;
             guestTotal = guestVeg + guestNonVeg;
-            guestTaken = item.breakfastGuestTaken || 0;
+            guestTaken = (item.breakfastGuestVegTaken || 0) + (item.breakfastGuestNonVegTaken || 0);
             adultsTaken = (item.breakfastFlatVegTaken || 0) + (item.breakfastFlatNonVegTaken || 0);
           } else if (mType === MealType.LUNCH) {
             total = item.lunch || 0;
@@ -445,7 +447,7 @@ export function DashboardScreen() {
             guestVeg = item.lunchGuestVeg || 0;
             guestNonVeg = item.lunchGuestNonVeg || 0;
             guestTotal = guestVeg + guestNonVeg;
-            guestTaken = item.lunchGuestTaken || 0;
+            guestTaken = (item.lunchGuestVegTaken || 0) + (item.lunchGuestNonVegTaken || 0);
             adultsTaken = (item.lunchFlatVegTaken || 0) + (item.lunchFlatNonVegTaken || 0);
           } else {
             total = item.dinner || 0;
@@ -459,7 +461,7 @@ export function DashboardScreen() {
             guestVeg = item.dinnerGuestVeg || 0;
             guestNonVeg = item.dinnerGuestNonVeg || 0;
             guestTotal = guestVeg + guestNonVeg;
-            guestTaken = item.dinnerGuestTaken || 0;
+            guestTaken = (item.dinnerGuestVegTaken || 0) + (item.dinnerGuestNonVegTaken || 0);
             adultsTaken = (item.dinnerFlatVegTaken || 0) + (item.dinnerFlatNonVegTaken || 0);
           }
 

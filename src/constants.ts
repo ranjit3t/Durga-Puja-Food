@@ -489,6 +489,24 @@ export const qrValueFor = (id: string) =>
   `https://durga-puja-food.app/flat/${encodeURIComponent(id)}`;
 
 /**
+ * Generates a unique 4-digit passcode for a pass.
+ * If a seed is provided, it generates a deterministic passcode.
+ * @returns 4-digit numeric string (0000-9999)
+ */
+export const generatePasscode = (seed?: string) => {
+  if (seed) {
+    // Simple deterministic hash for 4 digits
+    let hash = 0;
+    for (let i = 0; i < seed.length; i++) {
+      hash = (hash << 5) - hash + seed.charCodeAt(i);
+      hash |= 0;
+    }
+    return Math.abs(hash % 10000).toString().padStart(4, "0");
+  }
+  return Math.floor(Math.random() * 10000).toString().padStart(4, "0");
+};
+
+/**
  * Returns a short summary of meal counts across days for the subscription list.
  */
 export const mealSummary = (subscription: Subscription, config: ConfigDay[], kidsEnabled: boolean) =>

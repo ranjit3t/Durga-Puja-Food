@@ -161,7 +161,7 @@ export const UI_TEXT = {
   guestButton: "Guest",
   guestManagement: "Guest Management",
   report: "Report",
-  scanQr: "Scan QR",
+  scanQr: "Scan/Pass Code",
   addFlat: "Add Pass",
   searchPlaceholder: "Search block or flat no.",
   noRecords: "No flat records found.",
@@ -254,7 +254,9 @@ export const UI_TEXT = {
   cameraAccessSubtitle: "Allow camera access to validate a flat pass.",
   allowCamera: "Allow Camera",
   scanFrameHint: "Place a flat QR inside the frame",
+  passCodeEntryHint: "Enter 4 digit Pass Code",
   scanError: "This QR does not match a registered pass.",
+  passCodeError: "This Pass Code does not match a registered pass.",
 
   // QR Pass Screen
   foodPass: "Food Pass",
@@ -265,6 +267,7 @@ export const UI_TEXT = {
   sendToWhatsApp: "Chat",
   downloadPass: "Download Pass",
   printPass: "Print pass",
+  passCodeLabel: "Pass Code",
   shareQrDialog: "Share Pass",
   passMessage: "Food pass for flat ",
   passShareMessage: "ETERNIA FOOD DESK 2026 - Digital Pass",

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, Pressable, StatusBar, StyleSheet, useWindowDimensions, Platform } from "react-native";
+import { View, Text, Pressable, StatusBar, StyleSheet, useWindowDimensions, Platform, TextInput } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useStyles } from "../styles";
 import { useAppTheme, StatusBarStyleMode } from "../theme";
@@ -23,7 +23,70 @@ export function ScannerScreen() {
 
   const scanSize = Math.min(width * 0.7, 260);
   const [error, setError] = useState("");
+  const [passCode, setPassCode] = useState("");
   const isScanning = React.useRef(false);
+
+  const handleScan = (data: string) => {
+    if (isScanning.current) return;
+    isScanning.current = true;
+
+    const found = openScannedValue(data, subscriptions);
+    if (found) {
+      addActivityLog({
+        module: ActivityModule.SCANNER,
+        action: ActivityAction.SCAN,
+        targetId: data.split('/').pop(), // Extract ID from URL if possible
+        description: UI_TEXT.logScanSuccess.replace("{id}", data.split('/').pop() || "")
+      });
+    } else {
+      addActivityLog({
+        module: ActivityModule.SCANNER,
+        action: ActivityAction.SCAN,
+        description: UI_TEXT.logScanFail.replace("{data}", data)
+      });
+      setError(UI_TEXT.scanError);
+      showAlert(UI_TEXT.error, UI_TEXT.scanError, [
+        {
+          text: UI_TEXT.ok,
+          onPress: () => {
+            navigate(AppScreen.SUBSCRIPTION_LIST);
+          },
+        },
+      ]);
+    }
+  };
+
+  const handlePassCode = (code: string) => {
+    setPassCode(code);
+    if (code.length === 4) {
+      const found = openScannedValue(code, subscriptions);
+      if (found) {
+        addActivityLog({
+          module: ActivityModule.SCANNER,
+          action: ActivityAction.SCAN,
+          targetId: code,
+          description: UI_TEXT.logScanSuccess.replace("{id}", code) + " (Pass Code)"
+        });
+        // Navigation is handled inside openScannedValue
+      } else {
+        addActivityLog({
+          module: ActivityModule.SCANNER,
+          action: ActivityAction.SCAN,
+          description: "Invalid Pass Code: " + code
+        });
+        setError(UI_TEXT.passCodeError);
+        showAlert(UI_TEXT.error, UI_TEXT.passCodeError, [
+          {
+            text: UI_TEXT.ok,
+            onPress: () => {
+              setPassCode("");
+              setError("");
+            },
+          },
+        ]);
+      }
+    }
+  };
 
   if (!permission) return <View style={styles.root} />;
   if (!permission.granted) {
@@ -54,38 +117,7 @@ export function ScannerScreen() {
         style={StyleSheet.absoluteFill}
         facing="back"
         barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
-        onBarcodeScanned={async ({ data }) => {
-          if (isScanning.current) return;
-          isScanning.current = true;
-
-          const found = openScannedValue(data, subscriptions);
-          if (found) {
-            addActivityLog({
-              module: ActivityModule.SCANNER,
-              action: ActivityAction.SCAN,
-              targetId: data.split('/').pop(), // Extract ID from URL if possible
-              description: UI_TEXT.logScanSuccess.replace("{id}", data.split('/').pop() || "")
-            });
-          } else {
-            addActivityLog({
-              module: ActivityModule.SCANNER,
-              action: ActivityAction.SCAN,
-              description: UI_TEXT.logScanFail.replace("{data}", data)
-            });
-            setError(UI_TEXT.scanError);
-            showAlert(UI_TEXT.error, UI_TEXT.scanError, [
-              {
-                text: UI_TEXT.ok,
-                onPress: () => {
-                  navigate(AppScreen.SUBSCRIPTION_LIST);
-                  // We don't reset isScanning here because we're navigating away
-                },
-              },
-            ]);
-            // If we were staying on screen, we'd reset isScanning.current = false here
-            // but we're showing an alert that navigates away.
-          }
-        }}
+        onBarcodeScanned={async ({ data }) => handleScan(data)}
       />
 
       {/* 2. UI Overlay on top of camera */}
@@ -102,9 +134,37 @@ export function ScannerScreen() {
             right: 0,
             zIndex: 999,
             pointerEvents: "box-none",
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between'
           }}
         >
           <BackButton onPress={goBack} />
+          <View style={{ flex: 1, alignItems: 'center', marginLeft: -40 }}>
+            <TextInput
+              value={passCode}
+              onChangeText={handlePassCode}
+              placeholder="XXXX"
+              placeholderTextColor={theme.colors.white + "88"}
+              keyboardType="number-pad"
+              maxLength={4}
+              style={{
+                backgroundColor: theme.colors.shadow + "AA",
+                color: theme.colors.white,
+                fontSize: 24,
+                fontWeight: "900",
+                textAlign: "center",
+                width: 120,
+                height: 50,
+                borderRadius: 12,
+                borderWidth: 2,
+                borderColor: theme.colors.secondary,
+              }}
+            />
+            <Text style={{ color: theme.colors.white, fontSize: 10, marginTop: 4, fontWeight: '700' }}>
+              {UI_TEXT.passCodeEntryHint}
+            </Text>
+          </View>
         </View>
 
         {/* Center Target Box */}

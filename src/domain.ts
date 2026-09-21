@@ -227,6 +227,7 @@ export type SubscriptionRecord = {
   amount: string;
   paymentMode: PaymentMode;
   transactionId?: string;
+  passcode?: string;
   takenByPerson: Record<EventDay, TakenState[]>;
 };
 

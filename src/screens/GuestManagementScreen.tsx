@@ -1,11 +1,11 @@
 import React, { memo } from "react";
-import { View, Text, ScrollView, StatusBar, Platform } from "react-native";
+import { View, Text, ScrollView, StatusBar } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useStyles } from "../styles";
-import { StatusBarStyleMode, useAppTheme } from "../theme";
+import { useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
 import { getDayLabel, isMealEnabled, isMealDone, getSortedMealKeys, isDietaryEnabled, isMealCurrent, getMealLabel, isMealInFuture } from "../constants";
-import { MealMenu, ConfigDay, UserRole, MealType, DietType, AppScreen, AppThemeMode, ActivityModule, ActivityAction } from "../types";
+import { MealMenu, ConfigDay, MealType, DietType, AppThemeMode, ActivityModule, ActivityAction, AppScreen, UserRole } from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
@@ -27,9 +27,10 @@ interface GuestMealCardProps {
     field: string,
     value: number
   ) => void;
+  anyCurrentMealEnabled: boolean;
 }
 
-const GuestMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, onUpdate }: GuestMealCardProps) => {
+const GuestMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, onUpdate, anyCurrentMealEnabled }: GuestMealCardProps) => {
   const styles = useStyles();
   const { theme } = useAppTheme();
 
@@ -48,9 +49,14 @@ const GuestMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, onUp
   const guestVegTaken = menu.guestVegTaken || 0;
   const guestNonVegTaken = menu.guestNonVegTaken || 0;
 
-  // For non-detailed (e.g. Veg only), we use guestVeg and guestVegTaken as the primary storage
-  const guestTotal = showDetailed ? (guestVeg + guestNonVeg) : (menu.guestVeg || 0);
-  const guestTaken = showDetailed ? (guestVegTaken + guestNonVegTaken) : (menu.guestVegTaken || 0);
+  // Administrative editability rules:
+  // 1. Planning Mode (No Current Meal): Edit any meal not marked as Done.
+  // 2. Live Mode (Current Meal exists): Edit the Current meal or any Future meal.
+  // For Admin, we always allow editing unless it's a past completed meal.
+  const isMealEditableForAdmin = isAdmin && (!anyCurrentMealEnabled ? !isDone : (isCurrent || isFuture));
+
+  const guestTotal = showDetailed ? (guestVeg + guestNonVeg) : (isVegEnabled ? guestVeg : guestNonVeg);
+  const guestTaken = showDetailed ? (guestVegTaken + guestNonVegTaken) : (isVegEnabled ? guestVegTaken : guestNonVegTaken);
 
   return (
     <View style={[
@@ -95,7 +101,7 @@ const GuestMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, onUp
                 value={guestVeg}
                 min={guestVegTaken}
                 onChange={(val) => onUpdate(dayId, type, "guestVeg", val)}
-                disabled={disabled || !isAdmin || isDone}
+                disabled={disabled || !isMealEditableForAdmin}
               />
             </View>
             <View style={{ width: '100%' }}>
@@ -104,7 +110,7 @@ const GuestMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, onUp
                 value={guestNonVeg}
                 min={guestNonVegTaken}
                 onChange={(val) => onUpdate(dayId, type, "guestNonVeg", val)}
-                disabled={disabled || !isAdmin || isDone}
+                disabled={disabled || !isMealEditableForAdmin}
               />
             </View>
             <View style={{ width: '100%' }}>
@@ -145,7 +151,7 @@ const GuestMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, onUp
                 value={guestTotal}
                 min={guestTaken}
                 onChange={(val) => onUpdate(dayId, type, isVegEnabled ? "guestVeg" : "guestNonVeg", val)}
-                disabled={disabled || !isAdmin || isDone}
+                disabled={disabled || !isMealEditableForAdmin}
               />
             </View>
             <View style={{ width: '100%' }}>
@@ -168,7 +174,7 @@ const GuestMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, onUp
 export function GuestManagementScreen() {
   const { userRole, handleLogout } = useAuth();
   const {
-    foodMenu, dayConfig, seasonEnabled, updateGuestCount, addActivityLog
+    foodMenu, dayConfig, seasonEnabled, updateGuestCountDebounced
   } = useDatabase();
   const { goBack, navigate } = useAppNavigation();
 
@@ -191,25 +197,18 @@ export function GuestManagementScreen() {
   }, [dayConfig]);
 
   const isAdmin = userRole === UserRole.ADMIN;
+  const anyCurrentMealEnabled = React.useMemo(() => {
+    return dayConfig.some(d => d.enabled && [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].some(m => isMealCurrent(d.id, m, dayConfig)));
+  }, [dayConfig]);
 
-  const handleUpdate = (
+  const handleUpdate = React.useCallback((
     day: string,
     type: MealType,
     field: string,
     value: number
   ) => {
-    updateGuestCount(day, type, field, value);
-    addActivityLog({
-      module: ActivityModule.GUEST,
-      action: ActivityAction.UPDATE,
-      targetId: `${day}-${type}`,
-      description: UI_TEXT.logUpdateGuest
-        .replace("{field}", field)
-        .replace("{value}", String(value))
-        .replace("{day}", getDayLabel(day, dayConfig))
-        .replace("{meal}", getMealLabel(type))
-    });
-  };
+    updateGuestCountDebounced(day, type, field, value);
+  }, [updateGuestCountDebounced]);
 
   return (
     <View style={styles.root}>
@@ -251,6 +250,7 @@ export function GuestManagementScreen() {
                     onUpdate={handleUpdate}
                     disabled={!seasonEnabled}
                     isAdmin={isAdmin}
+                    anyCurrentMealEnabled={anyCurrentMealEnabled}
                   />
                 ))}
             </View>

@@ -142,7 +142,7 @@ The application also enforces a **Natural Alphanumeric Sorting** policy globally
 - **Responsive Dashboard & Menu Headers**: Individual meal sections, the primary event summary card, and menu display/editor screens utilize flexible wrapping headers (`flexWrap: 'wrap'`). This ensures that meal titles, active status badges (LIVE), dietary markers (Veg Only), and aggregated demand metrics adjust their layout gracefully on narrow screens without overflowing their container boundaries.
 - **Live Service Deep-Linking**: Integrates a `Pressable` shortcut layout within the card structure positioned at the top-right. If a specific event meal is globally marked as active, volunteers can tap the live status indicator badge (which explicitly displays the active day and meal) to route straight to the kitchen metrics layout.
 - **Visual Completion Indicators**: The operational dashboard visually dims (reduces opacity to 0.5) meal sections that are marked as "Done". Individual sections are outlined with thin borders to better segregate high-density kitchen metrics.
-- **Operational Summary snapshot**: The dashboard's main event card includes a real-time snapshot of the "Current Meal" demand and actual collection status. It segregates requirements into three primary categories: **Adults**, **Kids**, and **Guests**. If Kids Support is disabled, member categories are unified under a single **Members** label. All categories utilize a shorthand dietary split and collection status (e.g., "**Adults: 45 (20V | 25N) (Taken: 10)**"). For single-diet service windows (Veg Only), shorthand splits are automatically hidden to maintain focus on the collection count. This snapshot allows kitchen managers to focus on the immediate workload without scrolling through day-wise matrices. 
+- **Operational Summary snapshot**: The dashboard's main event card includes a real-time snapshot of the "Current Meal" demand and actual collection status. It segregates requirements into three primary categories: **Adults**, **Kids**, and **Guests**. If Kids Support is disabled, member categories are unified under a single **Members** label. All categories utilize a shorthand dietary split and collection status (e.g., "**Adults: 45 (20V | 25N) (Taken: 10)**"). The system ensures 100% accuracy by utilizing a synchronized aggregation logic that sums both Veg and Non-Veg guest collections for the high-level summary. For single-diet service windows (Veg Only), shorthand splits are automatically hidden to maintain focus on the collection count. This snapshot allows kitchen managers to focus on the immediate workload without scrolling through day-wise matrices. 
 - **Sectional Saving (Menu Editor)**: To minimize data transfer and provide immediate feedback, the `MenuEditorScreen` supports individual **Save** buttons for each meal section (Breakfast, Lunch, Dinner). These buttons are enabled only when the specific section has unsaved changes.
 - **Dual Visualization (Grid/Chart)**: Within each meal section, the **Total Taken** metric is strategically placed at the end of the grid to serve as the final reconciliation anchor. Volunteers can toggle between a numeric `MealMetricGrid` and a visual `MealBarChart` using the bottom-left action bar. The bar chart provides a comparative view of "Planned" (faded) vs "Taken" (solid) plates for each dietary type (Veg, Non-Veg, Guest, Parcel).
 - **High-Density Grouped Metrics**: Individual meal sections within the dashboard utilize a logical row-based grouping. Related fields like **Veg Demand** and **Veg Taken** are positioned adjacently. The system employs **Adaptive Labeling**: on single-diet days, it automatically removes redundant "Veg/Non-Veg" qualifiers from member and collection counts, simplifying the interface to focus on core counts (e.g., "Adults Taken" instead of "Adult Veg Taken").
@@ -290,16 +290,30 @@ The application includes a decentralized note-taking system for operational coor
 - **Communication Integration**: Leverages the `Linking` API for one-tap actions:
     - **WhatsApp Chat**: Initializes a direct chat using the globally configured `whatsappCountryCode`.
     - **Cellular Call**: Triggers the device's native dialer.
+    - **Mobile SMS**: Opens the native messaging app with the resident's number pre-filled.
 - **Deep-Linking**: Clicking a contact card instantly navigates the administrator to the resident's full **Details Screen** for quick verification of their meal plan or payment status.
-- **Audit Integration**: All communication attempts from this screen are captured in the **Activity Log** for transparency.
+- **Audit Integration**: All communication attempts (including SMS via `logSms`) from this screen are captured in the **Activity Log** for transparency.
 
 ### P. High-Fidelity Theming System
 The application features a robust, reactive theme architecture:
 - **Zero Hard-Coded Colors**: A strict policy where UI components never use literal hex or RGB values. All colors are sourced from the `theme.colors` or `theme.cardColors` registries.
 - **High-Visibility Branding**: The global footer utilizes bold weights and primary theme tokens to maintain anchor stability and legibility against the multi-layered mesh backdrop.
+- **Guest Governance**: Permission logic for Guest demand fields (`guestVeg`, `guestNonVeg`, `guestTotal`) is now context-sensitive:
+    - **Live Mode**: If a `Current Meal` is active, demand fields are editable for the `Current` and all `Future` meals.
+    - **Planning Mode**: If no `Current Meal` exists, all meals not marked as `Done` are editable.
+    - **Performance Optimization**: Operational logs for guest count adjustments are **debounced with a 1000ms delay**, preventing audit log bloat during rapid increments/decrements.
 - **Enum-Driven Configuration**: The application utilizes the `MealType` enum for all internal property access and configuration state management. This ensures 100% synchronization between the database schema, business logic, and UI rendering, eliminating risks associated with hardcoded string literals.
 - **Dynamic Backdrop**: Mesh gradient blobs automatically adjust their intensity and hue-shift based on the active theme, maintaining a festive atmosphere while ensuring absolute readability.
 - **Web Scaling**: The theme engine dynamically calculates scaling factors for desktop monitors, ensuring a "first-class" browser experience without the "tiny UI" common in mobile-to-web ports.
+
+### Q. 4-Digit Passcode Logic
+To provide a fail-safe validation method, the system implements a unique 4-digit passcode for every pass:
+- **Generation**: The `generatePasscode()` utility in `constants.ts` creates a random 4-digit numeric string (0000-9999) upon new pass registration.
+- **Uniqueness**: While the numeric space is 10,000, the system is designed for community scales where collisions are statistically negligible. The passcode is stored in the `passcode` field of the `SubscriptionRecord`.
+- **UI Integration**:
+    - **QR Card**: Displayed in the `QrScreen` using a bold, primary-colored typeface for high legibility.
+    - **Scanner Page**: The `ScannerScreen` features a `TextInput` (numeric) at the top. Entering a 4th digit triggers an immediate lookup in the `subscriptions` array.
+- **Action Parity**: Successfully entering a valid passcode performs the exact same action as scanning a valid QR code: it logs a `SCAN` activity and navigates to the pass's details view.
 
 ---
 © 2026 Eternia Food Desk Technical Team

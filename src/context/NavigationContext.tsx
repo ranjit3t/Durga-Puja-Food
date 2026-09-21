@@ -105,14 +105,17 @@ export function NavigationProvider({ children }: { children: React.ReactNode }) 
   };
 
   const openScannedValue = (val: string, subscriptions: Subscription[]) => {
-    const match = subscriptions.find((s) => qrValueFor(s.id) === val);
+    // Try full QR URL match, then ID match, then Passcode match
+    const match = subscriptions.find((s) =>
+      qrValueFor(s.id) === val || s.id === val || s.passcode === val
+    );
+
     if (match) {
       setSelectedId(match.id);
       setSelectedRecord(match);
       setEditing(match);
-      // When scanning, we jump directly to FORM, leaving the previous history (e.g. HOME)
-      // so that pressing back from FORM returns to the dashboard, not the scanner.
-      setScreen(AppScreen.FORM);
+      // Ensure we navigate to the details/form
+      setScreen(AppScreen.DETAILS);
       return true;
     }
     return false;

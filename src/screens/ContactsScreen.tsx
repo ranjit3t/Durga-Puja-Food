@@ -153,18 +153,6 @@ export function ContactsScreen() {
                 <Pressable
                   onPress={(e) => {
                     e.stopPropagation();
-                    handlePhoneCall(item);
-                  }}
-                  style={({ pressed }) => [
-                    { width: s(44), height: s(44), borderRadius: s(12), backgroundColor: theme.colors.primary + "15", alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: theme.colors.primary + "40" },
-                    pressed && { opacity: 0.7, backgroundColor: theme.colors.primary + "30" }
-                  ]}
-                >
-                  <Ionicons name="call-outline" size={s(22)} color={theme.colors.primary} />
-                </Pressable>
-                <Pressable
-                  onPress={(e) => {
-                    e.stopPropagation();
                     handleSMS(item);
                   }}
                   style={({ pressed }) => [
@@ -173,6 +161,18 @@ export function ContactsScreen() {
                   ]}
                 >
                   <Ionicons name="mail-outline" size={s(22)} color={theme.colors.success} />
+                </Pressable>
+                <Pressable
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    handlePhoneCall(item);
+                  }}
+                  style={({ pressed }) => [
+                    { width: s(44), height: s(44), borderRadius: s(12), backgroundColor: theme.colors.primary + "15", alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: theme.colors.primary + "40" },
+                    pressed && { opacity: 0.7, backgroundColor: theme.colors.primary + "30" }
+                  ]}
+                >
+                  <Ionicons name="call-outline" size={s(22)} color={theme.colors.primary} />
                 </Pressable>
              </View>
              <View style={{ backgroundColor: theme.colors.surfaceDark, paddingHorizontal: s(12), paddingVertical: s(6), borderRadius: s(10), borderWidth: 1, borderColor: theme.colors.border, width: '100%', alignItems: 'center' }}>

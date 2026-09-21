@@ -36,6 +36,7 @@ import {
   getMealLabel,
   getDietaryOptionLabel,
   getDayAbbr,
+  generatePasscode,
 } from "../constants";
 import {
   MealChoice,
@@ -477,6 +478,7 @@ export function SubscriptionForm() {
     amount: totalAmount.toFixed(0),
     paymentMode: payments[0]?.mode || PaymentMode.CASH,
     transactionId: payments[0]?.transactionId || "",
+    passcode: form.passcode || generatePasscode(),
   };
 
   if (prepared.mobile === undefined) {

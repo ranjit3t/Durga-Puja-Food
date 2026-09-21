@@ -127,6 +127,7 @@ function normalizeRecord(
   const id = String(value.id || "");
   const mobile = value.mobile ? Number(value.mobile) : undefined;
   const transactionId = value.transactionId ? String(value.transactionId) : undefined;
+  const passcode = value.passcode ? String(value.passcode) : undefined;
 
   // 1. Amount Normalization
   const storedAmount =
@@ -311,6 +312,7 @@ function normalizeRecord(
     takenByPerson,
     paymentMode,
     transactionId,
+    passcode,
   } as SubscriptionRecord;
 }
 
