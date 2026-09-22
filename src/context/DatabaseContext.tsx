@@ -55,6 +55,7 @@ interface DatabaseContextType {
   foodPriceEnabled: boolean;
   kidsEnabled: boolean;
   whatsappCountryCode: string;
+  remoteAppVersion: string | null;
   notes: Note[];
 
   // Derived Metrics
@@ -100,6 +101,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
   const [foodPriceEnabled, setFoodPriceEnabled] = useState(false);
   const [kidsEnabled, setKidsEnabled] = useState(false);
   const [whatsappCountryCode, setWhatsappCountryCode] = useState(UI_TEXT.defaultCountryCode);
+  const [remoteAppVersion, setRemoteAppVersion] = useState<string | null>(null);
   const [notes, setNotes] = useState<Note[]>([]);
 
   const getAuthConfig = useCallback(() => repository.getAuthConfig(), []);
@@ -128,12 +130,20 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
         setFirebaseError(firebaseMissingConfig.join(", "));
         return;
       }
-      const [subs, config, menu, notesData] = await Promise.all([
+      const [subs, config, menu, notesData, appVer] = await Promise.all([
         repository.list(),
         repository.getConfig(),
         repository.getMenu(),
         repository.getNotes(),
+        repository.getAppVersion(),
       ]);
+
+      if (appVer) {
+        setRemoteAppVersion(appVer);
+      } else {
+        void repository.updateAppVersion(UI_TEXT.appVersion);
+        setRemoteAppVersion(UI_TEXT.appVersion);
+      }
 
       // Natural sort by Block then Flat
       const sortedSubs = [...subs].sort((a, b) => {
@@ -169,6 +179,19 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       refreshAllData();
     }
   }, [userRole, refreshAllData]);
+
+  // Real-time listener for remote app version changes
+  useEffect(() => {
+    if (!userRole) return;
+    const unsubscribe = repository.onAppVersionChange((ver) => {
+      if (ver !== null) {
+        setRemoteAppVersion(ver);
+      }
+    });
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [userRole]);
 
   // Periodic Background Sync (10s)
   useEffect(() => {
@@ -651,14 +674,14 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo(() => ({
     loading, firebaseError, refreshAllData,
     subscriptions, foodMenu, dayConfig, seasonName, seasonEnabled, paymentConfig, guestEnabled, mobileEnabled, foodPriceEnabled,
-    kidsEnabled, whatsappCountryCode, notes,
+    kidsEnabled, whatsappCountryCode, remoteAppVersion, notes,
     dashboardData, collections, totalPeople,
     upsertSubscription, deleteSubscription, updateConfig, updateMenu, updateGuestCount, updateMealMenu, updateSubscriptionStatus,
     getAuthConfig, addActivityLog, getActivityLogs, upsertNote, deleteNote, updateGuestCountDebounced
   }), [
     loading, firebaseError, refreshAllData,
     subscriptions, foodMenu, dayConfig, seasonName, seasonEnabled, paymentConfig, guestEnabled, mobileEnabled, foodPriceEnabled,
-    whatsappCountryCode, notes,
+    kidsEnabled, whatsappCountryCode, remoteAppVersion, notes,
     dashboardData, collections, totalPeople,
     upsertSubscription, deleteSubscription, updateConfig, updateMenu, updateGuestCount, updateMealMenu, updateSubscriptionStatus,
     getAuthConfig, addActivityLog, getActivityLogs, upsertNote, deleteNote, updateGuestCountDebounced

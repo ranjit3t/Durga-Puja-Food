@@ -260,6 +260,7 @@ const DashboardMealSection = memo(
                 totalNonVegTaken={totalNonVegTaken} guestVeg={guestVeg} guestNonVeg={guestNonVeg}
                 guestVegTaken={guestVegTaken} guestNonVegTaken={guestNonVegTaken}
                 totalMealTaken={totalMealTaken} kidsEnabled={kidsEnabled} guestEnabled={guestEnabled}
+                isParcelEnabled={isParcelEnabled(day, type, config)}
                 isBothEnabled={isBothEnabled} labels={labels as any}
               />
             ) : (
@@ -271,6 +272,7 @@ const DashboardMealSection = memo(
                 totalNonVegTaken={totalNonVegTaken} guestVeg={guestVeg} guestNonVeg={guestNonVeg}
                 guestVegTaken={guestVegTaken} guestNonVegTaken={guestNonVegTaken}
                 totalMealTaken={totalMealTaken} kidsEnabled={kidsEnabled} guestEnabled={guestEnabled}
+                isParcelEnabled={isParcelEnabled(day, type, config)}
                 isBothEnabled={isBothEnabled} labels={labels as any}
               />
             )}

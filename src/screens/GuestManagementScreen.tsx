@@ -92,79 +92,91 @@ const GuestMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, onUp
         )}
       </View>
 
-      <View style={{ gap: 16 }}>
+      <View style={{ gap: 14 }}>
         {showDetailed ? (
           <>
-            <View style={{ width: '100%' }}>
-              <CounterInput
-                label={UI_TEXT.guestVeg}
-                value={guestVeg}
-                min={guestVegTaken}
-                onChange={(val) => onUpdate(dayId, type, "guestVeg", val)}
-                disabled={disabled || !isMealEditableForAdmin}
-              />
-            </View>
-            <View style={{ width: '100%' }}>
-              <CounterInput
-                label={UI_TEXT.guestNonVeg}
-                value={guestNonVeg}
-                min={guestNonVegTaken}
-                onChange={(val) => onUpdate(dayId, type, "guestNonVeg", val)}
-                disabled={disabled || !isMealEditableForAdmin}
-              />
-            </View>
-            <View style={{ width: '100%' }}>
-              <CounterInput
-                label={UI_TEXT.guestVegTaken}
-                value={guestVegTaken}
-                max={guestVeg}
-                onChange={(val) => onUpdate(dayId, type, "guestVegTaken", val)}
-                disabled={disabled || isDone || isFuture}
-              />
-            </View>
-            <View style={{ width: '100%' }}>
-              <CounterInput
-                label={UI_TEXT.guestNonVegTaken}
-                value={guestNonVegTaken}
-                max={guestNonVeg}
-                onChange={(val) => onUpdate(dayId, type, "guestNonVegTaken", val)}
-                disabled={disabled || isDone || isFuture}
-              />
+            {/* 1. VEG GROUP */}
+            <View style={{ gap: 10, padding: 12, backgroundColor: theme.colors.surface, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.veg + "35" }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Ionicons name="leaf" size={14} color={theme.colors.veg} />
+                <Text style={{ fontSize: 12, fontWeight: '800', color: theme.colors.veg, letterSpacing: 0.5 }}>
+                  {UI_TEXT.veg.toUpperCase()}
+                </Text>
+              </View>
+              <View style={{ gap: 10 }}>
+                <CounterInput
+                  label={`${UI_TEXT.veg}${UI_TEXT.space}${UI_TEXT.planned}`}
+                  value={guestVeg}
+                  min={guestVegTaken}
+                  onChange={(val) => onUpdate(dayId, type, "guestVeg", val)}
+                  disabled={disabled || !isMealEditableForAdmin}
+                />
+                <CounterInput
+                  label={`${UI_TEXT.veg}${UI_TEXT.space}${UI_TEXT.served}`}
+                  value={guestVegTaken}
+                  max={guestVeg}
+                  onChange={(val) => onUpdate(dayId, type, "guestVegTaken", val)}
+                  disabled={disabled || isDone || isFuture}
+                />
+              </View>
             </View>
 
-            <View style={{ width: '100%', flexDirection: 'row', gap: 16, marginTop: 4 }}>
-               <View style={{ flex: 1, backgroundColor: theme.colors.surface, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border }}>
-                  <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.textSecondary }}>{UI_TEXT.guestTotal.toUpperCase()}</Text>
-                  <Text style={{ fontSize: 20, fontWeight: '900', color: theme.colors.textPrimary, marginTop: 4 }}>{guestTotal}</Text>
-               </View>
-               <View style={{ flex: 1, backgroundColor: theme.colors.surface, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border }}>
-                  <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.textSecondary }}>{UI_TEXT.guestTaken.toUpperCase()}</Text>
-                  <Text style={{ fontSize: 20, fontWeight: '900', color: theme.colors.success, marginTop: 4 }}>{guestTaken}</Text>
-               </View>
+            {/* 2. NON-VEG GROUP */}
+            <View style={{ gap: 10, padding: 12, backgroundColor: theme.colors.surface, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.nonVeg + "35" }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Ionicons name="flame" size={14} color={theme.colors.nonVeg} />
+                <Text style={{ fontSize: 12, fontWeight: '800', color: theme.colors.nonVeg, letterSpacing: 0.5 }}>
+                  {UI_TEXT.nonVeg.toUpperCase()}
+                </Text>
+              </View>
+              <View style={{ gap: 10 }}>
+                <CounterInput
+                  label={`${UI_TEXT.nonVeg}${UI_TEXT.space}${UI_TEXT.planned}`}
+                  value={guestNonVeg}
+                  min={guestNonVegTaken}
+                  onChange={(val) => onUpdate(dayId, type, "guestNonVeg", val)}
+                  disabled={disabled || !isMealEditableForAdmin}
+                />
+                <CounterInput
+                  label={`${UI_TEXT.nonVeg}${UI_TEXT.space}${UI_TEXT.served}`}
+                  value={guestNonVegTaken}
+                  max={guestNonVeg}
+                  onChange={(val) => onUpdate(dayId, type, "guestNonVegTaken", val)}
+                  disabled={disabled || isDone || isFuture}
+                />
+              </View>
+            </View>
+
+            {/* 3. TOTAL SUMMARY ROW */}
+            <View style={{ width: '100%', flexDirection: 'row', gap: 12, marginTop: 2 }}>
+              <View style={{ flex: 1, backgroundColor: theme.colors.surface, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border }}>
+                <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.textSecondary }}>{UI_TEXT.plannedTotal.toUpperCase()}</Text>
+                <Text style={{ fontSize: 20, fontWeight: '900', color: theme.colors.textPrimary, marginTop: 4 }}>{guestTotal}</Text>
+              </View>
+              <View style={{ flex: 1, backgroundColor: theme.colors.surface, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border }}>
+                <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.textSecondary }}>{UI_TEXT.totalServed.toUpperCase()}</Text>
+                <Text style={{ fontSize: 20, fontWeight: '900', color: theme.colors.veg, marginTop: 4 }}>{guestTaken}</Text>
+              </View>
             </View>
           </>
         ) : (
-          <>
-            <View style={{ width: '100%' }}>
-              <CounterInput
-                label={UI_TEXT.guestTotal}
-                value={guestTotal}
-                min={guestTaken}
-                onChange={(val) => onUpdate(dayId, type, isVegEnabled ? "guestVeg" : "guestNonVeg", val)}
-                disabled={disabled || !isMealEditableForAdmin}
-              />
-            </View>
-            <View style={{ width: '100%' }}>
-              <CounterInput
-                label={UI_TEXT.guestTaken}
-                value={guestTaken}
-                min={0}
-                max={guestTotal}
-                onChange={(val) => onUpdate(dayId, type, isVegEnabled ? "guestVegTaken" : "guestNonVegTaken", val)}
-                disabled={disabled || isDone || isFuture}
-              />
-            </View>
-          </>
+          <View style={{ gap: 10 }}>
+            <CounterInput
+              label={UI_TEXT.plannedTotal}
+              value={guestTotal}
+              min={guestTaken}
+              onChange={(val) => onUpdate(dayId, type, isVegEnabled ? "guestVeg" : "guestNonVeg", val)}
+              disabled={disabled || !isMealEditableForAdmin}
+            />
+            <CounterInput
+              label={UI_TEXT.totalServed}
+              value={guestTaken}
+              min={0}
+              max={guestTotal}
+              onChange={(val) => onUpdate(dayId, type, isVegEnabled ? "guestVegTaken" : "guestNonVegTaken", val)}
+              disabled={disabled || isDone || isFuture}
+            />
+          </View>
         )}
       </View>
     </View>

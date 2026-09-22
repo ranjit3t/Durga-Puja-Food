@@ -1,86 +1,243 @@
-# Eternia Food Desk (Event Management)
+# Eternia Food Desk — System Architecture & Technical Documentation
 
-A robust Expo React Native application designed for food admins and volunteers to manage feast subscriptions, daily menus, and meal distribution during large scale community events.
-
-## ✨ Key Features
-
-### 🌐 Cross-Platform Web Support
-- **First-Class Browser Experience**: Fully optimized for web browsers with a professional, desktop-class interface.
-- **Adaptive Screen Scaling**: The system detects high-resolution monitors and automatically scales typography and interactive elements for maximum legibility.
-- **High-Density Web Layout**: On wide screens, the UI intelligently uses the available space, expanding grids and centering content in a readable column.
-- **Vertical Optimization**: Specifically optimized to fit dense operational data (like the Kitchen Dashboard) within the browser viewport to minimize scrolling.
-- **Web Polish**: Includes desktop-specific enhancements like hover cursors for buttons, centered modal dialogs, and high-fidelity box shadows.
-
-### 🔐 Security & Access Control
-- **Database-Driven Authentication**: All user credentials, passwords, and roles are managed centrally in the Firebase Realtime Database (`auth_config` node). This allows for instant staff updates without code changes.
-- **Session Security**: For maximum security, the app does not store persistent login state across app restarts. Users are prompted for a fresh login every time the app is launched.
-- **Auto-Logout**: If the app stays open (foreground or background) for more than 24 hours, the session automatically expires, and the user is logged out.
-- **Role-Based Permissions**:
-    - **Admin**: Full access to register flats, update festival settings, edit menu items, report bugs via email, and delete records.
-    - **Vendor**: Operational access to mark food and parcels as taken. Restricted from modifying registration data, financial records, or primary dietary choices.
-- **Two-Phase Verified Login**: The login button intelligently guides the user through two distinct phases: **"Verifying..."** (credential check against the database) followed by **"Loading data..."** (pre-fetching configuration and subscriptions) for a more transparent and precise authentication experience.
-- **Enhanced LIVE Awareness**: Critical system statuses and service windows are highlighted with **High-Vibrancy Glowing Badges** (Success Green with white accents) for maximum prominence across all background types.
-- **High-Visibility Branding**: The global footer now utilizes bold typography and the primary theme color to ensure the copyright notice and version info remain anchor-stable and visible against dynamic mesh backgrounds.
-- **Global Logout**: Quick-access logout button available in the header of every screen for secure session management.
-
-### 📋 Subscription & Pass Management
-- **Dedicated Pass List**: A standalone **Subscriptions** screen centralizes pass discovery with high-performance search and **Natural Alphanumeric Sorting**. The interface features a **Dynamic Multi-Select Filter Bar** that allows administrators to combine conditions (e.g., **Current Meal** + **Kids** + **Missed**). Filters are additive, while the **"All"** chip serves as a master reset. Pass cards display visual markers—restaurant icon for active subs, red circular badges for missed meals, happy icon for kids, briefcase icon for parcels, and a **leaf icon** for strictly vegetarian passes—for rapid scanning. Includes **Direct Contact Icons** (WhatsApp and Phone) for instant communication.
-- **Digital Registration**: Register flats with block number, flat number, and headcount. **Flat Number is a mandatory field**. Supports optional **Mobile Number** registration with a native **Contact Picker** for fast entry. Features **Automated Food Pricing** that pre-calculates the subscription amount based on member choices and **Additional Parcel Surcharges**. Includes an **Interactive Member Counter** for quick headcount adjustments. Supports separate **Adult and Kids** counts (when enabled). **Block and Flat numbers are locked during editing** to maintain QR identity stability.
-- **Headcount Protection**: In the Edit Pass form, the system automatically prevents decreasing the headcount (Adults/Kids) below their **initial registration values** if any member of the pass has already "taken" a meal. A meal is considered "taken" if it is explicitly marked so, or if the person was subscribed and the meal slot is already marked as "Done" in global settings. This ensures historical consistency while still allowing for headcount increases.
-- **Bi-Directional Pass Safety**:
-    - **Add Pass Restriction**: During new registration, the system strictly blocks selecting meal plans or parcels for **past** or completed service windows to ensure new entries only apply to upcoming meals.
-    - **Edit Pass Flexibility**: For existing records, administrators can still refine the meal plans of past days (provided they aren't marked as "Done"), allowing for historical accuracy while maintaining operational guardrails.
-- **Smart Navigation Strategy**: The system uses a dual-sorting strategy: **Operational screens** (Dashboard/Guest Management) always prioritize the "Current Meal" by moving it to the top. **Data Entry and Viewing screens** maintain a fixed chronological order (Days 1 $\rightarrow$ N, Meals B $\rightarrow$ L $\rightarrow$ D) while using **Intelligent Auto-Focus** to automatically select and scroll the active day into view.
-- **Minimum Meal Validation**: Implements strict data rules—the system prevents saving or generating QR codes if no dietary meals (Veg/Non-Veg) are selected for any person across the event duration.
-- **Grammar-Aware UI**: The system intelligently handles **Singular and Plural forms** across all labels (e.g., "1 Adult" vs "2 Adults", "1 Kid" vs "2 Kids"). It also adaptively switches terminology—when Kids support is disabled, it reverts from "Adults/Kids" to generic "Person/Persons" to maintain a clean, relevant interface.
-- **Smart Change Detection**: The Save buttons remain disabled until a meaningful change is detected in the form, preventing redundant updates.
-- **Pass Protection Rules**: To maintain operational integrity, the system automatically disables the **Delete** button for any pass that has recorded a non-zero payment or has marked at least one meal as "Taken". This ensures that active transaction or distribution data is never accidentally purged.
-- **Direct WhatsApp Integration**: Send professional "Digital Pass" images directly to a person's WhatsApp with a single tap. The system automatically opens a chat with the registered number and attaches the pass details as a formatted caption. **Restricted to Admin only**.
-- **Intelligent Focus & Scrolling**: The system maintains operational continuity by automatically selecting and focusing on the **Current Meal** when opening reports (specifically "Meal Not Taken", "Kids Meal", and "Parcels") or pass forms, minimizing manual navigation during busy service windows.
-- **Interactive Reports**: Seamlessly jump from any flat record in the "Flat Wise", "Pending", or the **Missed** tab of the **Parcel** reports directly to its detailed pass information for instant verification.
-- **Compact Member Selection**: Uses space-saving "P1", "P2", "P3" labels for selecting individual members, ensuring the interface remains usable for large groups.
-- **Sequential Collection Tracking**: staff first mark a meal as "Taken" (dine-in), which then unlocks a secondary toggle to record "Parcel Collection" if takeaway was registered. To maintain data integrity, the system enforces a strict dependency: a parcel cannot be marked as "Taken" until the primary dine-in meal has been recorded. Furthermore, unmarking the primary meal automatically clears any recorded parcel collection for that slot. During editing, the system provides a **Parcel Inconsistency Alert** if a member has opted for a parcel but only the primary meal was marked as taken, ensuring complete data entry. Acknowledged inconsistencies are logged as **Missed Parcel** events in the audit trail for transparency. **Parcel collection is now tracked independently and detailed in specialized reports**.
-- **Proactive Parcel Awareness**: A new configurable **Parcel Alert** can be enabled in settings. When active, opening a pass for editing during a live service window triggers a proactive alert if any member has an uncollected parcel, ensuring volunteers prioritize takeaway distribution.
-- **Unique 4-Digit Passcode**: Every registered pass automatically generates a guaranteed unique **4-digit numeric Passcode** (0000-9999). The system actively performs collision checks against all active subscriptions during pass creation and updates to ensure no two passes share the same passcode. This code is printed in bold blue text directly below the QR matrix on the Digital Pass, providing a "2-in-1" validation identity when camera scanning is impractical or screen brightness is low.
-- **Dual-Mode Validation**: The QR scanner has been upgraded to a **Scan/Pass Code** interface. It allows volunteers to validate a pass by either scanning the QR code with the camera or manually entering the 4-digit passcode at the top of the same screen. Both methods provide identical functionality, recording dedicated audit trail entries and navigating directly to the pass details for meal distribution.
-- **Dynamic Guest Governance**: Administrators can now update guest demand (Total/Veg/Non-Veg) for any active "Current Meal" or future service windows. If no meal is currently active, all meals that are not yet marked as "Done" remain editable, providing maximum flexibility for pre-event planning and live adjustments. Includes **Log Debouncing** to ensure that rapid headcount increments only generate a single, consolidated audit entry.
-- **Current Meal Lock**: Implements strict **Bi-Directional Write Protection**. When a "Current Meal" is globally active, the system automatically disables the "Taken" and "Parcel" toggles across all modes for all **Future Meals** to prevent erroneous forward-dated entries.
-- **Subscription-Aware Configuration Safety**: Critical settings are protected by real-time data validation. The system blocks switching off global **"Kids Support"**, **"Guest Management"**, **"Payment Integration"**, or individual **"Festival Days"** and **"Meal Slots"** if any existing subscription or kitchen data depends on them. This ensures data integrity and prevents orphaning active registrations.
-- **Redesigned Day Deletion**: The "Delete Day" button is now high-visibility Red and strictly **disabled** if subscriptions exist for that day, providing a clear visual safeguard against accidental data loss.
-- **Meal Lifecycle Management**: Admins can "Mark as Done" individual meal slots. Once marked as done, the system locks all associated data. **Chronological Enforcement** ensures a meal can only be marked "Done" if all preceding enabled meals are completed and it is not a future meal.
-- **Current Meal Selection Rules**: A meal can only be designated as "Current" if all past enabled meals are marked as "Done" and no future meal is yet completed.
-- **Season Lifecycle Safety**: The "Season Status" toggle can only be switched off if all enabled meals across the entire festival are already marked as **Done**, ensuring operational archiving only occurs after full service completion.
-- **Optimized Administrative Workflow**: Generic confirmation boxes have been removed for logic-guarded toggles, resulting in a faster, more responsive settings interface that only intervenes when an operation would truly compromise data integrity.
-- **Automatic Menu Cleanup**: Deleting an event day from settings automatically scrubs all associated menu data from the database.
-- **Veg Only Toggle**: Easily convert a day to "Veg only" mode, which simplifies the entire app UI for that day.
-- **Labels & Abbreviations**: Custom display names and legends are centrally managed.
-
-### 🎨 Polished & Responsive UI/UX
-- **Immersive Festive Backdrop**: A premium, dynamic background system featuring **9 floating Mesh Gradient Blobs**. These colorful glowing spots surround the screen from all 4 corners and sides, creating a majestic celebratory atmosphere.
-- **Dynamic Glassmorphism**: Every card, report panel, and dashboard section uses a semi-translucent **"Frosted Glass" design language**, allowing the underlying festive background glows to bleed through beautifully while maintaining absolute text legibility and a clean, shadow-free aesthetic.
-- **Adaptive High-Contrast Tones**: Backdrop colors automatically adjust their intensity for Light and Dark themes, utilizing high-contrast alpha weights (up to 26% in Light mode) to ensure the marvelous glowing effect pops vividly on any screen.
-- **Web-Specific Background Optimization**: Specifically tuned for wide horizontal viewports, the system dynamically injects 3 extra large **Central and Top Mesh Circles** on web desktop monitors to ensure the entire wide-screen canvas is covered with immersive color gradients.
-- **Fully Responsive Design**: The UI intelligently adapts to all screen sizes, from small mobile phones to large tablets and desktop browsers.
-- **Adaptive Column Layout**: On wide native screens (Tablets), content is centered in a professional 600px column. On **Web**, the layout expands to the full browser width while keeping the internal content perfectly centered and readable.
-- **Intelligent Viewport Scaling**: Introduced a dual-axis scaling engine (`s` for horizontal/size and `v` for vertical) that ensures text isn't "tiny" on large monitors while compacting vertical space to help screens fit within the browser's viewable area.
-- **Global Error Notification Modal**: High-visibility error handling wrapper attached to the home action strip. Tapping database network exceptions surfaces details in a premium modal dialog box fully adhering to active light/dark design tokens.
-- **Optimized for Modern Devices**: Specifically tuned for modern aspect ratios (like iPhone 16). All screens use a `flexGrow` scroll strategy with generous bottom paddings to ensure that interactive elements like the Login button and footer are never clipped by home indicators.
-- **Dynamic Theming (Dark & Light Mode)**: Fully integrated theme system that supports high-contrast Dark Mode and a vibrant Light Mode. Users can toggle themes from both the Login and Home screens.
-- **Persistent User Preference**: Theme selections are saved locally on the device using `AsyncStorage`, ensuring the app launches with the user's preferred aesthetic.
-- **Sleek Navigation Bar**: Unified header design across all screens featuring compact **36px circular icon buttons**.
-- **Contextual Navigation**: A dedicated **Home** button is positioned next to the Back button on all sub-pages for rapid dashboard access.
-- **Icon-Only Header Actions**: Clean, professional interface achieved by removing text labels from header actions (Back, Home, Logout), using high-contrast themed colors for visibility.
-- **Colorful Premium Palette**: Primary information boxes and daily menu cards use a vibrant, high-contrast palette of pastel colors (Red, Blue, Green, Orange, Purple, Cyan) for a modern and energetic aesthetic.
-- **Real-Time Summary Card**: The Home screen summary card features a high-density, space-saving horizontal layout that neatly groups active passes, total members (including grammar-aware adults/kids breakdown), total plate demand (with synchronized dietary split), and guest counts. It dynamically displays cumulative collection data when enabled—fully synchronized with guest collection metrics—alongside an interactive deep-linking **LIVE** service shortcut badge identifying the active day and meal (e.g., "SAPTAMI LUNCH"). The card also features a large, centered background watermark icon for a premium look.
-- **Contact-Aware Details View**: The **View Pass** (Details) screen intelligently integrates **Quick Contact Actions** (WhatsApp and Call) into the primary Pass Identity card if a mobile number is associated with the pass, enabling volunteers to reach residents instantly while reviewing their plan.
-- **Navigation History Stack**: Implemented a robust history stack that ensures the "Back" button typically takes you to the previous screen (including from the View Pass screen). To streamline high-volume operations, a dedicated **Home** button is available in the header for a direct return to the dashboard.
-- **Visual Feedback**: Disabling a configuration section (Season or Day) in settings triggers a smooth **opacity-based fade-out**, providing clear visual confirmation of the inactive state.
-- **Quick-Action Dashboard**: The Home page features a sleek, tile-based grid for fast access to core modules. Optimized with **64px high tiles** and **18px icons** for a compact, distortion-free experience. On wide screens, the grid automatically adapts to a **4-column layout**.
-- **Admin Contacts Directory**: A dedicated, searchable directory for administrators containing all flats with registered contact numbers. Features natural alphanumeric sorting and member details. Individual cards provide one-tap shortcuts for **WhatsApp Chat**, **Cellular Calls**, and **Mobile SMS**, while clicking the card body deep-links directly to the resident's full **Pass Details** for instant lookup.
-- **Collaborative Notes**: A dedicated **Notes** module accessible to all users. Supports full CRUD operations (Create, Read, Update, Delete) via a high-speed modal interface. Includes role-based permissions where users can manage their own notes and Admins have full oversight. Features forensic search, chronological sorting, and automated activity logging for every view and modification.
-- **Password Visibility**: Added a "Show/Hide" toggle in the login field for user convenience.
-- **Full Meal Names**: Replaced confusing abbreviations with full names ("Breakfast", "Lunch", "Dinner") in all primary selection buttons.
-- **Optimized Layouts**: Touch-friendly dropdowns (18px spacing), elevated FAB positioning, and vertically stacked legends to prevent overflow.
+A high-performance Expo React Native & Web application designed for event administrators and volunteers to manage feast subscriptions, daily menus, meal distribution, and real-time kitchen analytics during large scale community festivals like **Durga Puja**.
 
 ---
-© 2026 Eternia Festival Committee
+
+## 📐 System Architecture & Overview
+
+The application follows a decoupled, context-driven component architecture with a centralized **Firebase Repository Layer**. It supports multi-platform execution across **Mobile (Android/iOS)** and **Desktop/Web Browsers**.
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                          React Native / Expo UI                        │
+│  (Screens, Components, Theme Engine, Dual-Axis Viewport Scaling)      │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │
+┌───────────────────────────────────▼────────────────────────────────────┐
+│                        Context Provider Layer                          │
+│   AuthContext ┆ DatabaseContext ┆ NavigationContext ┆ UIContext ┆ Theme│
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │
+┌───────────────────────────────────▼────────────────────────────────────┐
+│                        Firebase Repository Layer                       │
+│      (Data normalization, optimistic updates, offline fallbacks)       │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │
+┌───────────────────────────────────▼────────────────────────────────────┐
+│                       Firebase Realtime Database                       │
+│ subscriptions ┆ menu ┆ config ┆ auth_config ┆ logs ┆ notes ┆ appVersion│
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🛠️ Tech Stack & Key Libraries
+
+| Technology / Library | Purpose & Usage |
+| :--- | :--- |
+| **React Native / Expo (v51+)** | Core cross-platform app framework targeting Android, iOS, and Web. |
+| **TypeScript (v5.3+)** | Strict type safety for domain models, context providers, and props. |
+| **Firebase Realtime Database** | Real-time data sync, subscription persistence, menu management, version checks, and activity logs. |
+| **`expo-camera`** | High-performance camera integration for QR Code pass scanning at food stalls. |
+| **`react-native-qrcode-svg`** | SVG-based QR code pass matrix generation. |
+| **`react-native-view-shot` (`captureRef`)** | Snapshot engine for capturing report cards and digital passes as PNG images for sharing. |
+| **`expo-sharing` & `expo-print`** | Platform-native sharing dialogs (WhatsApp / System) and HTML document printing. |
+| **`@react-native-async-storage/async-storage`** | Local device persistence for theme preferences (`AppThemeMode`). |
+| **`@expo/vector-icons` (Ionicons)** | Vector icons tuned for high-contrast theme states across screens. |
+
+---
+
+## 📁 Directory Structure
+
+```
+src/
+├── components/          # Modular UI Components
+│   ├── common/          # Action Label, Back Button, Home Button, Counter, Alert Modal, Dropdowns
+│   ├── dashboard/       # Meal Bar Chart, Meal Metric Grid
+│   ├── menu/            # Meal Display, Meal Menu Editor, Summary Bar
+│   └── report/          # DayWise, MealWise, SingleMeal, Guest, Parcel, Pending, FlatWise, Payment, Kids
+├── context/             # Global React Context State
+│   ├── AuthContext.tsx       # Session, Login/Logout, Role Governance (Admin/Vendor)
+│   ├── DatabaseContext.tsx   # Realtime DB listeners, Subscriptions, Menus, App Version, Config, Activity Logs
+│   ├── NavigationContext.tsx # History-stack-enabled screen navigation
+│   └── UIContext.tsx         # Global Alert dialogs, Error modals, Share & Print handlers
+├── hooks/               # Custom Utility Hooks
+│   └── useReportData.ts # Data aggregation pipeline for analytics and reports
+├── navigation/          # App Navigator Router & Screen Switcher
+├── theme/               # Modern Glassmorphic Design Token Engine
+│   ├── primary.ts       # Light Mode Color Tokens & Palette
+│   ├── dark.ts          # Dark Mode Color Tokens & Palette
+│   ├── types.ts         # Theme Property Contracts
+│   └── index.tsx        # Dynamic Theme Context Provider
+├── domain.ts            # Domain Data Models & Type Contracts
+├── repository.ts        # Firebase RTDB API Operations & Cleaning Pipelines
+├── config.ts            # Default App Configuration & Festival Defaults
+├── firebase.ts          # Firebase SDK Initialization
+├── strings.ts           # Centralized Dictionary for Localized UI Text & `appVersion`
+├── styles.ts            # Global Responsive Scaling Engine (`s()` / `v()`) & Glassmorphism Styles
+└── screens/             # Top-Level Screen Views
+    ├── ActivityLogScreen.tsx     # Real-time System Audit Trail Log
+    ├── ContactsScreen.tsx        # Resident Directory with Direct WhatsApp/Call/SMS Actions
+    ├── DashboardScreen.tsx       # Live Kitchen Counter Dashboard (Plates, Parcels, Guests)
+    ├── GuestManagementScreen.tsx # Counter Guest Demand Manager
+    ├── HomeScreen.tsx            # Main Operational Summary, Version Check Alert & Quick Action Grid
+    ├── LoginScreen.tsx           # Two-Phase Secured Database Login
+    ├── MenuEditorScreen.tsx      # Daily Meal Menu & Pricing Editor
+    ├── NotesScreen.tsx           # Collaborative Team Notes with Role Permissions
+    ├── QrScreen.tsx              # Digital Pass Generator with 4-Digit Passcode & WhatsApp Share
+    ├── ReportScreen.tsx          # Analytics Suite with Theme-Aware PNG Image Export
+    ├── ScannerScreen.tsx         # QR Camera Scanner & 4-Digit Keypad Scanner
+    ├── SettingsScreen.tsx        # Festival Configuration, Meal Lifecycle & Safety Governance
+    ├── SubscriptionForm.tsx      # Pass Registration & Editing with Headcount Protection
+    ├── SubscriptionListScreen.tsx# Pass Directory with Alphanumeric Sorting & Multi-Tag Filters
+    └── ViewMenuScreen.tsx        # Daily Food Menu Viewer
+```
+
+---
+
+## 🔐 Security, Roles & Version Synchronization
+
+1. **Database-Driven Authentication (`auth_config`)**:
+   User credentials and role definitions (`Admin` vs `Vendor`) are fetched directly from Firebase RTDB. This allows instant credential or access adjustments without app redeployments.
+2. **Top-Level `appVersion` Auto-Check & Alert**:
+   - The app maintains a top-level `"appVersion"` node in Firebase RTDB (`database.rules.json` configured for public read).
+   - Local build version is specified in `UI_TEXT.appVersion` (`src/strings.ts`).
+   - Upon landing on `HomeScreen` after login, the app verifies `remoteAppVersion` against `UI_TEXT.appVersion`.
+   - If `remoteAppVersion !== UI_TEXT.appVersion`, an instant modal alert is surfaced: *"App has been updated, please download and install the latest app"*.
+3. **Session Security & Auto-Expiration**:
+   - Persistent login state across app re-launches is disabled for security.
+   - Active sessions auto-expire if left idle or backgrounded for more than 24 hours.
+4. **Role-Based Permissions**:
+   - **Admin**: Full authority to create/edit subscriptions, update festival settings, modify menus, delete records, manage notes, access contacts, and export passes via WhatsApp.
+   - **Vendor**: Operational access to scan passes and mark meals/parcels as taken. Blocked from modifying registrations, financial records, or system settings.
+
+---
+
+## 🎟️ Pass Management & Verification Architecture
+
+To accommodate all residents and guests—especially non-technical users, elderly members, or those without smartphones—the system offers **3 flexible, redundant meal collection options** at the food stall:
+
+```
+                          ┌──────────────────────────┐
+                          │  Resident at Food Stall  │
+                          └────────────┬─────────────┘
+                                       │
+        ┌──────────────────────────────┼──────────────────────────────┐
+        │                              │                              │
+┌───────▼──────────────┐   ┌───────────▼──────────────┐   ┌───────────▼──────────────┐
+│  Option 1: QR Scan   │   │  Option 2: 4-Digit Code  │   │ Option 3: Flat Lookup    │
+│  Camera scan on pass │   │ Keypad entry of 4-digit  │   │ Direct Block & Flat search│
+│    image in 1 sec.   │   │  code printed on pass.   │   │ when phone is forgotten. │
+└──────────────────────┘   └──────────────────────────┘   └──────────────────────────┘
+```
+
+1. **Unique 4-Digit Passcode Engine**:
+   Every registered pass automatically generates a guaranteed unique **4-digit numeric Passcode** (`0000–9999`) with collision-detection logic against active subscriptions.
+2. **Bi-Directional Pass Safety Rules**:
+   - **Headcount Protection**: Prevents decreasing registered headcount below initial values if any member has already taken a meal.
+   - **Add Pass Guardrail**: Blocks selecting meal plans or parcels for past/completed service windows during new registration.
+   - **Inconsistency Alerts**: Audits and warns volunteers if a parcel was selected but only the primary dine-in meal was marked as taken.
+3. **Dedicated Guest Management**:
+   Flat passes cover resident families. Guest meals are handled independently via a dedicated **Guest Management** module managed directly at the counter by volunteers (guests do not require passes).
+
+---
+
+## 🍳 Kitchen Dashboard & Meal Metric Grid Hierarchy
+
+The `DashboardScreen` and `MealMetricGrid` components present kitchen demand metrics using a strict, structured section hierarchy designed for rapid volunteer scanning:
+
+```
+┌────────────────────────────────────────────────────────┐
+│ 1. TOP SUMMARY:    [ Total Planned ] [ Total Served ]  │
+├────────────────────────────────────────────────────────┤
+│ 2. ADULTS/MEMBERS: [ Veg Planned / Served ]            │
+│                    [ Non-Veg Planned / Served ]        │
+├────────────────────────────────────────────────────────┤
+│ 3. KIDS:           [ Kids Veg Planned / Served ]       │
+│                    [ Kids Non-Veg Planned / Served ]   │
+├────────────────────────────────────────────────────────┤
+│ 4. GUESTS:         [ Guests Veg Planned / Served ]     │
+│                    [ Guests Non-Veg Planned / Served ] │
+├────────────────────────────────────────────────────────┤
+│ 5. PARCELS:        [ Parcels Planned / Served ]        │
+└────────────────────────────────────────────────────────┘
+```
+
+- **Top Summary**: Displays total planned demand alongside total meals served so far (`totalMealTaken`).
+- **Adults / Members Section**: Dedicated Veg/Non-Veg planned and served counters for primary flat residents (Titled **ADULTS** when `kidsEnabled === true`, **MEMBERS** when `kidsEnabled === false`).
+- **Kids Section**: Rendered conditionally ONLY when `kidsEnabled === true` and children exist (`kidsTotal > 0`).
+- **Guests Section**: Rendered conditionally ONLY when `guestEnabled === true` and guest demand exists (`guestTotal > 0`). Placed directly before Takeaway Parcels for operational flow.
+- **Parcels Section**: Rendered conditionally ONLY when takeaway parcels are enabled (`isParcelEnabled === true`) and parcel demand exists (`parcel > 0`).
+
+---
+
+## 🎨 UI Architecture, Glassmorphic Styling & Export Engine
+
+### 1. Dual-Axis Responsive Viewport Engine (`styles.ts`)
+- **`s(size)`**: Scales horizontal spacing, padding, and typography based on device width or desktop breakpoint factor.
+- **`v(size)`**: Vertically compacts dense operational data to fit kitchen dashboards within browser viewports without scrolling.
+- **Adaptive Column**: Web viewports expand to full browser width with centered 600px max-width content bounds for native-like readability.
+
+### 2. Glassmorphic Mesh Background System
+- Renders **9 floating background mesh blobs** using theme-aware translucent colors (`cardColors`) that surround screen edges.
+- Cards, headers, and report containers use frosted glass opacity to allow glowing mesh colors to bleed through elegantly in both Light and Dark themes.
+
+### 3. Theme-Aware Report & Image Export Architecture (`captureRef`)
+When generating PNG image exports of report views in `ReportScreen.tsx` using `react-native-view-shot`:
+- **Problem**: Capturing views with `backgroundColor: "transparent"` renders a transparent canvas. When converted to PNG and opened in WhatsApp or gallery apps, transparent regions render as **black/dark mode**, corrupting Light mode exports.
+- **Solution**: The report container (`reportRef`) dynamically applies `backgroundColor: theme.colors.background` along with rounded padding (`s(12)`, `s(16)`).
+  - In **Light Mode** (`AppThemeMode.LIGHT`), `theme.colors.background` evaluates to solid `#FFFFFF` (white).
+  - In **Dark Mode** (`AppThemeMode.DARK`), `theme.colors.background` evaluates to solid `#121212` (dark).
+  - Result: Shared images perfectly match the active app theme with zero background corruption.
+
+---
+
+## 📊 Analytics & Reporting Suite
+
+The `ReportScreen` and `useReportData` pipeline provide 10 specialized operational reports:
+
+1. **Day-Wise Report**: Aggregate plate demand, taken count, and dietary split per day.
+2. **Meal-Wise Report**: Meal-by-meal breakdown (Breakfast, Lunch, Dinner) across all active days.
+3. **Single Meal Split**: High-density view of a specific selected day and meal.
+4. **Guest Report**: Separate breakdown of guest demands and served meals.
+5. **Parcel Report**: Detailed parcel collection tracking vs dine-in.
+6. **Missed Parcel Report**: Highlights flats that claimed dine-in meals but missed collecting their registered takeaway parcels.
+7. **Kids Meal Report**: Dedicated report tracking kids' meal demands and consumption.
+8. **Pending (Not Taken) Report**: Identifies flats that have not yet collected their current meal.
+9. **Flat-Wise Report**: Comprehensive matrix of flat-by-flat attendance and preferences across all days.
+10. **Payment Summary Report**: Financial audit report categorizing collections by UPI, Cash, and Bank Transfer.
+
+---
+
+## 🚀 Build, Setup & Local Execution
+
+### Prerequisites
+- **Node.js**: v18.0.0 or higher
+- **Expo CLI**: `npx expo`
+- **Firebase Project**: Realtime Database initialized with `.env` credentials.
+
+### Installation & Execution
+
+```bash
+# 1. Clone repository & install dependencies
+npm install
+
+# 2. Configure Environment Variables (.env)
+EXPO_PUBLIC_FIREBASE_API_KEY="your-api-key"
+EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN="your-project.firebaseapp.com"
+EXPO_PUBLIC_FIREBASE_DATABASE_URL="https://your-project.firebaseio.com"
+EXPO_PUBLIC_FIREBASE_PROJECT_ID="your-project-id"
+
+# 3. Start Expo Development Server
+npx expo start
+
+# 4. Run on specific platform targets
+npx expo start --web       # Web browser
+npx expo run:android       # Native Android build
+npx expo run:ios           # Native iOS build
+```
+
+---
+
+© 2026 Eternia Festival Committee — Food Desk Architecture Document

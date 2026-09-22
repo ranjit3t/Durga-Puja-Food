@@ -86,7 +86,7 @@ export function MealBarChart(props: MealMetricProps) {
 
         {guestEnabled && (guestTotal > 0) && (
           <Bar
-            label={UI_TEXT.guest}
+            label={UI_TEXT.guests}
             value={guestTotal}
             color={(theme.colors as any).info || theme.colors.secondary}
             secondaryValue={guestTaken}

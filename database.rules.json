@@ -2,6 +2,10 @@
   "rules": {
     ".read": false,
     ".write": false,
+    "appVersion": {
+      ".read": true,
+      ".write": "auth != null"
+    },
     "subscriptions": {
       ".read": "auth != null",
       "$flatId": {

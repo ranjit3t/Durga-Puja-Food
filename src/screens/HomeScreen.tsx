@@ -17,13 +17,29 @@ export function HomeScreen() {
   const styles = useStyles();
   const { s, v, isWeb } = useScaling();
   const { theme, themeType, toggleTheme } = useAppTheme();
-  const { userRole, handleLogout } = useAuth();
+  const { userRole, handleLogout, versionAlertShown, markVersionAlertShown } = useAuth();
   const {
-    subscriptions, dayConfig, seasonName, seasonEnabled, guestEnabled, totalPeople, firebaseError, paymentConfig, collections, kidsEnabled, foodMenu
+    subscriptions, dayConfig, seasonName, seasonEnabled, guestEnabled, totalPeople, firebaseError, paymentConfig, collections, kidsEnabled, foodMenu, remoteAppVersion, loading
   } = useDatabase();
   const { navigate, startNew } = useAppNavigation();
-  const { showGlobalError } = useUI();
+  const { showAlert, showGlobalError } = useUI();
   const { width } = useWindowDimensions();
+
+  React.useEffect(() => {
+    if (
+      !loading &&
+      !versionAlertShown &&
+      remoteAppVersion &&
+      remoteAppVersion.trim() !== UI_TEXT.appVersion.trim()
+    ) {
+      markVersionAlertShown();
+      showAlert(
+        UI_TEXT.appUpdateTitle,
+        UI_TEXT.appUpdatedMessage,
+        [{ text: UI_TEXT.ok, style: "default" }]
+      );
+    }
+  }, [remoteAppVersion, loading, versionAlertShown, markVersionAlertShown, showAlert]);
 
   const isNarrow = width < 400;
   const cardPadding = isNarrow ? 22 : s(30);

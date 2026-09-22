@@ -2,7 +2,7 @@
  * Firebase Repository Layer
  * Handles data persistence, retrieval, and schema normalization.
  */
-import { get, ref, remove, set, update, push, query, limitToLast } from "firebase/database";
+import { get, ref, remove, set, update, push, query, limitToLast, onValue } from "firebase/database";
 import { ensureFirebaseAuth, firebaseConfigured } from "./firebase";
 import {
   SubscriptionRecord,
@@ -45,6 +45,9 @@ export interface SubscriptionRepository {
   getNotes(): Promise<Note[]>;
   upsertNote(note: Note): Promise<Note>;
   removeNote(id: string): Promise<void>;
+  getAppVersion(): Promise<string | null>;
+  updateAppVersion(version: string): Promise<void>;
+  onAppVersionChange(callback: (version: string | null) => void): () => void;
 }
 
 const subscriptionsPath = "subscriptions";
@@ -53,6 +56,7 @@ const configPath = "config";
 const authConfigPath = "auth_config";
 const logsPath = "logs";
 const notesPath = "notes";
+const appVersionPath = "appVersion";
 
 // --- Helper Functions ---
 
@@ -499,6 +503,30 @@ export function createFirebaseRepository(): SubscriptionRepository {
       const services = await ensureFirebaseAuth();
       if (!services) return;
       await remove(ref(services.db, `${notesPath}/${id}`));
+    },
+    async getAppVersion() {
+      const services = await ensureFirebaseAuth();
+      if (!services) return null;
+      const snapshot = await get(ref(services.db, appVersionPath));
+      return snapshot.exists() ? String(snapshot.val()) : null;
+    },
+    async updateAppVersion(version) {
+      const services = await ensureFirebaseAuth();
+      if (!services) return;
+      await set(ref(services.db, appVersionPath), version);
+    },
+    onAppVersionChange(callback) {
+      let unsubscribeFn: (() => void) | null = null;
+      ensureFirebaseAuth().then((services) => {
+        if (!services?.db) return;
+        const versionRef = ref(services.db, appVersionPath);
+        unsubscribeFn = onValue(versionRef, (snapshot) => {
+          callback(snapshot.exists() ? String(snapshot.val()) : null);
+        });
+      }).catch(err => console.error("App version listener error:", err));
+      return () => {
+        if (unsubscribeFn) unsubscribeFn();
+      };
     },
   };
 }
