@@ -315,7 +315,15 @@ export function ReportScreen() {
           </View>
         )}
 
-        <View ref={reportRef} collapsable={false} style={{ backgroundColor: "transparent" }}>
+        <View
+          ref={reportRef}
+          collapsable={false}
+          style={{
+            backgroundColor: theme.colors.background,
+            padding: s(12),
+            borderRadius: s(16),
+          }}
+        >
           <View style={[
             styles.card,
             {
