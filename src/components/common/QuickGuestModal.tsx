@@ -12,6 +12,7 @@ import {
   ScrollView,
   Platform,
   StyleSheet,
+  useWindowDimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useDatabase } from "../../context/DatabaseContext";
@@ -51,6 +52,7 @@ export function QuickGuestModal({
   const { foodMenu, dayConfig, updateGuestCountDebounced } = useDatabase();
   const { userRole } = useAuth();
   const { theme } = useAppTheme();
+  const { width } = useWindowDimensions();
 
   if (!visible || !currentMealInfo) return null;
 
@@ -86,6 +88,9 @@ export function QuickGuestModal({
   const singleFieldPlanned = isVegEnabled ? "guestVeg" : "guestNonVeg";
   const singleFieldTaken = isVegEnabled ? "guestVegTaken" : "guestNonVegTaken";
 
+  const isUltraNarrow = width < 360;
+  const cardMaxWidth = Math.min(width * 0.94, 500);
+
   return (
     <Modal
       visible={visible}
@@ -98,11 +103,11 @@ export function QuickGuestModal({
         backgroundColor: theme.colors.shadow + "CC",
         justifyContent: "center",
         alignItems: "center",
-        padding: 16
+        padding: 12
       }}>
         <View style={{
           width: "100%",
-          maxWidth: 420,
+          maxWidth: cardMaxWidth,
           maxHeight: "88%",
           backgroundColor: theme.colors.surface,
           borderRadius: 20,
@@ -174,7 +179,7 @@ export function QuickGuestModal({
               </View>
             </View>
 
-            {/* Section 2: Guest Counter Inputs Card (2-Column Side-By-Side Layout) */}
+            {/* Section 2: Guest Counter Inputs Card Container */}
             <View style={{
               padding: 10,
               borderRadius: 14,
@@ -186,8 +191,8 @@ export function QuickGuestModal({
               {showDetailed ? (
                 <View style={{ gap: 6 }}>
                   {/* Veg Row: Planned & Served side-by-side */}
-                  <View style={{ flexDirection: "row", gap: 8 }}>
-                    <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: isUltraNarrow ? "column" : "row", gap: 8 }}>
+                    <View style={{ flex: 1, minWidth: 0 }}>
                       <CounterInput
                         label={`${UI_TEXT.veg}${UI_TEXT.space}${UI_TEXT.planned}`}
                         value={guestVeg}
@@ -196,7 +201,7 @@ export function QuickGuestModal({
                         onChange={(val) => updateGuestCountDebounced(dayId, mealType, "guestVeg", val)}
                       />
                     </View>
-                    <View style={{ flex: 1 }}>
+                    <View style={{ flex: 1, minWidth: 0 }}>
                       <CounterInput
                         label={`${UI_TEXT.veg}${UI_TEXT.space}${UI_TEXT.served}`}
                         value={guestVegTaken}
@@ -209,8 +214,8 @@ export function QuickGuestModal({
                   </View>
 
                   {/* Non-Veg Row: Planned & Served side-by-side */}
-                  <View style={{ flexDirection: "row", gap: 8 }}>
-                    <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: isUltraNarrow ? "column" : "row", gap: 8 }}>
+                    <View style={{ flex: 1, minWidth: 0 }}>
                       <CounterInput
                         label={`${UI_TEXT.nonVeg}${UI_TEXT.space}${UI_TEXT.planned}`}
                         value={guestNonVeg}
@@ -219,7 +224,7 @@ export function QuickGuestModal({
                         onChange={(val) => updateGuestCountDebounced(dayId, mealType, "guestNonVeg", val)}
                       />
                     </View>
-                    <View style={{ flex: 1 }}>
+                    <View style={{ flex: 1, minWidth: 0 }}>
                       <CounterInput
                         label={`${UI_TEXT.nonVeg}${UI_TEXT.space}${UI_TEXT.served}`}
                         value={guestNonVegTaken}
@@ -232,8 +237,8 @@ export function QuickGuestModal({
                   </View>
                 </View>
               ) : (
-                <View style={{ flexDirection: "row", gap: 8 }}>
-                  <View style={{ flex: 1 }}>
+                <View style={{ flexDirection: isUltraNarrow ? "column" : "row", gap: 8 }}>
+                  <View style={{ flex: 1, minWidth: 0 }}>
                     <CounterInput
                       label={UI_TEXT.plannedTotal}
                       value={guestTotal}
@@ -242,7 +247,7 @@ export function QuickGuestModal({
                       onChange={(val) => updateGuestCountDebounced(dayId, mealType, singleFieldPlanned, val)}
                     />
                   </View>
-                  <View style={{ flex: 1 }}>
+                  <View style={{ flex: 1, minWidth: 0 }}>
                     <CounterInput
                       label={UI_TEXT.totalServed}
                       value={guestTaken}

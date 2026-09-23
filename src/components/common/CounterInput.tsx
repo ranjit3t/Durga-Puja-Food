@@ -61,11 +61,13 @@ export function CounterInput({
   };
 
   return (
-    <View style={{ marginBottom: 8 }}>
-      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 6, paddingHorizontal: 2 }}>
-        <Text style={[styles.label, { marginTop: 0, marginBottom: 0, fontSize: 13 }]}>{label}</Text>
+    <View style={{ marginBottom: 8, minWidth: 0, flexShrink: 1 }}>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 6, paddingHorizontal: 2, gap: 4 }}>
+        <Text style={[styles.label, { marginTop: 0, marginBottom: 0, fontSize: 12, flex: 1 }]} numberOfLines={1} ellipsizeMode="tail">
+          {label}
+        </Text>
         {description ? (
-          <Text style={{ fontSize: 11, fontWeight: "700", color: theme.colors.primary }}>
+          <Text style={{ fontSize: 11, fontWeight: "700", color: theme.colors.primary, flexShrink: 0 }}>
             {description}
           </Text>
         ) : null}
@@ -76,7 +78,7 @@ export function CounterInput({
           style={[localStyles.button, disabled && { opacity: 0.5 }, { borderRightWidth: 1, borderRightColor: theme.colors.border }]}
           disabled={disabled || value <= min}
         >
-          <Ionicons name="remove" size={18} color={theme.colors.textPrimary} />
+          <Ionicons name="remove" size={16} color={theme.colors.textPrimary} />
         </Pressable>
 
         <TextInput
@@ -94,7 +96,7 @@ export function CounterInput({
           style={[localStyles.button, disabled && { opacity: 0.5 }, { borderLeftWidth: 1, borderLeftColor: theme.colors.border }]}
           disabled={disabled || value >= max}
         >
-          <Ionicons name="add" size={18} color={theme.colors.textPrimary} />
+          <Ionicons name="add" size={16} color={theme.colors.textPrimary} />
         </Pressable>
       </View>
     </View>
@@ -109,15 +111,18 @@ const localStyles = StyleSheet.create({
     overflow: "hidden",
     height: 42,
     borderWidth: 1,
+    width: "100%",
   },
   button: {
-    width: 44,
+    width: 36,
     height: "100%",
     alignItems: "center",
     justifyContent: "center",
+    flexShrink: 0,
   },
   input: {
     flex: 1,
+    minWidth: 24,
     height: "100%",
     textAlign: "center",
     fontSize: 15,

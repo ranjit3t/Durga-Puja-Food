@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
-import { View, Text, Pressable, StyleSheet, Platform, Modal, ScrollView } from "react-native";
+import { View, Text, Pressable, StyleSheet, Platform, Modal, ScrollView, useWindowDimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useStyles } from "../../styles";
 import { useAppTheme } from "../../theme";
@@ -34,6 +34,7 @@ export function QuickCheckoutModal({
   const { theme } = useAppTheme();
   const { dayConfig, kidsEnabled, addActivityLog, upsertSubscription } = useDatabase();
   const { showAlert } = useUI();
+  const { width } = useWindowDimensions();
 
   const [adultInput, setAdultInput] = useState(0);
   const [kidInput, setKidInput] = useState(0);
@@ -226,7 +227,6 @@ export function QuickCheckoutModal({
       counts.push(`${safeParcelInput} ${UI_TEXT.parcels}`);
     }
 
-    // Calculate updated post-checkout taken totals for log
     let newAdultsTaken = 0;
     let newKidsTaken = 0;
     let newMembersTaken = 0;
@@ -283,7 +283,6 @@ export function QuickCheckoutModal({
         .replace("{totals}", totalsParts.join(", "))
     });
 
-    // 4. Parcel Inconsistency Logging
     let allMealsTaken = true;
     for (let i = 0; i < headcount; i++) {
       const isSubscribed = updatedSub.mealSlots[dayId]?.[i]?.[mealKey] !== DietaryOption.NONE;
@@ -316,6 +315,7 @@ export function QuickCheckoutModal({
   };
 
   const isCheckoutDisabled = (adultInput + kidInput + parcelInput) === 0;
+  const cardMaxWidth = Math.min(width * 0.94, 500);
 
   return (
     <Modal
@@ -329,14 +329,14 @@ export function QuickCheckoutModal({
         backgroundColor: theme.colors.shadow + "CC",
         justifyContent: "center",
         alignItems: "center",
-        padding: 20
+        padding: 12
       }}>
         <View style={{
           width: "100%",
-          maxWidth: 420,
+          maxWidth: cardMaxWidth,
           backgroundColor: theme.colors.surface,
           borderRadius: 20,
-          padding: 20,
+          padding: 16,
           borderWidth: 1,
           borderColor: theme.colors.border,
           ...Platform.select({
@@ -350,11 +350,11 @@ export function QuickCheckoutModal({
             web: { boxShadow: `0 4px 16px ${theme.colors.shadow}66` }
           })
         }}>
-          <ScrollView contentContainerStyle={{ gap: 16 }} keyboardShouldPersistTaps="handled">
+          <ScrollView contentContainerStyle={{ gap: 14 }} keyboardShouldPersistTaps="handled">
             {/* Header Title */}
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
               <View>
-                <Text style={{ fontSize: 20, fontWeight: "900", color: theme.colors.textPrimary }}>
+                <Text style={{ fontSize: 18, fontWeight: "900", color: theme.colors.textPrimary }}>
                   {UI_TEXT.quickCheckout}
                 </Text>
                 <Text style={{ fontSize: 13, fontWeight: "700", color: theme.colors.primary, marginTop: 2 }}>
@@ -366,21 +366,21 @@ export function QuickCheckoutModal({
             {/* Header Summary Box - Exact Dashboard Summary Card Pattern (Solid Red Theme) */}
             {quickCheckoutDetails && currentMealInfo && (
               <View style={{
-                padding: 16,
-                borderRadius: 18,
+                padding: 14,
+                borderRadius: 16,
                 backgroundColor: theme.colors.primary,
                 borderColor: theme.colors.primary,
                 borderWidth: 1,
-                gap: 10,
+                gap: 8,
                 ...Platform.select({
                   ios: {
                     shadowColor: theme.colors.primary,
-                    shadowOffset: { width: 0, height: 4 },
-                    shadowOpacity: 0.3,
-                    shadowRadius: 8,
+                    shadowOffset: { width: 0, height: 3 },
+                    shadowOpacity: 0.25,
+                    shadowRadius: 6,
                   },
-                  android: { elevation: 6 },
-                  web: { boxShadow: `0 4px 14px ${theme.colors.primary}40` }
+                  android: { elevation: 4 },
+                  web: { boxShadow: `0 3px 12px ${theme.colors.primary}33` }
                 })
               }}>
                 {/* Heading: Saptami - Breakfast */}
@@ -401,7 +401,7 @@ export function QuickCheckoutModal({
 
                 {/* Headcount & Dietary Breakdown */}
                 <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                  <Text style={{ fontSize: 14, fontWeight: "800", color: theme.colors.white }}>
+                  <Text style={{ fontSize: 13, fontWeight: "800", color: theme.colors.white }}>
                     {(() => {
                       if (!subscription) return "";
                       if (kidsEnabled) {
@@ -462,12 +462,12 @@ export function QuickCheckoutModal({
             {/* Section 2: Counter Inputs Card Container (View Pass Section Aesthetics) */}
             {quickCheckoutDetails && currentMealInfo && (
               <View style={{
-                padding: 16,
-                borderRadius: 18,
+                padding: 14,
+                borderRadius: 16,
                 backgroundColor: theme.themeType === AppThemeMode.DARK ? "rgba(27, 45, 36, 0.5)" : "rgba(235, 251, 238, 0.7)",
                 borderColor: theme.cardColors[2].border,
                 borderWidth: 1.5,
-                gap: 12,
+                gap: 10,
               }}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                   <Ionicons name="flash-outline" size={16} color={theme.cardColors[2].accent} />
@@ -547,7 +547,7 @@ export function QuickCheckoutModal({
                     android: { elevation: 4 },
                     web: { boxShadow: `0 4px 12px ${theme.colors.primary}40` }
                   }),
-                  pressed && !isCheckoutDisabled && { opacity: 0.85, transform: [{ scale: 0.98 }] }
+                  pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] }
                 ]}
               >
                 <Ionicons
@@ -576,32 +576,32 @@ const modalStyles = StyleSheet.create({
   actionRow: {
     flexDirection: "row",
     gap: 12,
-    marginTop: 16,
-    marginBottom: 8,
+    marginTop: 10,
+    marginBottom: 4,
   },
   cancelButton: {
     flex: 1,
-    height: 48,
-    borderRadius: 14,
+    height: 44,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1.5,
   },
   cancelText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "800",
   },
   checkoutButton: {
     flex: 1,
-    height: 48,
-    borderRadius: 14,
+    height: 44,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row",
     gap: 6,
   },
   checkoutText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "800",
   },
 });
