@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { Platform } from "react-native";
+import { Platform, AppState, AppStateStatus } from "react-native";
 import {
   createFirebaseRepository,
   firebaseRepositoryConfigured
@@ -23,7 +23,8 @@ import {
   ActivityAction,
   Note,
   TakenState,
-  UserRole
+  UserRole,
+  KitchenMetrics
 } from "../types";
 import { useAuth } from "./AuthContext";
 
@@ -58,6 +59,8 @@ interface DatabaseContextType {
   whatsappCountryCode: string;
   remoteAppVersion: string | null;
   notes: Note[];
+  activityLogs: ActivityLog[];
+  kitchenMetrics: KitchenMetrics | null;
 
   // Derived Metrics
   dashboardData: any[];
@@ -72,6 +75,8 @@ interface DatabaseContextType {
   updateGuestCount: (dayId: string, mealKey: MealType, field: string, value: number) => Promise<void>;
   updateMealMenu: (dayId: string, mealKey: MealType, menu: MealMenu) => Promise<void>;
   updateSubscriptionStatus: (flatId: string, dayId: string, personIndex: number, slot: string, taken: boolean) => Promise<void>;
+  checkInPassAtomic: (flatId: string, updatesMap: Record<string, boolean>, metricsIncrements?: Record<string, number>) => Promise<void>;
+  getByPasscode: (passcode: string) => Promise<Subscription | undefined>;
   getAuthConfig: () => Promise<any>;
   addActivityLog: (log: Omit<ActivityLog, "id" | "timestamp" | "userName" | "userRole" | "device" | "os">, manualUser?: string, manualRole?: UserRole | string) => void;
   getActivityLogs: (limit?: number) => Promise<ActivityLog[]>;
@@ -104,6 +109,8 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
   const [whatsappCountryCode, setWhatsappCountryCode] = useState(UI_TEXT.defaultCountryCode);
   const [remoteAppVersion, setRemoteAppVersion] = useState<string | null>(null);
   const [notes, setNotes] = useState<Note[]>([]);
+  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
+  const [kitchenMetrics, setKitchenMetrics] = useState<KitchenMetrics | null>(null);
 
   const getAuthConfig = useCallback(() => repository.getAuthConfig(), []);
 
@@ -126,6 +133,20 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
     return repository.getActivityLogs(limitCount);
   }, []);
 
+  const getByPasscode = useCallback((passcode: string) => {
+    return repository.getByPasscode(passcode);
+  }, []);
+
+  // Helper for natural block/flat sorting
+  const sortSubscriptions = useCallback((list: Subscription[]) => {
+    return [...list].sort((a, b) => {
+      const blockCompare = (a.block || "").localeCompare(b.block || "", undefined, { numeric: true, sensitivity: 'base' });
+      if (blockCompare !== 0) return blockCompare;
+      return (a.flat || "").localeCompare(b.flat || "", undefined, { numeric: true, sensitivity: 'base' });
+    });
+  }, []);
+
+  // Fast Full Refresh (Fallback or Manual Health-Check)
   const refreshAllData = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     try {
@@ -133,12 +154,14 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
         setFirebaseError(firebaseMissingConfig.join(", "));
         return;
       }
-      const [subs, config, menu, notesData, appVer] = await Promise.all([
+      const [subs, config, menu, notesData, appVer, logsData, metricsData] = await Promise.all([
         repository.list(),
         repository.getConfig(),
         repository.getMenu(),
         repository.getNotes(),
         repository.getAppVersion(),
+        repository.getActivityLogs(50),
+        repository.getMetrics(),
       ]);
 
       if (appVer) {
@@ -148,14 +171,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
         setRemoteAppVersion(UI_TEXT.appVersion);
       }
 
-      // Natural sort by Block then Flat
-      const sortedSubs = [...subs].sort((a, b) => {
-        const blockCompare = (a.block || "").localeCompare(b.block || "", undefined, { numeric: true, sensitivity: 'base' });
-        if (blockCompare !== 0) return blockCompare;
-        return (a.flat || "").localeCompare(b.flat || "", undefined, { numeric: true, sensitivity: 'base' });
-      });
-
-      setSubscriptions(sortedSubs);
+      setSubscriptions(sortSubscriptions(subs));
       setDayConfig(config.days);
       setSeasonName(config.seasonName);
       setSeasonEnabled(config.seasonEnabled !== false);
@@ -167,6 +183,8 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       setWhatsappCountryCode(config.whatsappCountryCode || "91");
       setFoodMenu(menu);
       setNotes(notesData);
+      setActivityLogs(logsData);
+      setKitchenMetrics(metricsData);
       setFirebaseError("");
     } catch (err: any) {
       console.error("Sync error:", err);
@@ -175,38 +193,179 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
     } finally {
       if (!silent) setLoading(false);
     }
-  }, []);
+  }, [sortSubscriptions]);
 
-  useEffect(() => {
-    if (userRole) {
-      refreshAllData();
-    }
-  }, [userRole, refreshAllData]);
-
-  // Real-time listener for remote app version changes
+  // Progressive Tiered Hydration & Real-Time Universal Listeners Engine
   useEffect(() => {
     if (!userRole) return;
-    const unsubscribe = repository.onAppVersionChange((ver) => {
-      if (ver !== null) {
-        setRemoteAppVersion(ver);
-      }
+
+    let isMounted = true;
+
+    // Progressive Tier 1: Fast Parallel Metadata Load (<300ms)
+    setLoading(true);
+    Promise.all([
+      repository.getConfig(),
+      repository.getMenu(),
+      repository.getNotes(),
+      repository.getAppVersion(),
+      repository.getMetrics(),
+      repository.getActivityLogs(50)
+    ]).then(([config, menu, notesData, appVer, metricsData, logsData]) => {
+      if (!isMounted) return;
+
+      setDayConfig(config.days || []);
+      setSeasonName(config.seasonName || "");
+      setSeasonEnabled(config.seasonEnabled !== false);
+      if (config.payment) setPaymentConfig(config.payment);
+      setGuestEnabled(config.guestEnabled !== false);
+      setMobileEnabled(config.mobileEnabled !== false);
+      setFoodPriceEnabled(config.foodPriceEnabled || false);
+      setKidsEnabled(config.kidsEnabled || false);
+      setWhatsappCountryCode(config.whatsappCountryCode || "91");
+      setFoodMenu(menu);
+      setNotes(notesData || []);
+      setActivityLogs(logsData || []);
+      if (appVer) setRemoteAppVersion(appVer);
+      setKitchenMetrics(metricsData);
+
+      // Fast Release UI: App is usable NOW in <300ms!
+      setLoading(false);
+
+      // Progressive Tier 2: Initial Subscriptions Fetch
+      repository.list().then((subs) => {
+        if (!isMounted) return;
+        setSubscriptions(sortSubscriptions(subs));
+      }).catch(err => console.error("Subscriptions list error:", err));
+
+    }).catch(err => {
+      console.error("Progressive load error:", err);
+      if (isMounted) setLoading(false);
     });
-    return () => {
-      if (unsubscribe) unsubscribe();
-    };
-  }, [userRole]);
 
-  // Periodic Background Sync (10s)
+    const activeDays = getActiveDays(dayConfig);
+
+    // Register Universal Real-Time WebSocket Listeners
+    const unsubSubs = repository.onSubscriptionsDelta(
+      (newRecord) => {
+        setSubscriptions((prev) => {
+          if (prev.some((s) => s.id === newRecord.id)) return prev;
+          return sortSubscriptions([...prev, newRecord]);
+        });
+      },
+      (updatedRecord) => {
+        setSubscriptions((prev) =>
+          prev.map((s) => (s.id === updatedRecord.id ? updatedRecord : s))
+        );
+      },
+      (removedId) => {
+        setSubscriptions((prev) => prev.filter((s) => s.id !== removedId));
+      },
+      activeDays
+    );
+
+    const unsubNotes = repository.onNotesDelta(
+      (newNote) => {
+        setNotes((prev) => {
+          if (prev.some((n) => n.id === newNote.id)) {
+            return prev.map((n) => (n.id === newNote.id ? newNote : n)).sort((a, b) => b.timestamp - a.timestamp);
+          }
+          return [newNote, ...prev].sort((a, b) => b.timestamp - a.timestamp);
+        });
+      },
+      (updatedNote) => {
+        setNotes((prev) => prev.map((n) => (n.id === updatedNote.id ? updatedNote : n)).sort((a, b) => b.timestamp - a.timestamp));
+      },
+      (removedId) => {
+        setNotes((prev) => prev.filter((n) => n.id !== removedId));
+      }
+    );
+
+    const unsubLogs = repository.onLogsDelta((newLog) => {
+      setActivityLogs((prev) => {
+        if (prev.some((l) => l.id === newLog.id)) {
+          return prev.map((l) => (l.id === newLog.id ? newLog : l)).sort((a, b) => b.timestamp - a.timestamp);
+        }
+        const updated = [newLog, ...prev];
+        return updated.sort((a, b) => b.timestamp - a.timestamp).slice(0, 50);
+      });
+    });
+
+    const unsubMenu = repository.onMenuChange((menu) => {
+      setFoodMenu(menu);
+    });
+
+    const unsubConfig = repository.onConfigChange((config) => {
+      setDayConfig(config.days || []);
+      setSeasonName(config.seasonName || "");
+      setSeasonEnabled(config.seasonEnabled !== false);
+      if (config.payment) setPaymentConfig(config.payment);
+      setGuestEnabled(config.guestEnabled !== false);
+      setMobileEnabled(config.mobileEnabled !== false);
+      setFoodPriceEnabled(config.foodPriceEnabled || false);
+      setKidsEnabled(config.kidsEnabled || false);
+      setWhatsappCountryCode(config.whatsappCountryCode || "91");
+    });
+
+    const unsubMetrics = repository.onMetricsChange((metrics) => {
+      setKitchenMetrics(metrics);
+    });
+
+    const unsubAppVersion = repository.onAppVersionChange((ver) => {
+      if (ver !== null) setRemoteAppVersion(ver);
+    });
+
+    return () => {
+      isMounted = false;
+      unsubSubs();
+      unsubNotes();
+      unsubLogs();
+      unsubMenu();
+      unsubConfig();
+      unsubMetrics();
+      unsubAppVersion();
+    };
+  }, [userRole, sortSubscriptions]);
+
+  // Lifecycle Reconnection Handlers (Mobile AppState & Web Visibility)
   useEffect(() => {
     if (!userRole) return;
-    const interval = setInterval(() => refreshAllData(true), 10000);
-    return () => clearInterval(interval);
+
+    if (Platform.OS === "web") {
+      const handleVisibilityChange = () => {
+        if (typeof document !== "undefined" && document.visibilityState === "visible") {
+          refreshAllData(true);
+        }
+      };
+      if (typeof document !== "undefined") {
+        document.addEventListener("visibilitychange", handleVisibilityChange);
+      }
+      return () => {
+        if (typeof document !== "undefined") {
+          document.removeEventListener("visibilitychange", handleVisibilityChange);
+        }
+      };
+    } else {
+      const subscription = AppState.addEventListener("change", (nextAppState: AppStateStatus) => {
+        if (nextAppState === "active") {
+          refreshAllData(true);
+        }
+      });
+      return () => subscription.remove();
+    }
   }, [userRole, refreshAllData]);
 
   const upsertSubscription = useCallback(async (sub: Subscription) => {
     try {
+      // Immediate local UI update (Optimistic)
+      setSubscriptions((prev) => {
+        const exists = prev.some((s) => s.id === sub.id);
+        if (exists) {
+          return prev.map((s) => (s.id === sub.id ? sub : s));
+        }
+        return sortSubscriptions([...prev, sub]);
+      });
+
       await repository.upsert(sub);
-      await refreshAllData(true);
       return true;
     } catch (err: any) {
       addActivityLog({
@@ -218,18 +377,14 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       });
       throw err;
     }
-  }, [refreshAllData, addActivityLog]);
+  }, [addActivityLog, sortSubscriptions]);
 
   const deleteSubscription = useCallback(async (id: string) => {
     try {
       // Optimistic Update: Remove from local state first
       setSubscriptions(prev => prev.filter(sub => sub.id !== id));
-
       await repository.remove(id);
-      // Optional: Full refresh to sync any other concurrent changes
-      await refreshAllData(true);
     } catch (err: any) {
-      // If error occurs, we need to refresh to restore the potentially valid state
       await refreshAllData(true);
       addActivityLog({
         module: ActivityModule.SUBSCRIPTION,
@@ -245,7 +400,6 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
   const updateConfig = useCallback(async (config: AppConfig) => {
     try {
       await repository.updateConfig(config);
-      await refreshAllData(true);
     } catch (err: any) {
       addActivityLog({
         module: ActivityModule.CONFIG,
@@ -255,13 +409,12 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       });
       throw err;
     }
-  }, [refreshAllData, addActivityLog]);
+  }, [addActivityLog]);
 
   const updateMenu = useCallback(async (menu: FoodMenu) => {
     try {
       await repository.updateMenu(menu);
       setFoodMenu(menu);
-      await refreshAllData(true);
     } catch (err: any) {
       addActivityLog({
         module: ActivityModule.MENU,
@@ -271,11 +424,10 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       });
       throw err;
     }
-  }, [refreshAllData, addActivityLog]);
+  }, [addActivityLog]);
 
   const updateGuestCount = useCallback(async (dayId: string, mealKey: MealType, field: string, value: number) => {
     try {
-      // Optimistic update
       setFoodMenu(prev => ({
         ...prev,
         [dayId]: {
@@ -283,7 +435,6 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
           [mealKey]: { ...prev[dayId][mealKey as keyof DayMenu], [field]: value }
         }
       }));
-
       await repository.updateGuestCount(dayId, mealKey, field, value);
     } catch (err: any) {
       addActivityLog({
@@ -324,12 +475,10 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
 
        await repository.updateSubscriptionStatus(flatId, dayId, personIndex, slot, taken);
 
-       // Rule: If food taken is toggled OFF, also force parcel taken to OFF in database
        if (!isParcel && !taken) {
          await repository.updateSubscriptionStatus(flatId, dayId, personIndex, parcelKey, false);
        }
 
-       // Optimistic update
        setSubscriptions(prev => prev.map(s => {
          if (s.id === flatId) {
             const updated = { ...s };
@@ -382,6 +531,21 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
        });
        throw err;
      }
+  }, [addActivityLog, subscriptions]);
+
+  const checkInPassAtomic = useCallback(async (flatId: string, updatesMap: Record<string, boolean>, metricsIncrements?: Record<string, number>) => {
+    try {
+      await repository.checkInPassAtomic(flatId, updatesMap, metricsIncrements);
+    } catch (err: any) {
+      addActivityLog({
+        module: ActivityModule.SCANNER,
+        action: ActivityAction.ERROR,
+        targetId: flatId,
+        description: UI_TEXT.logError.replace("{module}", ActivityModule.SCANNER).replace("{message}", err.message || String(err)),
+        stack: err.stack
+      });
+      throw err;
+    }
   }, [addActivityLog]);
 
   const upsertNote = useCallback(async (note: Note) => {
@@ -393,7 +557,6 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
         action: isEdit ? ActivityAction.UPDATE : ActivityAction.CREATE,
         description: (isEdit ? UI_TEXT.logEditNote : UI_TEXT.logAddNote).replace("{subject}", note.subject)
       });
-      await refreshAllData(true);
     } catch (err: any) {
       addActivityLog({
         module: ActivityModule.NOTE,
@@ -403,16 +566,33 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       });
       throw err;
     }
-  }, [refreshAllData, addActivityLog]);
+  }, [addActivityLog]);
 
   const deleteNote = useCallback(async (id: string) => {
-    // ... logic remains same ...
-  }, [refreshAllData, addActivityLog, notes]);
+    try {
+      setNotes(prev => prev.filter(n => n.id !== id));
+      await repository.removeNote(id);
+      addActivityLog({
+        module: ActivityModule.NOTE,
+        action: ActivityAction.DELETE,
+        targetId: id,
+        description: UI_TEXT.logDeleteNote.replace("{id}", id)
+      });
+    } catch (err: any) {
+      addActivityLog({
+        module: ActivityModule.NOTE,
+        action: ActivityAction.ERROR,
+        targetId: id,
+        description: UI_TEXT.logError.replace("{module}", ActivityModule.NOTE).replace("{message}", err.message || String(err)),
+        stack: err.stack
+      });
+      throw err;
+    }
+  }, [addActivityLog]);
 
   const guestUpdateTimers = useRef<Record<string, any>>({});
 
   const updateGuestCountDebounced = useCallback((dayId: string, mealKey: MealType, field: string, value: number) => {
-     // 1. Immediate local UI update (Optimistic)
      setFoodMenu(prev => {
         const updatedDay = { ...(prev[dayId] || {}) };
         const updatedMeal = { ...(updatedDay[mealKey] || { veg: [], nonVeg: [] }), [field]: value };
@@ -422,7 +602,6 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
         };
      });
 
-     // 2. Debounce the Database write and Activity Log
      const timerKey = `${dayId}-${mealKey}-${field}`;
      if (guestUpdateTimers.current[timerKey]) {
         clearTimeout(guestUpdateTimers.current[timerKey]);
@@ -677,16 +856,18 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo(() => ({
     loading, firebaseError, refreshAllData,
     subscriptions, foodMenu, dayConfig, seasonName, seasonEnabled, paymentConfig, guestEnabled, mobileEnabled, foodPriceEnabled,
-    kidsEnabled, whatsappCountryCode, remoteAppVersion, notes,
+    kidsEnabled, whatsappCountryCode, remoteAppVersion, notes, activityLogs, kitchenMetrics,
     dashboardData, collections, totalPeople,
     upsertSubscription, deleteSubscription, updateConfig, updateMenu, updateGuestCount, updateMealMenu, updateSubscriptionStatus,
+    checkInPassAtomic, getByPasscode,
     getAuthConfig, addActivityLog, getActivityLogs, upsertNote, deleteNote, updateGuestCountDebounced
   }), [
     loading, firebaseError, refreshAllData,
     subscriptions, foodMenu, dayConfig, seasonName, seasonEnabled, paymentConfig, guestEnabled, mobileEnabled, foodPriceEnabled,
-    kidsEnabled, whatsappCountryCode, remoteAppVersion, notes,
+    kidsEnabled, whatsappCountryCode, remoteAppVersion, notes, activityLogs, kitchenMetrics,
     dashboardData, collections, totalPeople,
     upsertSubscription, deleteSubscription, updateConfig, updateMenu, updateGuestCount, updateMealMenu, updateSubscriptionStatus,
+    checkInPassAtomic, getByPasscode,
     getAuthConfig, addActivityLog, getActivityLogs, upsertNote, deleteNote, updateGuestCountDebounced
   ]);
 

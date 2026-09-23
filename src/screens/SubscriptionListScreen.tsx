@@ -242,6 +242,7 @@ export function SubscriptionListScreen() {
   }, [dayConfig]);
 
   const [activeFilters, setActiveFilters] = useState<FilterMode[]>([FilterMode.ALL]);
+  const [isAscending, setIsAscending] = useState(true);
 
   const toggleFilter = (mode: FilterMode) => {
     if (mode === FilterMode.ALL) {
@@ -393,66 +394,53 @@ export function SubscriptionListScreen() {
       }
     }
 
-    if (!subscriptionSearch) {
-       return filtered.map(item => {
-         const hasCurrentMeal = !!currentMealInfo && (item.mealSlots?.[currentMealInfo.dayId] || []).some(personSlots =>
-           personSlots[currentMealInfo.type] === DietaryOption.VEG ||
-           personSlots[currentMealInfo.type] === DietaryOption.NON_VEG
-         );
-         const hasParcel = Object.values(item.mealSlots || {}).some(daySlots =>
-           daySlots.some(slot => slot.breakfastParcel || slot.lunchParcel || slot.dinnerParcel)
-         );
-         let hasVeg = false;
-         let hasNonVeg = false;
-         Object.values(item.mealSlots || {}).forEach(daySlots => {
-           daySlots.forEach(slot => {
-             if (slot[MealType.BREAKFAST] === DietaryOption.VEG) hasVeg = true;
-             if (slot[MealType.LUNCH] === DietaryOption.VEG) hasVeg = true;
-             if (slot[MealType.DINNER] === DietaryOption.VEG) hasVeg = true;
-             if (slot[MealType.BREAKFAST] === DietaryOption.NON_VEG) hasNonVeg = true;
-             if (slot[MealType.LUNCH] === DietaryOption.NON_VEG) hasNonVeg = true;
-             if (slot[MealType.DINNER] === DietaryOption.NON_VEG) hasNonVeg = true;
-           });
-         });
-         const isVegOnly = hasVeg && !hasNonVeg;
-         const missedItem = missedData.list.find(m => m.id === item.id);
-
-         return { ...item, _hasCurrentMeal: hasCurrentMeal, _hasParcel: hasParcel, _isVegOnly: isVegOnly, _missedCount: missedItem?.missed };
-       });
-    }
-
-    const searchLower = subscriptionSearch.toLowerCase();
-    return filtered
-      .filter(
+    if (subscriptionSearch) {
+      const searchLower = subscriptionSearch.toLowerCase();
+      filtered = filtered.filter(
         (s) =>
           s.flat.toLowerCase().includes(searchLower) ||
           s.block.toLowerCase().includes(searchLower)
-      )
-      .map(item => {
-        const hasCurrentMeal = !!currentMealInfo && (item.mealSlots?.[currentMealInfo.dayId] || []).some(personSlots =>
-          personSlots[currentMealInfo.type] === DietaryOption.VEG ||
-          personSlots[currentMealInfo.type] === DietaryOption.NON_VEG
-        );
-        const hasParcel = Object.values(item.mealSlots || {}).some(daySlots =>
-          daySlots.some(slot => slot.breakfastParcel || slot.lunchParcel || slot.dinnerParcel)
-        );
-        let hasVeg = false;
-        let hasNonVeg = false;
-        Object.values(item.mealSlots || {}).forEach(daySlots => {
-          daySlots.forEach(slot => {
-            if (slot[MealType.BREAKFAST] === DietaryOption.VEG) hasVeg = true;
-            if (slot[MealType.LUNCH] === DietaryOption.VEG) hasVeg = true;
-            if (slot[MealType.DINNER] === DietaryOption.VEG) hasVeg = true;
-            if (slot[MealType.BREAKFAST] === DietaryOption.NON_VEG) hasNonVeg = true;
-            if (slot[MealType.LUNCH] === DietaryOption.NON_VEG) hasNonVeg = true;
-            if (slot[MealType.DINNER] === DietaryOption.NON_VEG) hasNonVeg = true;
-          });
+      );
+    }
+
+    // Sort by Block then Flat based on isAscending
+    const sorted = [...filtered].sort((a, b) => {
+      const blockA = a.block || "";
+      const blockB = b.block || "";
+      const blockCompare = blockA.localeCompare(blockB, undefined, { numeric: true, sensitivity: 'base' });
+      if (blockCompare !== 0) return isAscending ? blockCompare : -blockCompare;
+      const flatA = a.flat || "";
+      const flatB = b.flat || "";
+      const flatCompare = flatA.localeCompare(flatB, undefined, { numeric: true, sensitivity: 'base' });
+      return isAscending ? flatCompare : -flatCompare;
+    });
+
+    return sorted.map(item => {
+      const hasCurrentMeal = !!currentMealInfo && (item.mealSlots?.[currentMealInfo.dayId] || []).some(personSlots =>
+        personSlots[currentMealInfo.type] === DietaryOption.VEG ||
+        personSlots[currentMealInfo.type] === DietaryOption.NON_VEG
+      );
+      const hasParcel = Object.values(item.mealSlots || {}).some(daySlots =>
+        daySlots.some(slot => slot.breakfastParcel || slot.lunchParcel || slot.dinnerParcel)
+      );
+      let hasVeg = false;
+      let hasNonVeg = false;
+      Object.values(item.mealSlots || {}).forEach(daySlots => {
+        daySlots.forEach(slot => {
+          if (slot[MealType.BREAKFAST] === DietaryOption.VEG) hasVeg = true;
+          if (slot[MealType.LUNCH] === DietaryOption.VEG) hasVeg = true;
+          if (slot[MealType.DINNER] === DietaryOption.VEG) hasVeg = true;
+          if (slot[MealType.BREAKFAST] === DietaryOption.NON_VEG) hasNonVeg = true;
+          if (slot[MealType.LUNCH] === DietaryOption.NON_VEG) hasNonVeg = true;
+          if (slot[MealType.DINNER] === DietaryOption.NON_VEG) hasNonVeg = true;
         });
-        const isVegOnly = hasVeg && !hasNonVeg;
-        const missedItem = missedData.list.find(m => m.id === item.id);
-        return { ...item, _hasCurrentMeal: hasCurrentMeal, _hasParcel: hasParcel, _isVegOnly: isVegOnly, _missedCount: missedItem?.missed };
       });
-  }, [subscriptions, subscriptionSearch, activeFilters, currentMealInfo, kidsEnabled, missedData]);
+      const isVegOnly = hasVeg && !hasNonVeg;
+      const missedItem = missedData.list.find(m => m.id === item.id);
+
+      return { ...item, _hasCurrentMeal: hasCurrentMeal, _hasParcel: hasParcel, _isVegOnly: isVegOnly, _missedCount: missedItem?.missed };
+    });
+  }, [subscriptions, subscriptionSearch, activeFilters, currentMealInfo, kidsEnabled, missedData, isAscending]);
 
   const handleExportExcel = useCallback(async () => {
     if (visibleSubscriptions.length === 0) return;
@@ -997,6 +985,28 @@ export function SubscriptionListScreen() {
                 clearButtonMode="while-editing"
               />
             </View>
+            <Pressable
+              onPress={() => setIsAscending(!isAscending)}
+              style={({ pressed }) => [
+                {
+                  width: s(44),
+                  height: s(44),
+                  borderRadius: s(12),
+                  backgroundColor: theme.colors.surfaceDark,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderWidth: 1,
+                  borderColor: theme.colors.border,
+                },
+                pressed && { opacity: 0.7 }
+              ]}
+            >
+              <Ionicons
+                name={isAscending ? "arrow-up-outline" : "arrow-down-outline"}
+                size={s(20)}
+                color={theme.colors.primary}
+              />
+            </Pressable>
             {visibleSubscriptions.length >= 1 && (
               <Pressable
                 onPress={handleExportExcel}
@@ -1038,9 +1048,9 @@ export function SubscriptionListScreen() {
           contentContainerStyle={[styles.content, { paddingTop: 10 }]}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
-          initialNumToRender={5}
-          maxToRenderPerBatch={5}
-          windowSize={3}
+          initialNumToRender={12}
+          maxToRenderPerBatch={10}
+          windowSize={5}
           updateCellsBatchingPeriod={50}
           removeClippedSubviews={Platform.OS === 'android'}
           ListEmptyComponent={

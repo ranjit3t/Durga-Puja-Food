@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, memo } from "react";
 import { View, Text, Pressable, StatusBar, StyleSheet, useWindowDimensions, Platform, TextInput } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useStyles } from "../styles";
@@ -12,6 +12,19 @@ import { useDatabase } from "../context/DatabaseContext";
 import { useUI } from "../context/UIContext";
 import { AppScreen, AppThemeMode, ActivityModule, ActivityAction, Subscription, MealType, DietaryOption } from "../types";
 import { getActiveDays, isMealCurrent, isMealEnabled, getDayLabel, getMealLabel, qrValueFor, isParcelEnabled } from "../constants";
+
+// Memoized Camera View to prevent UI/WebSocket re-renders from dropping camera FPS
+const MemoizedCamera = memo(({ onScan }: { onScan: (data: string) => void }) => {
+  return (
+    <CameraView
+      key="camera-view"
+      style={StyleSheet.absoluteFill}
+      facing="back"
+      barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
+      onBarcodeScanned={async ({ data }) => onScan(data)}
+    />
+  );
+}, () => true); // Never re-render camera view unless unmounted
 
 export function ScannerScreen() {
   const styles = useStyles();
@@ -273,14 +286,8 @@ export function ScannerScreen() {
     <View style={{ flex: 1, backgroundColor: theme.colors.shadow }}>
       <StatusBar barStyle={themeType === AppThemeMode.DARK ? "light-content" : "dark-content"} />
 
-      {/* 1. Camera fills the screen */}
-      <CameraView
-        key="camera-view"
-        style={StyleSheet.absoluteFill}
-        facing="back"
-        barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
-        onBarcodeScanned={async ({ data }) => handleScan(data)}
-      />
+      {/* 1. Camera fills the screen (Isolated in memoized component) */}
+      <MemoizedCamera onScan={handleScan} />
 
       {/* 2. UI Overlay on top of camera */}
       <View style={[StyleSheet.absoluteFill, { pointerEvents: "box-none" }]}>

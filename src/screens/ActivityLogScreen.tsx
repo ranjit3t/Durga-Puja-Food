@@ -1,9 +1,9 @@
 /**
  * Activity Log Screen for Admins.
  * Displays a historical list of system operations with filtering and search.
- * Auto-refreshes every 10 seconds to serve as a live distribution dashboard.
+ * Connects directly to live WebSocket-streamed logs in DatabaseContext.
  */
-import React, { useState, useEffect, useMemo, useCallback, memo } from "react";
+import React, { useState, useMemo, useCallback, memo } from "react";
 import {
   View,
   Text,
@@ -18,9 +18,9 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useStyles, useScaling } from "../styles";
-import { useAppTheme, StatusBarStyleMode } from "../theme";
+import { useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
-import { AppScreen, ActivityLog, ActivityModule, ActivityAction, AppThemeMode } from "../domain";
+import { ActivityLog, ActivityModule, ActivityAction, AppThemeMode, AppScreen } from "../domain";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
@@ -40,7 +40,6 @@ const ActivityLogItem = memo(({
   theme,
   styles,
   s,
-  v,
   subscriptions,
   onNavigateToDetails,
   expanded,
@@ -51,7 +50,6 @@ const ActivityLogItem = memo(({
   theme: any;
   styles: any;
   s: (n: number) => number;
-  v: (n: number) => number;
   subscriptions: Subscription[];
   onNavigateToDetails: (id: string) => void;
   expanded: boolean;
@@ -60,7 +58,6 @@ const ActivityLogItem = memo(({
   const isError = item.action === ActivityAction.ERROR;
   const colorScheme = theme.cardColors[index % theme.cardColors.length];
 
-  // Check if it's a pass-related event that should be clickable
   const clickableModules = [ActivityModule.SUBSCRIPTION, ActivityModule.CONTACT, ActivityModule.QR, ActivityModule.REPORT];
   const isPassEvent = clickableModules.includes(item.module) && item.action !== ActivityAction.DELETE && item.action !== ActivityAction.ERROR;
   const existingPass = isPassEvent && item.targetId ? (subscriptions || []).find(s => s.id === item.targetId) : null;
@@ -185,15 +182,13 @@ const ActivityLogItem = memo(({
 
 export function ActivityLogScreen() {
   const { handleLogout } = useAuth();
-  const { getActivityLogs, subscriptions } = useDatabase();
+  const { activityLogs, loading, refreshAllData, subscriptions } = useDatabase();
   const { navigate, goBack, setSelectedId, setSelectedRecord } = useAppNavigation();
 
   const styles = useStyles();
-  const { s, v } = useScaling();
+  const { s } = useScaling();
   const { theme, themeType } = useAppTheme();
 
-  const [logs, setLogs] = useState<ActivityLog[]>([]);
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [limit, setLimit] = useState(20);
   const [expandedStacks, setExpandedStacks] = useState<Record<string, boolean>>({});
@@ -207,6 +202,8 @@ export function ActivityLogScreen() {
   const [searchText, setSearchText] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [isAscending, setIsAscending] = useState(false);
+
+  const logs = activityLogs || [];
 
   const userOptions = useMemo(() => {
     const users = new Set<string>();
@@ -248,31 +245,6 @@ export function ActivityLogScreen() {
     });
     return Array.from(targets).sort();
   }, [logs]);
-
-  const loadLogs = useCallback(async (isSilent = false) => {
-    if (!isSilent) setLoading(true);
-    try {
-      const data = await getActivityLogs(100);
-      setLogs(data);
-    } catch (err) {
-      console.error("Failed to load activity logs:", err);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [getActivityLogs]);
-
-  useEffect(() => {
-    loadLogs();
-  }, [loadLogs]);
-
-  // 10s Auto-refresh
-  useEffect(() => {
-    const timer = setInterval(() => {
-      loadLogs(true);
-    }, 10000);
-    return () => clearInterval(timer);
-  }, [loadLogs]);
 
   const filteredLogs = useMemo(() => {
     let result = logs.filter(log => {
@@ -355,6 +327,12 @@ export function ActivityLogScreen() {
     }
   };
 
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await refreshAllData(true);
+    setRefreshing(false);
+  };
+
   const renderItem = useCallback(({ item, index }: { item: ActivityLog; index: number }) => (
     <ActivityLogItem
       item={item}
@@ -362,13 +340,12 @@ export function ActivityLogScreen() {
       theme={theme}
       styles={styles}
       s={s}
-      v={v}
       subscriptions={subscriptions}
       onNavigateToDetails={onNavigateToDetails}
       expanded={!!expandedStacks[item.id]}
       onToggleStack={onToggleStack}
     />
-  ), [theme, styles, s, v, subscriptions, onNavigateToDetails, expandedStacks, onToggleStack]);
+  ), [theme, styles, s, subscriptions, onNavigateToDetails, expandedStacks, onToggleStack]);
 
   return (
     <View style={styles.root}>
@@ -500,7 +477,7 @@ export function ActivityLogScreen() {
         </View>
       </View>
 
-      {loading && !refreshing ? (
+      {loading && !refreshing && logs.length === 0 ? (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
           <Text style={{ marginTop: 12, color: theme.colors.textSecondary, fontWeight: '600' }}>{UI_TEXT.loading}</Text>
@@ -512,7 +489,7 @@ export function ActivityLogScreen() {
           keyExtractor={item => item.id}
           contentContainerStyle={[styles.content, { paddingTop: 20 }]}
           refreshing={refreshing}
-          onRefresh={() => { setRefreshing(true); loadLogs(); }}
+          onRefresh={handleRefresh}
           removeClippedSubviews={Platform.OS === 'android'}
           initialNumToRender={10}
           maxToRenderPerBatch={10}

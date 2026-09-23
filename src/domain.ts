@@ -207,6 +207,16 @@ export type DayMenu = Record<MealType, MealMenu>;
 
 export type FoodMenu = Record<EventDay, DayMenu>;
 
+export type MealMetrics = {
+  vegServed?: number;
+  nonVegServed?: number;
+  kidsVegServed?: number;
+  kidsNonVegServed?: number;
+  parcelServed?: number;
+};
+
+export type KitchenMetrics = Record<EventDay, Record<MealType, MealMetrics>>;
+
 export type PaymentEntry = {
   amount: string;
   mode: PaymentMode;

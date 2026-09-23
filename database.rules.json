@@ -8,12 +8,17 @@
     },
     "subscriptions": {
       ".read": "auth != null",
+      ".indexOn": ["passcode", "block", "flat"],
       "$flatId": {
         ".read": "auth != null",
         ".write": "auth != null"
       }
     },
     "menu": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "metrics": {
       ".read": "auth != null",
       ".write": "auth != null"
     },

@@ -26,6 +26,8 @@ import {
   AppConfig,
   PaymentConfig,
   Note,
+  MealMetrics,
+  KitchenMetrics,
 } from "./domain";
 
 export enum FilterMode {
@@ -59,11 +61,13 @@ export {
   PaymentMode,
   PaymentEntry,
   ActivityLog,
-  ActivityModule,
   ActivityAction,
+  ActivityModule,
   AppThemeMode,
   ConfigDay,
   AppConfig,
   PaymentConfig,
   Note,
+  MealMetrics,
+  KitchenMetrics,
 };

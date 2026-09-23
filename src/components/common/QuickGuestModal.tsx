@@ -199,7 +199,6 @@ export function QuickGuestModal({
                     <View style={{ flex: 1 }}>
                       <CounterInput
                         label={`${UI_TEXT.veg}${UI_TEXT.space}${UI_TEXT.served}`}
-                        description={`${UI_TEXT.maxLimit}${UI_TEXT.colon}${UI_TEXT.space}${guestVeg}`}
                         value={guestVegTaken}
                         min={0}
                         max={guestVeg}
@@ -223,7 +222,6 @@ export function QuickGuestModal({
                     <View style={{ flex: 1 }}>
                       <CounterInput
                         label={`${UI_TEXT.nonVeg}${UI_TEXT.space}${UI_TEXT.served}`}
-                        description={`${UI_TEXT.maxLimit}${UI_TEXT.colon}${UI_TEXT.space}${guestNonVeg}`}
                         value={guestNonVegTaken}
                         min={0}
                         max={guestNonVeg}
@@ -247,7 +245,6 @@ export function QuickGuestModal({
                   <View style={{ flex: 1 }}>
                     <CounterInput
                       label={UI_TEXT.totalServed}
-                      description={`${UI_TEXT.maxLimit}${UI_TEXT.colon}${UI_TEXT.space}${guestTotal}`}
                       value={guestTaken}
                       min={0}
                       max={guestTotal}

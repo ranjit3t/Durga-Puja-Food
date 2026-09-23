@@ -2,7 +2,23 @@
  * Firebase Repository Layer
  * Handles data persistence, retrieval, and schema normalization.
  */
-import { get, ref, remove, set, update, push, query, limitToLast, onValue } from "firebase/database";
+import {
+  get,
+  ref,
+  remove,
+  set,
+  update,
+  push,
+  query,
+  limitToLast,
+  onValue,
+  onChildAdded,
+  onChildChanged,
+  onChildRemoved,
+  orderByChild,
+  equalTo,
+  ServerValue
+} from "firebase/database";
 import { ensureFirebaseAuth, firebaseConfigured } from "./firebase";
 import {
   SubscriptionRecord,
@@ -19,10 +35,10 @@ import {
   DietaryOption,
   ActivityLog,
   PaymentMode,
-  Note
+  Note,
+  KitchenMetrics
 } from "./domain";
 import { ConfigDay, AppConfig } from "./types";
-import { UI_TEXT } from "./strings";
 import { generatePasscode } from "./constants";
 
 // --- Repository Interface ---
@@ -30,6 +46,7 @@ import { generatePasscode } from "./constants";
 export interface SubscriptionRepository {
   list(): Promise<SubscriptionRecord[]>;
   getByFlatId(flatId: string): Promise<SubscriptionRecord | undefined>;
+  getByPasscode(passcode: string): Promise<SubscriptionRecord | undefined>;
   upsert(record: SubscriptionRecord): Promise<SubscriptionRecord>;
   remove(flatId: string): Promise<void>;
   getMenu(): Promise<FoodMenu>;
@@ -39,6 +56,7 @@ export interface SubscriptionRepository {
   getConfig(): Promise<AppConfig>;
   updateConfig(config: AppConfig): Promise<void>;
   updateSubscriptionStatus(flatId: string, dayId: string, personIndex: number, slot: string, taken: boolean): Promise<void>;
+  checkInPassAtomic(flatId: string, updatesMap: Record<string, boolean>, metricsIncrements?: Record<string, number>): Promise<void>;
   getAuthConfig(): Promise<any>;
   addActivityLog(log: Omit<ActivityLog, "id">): Promise<void>;
   getActivityLogs(limit?: number): Promise<ActivityLog[]>;
@@ -47,6 +65,23 @@ export interface SubscriptionRepository {
   removeNote(id: string): Promise<void>;
   getAppVersion(): Promise<string | null>;
   updateAppVersion(version: string): Promise<void>;
+  getMetrics(): Promise<KitchenMetrics | null>;
+  // Real-time Delta Listeners
+  onSubscriptionsDelta(
+    onAdded: (record: SubscriptionRecord) => void,
+    onChanged: (record: SubscriptionRecord) => void,
+    onRemoved: (id: string) => void,
+    activeDays: string[]
+  ): () => void;
+  onNotesDelta(
+    onAdded: (note: Note) => void,
+    onChanged: (note: Note) => void,
+    onRemoved: (id: string) => void
+  ): () => void;
+  onLogsDelta(onAdded: (log: ActivityLog) => void): () => void;
+  onMenuChange(callback: (menu: FoodMenu) => void): () => void;
+  onConfigChange(callback: (config: AppConfig) => void): () => void;
+  onMetricsChange(callback: (metrics: KitchenMetrics | null) => void): () => void;
   onAppVersionChange(callback: (version: string | null) => void): () => void;
 }
 
@@ -57,6 +92,7 @@ const authConfigPath = "auth_config";
 const logsPath = "logs";
 const notesPath = "notes";
 const appVersionPath = "appVersion";
+const metricsPath = "metrics";
 
 // --- Helper Functions ---
 
@@ -120,7 +156,7 @@ function emptyMenu(eventDays: string[]): FoodMenu {
  * Normalizes a raw database record into the current SubscriptionRecord format.
  * Handles legacy fields and data migrations (e.g. from global counts to individual choices).
  */
-function normalizeRecord(
+export function normalizeRecord(
   value: Record<string, unknown>,
   eventDays: string[]
 ): SubscriptionRecord {
@@ -133,6 +169,23 @@ function normalizeRecord(
   const mobile = value.mobile ? Number(value.mobile) : undefined;
   const transactionId = value.transactionId ? String(value.transactionId) : undefined;
   const passcode = value.passcode ? String(value.passcode) : (id ? generatePasscode(id) : undefined);
+
+  // Extract all day keys present in incoming value object + eventDays
+  const rawMealSlots = (value.mealSlots as Record<string, any[]>) || {};
+  const rawTakenByPerson = (value.takenByPerson as Record<string, any[]>) || {};
+  const rawMealByPerson = (value.mealByPerson as Record<string, any[]>) || {};
+  const rawMeals = (value.meals as Record<string, any>) || {};
+  const rawDays = (value.days as Record<string, any>) || {};
+
+  const recordDayKeys = new Set<string>([
+    ...(eventDays || []),
+    ...Object.keys(rawMealSlots),
+    ...Object.keys(rawTakenByPerson),
+    ...Object.keys(rawMealByPerson),
+    ...Object.keys(rawMeals),
+    ...Object.keys(rawDays)
+  ]);
+  const allDays = Array.from(recordDayKeys).filter(Boolean);
 
   // 1. Amount Normalization
   const storedAmount =
@@ -157,7 +210,7 @@ function normalizeRecord(
   const legacyMeal = (rawLegacyMeal === "Non-veg" || rawLegacyMeal === "Non-Veg") ? "nonVeg" : "veg";
 
   // 4. Choice Matrix Initialization (mealByPerson)
-  const mealByPerson = eventDays.reduce((result, day) => {
+  const mealByPerson = allDays.reduce((result, day) => {
     const current = (
       value.mealByPerson as Record<string, MealChoice[]> | undefined
     )?.[day];
@@ -186,19 +239,17 @@ function normalizeRecord(
   }, {} as Record<EventDay, MealChoice[]>);
 
   // 5. Slot Matrix Initialization (mealSlots)
-  const mealSlots = eventDays.reduce((result, day) => {
+  const mealSlots = allDays.reduce((result, day) => {
     const current = (value.mealSlots as Record<string, any[]> | undefined)?.[
       day
     ];
     result[day] =
       current && Array.isArray(current)
         ? current.map((s) => {
-            // Migration: handle boolean to MealChoice conversion
-            let b = typeof s?.breakfast === "boolean" ? (s.breakfast ? mealByPerson[day][0] || DietaryOption.VEG : DietaryOption.NONE) : s?.breakfast || DietaryOption.NONE;
-            let l = typeof s?.lunch === "boolean" ? (s.lunch ? mealByPerson[day][0] || DietaryOption.VEG : DietaryOption.NONE) : s?.lunch || DietaryOption.NONE;
-            let d = typeof s?.dinner === "boolean" ? (s.dinner ? mealByPerson[day][0] || DietaryOption.VEG : DietaryOption.NONE) : s?.dinner || DietaryOption.NONE;
+            let b = typeof s?.breakfast === "boolean" ? (s.breakfast ? mealByPerson[day]?.[0] || DietaryOption.VEG : DietaryOption.NONE) : s?.breakfast || DietaryOption.NONE;
+            let l = typeof s?.lunch === "boolean" ? (s.lunch ? mealByPerson[day]?.[0] || DietaryOption.VEG : DietaryOption.NONE) : s?.lunch || DietaryOption.NONE;
+            let d = typeof s?.dinner === "boolean" ? (s.dinner ? mealByPerson[day]?.[0] || DietaryOption.VEG : DietaryOption.NONE) : s?.dinner || DietaryOption.NONE;
 
-            // Standardize "Non-veg" -> "Non-Veg"
             if (b === "Non-veg") b = DietaryOption.NON_VEG;
             if (l === "Non-veg") l = DietaryOption.NON_VEG;
             if (d === "Non-veg") d = DietaryOption.NON_VEG;
@@ -212,7 +263,7 @@ function normalizeRecord(
               dinnerParcel: Boolean(s?.dinnerParcel),
             };
           })
-        : mealByPerson[day].map((choice) => ({
+        : (mealByPerson[day] || []).map((choice) => ({
             [MealType.BREAKFAST]: choice !== DietaryOption.NONE ? choice : DietaryOption.NONE,
             [MealType.LUNCH]: choice !== DietaryOption.NONE ? choice : DietaryOption.NONE,
             [MealType.DINNER]: choice !== DietaryOption.NONE ? choice : DietaryOption.NONE,
@@ -225,7 +276,7 @@ function normalizeRecord(
 
   // 5. Taken Status Normalization
   const legacyTaken = (value.taken ?? {}) as Record<string, boolean>;
-  const takenByPerson = eventDays.reduce((result, day) => {
+  const takenByPerson = allDays.reduce((result, day) => {
     const current = (
       value.takenByPerson as Record<string, TakenState[]> | undefined
     )?.[day];
@@ -255,7 +306,7 @@ function normalizeRecord(
 
   // 6. Aggregate Stats Generation (meals) & mealByPerson finalization
   const finalMealByPerson: Record<EventDay, MealChoice[]> = {};
-  const normalizedMeals = eventDays.reduce((result, day) => {
+  const normalizedMeals = allDays.reduce((result, day) => {
     const slots = mealSlots[day] || [];
     let dVegCount = 0;
     let dNonVegCount = 0;
@@ -340,7 +391,6 @@ export function createFirebaseRepository(): SubscriptionRepository {
     } else if (val.days) {
       days = Array.isArray(val.days) ? val.days : Object.values(val.days);
     } else {
-      // Handle config being an object-ified array at the root
       days = Object.values(val);
     }
 
@@ -373,6 +423,21 @@ export function createFirebaseRepository(): SubscriptionRepository {
         ? normalizeRecord(snapshot.val() as Record<string, unknown>, eventDays)
         : undefined;
     },
+    async getByPasscode(passcode) {
+      const services = await ensureFirebaseAuth();
+      if (!services) return undefined;
+      const eventDays = await getActiveDays(services);
+      const passcodeQuery = query(
+        ref(services.db, subscriptionsPath),
+        orderByChild("passcode"),
+        equalTo(passcode)
+      );
+      const snapshot = await get(passcodeQuery);
+      if (!snapshot.exists()) return undefined;
+      const val = snapshot.val();
+      const firstRecord = Object.values(val)[0] as Record<string, unknown>;
+      return normalizeRecord(firstRecord, eventDays);
+    },
     async upsert(record) {
       const services = await ensureFirebaseAuth();
       if (!services) return record;
@@ -387,7 +452,7 @@ export function createFirebaseRepository(): SubscriptionRepository {
     },
     async getMenu() {
       const services = await ensureFirebaseAuth();
-      if (!services) return {}; // Will be merged with emptyMenu in App
+      if (!services) return {};
       const eventDays = await getActiveDays(services);
       const snapshot = await get(ref(services.db, menuPath));
       return snapshot.exists()
@@ -426,7 +491,6 @@ export function createFirebaseRepository(): SubscriptionRepository {
           ? val.days
           : (val.days ? Object.values(val.days) : []);
 
-        // If days are still empty but val has numeric keys, it might be object-ified array
         let finalDays = days as ConfigDay[];
         if (finalDays.length === 0 && !val.days) {
           finalDays = Object.values(val).filter(v => v && typeof v === 'object' && (v as any).id) as ConfigDay[];
@@ -456,6 +520,24 @@ export function createFirebaseRepository(): SubscriptionRepository {
       if (!services) return;
       await set(ref(services.db, `${subscriptionsPath}/${flatId}/takenByPerson/${dayId}/${personIndex}/${slot}`), taken);
     },
+    async checkInPassAtomic(flatId, updatesMap, metricsIncrements) {
+      const services = await ensureFirebaseAuth();
+      if (!services) return;
+
+      const multiPathUpdates: Record<string, any> = {};
+
+      Object.entries(updatesMap).forEach(([slotPath, val]) => {
+        multiPathUpdates[`${subscriptionsPath}/${flatId}/takenByPerson/${slotPath}`] = val;
+      });
+
+      if (metricsIncrements) {
+        Object.entries(metricsIncrements).forEach(([metricPath, incVal]) => {
+          multiPathUpdates[`${metricsPath}/${metricPath}`] = ServerValue.increment(incVal);
+        });
+      }
+
+      await update(ref(services.db), multiPathUpdates);
+    },
     async getAuthConfig() {
       const services = await ensureFirebaseAuth();
       if (!services) return undefined;
@@ -471,8 +553,6 @@ export function createFirebaseRepository(): SubscriptionRepository {
     async getActivityLogs(limitCount = 50) {
       const services = await ensureFirebaseAuth();
       if (!services) return [];
-      // Firebase Realtime DB doesn't support complex sorting/filtering natively for historical logs easily without indexed keys
-      // We'll fetch latest N logs and handle filtering in the UI/Logic layer as requested.
       const logsRef = query(ref(services.db, logsPath), limitToLast(limitCount));
       const snapshot = await get(logsRef);
       const data = snapshot.val() as Record<string, ActivityLog> | null;
@@ -515,6 +595,168 @@ export function createFirebaseRepository(): SubscriptionRepository {
       if (!services) return;
       await set(ref(services.db, appVersionPath), version);
     },
+    async getMetrics() {
+      const services = await ensureFirebaseAuth();
+      if (!services) return null;
+      const snapshot = await get(ref(services.db, metricsPath));
+      return snapshot.exists() ? (snapshot.val() as KitchenMetrics) : null;
+    },
+
+    // --- Real-time WebSocket Delta Listeners ---
+
+    onSubscriptionsDelta(onAdded, onChanged, onRemoved, activeDays) {
+      let unsubAdded: (() => void) | null = null;
+      let unsubChanged: (() => void) | null = null;
+      let unsubRemoved: (() => void) | null = null;
+
+      ensureFirebaseAuth().then((services) => {
+        if (!services?.db) return;
+        const subsRef = ref(services.db, subscriptionsPath);
+
+        unsubAdded = onChildAdded(subsRef, (snapshot) => {
+          if (snapshot.exists()) {
+            onAdded(normalizeRecord(snapshot.val() as Record<string, unknown>, activeDays));
+          }
+        });
+
+        unsubChanged = onChildChanged(subsRef, (snapshot) => {
+          if (snapshot.exists()) {
+            onChanged(normalizeRecord(snapshot.val() as Record<string, unknown>, activeDays));
+          }
+        });
+
+        unsubRemoved = onChildRemoved(subsRef, (snapshot) => {
+          if (snapshot.key) {
+            onRemoved(snapshot.key);
+          }
+        });
+      }).catch(err => console.error("Subscriptions listener error:", err));
+
+      return () => {
+        if (unsubAdded) unsubAdded();
+        if (unsubChanged) unsubChanged();
+        if (unsubRemoved) unsubRemoved();
+      };
+    },
+
+    onNotesDelta(onAdded, onChanged, onRemoved) {
+      let unsubAdded: (() => void) | null = null;
+      let unsubChanged: (() => void) | null = null;
+      let unsubRemoved: (() => void) | null = null;
+
+      ensureFirebaseAuth().then((services) => {
+        if (!services?.db) return;
+        const nRef = ref(services.db, notesPath);
+
+        unsubAdded = onChildAdded(nRef, (snapshot) => {
+          if (snapshot.exists()) {
+            onAdded(snapshot.val() as Note);
+          }
+        });
+
+        unsubChanged = onChildChanged(nRef, (snapshot) => {
+          if (snapshot.exists()) {
+            onChanged(snapshot.val() as Note);
+          }
+        });
+
+        unsubRemoved = onChildRemoved(nRef, (snapshot) => {
+          if (snapshot.key) {
+            onRemoved(snapshot.key);
+          }
+        });
+      }).catch(err => console.error("Notes listener error:", err));
+
+      return () => {
+        if (unsubAdded) unsubAdded();
+        if (unsubChanged) unsubChanged();
+        if (unsubRemoved) unsubRemoved();
+      };
+    },
+
+    onLogsDelta(onAdded) {
+      let unsubAdded: (() => void) | null = null;
+
+      ensureFirebaseAuth().then((services) => {
+        if (!services?.db) return;
+        const logsQuery = query(ref(services.db, logsPath), limitToLast(50));
+
+        unsubAdded = onChildAdded(logsQuery, (snapshot) => {
+          if (snapshot.exists()) {
+            onAdded(snapshot.val() as ActivityLog);
+          }
+        });
+      }).catch(err => console.error("Logs listener error:", err));
+
+      return () => {
+        if (unsubAdded) unsubAdded();
+      };
+    },
+
+    onMenuChange(callback) {
+      let unsub: (() => void) | null = null;
+      ensureFirebaseAuth().then((services) => {
+        if (!services?.db) return;
+        unsub = onValue(ref(services.db, menuPath), (snapshot) => {
+          callback(snapshot.exists() ? (snapshot.val() as FoodMenu) : {});
+        });
+      }).catch(err => console.error("Menu listener error:", err));
+
+      return () => {
+        if (unsub) unsub();
+      };
+    },
+
+    onConfigChange(callback) {
+      let unsub: (() => void) | null = null;
+      ensureFirebaseAuth().then((services) => {
+        if (!services?.db) return;
+        unsub = onValue(ref(services.db, configPath), (snapshot) => {
+          if (!snapshot.exists()) return;
+          const val = snapshot.val();
+          const defaultPayment = { enabled: true, options: { upi: true, cash: true, bankTransfer: true } };
+          if (Array.isArray(val)) {
+            callback({ seasonName: "", days: val as ConfigDay[], payment: defaultPayment, guestEnabled: true, mobileEnabled: true, foodPriceEnabled: false, seasonEnabled: true, kidsEnabled: false });
+          } else {
+            const days = Array.isArray(val.days) ? val.days : (val.days ? Object.values(val.days) : []);
+            let finalDays = days as ConfigDay[];
+            if (finalDays.length === 0 && !val.days) {
+              finalDays = Object.values(val).filter(v => v && typeof v === 'object' && (v as any).id) as ConfigDay[];
+            }
+            callback({
+              seasonName: val.seasonName || "",
+              days: finalDays,
+              payment: val.payment || defaultPayment,
+              guestEnabled: val.guestEnabled !== false,
+              mobileEnabled: val.mobileEnabled !== false,
+              foodPriceEnabled: val.foodPriceEnabled || false,
+              seasonEnabled: val.seasonEnabled !== false,
+              kidsEnabled: val.kidsEnabled || false,
+              whatsappCountryCode: val.whatsappCountryCode || "91",
+            });
+          }
+        });
+      }).catch(err => console.error("Config listener error:", err));
+
+      return () => {
+        if (unsub) unsub();
+      };
+    },
+
+    onMetricsChange(callback) {
+      let unsub: (() => void) | null = null;
+      ensureFirebaseAuth().then((services) => {
+        if (!services?.db) return;
+        unsub = onValue(ref(services.db, metricsPath), (snapshot) => {
+          callback(snapshot.exists() ? (snapshot.val() as KitchenMetrics) : null);
+        });
+      }).catch(err => console.error("Metrics listener error:", err));
+
+      return () => {
+        if (unsub) unsub();
+      };
+    },
+
     onAppVersionChange(callback) {
       let unsubscribeFn: (() => void) | null = null;
       ensureFirebaseAuth().then((services) => {

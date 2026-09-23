@@ -59,7 +59,7 @@ export function ReportScreen() {
 
   const {
     sortedActiveDays, activeDays, dayWiseData, mealWiseData, flatWiseData, paymentData, getNotTakenData, getKidsMealData, getMissedParcelData
-  } = useReportData(subscriptions, foodMenu, dayConfig, guestEnabled, paymentConfig, !!kidsEnabled);
+  } = useReportData(subscriptions, foodMenu, dayConfig, guestEnabled, paymentConfig, !!kidsEnabled, reportType);
 
   const styles = useStyles();
   const { s } = useScaling();

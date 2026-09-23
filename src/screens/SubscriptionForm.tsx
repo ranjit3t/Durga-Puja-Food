@@ -489,6 +489,45 @@ export function SubscriptionForm() {
     delete prepared.mobile;
   }
 
+  const defaultSlot: MealSlot = {
+    [MealType.BREAKFAST]: DietaryOption.NONE,
+    [MealType.LUNCH]: DietaryOption.NONE,
+    [MealType.DINNER]: DietaryOption.NONE,
+    breakfastParcel: false,
+    lunchParcel: false,
+    dinnerParcel: false,
+  };
+
+  const getEnsureSlots = (dayId: string) => {
+    const totalPeople = form.peopleCount + (form.kidsCount || 0);
+    const existing = (form.mealSlots?.[dayId] as MealSlot[]) || [];
+    if (existing.length >= totalPeople) return existing;
+    const filled = [...existing];
+    for (let i = existing.length; i < totalPeople; i++) {
+      filled.push({ ...defaultSlot });
+    }
+    return filled;
+  };
+
+  const getEnsureTaken = (dayId: string) => {
+    const totalPeople = form.peopleCount + (form.kidsCount || 0);
+    const defaultTaken: TakenState = {
+      [MealType.BREAKFAST]: false,
+      [MealType.LUNCH]: false,
+      [MealType.DINNER]: false,
+      breakfastParcel: false,
+      lunchParcel: false,
+      dinnerParcel: false,
+    };
+    const existing = (form.takenByPerson?.[dayId] as TakenState[]) || [];
+    if (existing.length >= totalPeople) return existing;
+    const filled = [...existing];
+    for (let i = existing.length; i < totalPeople; i++) {
+      filled.push({ ...defaultTaken });
+    }
+    return filled;
+  };
+
   /**
    * Sets the dietary choice for a specific meal slot.
    */
@@ -496,11 +535,12 @@ export function SubscriptionForm() {
     slot: MealType,
     choice: MealChoice
   ) => {
+    const currentSlots = getEnsureSlots(selectedDay);
     setForm({
       ...form,
       mealSlots: {
         ...form.mealSlots,
-        [selectedDay]: (form.mealSlots[selectedDay] as any[]).map((item, index) =>
+        [selectedDay]: currentSlots.map((item, index) =>
           index === selectedPerson ? { ...item, [slot]: choice } : item
         ),
       },
@@ -513,11 +553,12 @@ export function SubscriptionForm() {
    */
   const setMealParcel = (slot: MealType, enabled: boolean) => {
     const parcelKey = `${slot}Parcel` as keyof MealSlot;
+    const currentSlots = getEnsureSlots(selectedDay);
     setForm({
       ...form,
       mealSlots: {
         ...form.mealSlots,
-        [selectedDay]: (form.mealSlots[selectedDay] as any[]).map((item, index) =>
+        [selectedDay]: currentSlots.map((item, index) =>
           index === selectedPerson ? { ...item, [parcelKey]: enabled } : item
         ),
       },
@@ -532,10 +573,11 @@ export function SubscriptionForm() {
     const isParcel = slot.includes("Parcel");
     const mealKey = isParcel ? slot.replace("Parcel", "") : slot;
     const parcelKey = `${mealKey}Parcel`;
+    const currentTaken = getEnsureTaken(selectedDay);
 
     set("takenByPerson", {
       ...form.takenByPerson,
-      [selectedDay]: (form.takenByPerson[selectedDay] as any[]).map((item, index) => {
+      [selectedDay]: currentTaken.map((item, index) => {
         if (index === selectedPerson) {
           const updated = { ...item, [slot]: taken };
           // Rule: If food taken is toggled OFF, also force parcel taken to OFF
