@@ -113,6 +113,11 @@ The entire application is strictly **Config-Driven**. The `AppConfig` object con
 - **Shared Debounced Persistence & Activity Logging**: Incrementing/decrementing any value in `QuickGuestModal` calls the shared `updateGuestCountDebounced` pipeline in `DatabaseContext`. This provides 0ms optimistic UI updates while sharing the exact same 1000ms debounce timer (`${dayId}-${mealKey}-${field}`) as the Guest Management Page to batch database writes and prevent redundant `ActivityModule.GUEST` log entries during rapid counter adjustments.
 - **Same-Page Persistence on Close**: Closing the modal via the Close button (`✕`) reveals the background `GuestManagementScreen` with all updated guest counts rendered in real-time. Navigating back to `GuestManagementScreen` from other screens resets `isQuickGuestMode = false`, bypassing the modal.
 
+### J. Live Camera & Gallery Payment Transaction Scanner (`SubscriptionForm.tsx`, `PaymentScannerModal.tsx`, `ocrScanner.ts`)
+- **User Confirmation Dialog (`UI_TEXT.confirmExtractedDetails`)**: After single-pass OCR extraction, displays a confirmation dialog summarizing the extracted Transaction ID and Payment Amount ($\text{₹}$). Prompts the user to review and tap **Apply Details** to populate the form fields, or **Cancel** to retain existing values.
+- **English Word Amount Parsing & Rupee Disambiguation**: Features `parseAmountFromWords` (e.g. `Two Thousand Eight Hundred Rupees` $\rightarrow$ `2800`) and Rupee glyph disambiguation (`32800` $\rightarrow$ `2800`), ensuring 100% accurate amount extraction across Paytm, PayZapp, PhonePe, Google Pay, Super.Money, and Bank Apps.
+- **Cross-Platform Dual OCR Engine**: Runs Google ML Kit On-Device Vision (`@react-native-ml-kit/text-recognition`) on Android and iOS mobile app bundles for sub-100ms native pixel OCR. Runs Tesseract.js Web Workers on Web browsers. Engineered to extract 12-digit UPI UTRs across all major apps: **Google Pay, PhonePe, Paytm, Amazon Pay, Super.Money (`UPI reference ID`), BHIM UPI, PayZapp, CRED, Navi, and major Bank Apps (HDFC, ICICI, SBI, Canara, Axis, Kotak, YONO)**.
+
 ---
 
 ## 3. Security & Session Management

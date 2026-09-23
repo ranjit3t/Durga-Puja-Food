@@ -5,7 +5,7 @@ This document describes the high-level system architecture, data models, design 
 ---
 
 ## 1. System Overview
-Eternia Food Desk is a cross-platform mobile and web application built with **React Native (Expo)** designed to manage high-volume food distribution during community festivals. It uses a **Serverless Layered Architecture** with **Firebase Realtime Database** for real-time synchronization, state persistence, and dynamic configuration.
+Eternia Food Desk is a cross-platform mobile and web application built with **React Native (Expo v57+)** designed to manage high-volume food distribution during community festivals. It uses a **Serverless Layered Architecture** with **Firebase Realtime Database** for real-time synchronization, state persistence, and dynamic configuration.
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
@@ -32,13 +32,14 @@ Eternia Food Desk is a cross-platform mobile and web application built with **Re
 ---
 
 ## 2. Technical Stack
-- **Framework**: React Native with Expo (v51+)
+- **Framework**: React Native with Expo (v57+)
 - **Language**: TypeScript (v5.3+, strict mode) with Domain Enums (`MealType`, `DietType`, `DietaryOption`, `AppScreen`, `ReportType`, `PaymentMode`, `AppThemeMode`).
 - **Backend & Database**: Firebase Realtime Database
 - **Authentication**: Hybrid model using Database-driven Role Authentication (`auth_config` node) with ephemeral 24-hour sessions.
 - **Version Control & Auto-Alert**: Top-level `"appVersion"` node in RTDB vs local `UI_TEXT.appVersion` (`src/strings.ts`).
 - **Local Persistence**: `AsyncStorage` for local device preferences (Theme mode).
 - **Scanning & Pass Generation**: `expo-camera` for QR code scanning and `react-native-qrcode-svg` for matrix generation.
+- **OCR Payment Processing**: Open-source client-side `tesseract.js` and `expo-image-picker` for extracting 12-digit UPI UTR / Bank transaction IDs from payment screenshots and camera receipts.
 - **Snapshot & Sharing**: `react-native-view-shot` (`captureRef`) for image exports and `expo-sharing` / `expo-print` for WhatsApp and native dialogs.
 
 ---
@@ -49,11 +50,12 @@ The project follows a **Modular Layered Architecture**:
 
 ```
 src/
-├── components/          # Modular UI Components
+├── components/          # Modular UI Components (QuickCheckoutModal, QuickGuestModal)
 ├── context/             # React Context Providers (Auth, Database, Navigation, UI)
 ├── hooks/               # Custom Hooks (useReportData)
 ├── navigation/          # Navigation Router & Screen Switcher
 ├── theme/               # Light/Dark Design Tokens & Provider
+├── utils/               # Utility Helpers (ocrScanner.ts)
 ├── domain.ts            # Domain Data Contracts
 ├── repository.ts        # Firebase Repository Operations
 ├── config.ts            # Global App Defaults & Constants
@@ -64,24 +66,24 @@ src/
 ```
 
 ### A. Presentation Layer (`src/screens`, `src/components`)
-- **`HomeScreen`**: Dashboard summary, real-time operational badges, service shortcuts, auto version-check alert, and high-density action grid.
+- **`HomeScreen`**: Dashboard summary, real-time operational badges, service shortcuts, auto version-check alert, and Quick Checkout & Quick Guest modal launchers.
 - **`SubscriptionListScreen`**: Pass directory with natural alphanumeric sorting, search, multi-select filter bar (`All`, `Current Meal`, `Current Meal Missed`, `Kids`, `Parcels`, `Veg Only`), and filtered detailed Excel CSV export sorted by Block and Flat.
-- **`SubscriptionForm`**: Registration & edit view with headcount baseline protection, automated pricing, and identity locking (Block/Flat locked in edit mode).
-- **`ScannerScreen`**: Dual-mode verification interface featuring live QR camera scanning and a 4-digit numeric passcode keypad overlay.
+- **`SubscriptionForm`**: Registration & edit view with headcount baseline protection, automated pricing, identity locking, and Open-Source OCR Payment Transaction Scanner.
+- **`ScannerScreen`**: Dual-mode verification interface featuring live QR camera scanning, 4-digit numeric passcode keypad, and Quick Checkout mode with same-page persistence.
 - **`QrScreen`**: Digital pass renderer displaying seasonal branding, QR matrix, and bold 4-digit passcode identity fallback.
-- **`DetailsScreen`**: Detailed flat pass summary with food collection matrix, quick contact actions (WhatsApp/Call/SMS), and deletion safeguards.
+- **`DetailsScreen`**: Detailed flat pass summary with food collection matrix, quick contact actions (WhatsApp/Call/SMS), deletion safeguards, and Quick Checkout shortcut.
 - **`DashboardScreen`**: Kitchen counter dashboard with live meal metrics, meal bar charts, and organized metric grid views.
 - **`ReportScreen`**: Analytics suite providing 10 specialized reports (`DayWise`, `MealWise`, `SingleMeal`, `Guest`, `Parcel`, `MissedParcel`, `Kids`, `Pending`, `FlatWise`, `PaymentSummary`) with theme-aware PNG image export.
-- **`GuestManagementScreen`**: Dedicated counter interface for managing guest meal demands with detailed guest Excel CSV export.
+- **`GuestManagementScreen`**: Dedicated counter interface for managing guest meal demands with Quick Guest Modal overlay and detailed guest Excel CSV export.
 - **`ContactsScreen`**: Admin-exclusive resident directory with direct WhatsApp/Call/SMS shortcuts.
 - **`NotesScreen`**: Collaborative team notes module with role permissions.
-- **`ActivityLogScreen`**: Forensic system audit log viewer.
+- **`ActivityLogScreen`**: Forensic system audit log viewer tracking both `userName` (preserved casing) and `userRole`.
 - **`SettingsScreen`**: Administrative control center for festival rules, meal lifecycles, and configuration safety guards.
 
 ### B. State & Context Layer (`src/context/`)
 - **`AuthContext`**: Manages login state, roles (`Admin` / `Vendor`), and session expiration (24-hour auto-logout).
-- **`DatabaseContext`**: Realtime RTDB listeners, data hydration, `remoteAppVersion` sync, activity logging, and subscription state updates.
-- **`NavigationContext`**: Custom history-stack navigation using `AppScreen` enums, preventing circular loops and handling back button behavior.
+- **`DatabaseContext`**: Realtime RTDB listeners, data hydration, `remoteAppVersion` sync, activity logging, `updateGuestCountDebounced` pipeline, and subscription state updates.
+- **`NavigationContext`**: Custom history-stack navigation using `AppScreen` enums, managing `isQuickCheckout` and `isQuickGuestMode` states while preventing circular loops and handling back button behavior.
 - **`UIContext`**: Global alert modals, error overlays, share handlers (`shareQr`), and printing logic (`printPass`).
 - **`ThemeContext`**: Dynamic Light/Dark mode switcher with `AsyncStorage` persistence.
 
@@ -93,97 +95,70 @@ src/
 
 ---
 
-## 4. Kitchen Dashboard & Metric Grid Hierarchy
+## 4. Quick Checkout & Quick Guest Engines
 
-To optimize kitchen planning and volunteer workflows, the `MealMetricGrid` on `DashboardScreen` follows a strict, organized section hierarchy:
+### A. Quick Checkout Modal (`QuickCheckoutModal.tsx`)
+- **Solid Primary Red Summary Header Card**: Styled in solid primary red theme (`backgroundColor: theme.colors.primary`) matching the Dashboard summary card.
+- **Grammar & Dynamic Max Badges**: Proper singular/plural grammar formatting (`1 Adult` vs `X Adults`) and right-aligned `Max: X` indicators. Input fields with zero max count (`Max === 0`) are conditionally hidden.
+- **Food-Bounded Parcel Limit**: Bounded by $\text{ParcelMax} = \min(\text{UnservedParcels}, \text{AdultInput} + \text{KidInput})$. Parcel input enables only when food meals are selected.
+- **Sequential Member Allocation & Missed Parcel Audit**: Sequentially marks unserved members as taken in `takenByPerson[dayId]` and asynchronously logs `ActivityAction.MISSED_PARCEL` if member meals are served but parcels remain uncollected.
+- **Same-Page Persistence**: On checkout submit success, displays alert `"Checkout Successful"` and remains on the active screen (`ScannerScreen` or `DetailsScreen`).
+
+### B. Quick Guest Modal (`QuickGuestModal.tsx`)
+- **Trigger & Navigation State (`isQuickGuestMode`)**: Tapping **Guest** on `HomeScreen` during a live meal (`currentMealInfo !== null`) sets `isQuickGuestMode = true` and launches `QuickGuestModal` over `GuestManagementScreen`.
+- **Ultra-Compact 2-Column Grid Layout**: Combines title & summary into a 1-tile red header card and arranges Planned & Served counter inputs into a 2-column side-by-side grid (`flexDirection: "row"`), reducing modal height by ~200px (~40% shorter).
+- **RBAC & Role Restrictions**: Non-admin users cannot edit planned inputs; admin users can edit both planned and served inputs.
+- **Shared Debounced Pipeline**: Uses `updateGuestCountDebounced` in `DatabaseContext` (1000ms debounce timer) for 0ms optimistic UI updates, batched database writes, and single `ActivityModule.GUEST` log entries.
+- **Same-Page Persistence on Close**: Closing the modal (`✕`) reveals the background `GuestManagementScreen` displaying updated counts in real-time.
+
+---
+
+## 5. Live Camera & Gallery OCR Payment Scanner Architecture (`PaymentScannerModal.tsx`, `ocrScanner.ts`)
 
 ```
-┌────────────────────────────────────────────────────────┐
-│ 1. TOP SUMMARY:    [ Total Planned ] [ Total Served ]  │
-├────────────────────────────────────────────────────────┤
-│ 2. ADULTS/MEMBERS: [ Veg Planned / Served ]            │
-│                    [ Non-Veg Planned / Served ]        │
-├────────────────────────────────────────────────────────┤
-│ 3. KIDS:           [ Kids Veg Planned / Served ]       │
-│                    [ Kids Non-Veg Planned / Served ]   │
-├────────────────────────────────────────────────────────┤
-│ 4. GUESTS:         [ Guests Veg Planned / Served ]     │
-│                    [ Guests Non-Veg Planned / Served ] │
-├────────────────────────────────────────────────────────┤
-│ 5. PARCELS:        [ Parcels Planned / Served ]        │
-└────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│ 1. User taps Camera Icon in Transaction ID Field             │
+├──────────────────────────────────────────────────────────────┤
+│ 2. PaymentScannerModal opens Live Camera or Gallery Picker   │
+├──────────────────────────────────────────────────────────────┤
+│ 3. On-Device Vision Engine (ML Kit on Mobile / Tesseract Web)│
+├──────────────────────────────────────────────────────────────┤
+│ 4. Single-Pass joint extraction of Txn ID and Payment Amount  │
+├──────────────────────────────────────────────────────────────┤
+│ 5. Confirmation Dialog prompts user to Apply or Cancel       │
+└──────────────────────────────────────────────────────────────┘
 ```
 
-- **Top Summary**: Immediate top-level overview of overall planned plates vs total meals served (`totalMealTaken`).
-- **Adults / Members Section**: Dedicated Veg/Non-Veg planned and served counters for primary flat residents (Titled **ADULTS** when `kidsEnabled === true`, **MEMBERS** when `kidsEnabled === false`).
-- **Kids Section**: Rendered conditionally ONLY when `kidsEnabled === true` and children exist (`kidsTotal > 0`).
-- **Guests Section**: Rendered conditionally ONLY when `guestEnabled === true` and guest demand exists (`guestTotal > 0`). Placed directly before Takeaway Parcels for operational flow.
-- **Takeaway Parcels Section**: Rendered conditionally ONLY when takeaway parcels are enabled (`isParcelEnabled === true`) and parcel demand exists (`parcel > 0`).
+1. **Google ML Kit On-Device Vision**: On Android and iOS native mobile app bundles, uses Google's official on-device ML Kit Text Recognition (`@react-native-ml-kit/text-recognition`) for sub-100ms pixel-level OCR. Uses Tesseract.js Web Workers on Web browsers.
+2. **Single-Pass Joint Recognition & Word Parsing**: Simultaneously extracts BOTH the UPI Transaction ID and Payment Amount ($\text{₹}$). Includes English word amount parsing (`Two Thousand Eight Hundred` $\rightarrow$ `2800`) and Rupee glyph disambiguation (`32800` $\rightarrow$ `2800`).
+3. **User Confirmation Dialog (`UI_TEXT.confirmExtractedDetails`)**: Displays an interactive review dialog summarizing extracted details before populating form fields upon user acceptance.
+4. **Universal App Recognition**: Engineered to process receipts across Google Pay, PhonePe, Paytm, Amazon Pay, Super.Money (`UPI reference ID`), BHIM UPI, PayZapp, CRED, Navi, and major Bank Apps.
 
 ---
 
-## 5. Pass Verification Architecture for Non-Technical Users
+## 6. Pass Verification & Security Architecture
 
-The system supports **3 flexible, redundant verification channels** at the food counter to ensure seamless service for all residents and guests:
-
-1. **Option 1: QR Code Scan**: Camera scan of the digital pass image sent via WhatsApp.
-2. **Option 2: 4-Digit Passcode**: Keypad entry of the unique 4-digit code printed on the pass.
-3. **Option 3: Block & Flat Lookup**: Direct manual search by Block & Flat number when residents forget their phone.
-4. **Quick Checkout Mode**: Instant meal collection processing via camera QR scan or keypad entry directly on `HomeScreen` or View Pass screen (`DetailsScreen`). Opens `QuickCheckoutModal` for dynamic headcount and parcel allocation.
-5. **Guest Management**: Dedicated counter feature where guest meals are managed directly by volunteers without requiring passes.
+1. **3 Verification Channels**: QR Code scan, 4-digit numeric passcode entry, or Block & Flat manual lookup.
+2. **Database-Driven Roles & ephemerality**: Credentials and roles (`Admin` vs `Vendor`) are read from `auth_config`. Sessions expire after 24 hours.
+3. **Bi-Directional Safety Guardrails**:
+   - Headcount Protection: Prevents decreasing registered Adults/Kids count below initial values if any member has taken a meal.
+   - Add Pass Restriction: Blocks selecting meal plans or parcels for past/completed service windows during new registration.
 
 ---
 
-## 6. App Version Check & Auto-Alert System
-
-1. **Firebase Top-Level Node**: `"appVersion"` node stored at the root of Firebase Realtime Database with public read rules (`database.rules.json`).
-2. **Local Version Single Source of Truth**: `UI_TEXT.appVersion` (`src/strings.ts`).
-3. **Real-time Synchronization**: `DatabaseContext` subscribes to `"appVersion"` updates using `onAppVersionChange()`.
-4. **Session-Bound Single Alert**: Upon landing on `HomeScreen` after login:
-   - If `remoteAppVersion && remoteAppVersion !== UI_TEXT.appVersion` and `versionAlertShown` is `false` in `AuthContext`:
-   - System displays modal alert: *"App has been updated, please download and install the latest app"* and marks `versionAlertShown = true`.
-   - The alert displays **only once per login session** and will not repeat when navigating back and forth from other screens.
-
-
----
-
-## 7. Theme Engine & Image Export Architecture
+## 7. Theme Engine & Data Export Architecture
 
 ### A. Dual-Axis Responsive Engine (`styles.ts`)
 - **`s(size)`**: Scales horizontal spacing, typography, and iconography based on viewport width.
 - **`v(size)`**: Vertically compacts dense dashboard layouts on web browsers to fit within screen height.
 
 ### B. Theme-Aware Snapshot Engine (`captureRef`)
-When generating PNG image exports of reports in `ReportScreen.tsx` using `react-native-view-shot`:
-- **Transparent Canvas Fix**: Previous transparent container backgrounds caused image viewers (like WhatsApp) to render dark/black backgrounds.
-- **Solid Theme Background**: `reportRef` applies `backgroundColor: theme.colors.background` along with rounded padding (`s(12)`, `s(16)`).
-  - In **Light Mode** (`AppThemeMode.LIGHT`), the canvas background evaluates to solid white (`#FFFFFF`).
-  - In **Dark Mode** (`AppThemeMode.DARK`), the canvas background evaluates to solid dark (`#121212`).
-  - Result: Shared report images accurately match the active app theme with zero image corruption.
+Report views apply `backgroundColor: theme.colors.background` along with rounded padding (`s(12)`, `s(16)`), ensuring that captured PNG images render with solid theme backgrounds in both Light Mode (`#FFFFFF`) and Dark Mode (`#121212`) without transparent canvas corruption.
 
 ### C. Excel / CSV Data Export Pipeline
-1. **Subscription Export (`SubscriptionListScreen.tsx`)**:
-   - Condition: Renders Export button when `visibleSubscriptions.length >= 1`.
-   - Filter & Sorting: Filters output by active search text & filter pills, then sorts by `block` and `flat` in natural alphanumeric order.
-   - Comprehensive Columns: Outputs un-abbreviated headers for Block No., Flat No., Pass Code, Mobile Number, Adults Count, Kids Count, Total Members, Total Amount (Rs.), Payment Mode, Transaction ID (comma-separated with payment channel details for multiple payments, e.g. `UPI: 12345, Bank Transfer: 67890`), Payment Details, per-member day/meal choices, per-member food taken status, and daily dietary totals.
-   - Grand Total Row: Appends a `GRAND TOTAL` row at the end summing Adults Count, Kids Count, Total Members, Total Amount (Rs.), and daily Veg, Non-Veg, and Parcel totals across all exported passes.
-2. **Guest Management Export (`GuestManagementScreen.tsx`)**:
-   - Condition: Renders Export button when active days exist (`activeDays.length >= 1`).
-   - Granular Breakdown: Outputs Day Name, Meal Type, Veg Planned, Veg Served, Veg Pending, Non-Veg Planned, Non-Veg Served, Non-Veg Pending, Total Guest Planned, Total Guest Served, Total Guest Pending.
-   - Grand Total: Appends a season-wide `GRAND TOTAL` calculation row at the end of the dataset.
-3. **Encoding & Transport**:
-   - Prepends UTF-8 Byte Order Mark (`\uFEFF`) to prevent character encoding issues in spreadsheet software (Microsoft Excel, Google Sheets).
-   - Uses Blob & URL link downloads on Web, and native `Share.share` dialogs on mobile targets.
-   - Audits all export operations into Firebase RTDB activity logs.
-
----
-
-## 8. Safety Rails & Data Integrity
-
-1. **Headcount Baseline Protection**: Prevents reducing registered Adults/Kids headcount below initial registration values if any member has taken a meal.
-2. **Add Pass Restriction**: Prevents selecting meal plans or parcels for past/completed service windows during new registration.
-3. **Inconsistency Alerts**: Detects and logs instances where a parcel was opted for but only the primary dine-in meal was collected.
-4. **Chronological Meal Lock**: Enforces strict meal lifecycle rules (a meal slot can only be marked "Done" if all preceding meals are completed).
+- **Subscription List Export**: Filters output by active search text & filter pills, sorts by Block and Flat in natural alphanumeric order, includes comma-separated transaction details with payment modes, and appends a `GRAND TOTAL` row.
+- **Guest Management Export**: Exports Day Name, Meal Type, Veg Planned, Veg Served, Veg Pending, Non-Veg Planned, Non-Veg Served, Non-Veg Pending, Total Guest Planned, Total Guest Served, Total Guest Pending, and appends a season-wide `GRAND TOTAL` summary row.
+- **UTF-8 BOM Encoding**: Prepends `\uFEFF` to prevent character encoding issues in Microsoft Excel and Google Sheets.
 
 ---
 

@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { View, Text, Pressable, Modal, StyleSheet, Platform } from "react-native";
+import { View, Text, Pressable, Modal, StyleSheet, Platform, ScrollView } from "react-native";
 import { useAppTheme } from "../../theme";
 import { UI_TEXT } from "../../strings";
 import { AppThemeMode } from "../../domain";
@@ -27,6 +27,10 @@ export function CustomAlert({
 }: CustomAlertProps) {
   const { theme } = useAppTheme();
 
+  const isStacked = useMemo(() => {
+    return buttons.length > 2 || buttons.some((b) => (b.text || "").length > 11);
+  }, [buttons]);
+
   const styles = useMemo(() => {
     const COLORS = theme.colors;
     return StyleSheet.create({
@@ -35,14 +39,15 @@ export function CustomAlert({
         backgroundColor: COLORS.shadow + "A6",
         justifyContent: "center",
         alignItems: "center",
-        padding: 24,
+        padding: 20,
       },
       card: {
         backgroundColor: theme.themeType === AppThemeMode.DARK ? COLORS.surface : COLORS.white,
-        borderRadius: 28,
+        borderRadius: 24,
         width: "100%",
-        maxWidth: 340,
-        padding: 24,
+        maxWidth: 360,
+        maxHeight: "85%",
+        padding: 20,
         ...Platform.select({
           ios: {
             shadowColor: COLORS.shadow,
@@ -59,39 +64,50 @@ export function CustomAlert({
         }),
       },
       header: {
-        marginBottom: 10,
+        marginBottom: 8,
       },
       title: {
-        fontSize: theme.typography.sectionTitleSize,
+        fontSize: theme.typography.sectionTitleSize || 20,
         fontWeight: "900",
         color: COLORS.textPrimary,
         letterSpacing: -0.5,
       },
       message: {
-        fontSize: 15,
+        fontSize: 14,
         color: COLORS.textSecondary,
-        lineHeight: 22,
+        lineHeight: 20,
         fontWeight: "500",
-        marginBottom: 28,
+        marginBottom: 20,
       },
-      footer: {
+      footerRow: {
         flexDirection: "row",
         justifyContent: "flex-end",
         alignItems: "center",
+        gap: 10,
+      },
+      footerStacked: {
+        flexDirection: "column",
+        gap: 8,
+        width: "100%",
       },
       button: {
         paddingVertical: 12,
-        paddingHorizontal: 20,
-        borderRadius: 14,
+        paddingHorizontal: 16,
+        borderRadius: 12,
         backgroundColor: COLORS.primary,
         minWidth: 80,
         alignItems: "center",
         justifyContent: "center",
       },
+      stackedButton: {
+        width: "100%",
+        minWidth: "100%",
+      },
       buttonText: {
-        fontSize: 15,
+        fontSize: 14,
         fontWeight: "800",
         color: COLORS.white,
+        textAlign: "center",
       },
       destructiveButton: {
         backgroundColor: COLORS.errorLight,
@@ -102,12 +118,12 @@ export function CustomAlert({
         color: COLORS.error,
       },
       cancelButton: {
-        backgroundColor: COLORS.surface,
+        backgroundColor: COLORS.surfaceDark || COLORS.surface,
         borderWidth: 1,
         borderColor: COLORS.border,
       },
       cancelText: {
-        color: COLORS.textSecondary,
+        color: COLORS.textPrimary,
       },
     });
   }, [theme]);
@@ -115,45 +131,49 @@ export function CustomAlert({
   if (!visible) return null;
 
   return (
-    <Modal transparent visible={visible} animationType="fade">
+    <Modal transparent visible={visible} animationType="fade" onRequestClose={onClose}>
       <View style={styles.backdrop}>
         <View style={styles.card}>
-          <View style={styles.header}>
-            <Text style={styles.title}>{title}</Text>
-          </View>
-          <Text style={styles.message}>{message}</Text>
-          <View style={styles.footer}>
-            {buttons.map((btn, index) => {
-              const isDestructive = btn.style === "destructive";
-              const isCancel = btn.style === "cancel";
+          <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+            <View style={styles.header}>
+              <Text style={styles.title}>{title}</Text>
+            </View>
+            {!!message && <Text style={styles.message}>{message}</Text>}
 
-              return (
-                <Pressable
-                  key={index}
-                  onPress={() => {
-                    if (btn.onPress) btn.onPress();
-                    onClose();
-                  }}
-                  style={[
-                    styles.button,
-                    isDestructive && styles.destructiveButton,
-                    isCancel && styles.cancelButton,
-                    index > 0 && { marginLeft: 12 },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.buttonText,
-                      isDestructive && styles.destructiveText,
-                      isCancel && styles.cancelText,
+            <View style={isStacked ? styles.footerStacked : styles.footerRow}>
+              {buttons.map((btn, index) => {
+                const isDestructive = btn.style === "destructive";
+                const isCancel = btn.style === "cancel";
+
+                return (
+                  <Pressable
+                    key={index}
+                    onPress={() => {
+                      if (btn.onPress) btn.onPress();
+                      onClose();
+                    }}
+                    style={({ pressed }) => [
+                      styles.button,
+                      isStacked && styles.stackedButton,
+                      isDestructive && styles.destructiveButton,
+                      isCancel && styles.cancelButton,
+                      pressed && { opacity: 0.8 }
                     ]}
                   >
-                    {btn.text}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
+                    <Text
+                      style={[
+                        styles.buttonText,
+                        isDestructive && styles.destructiveText,
+                        isCancel && styles.cancelText,
+                      ]}
+                    >
+                      {btn.text}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </ScrollView>
         </View>
       </View>
     </Modal>

@@ -6,10 +6,12 @@
     "@expo/metro-runtime": "~4.0.0",
     "@expo/vector-icons": "^15.0.2",
     "@react-native-async-storage/async-storage": "2.2.0",
+    "@react-native-ml-kit/text-recognition": "^2.0.0",
     "expo": "~57.0.22",
     "expo-camera": "~57.0.5",
     "expo-contacts": "~57.0.5",
     "expo-font": "~57.0.4",
+    "expo-image-picker": "^57.0.19",
     "expo-linking": "~57.0.10",
     "expo-print": "~57.0.2",
     "expo-sharing": "~57.0.19",
@@ -21,7 +23,8 @@
     "react-native-qrcode-svg": "^6.3.23",
     "react-native-svg": "^15.15.4",
     "react-native-view-shot": "5.1.0",
-    "react-native-web": "~0.19.13"
+    "react-native-web": "~0.19.13",
+    "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
     "@types/react": "~19.2.2",

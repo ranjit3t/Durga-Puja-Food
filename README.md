@@ -1,6 +1,6 @@
 # Eternia Food Desk — System Architecture & Technical Documentation
 
-A high-performance Expo React Native & Web application designed for event administrators and volunteers to manage feast subscriptions, daily menus, meal distribution, and real-time kitchen analytics during large scale community festivals like **Durga Puja**.
+A high-performance Expo React Native & Web application designed for event administrators and volunteers to manage feast subscriptions, daily menus, meal distribution, quick meal checkouts, guest plate management, and real-time kitchen analytics during large scale community festivals like **Durga Puja**.
 
 ---
 
@@ -36,10 +36,12 @@ The application follows a decoupled, context-driven component architecture with 
 
 | Technology / Library | Purpose & Usage |
 | :--- | :--- |
-| **React Native / Expo (v51+)** | Core cross-platform app framework targeting Android, iOS, and Web. |
+| **React Native / Expo (v57+)** | Core cross-platform app framework targeting Android, iOS, and Web. |
 | **TypeScript (v5.3+)** | Strict type safety for domain models, context providers, and props. |
 | **Firebase Realtime Database** | Real-time data sync, subscription persistence, menu management, version checks, and activity logs. |
 | **`expo-camera`** | High-performance camera integration for QR Code pass scanning at food stalls. |
+| **`expo-image-picker`** | Camera capture and gallery screenshot selection for payment receipt scanning. |
+| **`tesseract.js`** | Open-source client-side OCR engine for extracting 12-digit UPI UTR / Bank transaction IDs from payment screenshots. |
 | **`react-native-qrcode-svg`** | SVG-based QR code pass matrix generation. |
 | **`react-native-view-shot` (`captureRef`)** | Snapshot engine for capturing report cards and digital passes as PNG images for sharing. |
 | **`expo-sharing` & `expo-print`** | Platform-native sharing dialogs (WhatsApp / System) and HTML document printing. |
@@ -53,14 +55,14 @@ The application follows a decoupled, context-driven component architecture with 
 ```
 src/
 ├── components/          # Modular UI Components
-│   ├── common/          # Action Label, Back Button, Home Button, Counter, Alert Modal, Dropdowns, QuickCheckoutModal
+│   ├── common/          # Action Label, Back Button, Home Button, CounterInput, Dropdowns, QuickCheckoutModal, QuickGuestModal
 │   ├── dashboard/       # Meal Bar Chart, Meal Metric Grid
 │   ├── menu/            # Meal Display, Meal Menu Editor, Summary Bar
 │   └── report/          # DayWise, MealWise, SingleMeal, Guest, Parcel, Pending, FlatWise, Payment, Kids
 ├── context/             # Global React Context State
 │   ├── AuthContext.tsx       # Session, Login/Logout, Role Governance (Admin/Vendor)
 │   ├── DatabaseContext.tsx   # Realtime DB listeners, Subscriptions, Menus, App Version, Config, Activity Logs
-│   ├── NavigationContext.tsx # History-stack-enabled screen navigation
+│   ├── NavigationContext.tsx # History-stack-enabled screen navigation (isQuickCheckout, isQuickGuestMode)
 │   └── UIContext.tsx         # Global Alert dialogs, Error modals, Share & Print handlers
 ├── hooks/               # Custom Utility Hooks
 │   └── useReportData.ts # Data aggregation pipeline for analytics and reports
@@ -70,6 +72,8 @@ src/
 │   ├── dark.ts          # Dark Mode Color Tokens & Palette
 │   ├── types.ts         # Theme Property Contracts
 │   └── index.tsx        # Dynamic Theme Context Provider
+├── utils/               # Helper Utility Modules
+│   └── ocrScanner.ts    # Open-Source Tesseract OCR & UPI / Bank Transaction ID Extractor
 ├── domain.ts            # Domain Data Models & Type Contracts
 ├── repository.ts        # Firebase RTDB API Operations & Cleaning Pipelines
 ├── config.ts            # Default App Configuration & Festival Defaults
@@ -77,29 +81,60 @@ src/
 ├── strings.ts           # Centralized Dictionary for Localized UI Text & `appVersion`
 ├── styles.ts            # Global Responsive Scaling Engine (`s()` / `v()`) & Glassmorphism Styles
 └── screens/             # Top-Level Screen Views
-    ├── ActivityLogScreen.tsx     # Real-time System Audit Trail Log
+    ├── ActivityLogScreen.tsx     # Real-time System Audit Trail Log (Username + Role tracking/filtering)
     ├── ContactsScreen.tsx        # Resident Directory with Direct WhatsApp/Call/SMS Actions
     ├── DashboardScreen.tsx       # Live Kitchen Counter Dashboard (Plates, Parcels, Guests)
-    ├── GuestManagementScreen.tsx # Counter Guest Demand Manager with Excel Export
-    ├── HomeScreen.tsx            # Main Operational Summary, Version Check Alert & Quick Action Grid
+    ├── GuestManagementScreen.tsx # Counter Guest Demand Manager with Quick Guest Modal & Excel Export
+    ├── HomeScreen.tsx            # Main Operational Summary, Quick Checkout & Quick Guest Launchers
     ├── LoginScreen.tsx           # Two-Phase Secured Database Login
     ├── MenuEditorScreen.tsx      # Daily Meal Menu & Pricing Editor
     ├── NotesScreen.tsx           # Collaborative Team Notes with Role Permissions
     ├── QrScreen.tsx              # Digital Pass Generator with 4-Digit Passcode & WhatsApp Share
     ├── ReportScreen.tsx          # Analytics Suite with Theme-Aware PNG Image Export
-    ├── ScannerScreen.tsx         # QR Camera Scanner & 4-Digit Keypad Scanner
+    ├── ScannerScreen.tsx         # QR Camera Scanner & 4-Digit Keypad Scanner (Same-page persistence)
     ├── SettingsScreen.tsx        # Festival Configuration, Meal Lifecycle & Safety Governance
-    ├── SubscriptionForm.tsx      # Pass Registration & Editing with Headcount Protection
+    ├── SubscriptionForm.tsx      # Pass Registration & Editing with Open-Source OCR Payment Scanner
     ├── SubscriptionListScreen.tsx# Pass Directory with Alphanumeric Sorting, Multi-Tag Filters & Excel Export
     └── ViewMenuScreen.tsx        # Daily Food Menu Viewer
 ```
 
 ---
 
+## ⚡ Key Features & Operational Modules
+
+### 1. Quick Checkout Engine (`QuickCheckoutModal.tsx`)
+- **1-Tap Launch**: Launches directly from `HomeScreen` (adjacent to "Scan/Pass Code") or View Pass screen (`DetailsScreen`) whenever a meal is live/current (`isMealCurrent`).
+- **Solid Primary Red Header Card**: Styled in solid primary red theme (`backgroundColor: theme.colors.primary`) matching the Dashboard summary card.
+- **Pluralization Grammar**: Handles singular/plural terms (`1 Adult` vs `2 Adults`, `1 Kid` vs `2 Kids`, `1 General Member` vs `3 General Members`).
+- **Dynamic Max Badges & Zero-Max Hiding**: Displays right-aligned `Max: X` indicators. Input fields with zero eligible max limit (`Max === 0`) are conditionally hidden.
+- **Food-Bounded Parcel Limit**: Bounded by $\text{ParcelMax} = \min(\text{UnservedParcels}, \text{AdultInput} + \text{KidInput})$. Parcel counter enables only when food is selected.
+- **Sequential Allocation & Missed Parcel Auditing**: Sequentially marks unserved members as taken in `takenByPerson[dayId]` and asynchronously logs `ActivityAction.MISSED_PARCEL` if member meals are served but parcels remain uncollected.
+- **Same-Page Persistence**: On checkout success, displays alert `"Checkout Successful"` and remains on the current screen (`ScannerScreen` or `DetailsScreen`).
+
+### 2. Quick Guest Checkout Engine (`QuickGuestModal.tsx`)
+- **Live Meal Overlay Launch**: Tapping **Guest** on `HomeScreen` during a live meal (`currentMealInfo !== null`) sets `isQuickGuestMode = true` and launches `QuickGuestModal` over `GuestManagementScreen`.
+- **Ultra-Compact 2-Column Layout**: Combines title & summary into a 1-tile red card and arranges Planned & Served counter inputs into a 2-column side-by-side grid (`flexDirection: "row"`), reducing modal height by ~200px (~40% shorter).
+- **RBAC Rules**: Non-admin users cannot edit planned inputs; admin users can edit both planned and served inputs. Served inputs are bounded by `min = 0` and `max = planned`.
+- **Shared Debounced Pipeline**: Uses `updateGuestCountDebounced` in `DatabaseContext` (1000ms debounce timer) for 0ms optimistic UI updates, batched database writes, and single `ActivityModule.GUEST` log entries.
+- **Same-Page Persistence on Close**: Closing the modal (`✕`) reveals the background `GuestManagementScreen` with all updated guest counts rendered in real-time.
+
+### 3. Open-Source Live Camera & Gallery OCR Payment Scanner (`SubscriptionForm.tsx`, `PaymentScannerModal.tsx`, `ocrScanner.ts`)
+- **Live Camera Scanner Modal (`PaymentScannerModal.tsx`)**: Tapping the camera icon inside `Transaction ID` launches a live camera viewfinder (`CameraView`) with an enlarged reticle (`350px x 320px`), torch toggle, shutter button, and gallery picker.
+- **Single-Pass Txn ID & Amount Joint Extraction**: Simultaneously extracts BOTH the UPI Transaction ID (including 22+ char PhonePe IDs `T260...` & Super.Money `UPI reference ID: ...`) and Payment Amount ($\text{₹}$) in a single OCR pass.
+- **User Confirmation Dialog (`UI_TEXT.confirmExtractedDetails`)**: Prompts the user to review extracted Txn ID & Amount before populating form fields.
+- **Universal Recognition & Rupee Disambiguation**: Uses Google ML Kit On-Device Vision (`@react-native-ml-kit/text-recognition`) on mobile and Tesseract.js on Web. Features `parseAmountFromWords` (e.g., `Two Thousand Eight Hundred Rupees` $\rightarrow$ `2800`) and Rupee glyph disambiguation (`32800` $\rightarrow$ `2800`) across Paytm, PayZapp, PhonePe, Google Pay, Super.Money, and Bank Apps.
+
+### 4. Forensic Activity Logging & Role Audit (`ActivityLogScreen.tsx`)
+- **Username & Role Tracking**: Posts both `userName` and `userRole` to Firebase RTDB for every activity log event. Unauthenticated pre-login errors record `userName` while omitting `userRole` cleanly.
+- **Preserved Casing & Badges**: Displays user badges in exact original letter casing: `userName (ROLE)` (e.g., `admin (ADMIN)`, `JohnDoe (VENDOR)`).
+- **Multi-Field Filtering & Search**: "Filter by User" dropdown and text search filter and search by username, user role, and combined labels (`john (vendor)`).
+
+---
+
 ## 🔐 Security, Roles & Version Synchronization
 
 1. **Database-Driven Authentication (`auth_config`)**:
-   User credentials and role definitions (`Admin` vs `Vendor`) are fetched directly from Firebase RTDB. This allows instant credential or access adjustments without app redeployments.
+   User credentials and role definitions (`Admin` vs `Vendor`) are fetched directly from Firebase RTDB.
 2. **Top-Level `appVersion` Auto-Check & Alert**:
    - The app maintains a top-level `"appVersion"` node in Firebase RTDB (`database.rules.json` configured for public read).
    - Local build version is specified in `UI_TEXT.appVersion` (`src/strings.ts`).
@@ -116,7 +151,7 @@ src/
 
 ## 🎟️ Pass Management & Verification Architecture
 
-To accommodate all residents and guests—especially non-technical users, elderly members, or those without smartphones—the system offers **3 flexible, redundant meal collection options** at the food stall:
+To accommodate all residents and guests, the system offers **3 flexible, redundant meal collection options** at the food stall:
 
 ```
                           ┌──────────────────────────┐
@@ -139,70 +174,7 @@ To accommodate all residents and guests—especially non-technical users, elderl
    - **Add Pass Guardrail**: Blocks selecting meal plans or parcels for past/completed service windows during new registration.
    - **Inconsistency Alerts**: Audits and warns volunteers if a parcel was selected but only the primary dine-in meal was marked as taken.
 3. **Dedicated Guest Management**:
-   Flat passes cover resident families. Guest meals are handled independently via a dedicated **Guest Management** module managed directly at the counter by volunteers (guests do not require passes).
-
----
-
-## 🍳 Kitchen Dashboard & Meal Metric Grid Hierarchy
-
-The `DashboardScreen` and `MealMetricGrid` components present kitchen demand metrics using a strict, structured section hierarchy designed for rapid volunteer scanning:
-
-```
-┌────────────────────────────────────────────────────────┐
-│ 1. TOP SUMMARY:    [ Total Planned ] [ Total Served ]  │
-├────────────────────────────────────────────────────────┤
-│ 2. ADULTS/MEMBERS: [ Veg Planned / Served ]            │
-│                    [ Non-Veg Planned / Served ]        │
-├────────────────────────────────────────────────────────┤
-│ 3. KIDS:           [ Kids Veg Planned / Served ]       │
-│                    [ Kids Non-Veg Planned / Served ]   │
-├────────────────────────────────────────────────────────┤
-│ 4. GUESTS:         [ Guests Veg Planned / Served ]     │
-│                    [ Guests Non-Veg Planned / Served ] │
-├────────────────────────────────────────────────────────┤
-│ 5. PARCELS:        [ Parcels Planned / Served ]        │
-└────────────────────────────────────────────────────────┘
-```
-
-- **Top Summary**: Displays total planned demand alongside total meals served so far (`totalMealTaken`).
-- **Adults / Members Section**: Dedicated Veg/Non-Veg planned and served counters for primary flat residents (Titled **ADULTS** when `kidsEnabled === true`, **MEMBERS** when `kidsEnabled === false`).
-- **Kids Section**: Rendered conditionally ONLY when `kidsEnabled === true` and children exist (`kidsTotal > 0`).
-- **Guests Section**: Rendered conditionally ONLY when `guestEnabled === true` and guest demand exists (`guestTotal > 0`). Placed directly before Takeaway Parcels for operational flow.
-- **Parcels Section**: Rendered conditionally ONLY when takeaway parcels are enabled (`isParcelEnabled === true`) and parcel demand exists (`parcel > 0`).
-
----
-
-## 🎨 UI Architecture, Glassmorphic Styling & Export Engine
-
-### 1. Dual-Axis Responsive Viewport Engine (`styles.ts`)
-- **`s(size)`**: Scales horizontal spacing, padding, and typography based on device width or desktop breakpoint factor.
-- **`v(size)`**: Vertically compacts dense operational data to fit kitchen dashboards within browser viewports without scrolling.
-- **Adaptive Column**: Web viewports expand to full browser width with centered 600px max-width content bounds for native-like readability.
-
-### 2. Glassmorphic Mesh Background System
-- Renders **9 floating background mesh blobs** using theme-aware translucent colors (`cardColors`) that surround screen edges.
-- Cards, headers, and report containers use frosted glass opacity to allow glowing mesh colors to bleed through elegantly in both Light and Dark themes.
-
-### 3. Theme-Aware Report & Image Export Architecture (`captureRef`)
-When generating PNG image exports of report views in `ReportScreen.tsx` using `react-native-view-shot`:
-- **Problem**: Capturing views with `backgroundColor: "transparent"` renders a transparent canvas. When converted to PNG and opened in WhatsApp or gallery apps, transparent regions render as **black/dark mode**, corrupting Light mode exports.
-- **Solution**: The report container (`reportRef`) dynamically applies `backgroundColor: theme.colors.background` along with rounded padding (`s(12)`, `s(16)`).
-  - In **Light Mode** (`AppThemeMode.LIGHT`), `theme.colors.background` evaluates to solid `#FFFFFF` (white).
-  - In **Dark Mode** (`AppThemeMode.DARK`), `theme.colors.background` evaluates to solid `#121212` (dark).
-  - Result: Shared images perfectly match the active app theme with zero background corruption.
-
-### 4. Detailed Excel Export Engine (CSV Spreadsheet)
-The application includes a specialized Excel CSV export engine with UTF-8 BOM (`\uFEFF`) support across two key operational modules:
-- **Subscription List Excel Export**:
-  - Automatically surfaces an **Export Excel** button whenever 1 or more passes are displayed (`visibleSubscriptions.length >= 1`).
-  - Exports data strictly according to active search terms and filter mode pills (`All`, `Current Meal`, `Current Meal Missed`, `Kids`, `Parcels`, `Veg Only`).
-  - Automatically sorts output rows by **Block No. and Flat No.** in natural alphanumeric order.
-  - Generates comprehensive columns without abbreviations: Block No., Flat No., Pass Code, Mobile Number, Adults Count, Kids Count, Total Members, Total Amount (Rs.), Payment Mode, Transaction ID (with channel details & comma-separated list for multiple transactions, e.g. `UPI: 12345, Bank Transfer: 67890`), Payment Details, Day-by-Day / Meal-by-Meal food choices per member (`Adult 1: Veg (Parcel)`), food taken status per member (`Adult 1: Food Taken, Parcel Taken`), and daily Veg/Non-Veg/Parcel totals.
-  - Appends a **`GRAND TOTAL`** summary row at the bottom aggregating total Adults, Kids, Total Members, Total Amount (Rs.), and daily Veg, Non-Veg, and Parcel counts across all exported subscriptions.
-- **Guest Management Excel Export**:
-  - Displays an **Export Excel** button in the header bar when active festival day data exists (`activeDays.length >= 1`).
-  - Exports detailed guest metrics per active day and enabled meal: Day Name, Meal Type, Veg Planned, Veg Served, Veg Pending, Non-Veg Planned, Non-Veg Served, Non-Veg Pending, Total Guest Planned, Total Guest Served, and Total Guest Pending.
-  - Appends a **`GRAND TOTAL`** summary row at the bottom reflecting overall guest plate demand, served count, and remaining balance across all festival days.
+   Flat passes cover resident families. Guest meals are handled independently via the **Guest Management** module and **Quick Guest Modal**.
 
 ---
 
@@ -224,13 +196,6 @@ The `ReportScreen` and `useReportData` pipeline provide 10 specialized operation
 ---
 
 ## 🚀 Build, Setup & Local Execution
-
-### Prerequisites
-- **Node.js**: v18.0.0 or higher
-- **Expo CLI**: `npx expo`
-- **Firebase Project**: Realtime Database initialized with `.env` credentials.
-
-### Installation & Execution
 
 ```bash
 # 1. Clone repository & install dependencies

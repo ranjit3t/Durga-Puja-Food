@@ -23,7 +23,7 @@ export function ScannerScreen() {
   const { subscriptions, dayConfig, kidsEnabled, addActivityLog } = useDatabase();
   const { showAlert } = useUI();
 
-  const scanSize = Math.min(width * 0.7, 260);
+  const scanSize = Math.min(width * 0.85, 320);
   const [error, setError] = useState("");
   const [passCode, setPassCode] = useState("");
   const isScanning = useRef(false);

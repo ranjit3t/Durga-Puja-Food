@@ -55,6 +55,7 @@ import {
   TakenState,
 } from "../domain";
 import { ActionLabel } from "../components/common/ActionLabel";
+import { PaymentScannerModal } from "../components/common/PaymentScannerModal";
 import { Dropdown } from "../components/common/Dropdown";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
@@ -560,12 +561,61 @@ export function SubscriptionForm() {
     }
   };
 
-  const updatePayment = (index: number, next: Partial<PaymentEntry>, isManual = false) => {
+  const updatePayment = useCallback((index: number, next: Partial<PaymentEntry>, isManual = false) => {
     const updated = [...payments];
     updated[index] = { ...updated[index], ...next };
     setPayments(updated);
     if (isManual) setIsManualAmount(true);
-  };
+  }, [payments]);
+
+  const [scannerTargetIdx, setScannerTargetIdx] = useState<number | null>(null);
+
+  const handleScanTransactionId = useCallback((paymentIdx: number) => {
+    setScannerTargetIdx(paymentIdx);
+  }, []);
+
+  const handleTxnDetailsExtracted = useCallback((txnId: string | null, scannedAmount: number | null) => {
+    if (scannerTargetIdx !== null) {
+      const targetIdx = scannerTargetIdx;
+      const updates: Partial<PaymentEntry> = {};
+      let isManualAmount = false;
+
+      const detailLines: string[] = [];
+
+      if (txnId) {
+        updates.transactionId = txnId;
+        detailLines.push(`• ${UI_TEXT.transactionIdLabel}: ${txnId}`);
+      }
+
+      const hasAmount = scannedAmount !== null && scannedAmount > 0;
+      if (hasAmount) {
+        updates.amount = String(scannedAmount);
+        isManualAmount = true;
+        detailLines.push(`• ${UI_TEXT.amount || "Amount"}: ₹${scannedAmount.toLocaleString()}`);
+      }
+
+      if (Object.keys(updates).length > 0) {
+        const msg = UI_TEXT.confirmExtractedDetailsMsg.replace("{details}", detailLines.join("\n"));
+
+        showGlobalAlert(
+          UI_TEXT.confirmExtractedDetails,
+          msg,
+          [
+            {
+              text: UI_TEXT.applyDetails,
+              onPress: () => {
+                updatePayment(targetIdx, updates, isManualAmount);
+              }
+            },
+            {
+              text: UI_TEXT.cancel,
+              style: "cancel"
+            }
+          ]
+        );
+      }
+    }
+  }, [scannerTargetIdx, updatePayment, showGlobalAlert]);
 
   // Auto-calculation of total based on food prices
   useEffect(() => {
@@ -1206,16 +1256,66 @@ export function SubscriptionForm() {
 
                   {(p.mode === PaymentMode.UPI || p.mode === PaymentMode.BANK_TRANSFER) && (
                     <View style={{ marginTop: 16 }}>
-                      <Text style={styles.label}>{UI_TEXT.transactionIdLabel}</Text>
-                      <TextInput
-                        value={p.transactionId || ""}
-                        onChangeText={(txnId) => updatePayment(idx, { transactionId: txnId })}
-                        placeholder={UI_TEXT.transactionIdPlaceholder}
-                        placeholderTextColor={theme.colors.textMuted}
-                        editable={isAdmin && canEdit}
-                        autoCapitalize="characters"
-                        style={[styles.input, !isAdmin && { backgroundColor: theme.colors.surface }]}
-                      />
+                      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                        <Text style={[styles.label, { marginBottom: 0 }]}>{UI_TEXT.transactionIdLabel}</Text>
+                        {isAdmin && canEdit && (
+                          <Pressable
+                            onPress={() => handleScanTransactionId(idx)}
+                            disabled={scannerTargetIdx === idx}
+                            style={({ pressed }) => [
+                              {
+                                flexDirection: "row",
+                                alignItems: "center",
+                                gap: 4,
+                                backgroundColor: theme.colors.primary + "18",
+                                paddingHorizontal: 8,
+                                paddingVertical: 3,
+                                borderRadius: 6,
+                              },
+                              pressed && { opacity: 0.7 }
+                            ]}
+                          >
+                            <Ionicons name="camera" size={14} color={theme.colors.primary} />
+                            <Text style={{ fontSize: 11, fontWeight: "800", color: theme.colors.primary }}>
+                              {scannerTargetIdx === idx ? UI_TEXT.loading : UI_TEXT.scanTransactionId}
+                            </Text>
+                          </Pressable>
+                        )}
+                      </View>
+
+                      <View style={{ position: "relative", justifyContent: "center" }}>
+                        <TextInput
+                          value={p.transactionId || ""}
+                          onChangeText={(txnId) => updatePayment(idx, { transactionId: txnId })}
+                          placeholder={UI_TEXT.transactionIdPlaceholder}
+                          placeholderTextColor={theme.colors.textMuted}
+                          editable={isAdmin && canEdit && scannerTargetIdx !== idx}
+                          autoCapitalize="characters"
+                          style={[
+                            styles.input,
+                            { paddingRight: isAdmin && canEdit ? 44 : 16 },
+                            !isAdmin && { backgroundColor: theme.colors.surface }
+                          ]}
+                        />
+                        {isAdmin && canEdit && (
+                          <Pressable
+                            onPress={() => handleScanTransactionId(idx)}
+                            disabled={scannerTargetIdx === idx}
+                            style={({ pressed }) => [
+                              {
+                                position: "absolute",
+                                right: 10,
+                                padding: 6,
+                                borderRadius: 8,
+                                backgroundColor: theme.colors.primary + "15",
+                              },
+                              pressed && { opacity: 0.7 }
+                            ]}
+                          >
+                            <Ionicons name="camera-outline" size={18} color={theme.colors.primary} />
+                          </Pressable>
+                        )}
+                      </View>
                     </View>
                   )}
 
@@ -1357,6 +1457,12 @@ export function SubscriptionForm() {
            <Text style={styles.footerText}>{UI_TEXT.footerCopyright}</Text>
         </View>
       </ScrollView>
+
+      <PaymentScannerModal
+        visible={scannerTargetIdx !== null}
+        onClose={() => setScannerTargetIdx(null)}
+        onExtracted={handleTxnDetailsExtracted}
+      />
     </KeyboardAvoidingView>
   );
 }
