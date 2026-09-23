@@ -47,7 +47,20 @@ When exporting reports in `ReportScreen.tsx` using `captureRef`:
 - Container `reportRef` applies `backgroundColor: theme.colors.background` (`#FFFFFF` in Light Mode, `#121212` in Dark Mode) and padding `s(12)`.
 - Eliminates transparent background artifacts in generated PNG files when shared on WhatsApp or viewed in photo galleries.
 
-### D. Dynamic Configuration Engine
+### E. Excel Export Engine for Subscription Pass Directory (`SubscriptionListScreen.tsx`)
+- **Trigger Condition**: Renders the Export button dynamically when `visibleSubscriptions.length >= 1`.
+- **Filtering & Natural Alphanumeric Sorting**: Uses current `visibleSubscriptions` (respecting active search query and filter mode pills like `Current Meal`, `Kids`, `Parcels`, `Veg Only`). Automatically sorts records by `block` and `flat` using `localeCompare` with `{ numeric: true, sensitivity: 'base' }`.
+- **Detailed Attribute Schema**: Exports un-abbreviated headers: Block No., Flat No., Pass Code, Mobile Number, Adults Count, Kids Count, Total Members, Total Amount (Rs.), Payment Mode, Transaction ID (with channel details & comma separation for multiple transactions, e.g. `UPI: 12345, Bank Transfer: 67890`), Payment Details, Day/Meal Choices per member (`Adult 1: Veg (Parcel)`), Day/Meal Taken Status per member (`Adult 1: Food Taken, Parcel Taken`), and daily Veg/Non-Veg/Parcel totals.
+- **Grand Total Row Calculation**: Appends a `GRAND TOTAL` row at the bottom of the table summing up Adults Count, Kids Count, Total Members, Total Amount (Rs.), and day-wise Veg, Non-Veg, and Parcel counts across all exported passes.
+- **UTF-8 BOM CSV & Delivery**: Prepends `\uFEFF` to the generated CSV string so Microsoft Excel and Google Sheets render UTF-8 characters cleanly. Triggers Blob web download on browsers or `Share.share` native dialogs on mobile. Logs activity under `SUBSCRIPTION` module.
+
+### F. Excel Export Engine for Guest Management (`GuestManagementScreen.tsx`)
+- **Trigger Condition**: Displays an Export button in the header bar when `activeDays.length >= 1`.
+- **Granular Metric Hierarchy**: Maps all active festival days and enabled meals into structured rows: Day Name, Meal Type, Veg Planned, Veg Served, Veg Pending, Non-Veg Planned, Non-Veg Served, Non-Veg Pending, Total Guest Planned, Total Guest Served, Total Guest Pending.
+- **Grand Total Calculation**: Appends a final `GRAND TOTAL` row aggregating total guest planned plates, served plates, and pending balance across the entire festival season.
+- **UTF-8 BOM CSV & Delivery**: Uses `\uFEFF` UTF-8 BOM CSV string formatting. Leverages web Blob download or mobile `Share.share` with activity logging under `GUEST` module.
+
+### G. Dynamic Configuration Engine
 The entire application is strictly **Config-Driven**. The `AppConfig` object controls:
 - **Branding**: `seasonName` updates all shared Digital Pass headers and Report captions.
 - **Financial Visibility**: The `payment` node toggles the display of all "Amount" and "Payment Mode" fields across the app.

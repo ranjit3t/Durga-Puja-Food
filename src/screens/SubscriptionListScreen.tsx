@@ -13,6 +13,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Linking,
+  Share,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useStyles, useScaling } from "../styles";
@@ -21,8 +22,32 @@ import { UI_TEXT } from "../strings";
 import { useAuth } from "../context/AuthContext";
 import { useDatabase } from "../context/DatabaseContext";
 import { useAppNavigation } from "../context/NavigationContext";
-import { getActiveDays, getPaymentModeLabel, isMealCurrent, isMealEnabled } from "../constants";
-import { AppScreen, Subscription, PaymentMode, UserRole, MealType, DietaryOption, FilterMode, AppThemeMode, ActivityModule, ActivityAction, PaymentConfig, TakenState } from "../types";
+import {
+  getActiveDays,
+  getPaymentModeLabel,
+  isMealCurrent,
+  isMealEnabled,
+  getDayLabel,
+  getMealLabel,
+  getDietaryOptionLabel,
+  getMemberLegend,
+} from "../constants";
+import {
+  AppScreen,
+  Subscription,
+  PaymentMode,
+  UserRole,
+  MealType,
+  DietaryOption,
+  FilterMode,
+  AppThemeMode,
+  ActivityModule,
+  ActivityAction,
+  PaymentConfig,
+  TakenState,
+  MealSlot,
+  DietType,
+} from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
@@ -429,6 +454,284 @@ export function SubscriptionListScreen() {
       });
   }, [subscriptions, subscriptionSearch, activeFilters, currentMealInfo, kidsEnabled, missedData]);
 
+  const handleExportExcel = useCallback(async () => {
+    if (visibleSubscriptions.length === 0) return;
+
+    const sortedSubscriptions = [...visibleSubscriptions].sort((a, b) => {
+      const blockA = a.block || "";
+      const blockB = b.block || "";
+      const blockCompare = blockA.localeCompare(blockB, undefined, { numeric: true, sensitivity: 'base' });
+      if (blockCompare !== 0) return blockCompare;
+      const flatA = a.flat || "";
+      const flatB = b.flat || "";
+      return flatA.localeCompare(flatB, undefined, { numeric: true, sensitivity: 'base' });
+    });
+
+    const activeDaysList = getActiveDays(dayConfig);
+
+    const headers: string[] = [
+      UI_TEXT.blockNoColumn,
+      UI_TEXT.flatNoColumn,
+      UI_TEXT.passCodeColumn,
+      UI_TEXT.mobileNoColumn,
+      UI_TEXT.adultsCountColumn,
+      UI_TEXT.kidsCountColumn,
+      UI_TEXT.totalMembersColumn,
+      UI_TEXT.totalAmountColumn,
+      UI_TEXT.paymentModeColumn,
+      UI_TEXT.transactionIdColumn,
+      UI_TEXT.paymentDetailsColumn,
+    ];
+
+    activeDaysList.forEach((dayId) => {
+      const dayLabel = getDayLabel(dayId, dayConfig);
+
+      const meals: MealType[] = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER];
+      meals.forEach((mType) => {
+        if (isMealEnabled(dayId, mType, dayConfig)) {
+          const mealLabel = getMealLabel(mType);
+          headers.push(`${dayLabel} - ${mealLabel} ${UI_TEXT.mealChoicesSuffix}`);
+          headers.push(`${dayLabel} - ${mealLabel} ${UI_TEXT.mealTakenStatusSuffix}`);
+        }
+      });
+
+      headers.push(`${dayLabel} - ${UI_TEXT.totalVegMealsSuffix}`);
+      headers.push(`${dayLabel} - ${UI_TEXT.totalNonVegMealsSuffix}`);
+      headers.push(`${dayLabel} - ${UI_TEXT.totalParcelsSuffix}`);
+    });
+
+    const escapeCell = (val: string | number | undefined | null) => {
+      if (val === undefined || val === null) return '""';
+      const str = String(val);
+      if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
+    let grandAdults = 0;
+    let grandKids = 0;
+    let grandTotalPeople = 0;
+    let grandTotalAmount = 0;
+
+    const grandDailyTotals: Record<string, { veg: number; nonVeg: number; parcels: number }> = {};
+    activeDaysList.forEach((dayId) => {
+      grandDailyTotals[dayId] = { veg: 0, nonVeg: 0, parcels: 0 };
+    });
+
+    const rows: string[][] = sortedSubscriptions.map((sub) => {
+      const adults = sub.peopleCount || 0;
+      const kids = sub.kidsCount || 0;
+      const totalPeople = adults + kids;
+
+      grandAdults += adults;
+      grandKids += kids;
+      grandTotalPeople += totalPeople;
+
+      let totalAmt = sub.amount || "0";
+      if (sub.payments && sub.payments.length > 0) {
+        const sum = sub.payments.reduce((acc, p) => acc + (parseFloat(p.amount) || 0), 0);
+        if (sum > 0) totalAmt = String(sum);
+      }
+      grandTotalAmount += parseFloat(totalAmt) || 0;
+
+      // Payment modes
+      let paymentModeStr = "";
+      if (sub.payments && sub.payments.length > 0) {
+        paymentModeStr = sub.payments
+          .map((p) => getPaymentModeLabel(p.mode || PaymentMode.CASH))
+          .filter((v, i, a) => a.indexOf(v) === i)
+          .join(", ");
+      } else {
+        paymentModeStr = getPaymentModeLabel((sub.paymentMode as PaymentMode) || PaymentMode.CASH);
+      }
+
+      // Transaction IDs with channel details, comma separated for multiple transactions
+      let transactionIdStr = "";
+      if (sub.payments && sub.payments.length > 0) {
+        transactionIdStr = sub.payments
+          .map((p) => {
+            const modeLabel = getPaymentModeLabel(p.mode || PaymentMode.CASH);
+            if (p.transactionId) {
+              return `${modeLabel}: ${p.transactionId}`;
+            } else if (p.mode === PaymentMode.CASH && p.receivedBy) {
+              return `${modeLabel} (${UI_TEXT.recdByPrefix}: ${p.receivedBy})`;
+            } else {
+              return modeLabel;
+            }
+          })
+          .join(", ");
+      } else if (sub.transactionId) {
+        transactionIdStr = `${paymentModeStr}: ${sub.transactionId}`;
+      } else {
+        transactionIdStr = paymentModeStr;
+      }
+
+      let paymentDetailsStr = "";
+      if (sub.payments && sub.payments.length > 0) {
+        paymentDetailsStr = sub.payments
+          .map((p, i) => {
+            const modeLabel = getPaymentModeLabel(p.mode || PaymentMode.CASH);
+            let extra = "";
+            if (p.mode === PaymentMode.CASH && p.receivedBy) {
+              extra = ` (${UI_TEXT.recdByPrefix}: ${p.receivedBy})`;
+            } else if (p.transactionId) {
+              extra = ` (${UI_TEXT.txnIdPrefix}: ${p.transactionId})`;
+            }
+            return `${UI_TEXT.paymentIndexPrefix} ${i + 1}: ${UI_TEXT.rs} ${p.amount || 0} ${UI_TEXT.viaLabel} ${modeLabel}${extra}`;
+          })
+          .join(" | ");
+      } else {
+        paymentDetailsStr = `${UI_TEXT.rs} ${totalAmt} ${UI_TEXT.viaLabel} ${paymentModeStr}${transactionIdStr ? ` (${transactionIdStr})` : ""}`;
+      }
+
+      const row: string[] = [
+        sub.block || "",
+        sub.flat || "",
+        sub.passcode || sub.id || "",
+        sub.mobile ? String(sub.mobile) : "",
+        String(adults),
+        String(kids),
+        String(totalPeople),
+        totalAmt,
+        paymentModeStr,
+        transactionIdStr,
+        paymentDetailsStr,
+      ];
+
+      activeDaysList.forEach((dayId) => {
+        const slots: MealSlot[] = sub.mealSlots?.[dayId] || [];
+        const takenList: TakenState[] = sub.takenByPerson?.[dayId] || [];
+
+        const meals: MealType[] = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER];
+
+        let rowDayVeg = 0;
+        let rowDayNonVeg = 0;
+        let rowDayParcels = 0;
+
+        meals.forEach((mType) => {
+          const isEnabled = isMealEnabled(dayId, mType, dayConfig);
+
+          if (isEnabled) {
+            const choiceParts: string[] = [];
+            const takenParts: string[] = [];
+
+            for (let i = 0; i < totalPeople; i++) {
+              const memberLabel = getMemberLegend(i, adults, !!kidsEnabled);
+              const slot = slots[i];
+              const takenItem = takenList[i];
+
+              const choice: DietaryOption = slot ? slot[mType] : DietaryOption.NONE;
+              const parcelKey = `${mType}Parcel` as keyof MealSlot;
+              const isParcelOpted = slot ? !!slot[parcelKey] : false;
+
+              if (choice === DietaryOption.VEG) rowDayVeg++;
+              else if (choice === DietaryOption.NON_VEG) rowDayNonVeg++;
+              if (isParcelOpted) rowDayParcels++;
+
+              if (choice === DietaryOption.NONE) {
+                choiceParts.push(`${memberLabel}: ${UI_TEXT.none}`);
+                takenParts.push(`${memberLabel}: ${UI_TEXT.notApplicable}`);
+              } else {
+                choiceParts.push(`${memberLabel}: ${getDietaryOptionLabel(choice)}${isParcelOpted ? ` (${UI_TEXT.parcels})` : ""}`);
+
+                const isMealTaken = takenItem ? !!takenItem[mType] : false;
+                const takenParcelKey = `${mType}Parcel` as keyof TakenState;
+                const isParcelTaken = takenItem ? !!takenItem[takenParcelKey] : false;
+
+                let takenStatusStr = `${memberLabel}: ${isMealTaken ? UI_TEXT.foodTakenLabel : UI_TEXT.foodNotTakenLabel}`;
+                if (isParcelOpted) {
+                  takenStatusStr += `, ${isParcelTaken ? UI_TEXT.parcelTakenLabel : UI_TEXT.parcelNotTakenLabel}`;
+                }
+                takenParts.push(takenStatusStr);
+              }
+            }
+
+            row.push(choiceParts.length > 0 ? choiceParts.join(" | ") : UI_TEXT.none);
+            row.push(takenParts.length > 0 ? takenParts.join(" | ") : UI_TEXT.foodNotTakenLabel);
+          }
+        });
+
+        if (grandDailyTotals[dayId]) {
+          grandDailyTotals[dayId].veg += rowDayVeg;
+          grandDailyTotals[dayId].nonVeg += rowDayNonVeg;
+          grandDailyTotals[dayId].parcels += rowDayParcels;
+        }
+
+        row.push(String(rowDayVeg));
+        row.push(String(rowDayNonVeg));
+        row.push(String(rowDayParcels));
+      });
+
+      return row;
+    });
+
+    // Build GRAND TOTAL row
+    const grandTotalRow: string[] = [
+      UI_TEXT.grandTotal,
+      "",
+      "",
+      "",
+      String(grandAdults),
+      String(grandKids),
+      String(grandTotalPeople),
+      String(grandTotalAmount),
+      "",
+      "",
+      "",
+    ];
+
+    activeDaysList.forEach((dayId) => {
+      const meals: MealType[] = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER];
+      meals.forEach((mType) => {
+        if (isMealEnabled(dayId, mType, dayConfig)) {
+          grandTotalRow.push(""); // Meal Choices
+          grandTotalRow.push(""); // Meal Taken Status
+        }
+      });
+
+      grandTotalRow.push(String(grandDailyTotals[dayId]?.veg || 0));
+      grandTotalRow.push(String(grandDailyTotals[dayId]?.nonVeg || 0));
+      grandTotalRow.push(String(grandDailyTotals[dayId]?.parcels || 0));
+    });
+
+    rows.push(grandTotalRow);
+
+    const csvLines = [
+      headers.map(escapeCell).join(","),
+      ...rows.map((r) => r.map(escapeCell).join(",")),
+    ];
+    const csvContent = csvLines.join("\n");
+
+    const fileName = UI_TEXT.exportSubscriptionFileName.replace("{date}", new Date().toISOString().slice(0, 10));
+
+    addActivityLog({
+      module: ActivityModule.SUBSCRIPTION,
+      action: Platform.OS === "web" ? ActivityAction.DOWNLOAD : ActivityAction.SHARE,
+      description: UI_TEXT.logExportSubscription.replace("{count}", String(sortedSubscriptions.length)),
+    });
+
+    try {
+      if (Platform.OS === "web") {
+        const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } else {
+        await Share.share({
+          message: csvContent,
+          title: fileName,
+        });
+      }
+    } catch (err) {
+      console.error("Export error:", err);
+    }
+  }, [visibleSubscriptions, dayConfig, kidsEnabled, addActivityLog]);
 
   const renderItem = useCallback(({ item, index }: { item: Subscription & { _hasCurrentMeal?: boolean; _hasParcel?: boolean; _isVegOnly?: boolean; _missedCount?: number }; index: number }) => {
     return (
@@ -681,17 +984,50 @@ export function SubscriptionListScreen() {
         )}
 
         <View style={[styles.maxWidthWrapper, { marginTop: showFilters ? 4 : 20 }]}>
-          <View style={[styles.searchBox, { marginBottom: 0, maxWidth: undefined }]}>
-            <Ionicons name="search-outline" size={22} color={theme.colors.textSecondary} />
-            <TextInput
-              value={subscriptionSearch}
-              onChangeText={setSubscriptionSearch}
-              placeholder={UI_TEXT.searchPlaceholder}
-              placeholderTextColor={theme.colors.textMuted}
-              style={styles.searchInput}
-              autoCapitalize="characters"
-              clearButtonMode="while-editing"
-            />
+          <View style={{ flexDirection: 'row', gap: s(8), alignItems: 'center' }}>
+            <View style={[styles.searchBox, { flex: 1, marginBottom: 0, maxWidth: undefined }]}>
+              <Ionicons name="search-outline" size={22} color={theme.colors.textSecondary} />
+              <TextInput
+                value={subscriptionSearch}
+                onChangeText={setSubscriptionSearch}
+                placeholder={UI_TEXT.searchPlaceholder}
+                placeholderTextColor={theme.colors.textMuted}
+                style={styles.searchInput}
+                autoCapitalize="characters"
+                clearButtonMode="while-editing"
+              />
+            </View>
+            {visibleSubscriptions.length >= 1 && (
+              <Pressable
+                onPress={handleExportExcel}
+                style={({ pressed }) => [
+                  {
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: s(6),
+                    backgroundColor: theme.colors.primary,
+                    paddingHorizontal: s(12),
+                    paddingVertical: s(10),
+                    borderRadius: s(12),
+                    elevation: 2,
+                    shadowColor: theme.colors.primary,
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.2,
+                    shadowRadius: 4,
+                  },
+                  pressed && { opacity: 0.8 }
+                ]}
+              >
+                <Ionicons
+                  name={Platform.OS === 'web' ? "download-outline" : "share-outline"}
+                  size={s(18)}
+                  color={theme.colors.white}
+                />
+                <Text style={{ color: theme.colors.white, fontWeight: '800', fontSize: s(13) }}>
+                  {UI_TEXT.exportExcel}
+                </Text>
+              </Pressable>
+            )}
           </View>
         </View>
 

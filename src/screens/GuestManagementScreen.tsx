@@ -1,5 +1,5 @@
 import React, { memo } from "react";
-import { View, Text, ScrollView, StatusBar } from "react-native";
+import { View, Text, ScrollView, StatusBar, Pressable, Platform, Share } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useStyles } from "../styles";
 import { useAppTheme } from "../theme";
@@ -186,7 +186,7 @@ const GuestMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, onUp
 export function GuestManagementScreen() {
   const { userRole, handleLogout } = useAuth();
   const {
-    foodMenu, dayConfig, seasonEnabled, updateGuestCountDebounced
+    foodMenu, dayConfig, seasonEnabled, updateGuestCountDebounced, addActivityLog
   } = useDatabase();
   const { goBack, navigate } = useAppNavigation();
 
@@ -222,6 +222,138 @@ export function GuestManagementScreen() {
     updateGuestCountDebounced(day, type, field, value);
   }, [updateGuestCountDebounced]);
 
+  const handleExportExcel = React.useCallback(async () => {
+    if (activeDays.length === 0) return;
+
+    const headers: string[] = [
+      UI_TEXT.dayNameColumn,
+      UI_TEXT.mealTypeColumn,
+      UI_TEXT.vegPlannedColumn,
+      UI_TEXT.vegServedColumn,
+      UI_TEXT.vegPendingColumn,
+      UI_TEXT.nonVegPlannedColumn,
+      UI_TEXT.nonVegServedColumn,
+      UI_TEXT.nonVegPendingColumn,
+      UI_TEXT.totalGuestPlannedColumn,
+      UI_TEXT.totalGuestServedColumn,
+      UI_TEXT.totalGuestPendingColumn,
+    ];
+
+    const escapeCell = (val: string | number | undefined | null) => {
+      if (val === undefined || val === null) return '""';
+      const str = String(val);
+      if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
+    let grandVegPlanned = 0;
+    let grandVegServed = 0;
+    let grandNonVegPlanned = 0;
+    let grandNonVegServed = 0;
+
+    const rows: string[][] = [];
+
+    activeDays.forEach((dayId) => {
+      const dayLabel = getDayLabel(dayId, dayConfig);
+      const dayMenu = foodMenu[dayId] || {};
+
+      getSortedMealKeys(dayId, dayConfig)
+        .filter((mKey) => isMealEnabled(dayId, mKey, dayConfig))
+        .forEach((mKey) => {
+          const mealMenu: MealMenu = dayMenu[mKey] || { veg: [], nonVeg: [] };
+          const mealLabel = getMealLabel(mKey);
+
+          const vegPlanned = mealMenu.guestVeg || 0;
+          const vegServed = mealMenu.guestVegTaken || 0;
+          const vegPending = Math.max(0, vegPlanned - vegServed);
+
+          const nonVegPlanned = mealMenu.guestNonVeg || 0;
+          const nonVegServed = mealMenu.guestNonVegTaken || 0;
+          const nonVegPending = Math.max(0, nonVegPlanned - nonVegServed);
+
+          const totalPlanned = vegPlanned + nonVegPlanned;
+          const totalServed = vegServed + nonVegServed;
+          const totalPending = vegPending + nonVegPending;
+
+          grandVegPlanned += vegPlanned;
+          grandVegServed += vegServed;
+          grandNonVegPlanned += nonVegPlanned;
+          grandNonVegServed += nonVegServed;
+
+          rows.push([
+            dayLabel,
+            mealLabel,
+            String(vegPlanned),
+            String(vegServed),
+            String(vegPending),
+            String(nonVegPlanned),
+            String(nonVegServed),
+            String(nonVegPending),
+            String(totalPlanned),
+            String(totalServed),
+            String(totalPending),
+          ]);
+        });
+    });
+
+    const grandVegPending = Math.max(0, grandVegPlanned - grandVegServed);
+    const grandNonVegPending = Math.max(0, grandNonVegPlanned - grandNonVegServed);
+    const grandTotalPlanned = grandVegPlanned + grandNonVegPlanned;
+    const grandTotalServed = grandVegServed + grandNonVegServed;
+    const grandTotalPending = grandVegPending + grandNonVegPending;
+
+    rows.push([
+      UI_TEXT.grandTotal,
+      UI_TEXT.allMeals,
+      String(grandVegPlanned),
+      String(grandVegServed),
+      String(grandVegPending),
+      String(grandNonVegPlanned),
+      String(grandNonVegServed),
+      String(grandNonVegPending),
+      String(grandTotalPlanned),
+      String(grandTotalServed),
+      String(grandTotalPending),
+    ]);
+
+    const csvLines = [
+      headers.map(escapeCell).join(","),
+      ...rows.map((r) => r.map(escapeCell).join(",")),
+    ];
+    const csvContent = csvLines.join("\n");
+
+    const fileName = UI_TEXT.exportGuestFileName.replace("{date}", new Date().toISOString().slice(0, 10));
+
+    addActivityLog({
+      module: ActivityModule.GUEST,
+      action: Platform.OS === "web" ? ActivityAction.DOWNLOAD : ActivityAction.SHARE,
+      description: UI_TEXT.logExportGuest,
+    });
+
+    try {
+      if (Platform.OS === "web") {
+        const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } else {
+        await Share.share({
+          message: csvContent,
+          title: fileName,
+        });
+      }
+    } catch (err) {
+      console.error("Guest export error:", err);
+    }
+  }, [activeDays, dayConfig, foodMenu, addActivityLog]);
+
   return (
     <View style={styles.root}>
       <StatusBar barStyle={themeType === AppThemeMode.DARK ? "light-content" : "dark-content"} />
@@ -233,8 +365,43 @@ export function GuestManagementScreen() {
           </View>
           <LogoutButton onLogout={handleLogout} />
         </View>
-        <Text style={styles.title}>{UI_TEXT.guestManagement}</Text>
-        <Text style={styles.subtitle}>{UI_TEXT.dashboardSubtitle}</Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <View>
+            <Text style={styles.title}>{UI_TEXT.guestManagement}</Text>
+            <Text style={styles.subtitle}>{UI_TEXT.dashboardSubtitle}</Text>
+          </View>
+          {activeDays.length >= 1 && (
+            <Pressable
+              onPress={handleExportExcel}
+              style={({ pressed }) => [
+                {
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 6,
+                  backgroundColor: theme.colors.primary,
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                  borderRadius: 12,
+                  elevation: 2,
+                  shadowColor: theme.colors.primary,
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.2,
+                  shadowRadius: 4,
+                },
+                pressed && { opacity: 0.8 }
+              ]}
+            >
+              <Ionicons
+                name={Platform.OS === 'web' ? "download-outline" : "share-outline"}
+                size={18}
+                color={theme.colors.white}
+              />
+              <Text style={{ color: theme.colors.white, fontWeight: '800', fontSize: 13 }}>
+                {UI_TEXT.exportExcel}
+              </Text>
+            </Pressable>
+          )}
+        </View>
       </View>
 
       <ScrollView

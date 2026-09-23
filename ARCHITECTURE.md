@@ -65,14 +65,14 @@ src/
 
 ### A. Presentation Layer (`src/screens`, `src/components`)
 - **`HomeScreen`**: Dashboard summary, real-time operational badges, service shortcuts, auto version-check alert, and high-density action grid.
-- **`SubscriptionListScreen`**: Pass directory with natural alphanumeric sorting, search, and multi-select filter bar (`All`, `Current Meal`, `Current Meal Missed`, `Kids`, `Parcels`, `Veg Only`).
+- **`SubscriptionListScreen`**: Pass directory with natural alphanumeric sorting, search, multi-select filter bar (`All`, `Current Meal`, `Current Meal Missed`, `Kids`, `Parcels`, `Veg Only`), and filtered detailed Excel CSV export sorted by Block and Flat.
 - **`SubscriptionForm`**: Registration & edit view with headcount baseline protection, automated pricing, and identity locking (Block/Flat locked in edit mode).
 - **`ScannerScreen`**: Dual-mode verification interface featuring live QR camera scanning and a 4-digit numeric passcode keypad overlay.
 - **`QrScreen`**: Digital pass renderer displaying seasonal branding, QR matrix, and bold 4-digit passcode identity fallback.
 - **`DetailsScreen`**: Detailed flat pass summary with food collection matrix, quick contact actions (WhatsApp/Call/SMS), and deletion safeguards.
 - **`DashboardScreen`**: Kitchen counter dashboard with live meal metrics, meal bar charts, and organized metric grid views.
 - **`ReportScreen`**: Analytics suite providing 10 specialized reports (`DayWise`, `MealWise`, `SingleMeal`, `Guest`, `Parcel`, `MissedParcel`, `Kids`, `Pending`, `FlatWise`, `PaymentSummary`) with theme-aware PNG image export.
-- **`GuestManagementScreen`**: Dedicated counter interface for managing guest meal demands (no passes required for guests).
+- **`GuestManagementScreen`**: Dedicated counter interface for managing guest meal demands with detailed guest Excel CSV export.
 - **`ContactsScreen`**: Admin-exclusive resident directory with direct WhatsApp/Call/SMS shortcuts.
 - **`NotesScreen`**: Collaborative team notes module with role permissions.
 - **`ActivityLogScreen`**: Forensic system audit log viewer.
@@ -159,6 +159,21 @@ When generating PNG image exports of reports in `ReportScreen.tsx` using `react-
   - In **Light Mode** (`AppThemeMode.LIGHT`), the canvas background evaluates to solid white (`#FFFFFF`).
   - In **Dark Mode** (`AppThemeMode.DARK`), the canvas background evaluates to solid dark (`#121212`).
   - Result: Shared report images accurately match the active app theme with zero image corruption.
+
+### C. Excel / CSV Data Export Pipeline
+1. **Subscription Export (`SubscriptionListScreen.tsx`)**:
+   - Condition: Renders Export button when `visibleSubscriptions.length >= 1`.
+   - Filter & Sorting: Filters output by active search text & filter pills, then sorts by `block` and `flat` in natural alphanumeric order.
+   - Comprehensive Columns: Outputs un-abbreviated headers for Block No., Flat No., Pass Code, Mobile Number, Adults Count, Kids Count, Total Members, Total Amount (Rs.), Payment Mode, Transaction ID (comma-separated with payment channel details for multiple payments, e.g. `UPI: 12345, Bank Transfer: 67890`), Payment Details, per-member day/meal choices, per-member food taken status, and daily dietary totals.
+   - Grand Total Row: Appends a `GRAND TOTAL` row at the end summing Adults Count, Kids Count, Total Members, Total Amount (Rs.), and daily Veg, Non-Veg, and Parcel totals across all exported passes.
+2. **Guest Management Export (`GuestManagementScreen.tsx`)**:
+   - Condition: Renders Export button when active days exist (`activeDays.length >= 1`).
+   - Granular Breakdown: Outputs Day Name, Meal Type, Veg Planned, Veg Served, Veg Pending, Non-Veg Planned, Non-Veg Served, Non-Veg Pending, Total Guest Planned, Total Guest Served, Total Guest Pending.
+   - Grand Total: Appends a season-wide `GRAND TOTAL` calculation row at the end of the dataset.
+3. **Encoding & Transport**:
+   - Prepends UTF-8 Byte Order Mark (`\uFEFF`) to prevent character encoding issues in spreadsheet software (Microsoft Excel, Google Sheets).
+   - Uses Blob & URL link downloads on Web, and native `Share.share` dialogs on mobile targets.
+   - Audits all export operations into Firebase RTDB activity logs.
 
 ---
 

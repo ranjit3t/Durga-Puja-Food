@@ -80,7 +80,7 @@ src/
     ├── ActivityLogScreen.tsx     # Real-time System Audit Trail Log
     ├── ContactsScreen.tsx        # Resident Directory with Direct WhatsApp/Call/SMS Actions
     ├── DashboardScreen.tsx       # Live Kitchen Counter Dashboard (Plates, Parcels, Guests)
-    ├── GuestManagementScreen.tsx # Counter Guest Demand Manager
+    ├── GuestManagementScreen.tsx # Counter Guest Demand Manager with Excel Export
     ├── HomeScreen.tsx            # Main Operational Summary, Version Check Alert & Quick Action Grid
     ├── LoginScreen.tsx           # Two-Phase Secured Database Login
     ├── MenuEditorScreen.tsx      # Daily Meal Menu & Pricing Editor
@@ -90,7 +90,7 @@ src/
     ├── ScannerScreen.tsx         # QR Camera Scanner & 4-Digit Keypad Scanner
     ├── SettingsScreen.tsx        # Festival Configuration, Meal Lifecycle & Safety Governance
     ├── SubscriptionForm.tsx      # Pass Registration & Editing with Headcount Protection
-    ├── SubscriptionListScreen.tsx# Pass Directory with Alphanumeric Sorting & Multi-Tag Filters
+    ├── SubscriptionListScreen.tsx# Pass Directory with Alphanumeric Sorting, Multi-Tag Filters & Excel Export
     └── ViewMenuScreen.tsx        # Daily Food Menu Viewer
 ```
 
@@ -190,6 +190,19 @@ When generating PNG image exports of report views in `ReportScreen.tsx` using `r
   - In **Light Mode** (`AppThemeMode.LIGHT`), `theme.colors.background` evaluates to solid `#FFFFFF` (white).
   - In **Dark Mode** (`AppThemeMode.DARK`), `theme.colors.background` evaluates to solid `#121212` (dark).
   - Result: Shared images perfectly match the active app theme with zero background corruption.
+
+### 4. Detailed Excel Export Engine (CSV Spreadsheet)
+The application includes a specialized Excel CSV export engine with UTF-8 BOM (`\uFEFF`) support across two key operational modules:
+- **Subscription List Excel Export**:
+  - Automatically surfaces an **Export Excel** button whenever 1 or more passes are displayed (`visibleSubscriptions.length >= 1`).
+  - Exports data strictly according to active search terms and filter mode pills (`All`, `Current Meal`, `Current Meal Missed`, `Kids`, `Parcels`, `Veg Only`).
+  - Automatically sorts output rows by **Block No. and Flat No.** in natural alphanumeric order.
+  - Generates comprehensive columns without abbreviations: Block No., Flat No., Pass Code, Mobile Number, Adults Count, Kids Count, Total Members, Total Amount (Rs.), Payment Mode, Transaction ID (with channel details & comma-separated list for multiple transactions, e.g. `UPI: 12345, Bank Transfer: 67890`), Payment Details, Day-by-Day / Meal-by-Meal food choices per member (`Adult 1: Veg (Parcel)`), food taken status per member (`Adult 1: Food Taken, Parcel Taken`), and daily Veg/Non-Veg/Parcel totals.
+  - Appends a **`GRAND TOTAL`** summary row at the bottom aggregating total Adults, Kids, Total Members, Total Amount (Rs.), and daily Veg, Non-Veg, and Parcel counts across all exported subscriptions.
+- **Guest Management Excel Export**:
+  - Displays an **Export Excel** button in the header bar when active festival day data exists (`activeDays.length >= 1`).
+  - Exports detailed guest metrics per active day and enabled meal: Day Name, Meal Type, Veg Planned, Veg Served, Veg Pending, Non-Veg Planned, Non-Veg Served, Non-Veg Pending, Total Guest Planned, Total Guest Served, and Total Guest Pending.
+  - Appends a **`GRAND TOTAL`** summary row at the bottom reflecting overall guest plate demand, served count, and remaining balance across all festival days.
 
 ---
 
