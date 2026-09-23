@@ -361,9 +361,6 @@ export function QuickCheckoutModal({
                   {UI_TEXT.pass}{UI_TEXT.space}{subscription?.id}
                 </Text>
               </View>
-              <Pressable onPress={onClose} style={{ padding: 4 }}>
-                <Ionicons name="close" size={22} color={theme.colors.textMuted} />
-              </Pressable>
             </View>
 
             {/* Header Summary Box - Exact Dashboard Summary Card Pattern (Solid Red Theme) */}
@@ -387,15 +384,15 @@ export function QuickCheckoutModal({
                 })
               }}>
                 {/* Heading: Saptami - Breakfast */}
-                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                    <Ionicons name="restaurant" size={16} color={theme.colors.white} />
-                    <Text style={{ fontSize: 13, fontWeight: "900", color: theme.colors.white, textTransform: "uppercase", letterSpacing: 0.8 }}>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                  <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 6, flex: 1 }}>
+                    <Ionicons name="restaurant" size={16} color={theme.colors.white} style={{ marginTop: 1 }} />
+                    <Text style={{ fontSize: 13, fontWeight: "900", color: theme.colors.white, textTransform: "uppercase", letterSpacing: 0.8, flex: 1, flexWrap: "wrap" }}>
                       {currentMealInfo.dayLabel}{UI_TEXT.space}{UI_TEXT.hyphen}{UI_TEXT.space}{currentMealInfo.mealLabel}
                     </Text>
                   </View>
 
-                  <View style={{ backgroundColor: theme.colors.white + "33", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 }}>
+                  <View style={{ backgroundColor: theme.colors.white + "33", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, flexShrink: 0, alignSelf: "flex-start" }}>
                     <Text style={{ fontSize: 10, fontWeight: "900", color: theme.colors.white }}>
                       {UI_TEXT.live.toUpperCase()}
                     </Text>
@@ -528,7 +525,7 @@ export function QuickCheckoutModal({
                 ]}
               >
                 <Text style={[modalStyles.cancelText, { color: theme.colors.textPrimary }]}>
-                  {UI_TEXT.cancel}
+                  {UI_TEXT.close}
                 </Text>
               </Pressable>
 

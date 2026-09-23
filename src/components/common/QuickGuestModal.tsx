@@ -144,24 +144,19 @@ export function QuickGuestModal({
                 web: { boxShadow: `0 3px 10px ${theme.colors.primary}33` }
               })
             }}>
-              {/* Heading: Title + Day/Meal + LIVE Badge + Close Icon */}
-              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flex: 1, paddingRight: 6 }}>
-                  <Ionicons name="people" size={15} color={theme.colors.white} />
-                  <Text style={{ fontSize: 12, fontWeight: "900", color: theme.colors.white, textTransform: "uppercase", letterSpacing: 0.5 }} numberOfLines={1}>
+              {/* Heading: Title + Day/Meal + LIVE Badge */}
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flex: 1 }}>
+                  <Ionicons name="people" size={16} color={theme.colors.white} />
+                  <Text style={{ fontSize: 12, fontWeight: "900", color: theme.colors.white, textTransform: "uppercase", letterSpacing: 0.5, flex: 1, flexWrap: "wrap" }}>
                     {UI_TEXT.guestCheckout}{UI_TEXT.space}{UI_TEXT.pipe}{UI_TEXT.space}{dayLabel}{UI_TEXT.space}{UI_TEXT.hyphen}{UI_TEXT.space}{mealLabel}
                   </Text>
                 </View>
 
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                  <View style={{ backgroundColor: theme.colors.white + "33", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
-                    <Text style={{ fontSize: 9, fontWeight: "900", color: theme.colors.white }}>
-                      {UI_TEXT.live.toUpperCase()}
-                    </Text>
-                  </View>
-                  <Pressable onPress={onClose} style={{ padding: 2 }}>
-                    <Ionicons name="close" size={18} color={theme.colors.white} />
-                  </Pressable>
+                <View style={{ backgroundColor: theme.colors.white + "33", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                  <Text style={{ fontSize: 9, fontWeight: "900", color: theme.colors.white }}>
+                    {UI_TEXT.live.toUpperCase()}
+                  </Text>
                 </View>
               </View>
 
