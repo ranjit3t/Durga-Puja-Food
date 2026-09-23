@@ -92,7 +92,9 @@ const ActivityLogItem = memo(({
         <View style={{ flex: 1 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(8), marginBottom: s(8), flexWrap: 'wrap' }}>
             <View style={{ backgroundColor: isError ? theme.colors.error + "20" : theme.colors.primary + "15", paddingHorizontal: s(10), paddingVertical: s(4), borderRadius: s(8) }}>
-              <Text style={{ fontSize: s(12), fontWeight: '900', color: isError ? theme.colors.error : theme.colors.primary }}>{item.userName.toUpperCase()}</Text>
+              <Text style={{ fontSize: s(12), fontWeight: '900', color: isError ? theme.colors.error : theme.colors.primary }}>
+                {item.userName}{item.userRole ? ` (${String(item.userRole).toUpperCase()})` : ""}
+              </Text>
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(4) }}>
               <Ionicons name="time-outline" size={s(12)} color={theme.colors.textMuted} />
@@ -209,7 +211,15 @@ export function ActivityLogScreen() {
   const userOptions = useMemo(() => {
     const users = new Set<string>();
     users.add(UI_TEXT.all);
-    logs.forEach(log => users.add(log.userName));
+    logs.forEach(log => {
+      if (log.userName) {
+        users.add(log.userName);
+        if (log.userRole) {
+          users.add(`${log.userName} (${log.userRole})`);
+          users.add(String(log.userRole));
+        }
+      }
+    });
     return Array.from(users).sort();
   }, [logs]);
 
@@ -266,12 +276,29 @@ export function ActivityLogScreen() {
 
   const filteredLogs = useMemo(() => {
     let result = logs.filter(log => {
-      if (selectedUser !== UI_TEXT.all && log.userName !== selectedUser) return false;
+      if (selectedUser !== UI_TEXT.all) {
+        const formattedUser = log.userRole ? `${log.userName} (${log.userRole})` : log.userName;
+        if (selectedUser !== log.userName && selectedUser !== log.userRole && selectedUser !== formattedUser) {
+          return false;
+        }
+      }
       if (selectedModule !== UI_TEXT.all && log.module !== selectedModule) return false;
       if (selectedTarget !== UI_TEXT.all && log.targetId !== selectedTarget) return false;
       if (selectedDate !== UI_TEXT.all && new Date(log.timestamp).toLocaleDateString() !== selectedDate) return false;
       if (errorsOnly && log.action !== ActivityAction.ERROR) return false;
-      if (searchText && !log.description?.toLowerCase().includes(searchText.toLowerCase())) return false;
+      if (searchText) {
+        const query = searchText.toLowerCase();
+        const matchDesc = log.description?.toLowerCase().includes(query);
+        const matchUser = log.userName?.toLowerCase().includes(query);
+        const matchRole = String(log.userRole || "").toLowerCase().includes(query);
+        const matchTarget = log.targetId?.toLowerCase().includes(query);
+        const matchModule = log.module?.toLowerCase().includes(query);
+        const matchAction = log.action?.toLowerCase().includes(query);
+
+        if (!matchDesc && !matchUser && !matchRole && !matchTarget && !matchModule && !matchAction) {
+          return false;
+        }
+      }
       return true;
     });
 
@@ -304,7 +331,7 @@ export function ActivityLogScreen() {
     };
 
     const content = filteredLogs.map(log =>
-      `[${formatTs(log.timestamp)}] ${log.userName} | ${log.os || ''} ${log.device || ''} | ${log.module} | ${log.action} | ${log.targetId || ''} | ${log.description || ''}${log.stack ? '\nSTACK:\n' + log.stack : ''}`
+      `[${formatTs(log.timestamp)}] ${log.userName}${log.userRole ? ' (' + log.userRole + ')' : ''} | ${log.os || ''} ${log.device || ''} | ${log.module} | ${log.action} | ${log.targetId || ''} | ${log.description || ''}${log.stack ? '\nSTACK:\n' + log.stack : ''}`
     ).join('\n\n' + '-'.repeat(40) + '\n\n');
 
     const title = `${UI_TEXT.activityLog}_${new Date().toISOString().slice(0, 10)}.txt`;

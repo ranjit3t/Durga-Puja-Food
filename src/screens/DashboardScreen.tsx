@@ -698,7 +698,7 @@ export function DashboardScreen() {
                          </Text>
                          <Text style={{ fontSize: s(10), fontWeight: '700', color: theme.colors.white, opacity: 0.7 }}>
                             {currentMealSummary.isVegEnabled && currentMealSummary.isNonVegEnabled && (
-                               `(${currentMealSummary.kidsVeg}{UI_TEXT.vegAbbrLabel}${UI_TEXT.pipe}${currentMealSummary.kidsNonVeg}{UI_TEXT.nonVegAbbrLabel})${UI_TEXT.space}`
+                               `(${currentMealSummary.kidsVeg}${UI_TEXT.vegAbbrLabel}${UI_TEXT.pipe}${currentMealSummary.kidsNonVeg}${UI_TEXT.nonVegAbbrLabel})${UI_TEXT.space}`
                             )}
                             ({UI_TEXT.taken}{UI_TEXT.colon}{UI_TEXT.space}{currentMealSummary.kidsTaken})
                          </Text>
@@ -713,7 +713,7 @@ export function DashboardScreen() {
                          </Text>
                          <Text style={{ fontSize: s(10), fontWeight: '700', color: theme.colors.white, opacity: 0.7 }}>
                             {currentMealSummary.isVegEnabled && currentMealSummary.isNonVegEnabled && (
-                               `(${currentMealSummary.guestVeg}{UI_TEXT.vegAbbrLabel}${UI_TEXT.pipe}${currentMealSummary.guestNonVeg}{UI_TEXT.nonVegAbbrLabel})${UI_TEXT.space}`
+                               `(${currentMealSummary.guestVeg}${UI_TEXT.vegAbbrLabel}${UI_TEXT.pipe}${currentMealSummary.guestNonVeg}${UI_TEXT.nonVegAbbrLabel})${UI_TEXT.space}`
                             )}
                             ({UI_TEXT.taken}{UI_TEXT.colon}{UI_TEXT.space}{currentMealSummary.guestTaken})
                          </Text>

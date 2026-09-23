@@ -21,9 +21,12 @@ import {
   getDayLabel,
   getDayAbbr,
   isMealEnabled,
+  isMealCurrent,
   isDietaryEnabledForDay,
   getPaymentModeLabel,
   getMemberLegend,
+  getMealLabel,
+  isParcelEnabled,
 } from "../constants";
 import { MealMenu, MealType, DietType, DietaryOption, AppScreen, UserRole, PaymentMode, ReportType, AppThemeMode, ActivityModule, ActivityAction } from "../types";
 import { BackButton } from "../components/common/BackButton";
@@ -31,6 +34,7 @@ import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
 import { ActionLabel } from "../components/common/ActionLabel";
 import { MealSummaryInline } from "../components/menu/MealSummaryInline";
+import { QuickCheckoutModal } from "../components/common/QuickCheckoutModal";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useAuth } from "../context/AuthContext";
@@ -57,6 +61,51 @@ export function DetailsScreen() {
   const isAdmin = userRole === UserRole.ADMIN;
   const canEdit = seasonEnabled && !isSeasonDone(dayConfig);
   const activeDays = getActiveDays(dayConfig);
+
+  const [showQuickCheckoutModal, setShowQuickCheckoutModal] = React.useState(false);
+
+  const currentMealInfo = React.useMemo(() => {
+    const active = getActiveDays(dayConfig);
+    for (const dId of active) {
+      for (const mType of [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER]) {
+        if (isMealCurrent(dId, mType, dayConfig) && isMealEnabled(dId, mType, dayConfig)) {
+          return {
+            dayId: dId,
+            mealType: mType,
+            dayLabel: getDayLabel(dId, dayConfig),
+            mealLabel: getMealLabel(mType)
+          };
+        }
+      }
+    }
+    return null;
+  }, [dayConfig]);
+
+  const hasUnservedFoodForCurrentMeal = React.useMemo(() => {
+    if (!currentMealInfo || !subscription) return false;
+
+    const { dayId, mealType } = currentMealInfo;
+    const mealKey = mealType;
+
+    const headcount = subscription.peopleCount + (kidsEnabled ? (subscription.kidsCount || 0) : 0);
+    const slots = subscription.mealSlots?.[dayId] || [];
+    const taken = subscription.takenByPerson?.[dayId] || [];
+
+    for (let i = 0; i < headcount; i++) {
+      const isSubscribed = slots[i]?.[mealKey] && slots[i][mealKey] !== DietaryOption.NONE;
+      const isFoodTaken = !!taken[i]?.[mealKey];
+      if (isSubscribed && !isFoodTaken) {
+        return true;
+      }
+    }
+
+    return false;
+  }, [currentMealInfo, subscription, kidsEnabled]);
+
+  const handleQuickCheckoutClick = () => {
+    if (!hasUnservedFoodForCurrentMeal || !currentMealInfo || !subscription) return;
+    setShowQuickCheckoutModal(true);
+  };
 
   const onBack = () => goBack();
   const onHome = () => navigate(AppScreen.HOME);
@@ -143,6 +192,18 @@ export function DetailsScreen() {
                 <Text style={[styles.previewAmount, { color: theme.colors.white, fontSize: 22 }]}>
                   {UI_TEXT.rs}{UI_TEXT.space}{subscription.amount || UI_TEXT.zero}
                 </Text>
+              )}
+              {hasUnservedFoodForCurrentMeal && (
+                <Pressable
+                  accessibilityLabel={UI_TEXT.quickCheckout}
+                  onPress={handleQuickCheckoutClick}
+                  style={({ pressed }) => [
+                    { padding: 6, borderRadius: 20, backgroundColor: theme.colors.white + "33" },
+                    pressed && { opacity: 0.7 }
+                  ]}
+                >
+                  <Ionicons name="flash" size={18} color={theme.colors.white} />
+                </Pressable>
               )}
               {canEdit && (
                 <Pressable
@@ -483,6 +544,14 @@ export function DetailsScreen() {
 
         {/* Actions */}
         <View style={{ gap: 16, marginBottom: 40 }}>
+          {hasUnservedFoodForCurrentMeal && (
+            <Pressable
+              onPress={handleQuickCheckoutClick}
+              style={[styles.primary, { backgroundColor: theme.colors.primary, marginTop: 0, height: 52, borderRadius: 16 }]}
+            >
+              <ActionLabel icon="flash-outline" label={UI_TEXT.quickCheckout} color={theme.colors.white} />
+            </Pressable>
+          )}
           {canEdit && (
             <Pressable
               onPress={onEdit}
@@ -532,6 +601,17 @@ export function DetailsScreen() {
            <Text style={styles.footerText}>{UI_TEXT.footerCopyright}</Text>
         </View>
       </ScrollView>
+
+      {/* Quick Checkout Modal */}
+      <QuickCheckoutModal
+        visible={showQuickCheckoutModal}
+        subscription={subscription}
+        currentMealInfo={currentMealInfo}
+        onClose={() => setShowQuickCheckoutModal(false)}
+        onSuccess={() => {
+          setShowQuickCheckoutModal(false);
+        }}
+      />
     </View>
   );
 }

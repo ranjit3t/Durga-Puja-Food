@@ -21,7 +21,7 @@ export function HomeScreen() {
   const {
     subscriptions, dayConfig, seasonName, seasonEnabled, guestEnabled, totalPeople, firebaseError, paymentConfig, collections, kidsEnabled, foodMenu, remoteAppVersion, loading
   } = useDatabase();
-  const { navigate, startNew } = useAppNavigation();
+  const { navigate, startNew, setIsQuickCheckout, setIsQuickGuestMode } = useAppNavigation();
   const { showAlert, showGlobalError } = useUI();
   const { width } = useWindowDimensions();
 
@@ -257,16 +257,46 @@ export function HomeScreen() {
             </Pressable>
           )}
           {guestEnabled && (
-            <Pressable accessibilityLabel={UI_TEXT.guestButton} onPress={() => navigate(AppScreen.GUEST_MANAGEMENT)} style={[styles.compactSecondary, { backgroundColor: theme.cardColors[2].accent, borderColor: theme.cardColors[2].accent }]}>
+            <Pressable
+              accessibilityLabel={UI_TEXT.guestButton}
+              onPress={() => {
+                if (currentMealInfo) {
+                  setIsQuickGuestMode(true);
+                } else {
+                  setIsQuickGuestMode(false);
+                }
+                navigate(AppScreen.GUEST_MANAGEMENT);
+              }}
+              style={[styles.compactSecondary, { backgroundColor: theme.cardColors[2].accent, borderColor: theme.cardColors[2].accent }]}
+            >
               <ActionLabel icon="people-circle-outline" label={UI_TEXT.guestButton} color={theme.colors.white} size={iconSize} vertical />
             </Pressable>
           )}
           <Pressable accessibilityLabel={UI_TEXT.subscriptions} onPress={() => navigate(AppScreen.SUBSCRIPTION_LIST)} style={[styles.compactSecondary, { backgroundColor: theme.cardColors[1].accent, borderColor: theme.cardColors[1].accent }]}>
             <ActionLabel icon="list-outline" label={UI_TEXT.subscriptions} color={theme.colors.white} size={iconSize} vertical />
           </Pressable>
-          <Pressable accessibilityLabel={UI_TEXT.scanQr} onPress={() => navigate(AppScreen.SCANNER)} style={[styles.compactSecondary, { backgroundColor: theme.cardColors[4].accent, borderColor: theme.cardColors[4].accent }]}>
+          <Pressable
+            accessibilityLabel={UI_TEXT.scanQr}
+            onPress={() => {
+              setIsQuickCheckout(false);
+              navigate(AppScreen.SCANNER);
+            }}
+            style={[styles.compactSecondary, { backgroundColor: theme.cardColors[4].accent, borderColor: theme.cardColors[4].accent }]}
+          >
             <ActionLabel icon="scan-outline" label={UI_TEXT.scanQr} color={theme.colors.white} size={iconSize} vertical />
           </Pressable>
+          {currentMealInfo && (
+            <Pressable
+              accessibilityLabel={UI_TEXT.quickCheckout}
+              onPress={() => {
+                setIsQuickCheckout(true);
+                navigate(AppScreen.SCANNER);
+              }}
+              style={[styles.compactSecondary, { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary }]}
+            >
+              <ActionLabel icon="flash-outline" label={UI_TEXT.quickCheckout} color={theme.colors.white} size={iconSize} vertical />
+            </Pressable>
+          )}
           <Pressable accessibilityLabel={UI_TEXT.dashboard} onPress={() => navigate(AppScreen.DASHBOARD)} style={[styles.compactSecondary, { backgroundColor: theme.cardColors[3].accent, borderColor: theme.cardColors[3].accent }]}>
             <ActionLabel icon="stats-chart-outline" label={UI_TEXT.dashboard} color={theme.colors.white} size={iconSize} vertical />
           </Pressable>

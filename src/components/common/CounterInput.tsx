@@ -6,6 +6,7 @@ import { useAppTheme } from "../../theme";
 
 interface CounterInputProps {
   label: string;
+  description?: string;
   value: number;
   onChange: (val: number) => void;
   min?: number;
@@ -15,6 +16,7 @@ interface CounterInputProps {
 
 export function CounterInput({
   label,
+  description,
   value,
   onChange,
   min = 0,
@@ -46,27 +48,35 @@ export function CounterInput({
 
     if (clean !== "") {
       const numeric = parseInt(clean, 10);
-      // We only trigger parent update if the value is within a reasonable typing range
-      // The clamping logic will still be enforced on Blur
-      onChange(numeric);
+      const clamped = Math.max(min, Math.min(max, numeric));
+      onChange(clamped);
     }
   };
 
   const handleBlur = () => {
-    // On blur, ensure the text matches the actual valid value (clamped and non-empty)
-    setLocalText(String(value));
+    const numeric = parseInt(localText, 10);
+    const clamped = isNaN(numeric) ? min : Math.max(min, Math.min(max, numeric));
+    setLocalText(String(clamped));
+    onChange(clamped);
   };
 
   return (
-    <View style={{ marginBottom: 16 }}>
-      <Text style={[styles.label, { marginTop: 0, marginBottom: 8, fontSize: 13 }]}>{label}</Text>
+    <View style={{ marginBottom: 8 }}>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 6, paddingHorizontal: 2 }}>
+        <Text style={[styles.label, { marginTop: 0, marginBottom: 0, fontSize: 13 }]}>{label}</Text>
+        {description ? (
+          <Text style={{ fontSize: 11, fontWeight: "700", color: theme.colors.primary }}>
+            {description}
+          </Text>
+        ) : null}
+      </View>
       <View style={[localStyles.container, { backgroundColor: theme.colors.surfaceDark, borderColor: theme.colors.border }]}>
         <Pressable
           onPress={handleDecrement}
           style={[localStyles.button, disabled && { opacity: 0.5 }, { borderRightWidth: 1, borderRightColor: theme.colors.border }]}
           disabled={disabled || value <= min}
         >
-          <Ionicons name="remove" size={20} color={theme.colors.textPrimary} />
+          <Ionicons name="remove" size={18} color={theme.colors.textPrimary} />
         </Pressable>
 
         <TextInput
@@ -84,7 +94,7 @@ export function CounterInput({
           style={[localStyles.button, disabled && { opacity: 0.5 }, { borderLeftWidth: 1, borderLeftColor: theme.colors.border }]}
           disabled={disabled || value >= max}
         >
-          <Ionicons name="add" size={20} color={theme.colors.textPrimary} />
+          <Ionicons name="add" size={18} color={theme.colors.textPrimary} />
         </Pressable>
       </View>
     </View>
@@ -95,13 +105,13 @@ const localStyles = StyleSheet.create({
   container: {
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: 12,
+    borderRadius: 10,
     overflow: "hidden",
-    height: 48,
+    height: 42,
     borderWidth: 1,
   },
   button: {
-    width: 48,
+    width: 44,
     height: "100%",
     alignItems: "center",
     justifyContent: "center",
@@ -110,7 +120,7 @@ const localStyles = StyleSheet.create({
     flex: 1,
     height: "100%",
     textAlign: "center",
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "700",
     padding: 0,
   },

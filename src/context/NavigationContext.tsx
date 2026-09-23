@@ -34,6 +34,14 @@ interface NavigationContextType {
   reportMealType: MealType;
   setReportMealType: (meal: MealType) => void;
 
+  // Quick Checkout State
+  isQuickCheckout: boolean;
+  setIsQuickCheckout: (val: boolean) => void;
+
+  // Quick Guest Mode State
+  isQuickGuestMode: boolean;
+  setIsQuickGuestMode: (val: boolean) => void;
+
   // Subscription Search
   subscriptionSearch: string;
   setSubscriptionSearch: (text: string) => void;
@@ -60,6 +68,10 @@ export function NavigationProvider({ children }: { children: React.ReactNode }) 
   const [selectedId, setSelectedId] = useState("");
   const [selectedRecord, setSelectedRecord] = useState<Subscription | null>(null);
   const [editing, setEditing] = useState<Subscription | null>(null);
+
+  // Quick Checkout & Guest States
+  const [isQuickCheckout, setIsQuickCheckout] = useState(false);
+  const [isQuickGuestMode, setIsQuickGuestMode] = useState(false);
 
   // View Filter states
   const [reportType, setReportType] = useState<ReportType>(ReportType.DAY);
@@ -121,21 +133,32 @@ export function NavigationProvider({ children }: { children: React.ReactNode }) 
     return false;
   };
 
-  const resetViewStates = () => {
+  const resetViewStates = (preserveQuickCheckout = false, preserveQuickGuest = false) => {
     setReportType(ReportType.DAY);
     setReportDayId("");
     setReportMealType(MealType.BREAKFAST);
     setSubscriptionSearch("");
     setTargetDay("");
     setTargetMeal(null);
+    if (!preserveQuickCheckout) {
+      setIsQuickCheckout(false);
+    }
+    if (!preserveQuickGuest) {
+      setIsQuickGuestMode(false);
+    }
   };
 
   const navigate = (next: Screen) => {
     if (next === AppScreen.HOME) {
       setHistory([]);
-      resetViewStates();
+      resetViewStates(false, false);
     } else if (next !== screen) {
-      if (screen === AppScreen.HOME) resetViewStates();
+      if (screen === AppScreen.HOME) {
+        resetViewStates(next === AppScreen.SCANNER, next === AppScreen.GUEST_MANAGEMENT);
+      } else {
+        if (next !== AppScreen.SCANNER) setIsQuickCheckout(false);
+        if (next !== AppScreen.GUEST_MANAGEMENT) setIsQuickGuestMode(false);
+      }
 
       // Pass Workflow Optimization:
       // DETAILS, FORM, and QR are part of a single "Pass Lifecycle".
@@ -158,7 +181,10 @@ export function NavigationProvider({ children }: { children: React.ReactNode }) 
       setHistory((current) => current.slice(0, -1));
       if (prev === AppScreen.HOME) {
         setHistory([]);
-        resetViewStates();
+        resetViewStates(false, false);
+      } else {
+        if (prev !== AppScreen.SCANNER) setIsQuickCheckout(false);
+        if (prev !== AppScreen.GUEST_MANAGEMENT) setIsQuickGuestMode(false);
       }
       setScreen(prev);
       return true;
@@ -193,11 +219,13 @@ export function NavigationProvider({ children }: { children: React.ReactNode }) 
     selectedId, setSelectedId, selectedRecord, setSelectedRecord, editing, setEditing,
     reportType, setReportType, reportDayId, setReportDayId, reportMealType, setReportMealType,
     subscriptionSearch, setSubscriptionSearch,
-    targetDay, setTargetDay, targetMeal, setTargetMeal
+    targetDay, setTargetDay, targetMeal, setTargetMeal,
+    isQuickCheckout, setIsQuickCheckout,
+    isQuickGuestMode, setIsQuickGuestMode
   }), [
     screen, history, selectedId, selectedRecord, editing,
     reportType, reportDayId, reportMealType, subscriptionSearch,
-    targetDay, targetMeal,
+    targetDay, targetMeal, isQuickCheckout, isQuickGuestMode,
     startNew, openScannedValue
   ]);
 

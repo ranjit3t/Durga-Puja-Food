@@ -53,7 +53,7 @@ The application follows a decoupled, context-driven component architecture with 
 ```
 src/
 ├── components/          # Modular UI Components
-│   ├── common/          # Action Label, Back Button, Home Button, Counter, Alert Modal, Dropdowns
+│   ├── common/          # Action Label, Back Button, Home Button, Counter, Alert Modal, Dropdowns, QuickCheckoutModal
 │   ├── dashboard/       # Meal Bar Chart, Meal Metric Grid
 │   ├── menu/            # Meal Display, Meal Menu Editor, Summary Bar
 │   └── report/          # DayWise, MealWise, SingleMeal, Guest, Parcel, Pending, FlatWise, Payment, Kids

@@ -80,6 +80,39 @@ The entire application is strictly **Config-Driven**. The `AppConfig` object con
 - **Granular Deep-Path Updates**: Uses targeted Firebase path references (e.g., `menu/dayId/mealKey/field`) for operational updates.
 - **Periodic Background Refresh**: Runs every 10 seconds to sync food collection counts and guest demand across devices.
 
+### H. Quick Checkout Engine for Current Meal (`QuickCheckoutModal.tsx`, `ScannerScreen.tsx`, `DetailsScreen.tsx`)
+- **Dynamic Action Visibility**: Renders a **Quick Checkout** button on `HomeScreen` (adjacent to "Scan/Pass Code") and on `DetailsScreen` ("View Pass") whenever a meal is live/current (`isMealCurrent`) and at least one member has not taken food (`hasUnservedFoodForCurrentMeal`). Also renders a quick-checkout flash icon shortcut (`flash`) in the Pass Identity card header on `DetailsScreen`.
+- **Validation Pipeline & Hierarchy**:
+  - Validates pass existence.
+  - Checks if zero pass members are subscribed to current meal $\rightarrow$ Alert: `"No current meal has been subscribed for the pass"`.
+  - Primary Food Hierarchy: Evaluates unserved primary food members (`UnservedFoodCount = AdultsMax + KidsMax`). Takeaway parcels are treated as a child of primary food. If all subscribed members have already taken primary food, displays Alert: `"Current meal has already been taken"` and bypasses opening the modal.
+  - Opens `QuickCheckoutModal` when unserved primary food members exist.
+- **Reusable Modal Component (`QuickCheckoutModal.tsx`)**:
+  - Dashboard-style header summary card featuring solid primary red theme styling (`backgroundColor: theme.colors.primary`), day name & meal type title (`Saptami - Breakfast`), singular/plural headcount grammar (`1 Adult` vs `X Adults`, `1 Kid` vs `Y Kids`, `1 General Member` vs `X General Members`), Veg/Non-Veg breakdown, and Food & Parcel Planned/Served/Pending tiles.
+  - Concise `CounterInput` right-aligned badges displaying max limits (`Max: X`). Input fields are conditionally hidden whenever their eligible max count is zero (`Max === 0`). Dynamic input limits: `AdultsMax = Adults Planned - Adults Taken`, `KidsMax = Kids Planned - Kids Taken`, `ParcelMax = min(Parcel Planned - Parcel Taken, AdultsInput + KidsInput)`.
+  - Input Guardrails & Viewport Optimization: Compact vertical card padding (`12px`), viewport height cap (`maxHeight: "88%"`), and internal scrolling. Checkout button disabled by default (`sum(inputs) === 0`). Parcel input disabled by default and enables only when Adult or Kid input is $> 0$. Automatically resets parcel input to `0` if adult/kid input drops back to `0`.
+  - Background Sync Protection (`activePassIdRef`): Tracks active pass ID to prevent 10-second background data syncs from resetting user-typed input values to `0`.
+- **Sequential Member Assignment, Alerts & Logging**:
+  - Sequentially marks unserved adults, kids, and parcels as taken in `takenByPerson[dayId]`.
+  - Persists updates to Firebase RTDB and logs detailed activity events under `SCANNER` / `SUBSCRIPTION` modules using localized templates (`UI_TEXT.logQuickCheckout`), posting both checked-out quantities and cumulative post-checkout planned vs. taken ratios (e.g. `Total Taken: Adults 2/2, Kids 1/1, Parcels 1/2`).
+  - Asynchronously audits and logs missed parcel inconsistency (`ActivityAction.MISSED_PARCEL`) on checkout click if all member meals are served (`meal_taken === true`) but 1 or more parcels remain uncollected.
+  - On checkout success: displays alert `"Checkout Successful"` (`UI_TEXT.checkoutSuccessful`) and remains on the current screen (`ScannerScreen` or `DetailsScreen`).
+- **Activity Log Audit & Role Tracking (`ActivityLogScreen.tsx`)**:
+  - Every activity log automatically records both `userName` and `userRole`. Unauthenticated login failures record `userName` while omitting `userRole` cleanly.
+  - Log list displays user badges formatted as `USERNAME (ROLE)` (e.g., `JOHN (VENDOR)`, `ADMIN (ADMIN)`).
+  - Search and "Filter by User" dropdown support filtering and searching by username, user role, and combined labels (`john (vendor)`).
+- **Zero-Hardcoding Compliance**: All UI labels, button text, alert messages, and activity log templates are strictly sourced from `src/strings.ts`.
+
+### I. Quick Guest Checkout Engine for Current Meal (`QuickGuestModal.tsx`, `GuestManagementScreen.tsx`, `HomeScreen.tsx`)
+- **Trigger & Navigation State (`isQuickGuestMode`)**: Tapping the **Guest** button on `HomeScreen` during a live/current meal (`currentMealInfo !== null`) sets `isQuickGuestMode = true` and navigates to `GuestManagementScreen`.
+- **Overlay Launch & Ultra-Compact Rearranged Layout**: `QuickGuestModal` automatically launches as an overlay popup over `GuestManagementScreen`. Combines title header & summary metrics into a single red theme card, arranges Planned & Served counter inputs into a 2-column side-by-side grid, and enforces an `88%` viewport height constraint for optimal mobile screen ergonomics.
+- **RBAC & Input Validation Rules**:
+  - Non-Admin Users (Vendors): Planned guest plate inputs are disabled. They can only modify Served plate inputs (`disabled={isDone || isFuture}`).
+  - Admin Users: Can modify both Planned and Served guest plate counts.
+  - Served count is bounded by `min={0}` and `max={guestPlanned}`; Planned count is bounded by `min={guestServed}`.
+- **Shared Debounced Persistence & Activity Logging**: Incrementing/decrementing any value in `QuickGuestModal` calls the shared `updateGuestCountDebounced` pipeline in `DatabaseContext`. This provides 0ms optimistic UI updates while sharing the exact same 1000ms debounce timer (`${dayId}-${mealKey}-${field}`) as the Guest Management Page to batch database writes and prevent redundant `ActivityModule.GUEST` log entries during rapid counter adjustments.
+- **Same-Page Persistence on Close**: Closing the modal via the Close button (`✕`) reveals the background `GuestManagementScreen` with all updated guest counts rendered in real-time. Navigating back to `GuestManagementScreen` from other screens resets `isQuickGuestMode = false`, bypassing the modal.
+
 ---
 
 ## 3. Security & Session Management

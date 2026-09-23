@@ -1,15 +1,17 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { View, Text, Pressable, StatusBar, StyleSheet, useWindowDimensions, Platform, TextInput } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useStyles } from "../styles";
-import { useAppTheme, StatusBarStyleMode } from "../theme";
+import { useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
 import { BackButton } from "../components/common/BackButton";
+import { QuickCheckoutModal } from "../components/common/QuickCheckoutModal";
 
 import { useAppNavigation } from "../context/NavigationContext";
 import { useDatabase } from "../context/DatabaseContext";
 import { useUI } from "../context/UIContext";
-import { AppScreen, AppThemeMode, ActivityModule, ActivityAction } from "../types";
+import { AppScreen, AppThemeMode, ActivityModule, ActivityAction, Subscription, MealType, DietaryOption } from "../types";
+import { getActiveDays, isMealCurrent, isMealEnabled, getDayLabel, getMealLabel, qrValueFor, isParcelEnabled } from "../constants";
 
 export function ScannerScreen() {
   const styles = useStyles();
@@ -17,75 +19,235 @@ export function ScannerScreen() {
   const { width } = useWindowDimensions();
   const [permission, requestPermission] = useCameraPermissions();
 
-  const { openScannedValue, goBack, navigate } = useAppNavigation();
-  const { subscriptions, addActivityLog } = useDatabase();
+  const { openScannedValue, goBack, navigate, isQuickCheckout } = useAppNavigation();
+  const { subscriptions, dayConfig, kidsEnabled, addActivityLog } = useDatabase();
   const { showAlert } = useUI();
 
   const scanSize = Math.min(width * 0.7, 260);
   const [error, setError] = useState("");
   const [passCode, setPassCode] = useState("");
-  const isScanning = React.useRef(false);
+  const isScanning = useRef(false);
 
-  const handleScan = (data: string) => {
+  // Quick Checkout State
+  const [selectedPass, setSelectedPass] = useState<Subscription | null>(null);
+  const [currentMealInfo, setCurrentMealInfo] = useState<{ dayId: string; mealType: MealType; dayLabel: string; mealLabel: string } | null>(null);
+
+  const processCodeOrData = (dataOrCode: string, isPassCode: boolean) => {
     if (isScanning.current) return;
     isScanning.current = true;
 
-    const found = openScannedValue(data, subscriptions);
-    if (found) {
+    if (!isQuickCheckout) {
+      const found = openScannedValue(dataOrCode, subscriptions);
+      if (found) {
+        addActivityLog({
+          module: ActivityModule.SCANNER,
+          action: isPassCode ? ActivityAction.PASS : ActivityAction.SCAN,
+          targetId: dataOrCode.split('/').pop(),
+          description: isPassCode
+            ? UI_TEXT.logPassSuccess.replace("{id}", dataOrCode) + " (Pass Code)"
+            : UI_TEXT.logScanSuccess.replace("{id}", dataOrCode.split('/').pop() || "")
+        });
+      } else {
+        addActivityLog({
+          module: ActivityModule.SCANNER,
+          action: isPassCode ? ActivityAction.PASS : ActivityAction.SCAN,
+          description: isPassCode ? "Invalid Pass Code: " + dataOrCode : UI_TEXT.logScanFail.replace("{data}", dataOrCode)
+        });
+        setError(isPassCode ? UI_TEXT.passCodeError : UI_TEXT.scanError);
+        showAlert(UI_TEXT.error, isPassCode ? UI_TEXT.passCodeError : UI_TEXT.scanError, [
+          {
+            text: UI_TEXT.ok,
+            onPress: () => {
+              if (isPassCode) {
+                setPassCode("");
+                setError("");
+                isScanning.current = false;
+              } else {
+                navigate(AppScreen.SUBSCRIPTION_LIST);
+              }
+            },
+          },
+        ]);
+      }
+      return;
+    }
+
+    // Quick Checkout Mode Validation
+    const match = subscriptions.find((s) =>
+      qrValueFor(s.id) === dataOrCode || s.id === dataOrCode || s.passcode === dataOrCode
+    );
+
+    if (!match) {
       addActivityLog({
         module: ActivityModule.SCANNER,
-        action: ActivityAction.SCAN,
-        targetId: data.split('/').pop(), // Extract ID from URL if possible
-        description: UI_TEXT.logScanSuccess.replace("{id}", data.split('/').pop() || "")
+        action: isPassCode ? ActivityAction.PASS : ActivityAction.SCAN,
+        description: UI_TEXT.logQuickCheckoutFailed.replace("{data}", dataOrCode)
       });
-    } else {
-      addActivityLog({
-        module: ActivityModule.SCANNER,
-        action: ActivityAction.SCAN,
-        description: UI_TEXT.logScanFail.replace("{data}", data)
-      });
-      setError(UI_TEXT.scanError);
-      showAlert(UI_TEXT.error, UI_TEXT.scanError, [
+      setError(isPassCode ? UI_TEXT.passCodeError : UI_TEXT.scanError);
+      showAlert(UI_TEXT.error, isPassCode ? UI_TEXT.passCodeError : UI_TEXT.scanError, [
         {
           text: UI_TEXT.ok,
           onPress: () => {
-            navigate(AppScreen.SUBSCRIPTION_LIST);
+            setPassCode("");
+            setError("");
+            isScanning.current = false;
           },
         },
       ]);
+      return;
     }
+
+    // Match found - check current meal
+    const activeDays = getActiveDays(dayConfig);
+    let currentMeal: { dayId: string; mealType: MealType; dayLabel: string; mealLabel: string } | null = null;
+    for (const dId of activeDays) {
+      for (const mType of [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER]) {
+        if (isMealCurrent(dId, mType, dayConfig) && isMealEnabled(dId, mType, dayConfig)) {
+          currentMeal = {
+            dayId: dId,
+            mealType: mType,
+            dayLabel: getDayLabel(dId, dayConfig),
+            mealLabel: getMealLabel(mType)
+          };
+          break;
+        }
+      }
+      if (currentMeal) break;
+    }
+
+    if (!currentMeal) {
+      openScannedValue(dataOrCode, subscriptions);
+      return;
+    }
+
+    const { dayId, mealType } = currentMeal;
+    const mealKey = mealType;
+    const parcelKey = `${mealType}Parcel`;
+
+    const peopleCount = match.peopleCount;
+    const kidsCount = kidsEnabled ? (match.kidsCount || 0) : 0;
+    const headcount = peopleCount + kidsCount;
+
+    const slots = match.mealSlots?.[dayId] || [];
+    const taken = match.takenByPerson?.[dayId] || [];
+
+    const parcelSupported = isParcelEnabled(dayId, mealType, dayConfig);
+
+    let adultsPlanned = 0;
+    let adultsTaken = 0;
+    let kidsPlanned = 0;
+    let kidsTaken = 0;
+    let parcelPlanned = 0;
+    let parcelTaken = 0;
+
+    for (let i = 0; i < headcount; i++) {
+      const isKid = kidsEnabled && i >= peopleCount;
+      const isSubscribed = slots[i]?.[mealKey] && slots[i][mealKey] !== DietaryOption.NONE;
+      const isMealTaken = !!taken[i]?.[mealKey];
+
+      if (isSubscribed) {
+        if (!isKid) {
+          adultsPlanned++;
+          if (isMealTaken) adultsTaken++;
+        } else {
+          kidsPlanned++;
+          if (isMealTaken) kidsTaken++;
+        }
+      }
+
+      if (parcelSupported && slots[i]?.[parcelKey as keyof typeof slots[0]]) {
+        parcelPlanned++;
+        if (taken[i]?.[parcelKey as keyof typeof taken[0]]) {
+          parcelTaken++;
+        }
+      }
+    }
+
+    const subscribedCount = adultsPlanned + kidsPlanned + parcelPlanned;
+
+    const adultsMax = Math.max(0, adultsPlanned - adultsTaken);
+    const kidsMax = Math.max(0, kidsPlanned - kidsTaken);
+
+    // Modal is shown ONLY when any person of the pass for current day has NOT taken food
+    const unservedFoodCount = adultsMax + kidsMax;
+
+    if (subscribedCount === 0) {
+      addActivityLog({
+        module: ActivityModule.SCANNER,
+        action: isPassCode ? ActivityAction.PASS : ActivityAction.SCAN,
+        targetId: match.id,
+        description: `${UI_TEXT.quickCheckout}${UI_TEXT.colon}${UI_TEXT.space}${UI_TEXT.quickCheckoutNoSubscription}`
+      });
+      showAlert(UI_TEXT.error, UI_TEXT.quickCheckoutNoSubscription, [
+        {
+          text: UI_TEXT.ok,
+          onPress: () => {
+            setPassCode("");
+            setError("");
+            isScanning.current = false;
+          },
+        },
+      ]);
+      return;
+    }
+
+    if (unservedFoodCount === 0) {
+      addActivityLog({
+        module: ActivityModule.SCANNER,
+        action: isPassCode ? ActivityAction.PASS : ActivityAction.SCAN,
+        targetId: match.id,
+        description: `${UI_TEXT.quickCheckout}${UI_TEXT.colon}${UI_TEXT.space}${UI_TEXT.quickCheckoutAllServed}`
+      });
+      showAlert(UI_TEXT.error, UI_TEXT.quickCheckoutAllServed, [
+        {
+          text: UI_TEXT.ok,
+          onPress: () => {
+            setPassCode("");
+            setError("");
+            isScanning.current = false;
+          },
+        },
+      ]);
+      return;
+    }
+
+    // Unserved members exist -> Open Quick Checkout Modal
+    addActivityLog({
+      module: ActivityModule.SCANNER,
+      action: isPassCode ? ActivityAction.PASS : ActivityAction.SCAN,
+      targetId: match.id,
+      description: UI_TEXT.logQuickCheckoutOpened.replace("{id}", match.id)
+    });
+
+    setSelectedPass(match);
+    setCurrentMealInfo(currentMeal);
+  };
+
+  const handleScan = (data: string) => {
+    processCodeOrData(data, false);
   };
 
   const handlePassCode = (code: string) => {
     setPassCode(code);
     if (code.length === 4) {
-      const found = openScannedValue(code, subscriptions);
-      if (found) {
-        addActivityLog({
-          module: ActivityModule.SCANNER,
-          action: ActivityAction.PASS,
-          targetId: code,
-          description: UI_TEXT.logPassSuccess.replace("{id}", code) + " (Pass Code)"
-        });
-        // Navigation is handled inside openScannedValue
-      } else {
-        addActivityLog({
-          module: ActivityModule.SCANNER,
-          action: ActivityAction.PASS,
-          description: "Invalid Pass Code: " + code
-        });
-        setError(UI_TEXT.passCodeError);
-        showAlert(UI_TEXT.error, UI_TEXT.passCodeError, [
-          {
-            text: UI_TEXT.ok,
-            onPress: () => {
-              setPassCode("");
-              setError("");
-            },
-          },
-        ]);
-      }
+      processCodeOrData(code, true);
     }
+  };
+
+  const handleCancelQuickCheckout = () => {
+    setSelectedPass(null);
+    setCurrentMealInfo(null);
+    setPassCode("");
+    setError("");
+    isScanning.current = false;
+  };
+
+  const handleCheckoutSuccess = () => {
+    setSelectedPass(null);
+    setCurrentMealInfo(null);
+    setPassCode("");
+    setError("");
+    isScanning.current = false;
   };
 
   if (!permission) return <View style={styles.root} />;
@@ -230,6 +392,15 @@ export function ScannerScreen() {
         </View>
 
       </View>
+
+      {/* Quick Checkout Modal */}
+      <QuickCheckoutModal
+        visible={!!selectedPass}
+        subscription={selectedPass}
+        currentMealInfo={currentMealInfo}
+        onClose={handleCancelQuickCheckout}
+        onSuccess={handleCheckoutSuccess}
+      />
     </View>
   );
 }

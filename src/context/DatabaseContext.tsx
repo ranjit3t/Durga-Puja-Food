@@ -22,7 +22,8 @@ import {
   ActivityModule,
   ActivityAction,
   Note,
-  TakenState
+  TakenState,
+  UserRole
 } from "../types";
 import { useAuth } from "./AuthContext";
 
@@ -72,7 +73,7 @@ interface DatabaseContextType {
   updateMealMenu: (dayId: string, mealKey: MealType, menu: MealMenu) => Promise<void>;
   updateSubscriptionStatus: (flatId: string, dayId: string, personIndex: number, slot: string, taken: boolean) => Promise<void>;
   getAuthConfig: () => Promise<any>;
-  addActivityLog: (log: Omit<ActivityLog, "id" | "timestamp" | "userName">, manualUser?: string) => void;
+  addActivityLog: (log: Omit<ActivityLog, "id" | "timestamp" | "userName" | "userRole" | "device" | "os">, manualUser?: string, manualRole?: UserRole | string) => void;
   getActivityLogs: (limit?: number) => Promise<ActivityLog[]>;
   upsertNote: (note: Note) => Promise<void>;
   deleteNote: (id: string) => Promise<void>;
@@ -106,18 +107,20 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
 
   const getAuthConfig = useCallback(() => repository.getAuthConfig(), []);
 
-  const addActivityLog = useCallback((log: Omit<ActivityLog, "id" | "timestamp" | "userName" | "device" | "os">, manualUser?: string) => {
+  const addActivityLog = useCallback((log: Omit<ActivityLog, "id" | "timestamp" | "userName" | "userRole" | "device" | "os">, manualUser?: string, manualRole?: UserRole | string) => {
     const user = manualUser || userName;
+    const role = manualRole || userRole;
     if (!user) return;
     void repository.addActivityLog({
       ...log,
       timestamp: Date.now(),
       userName: user,
+      userRole: role || undefined,
       os: Platform.OS,
       device: Platform.Version ? String(Platform.Version) : undefined,
       appVersion: UI_TEXT.appVersion
     }).catch(err => console.error("Failed to add activity log:", err));
-  }, [userName]);
+  }, [userName, userRole]);
 
   const getActivityLogs = useCallback((limitCount?: number) => {
     return repository.getActivityLogs(limitCount);

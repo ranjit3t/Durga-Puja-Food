@@ -129,7 +129,8 @@ The system supports **3 flexible, redundant verification channels** at the food 
 1. **Option 1: QR Code Scan**: Camera scan of the digital pass image sent via WhatsApp.
 2. **Option 2: 4-Digit Passcode**: Keypad entry of the unique 4-digit code printed on the pass.
 3. **Option 3: Block & Flat Lookup**: Direct manual search by Block & Flat number when residents forget their phone.
-4. **Guest Management**: Dedicated counter feature where guest meals are managed directly by volunteers without requiring passes.
+4. **Quick Checkout Mode**: Instant meal collection processing via camera QR scan or keypad entry directly on `HomeScreen` or View Pass screen (`DetailsScreen`). Opens `QuickCheckoutModal` for dynamic headcount and parcel allocation.
+5. **Guest Management**: Dedicated counter feature where guest meals are managed directly by volunteers without requiring passes.
 
 ---
 

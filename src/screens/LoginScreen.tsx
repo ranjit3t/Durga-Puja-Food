@@ -57,7 +57,7 @@ export function LoginScreen() {
           module: ActivityModule.AUTH,
           action: ActivityAction.LOGIN,
           description: UI_TEXT.logLogin.replace("{role}", user.role)
-        }, user.username);
+        }, user.username, user.role as UserRole);
         handleLogin(user.role as UserRole, user.username);
       } else {
         setVerifying(false);

@@ -131,6 +131,7 @@ export type ActivityLog = {
   id: string;
   timestamp: number;
   userName: string;
+  userRole?: UserRole | string;
   module: ActivityModule;
   action: ActivityAction;
   targetId?: string;

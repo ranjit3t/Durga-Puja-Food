@@ -10,6 +10,7 @@ import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
 import { CounterInput } from "../components/common/CounterInput";
+import { QuickGuestModal } from "../components/common/QuickGuestModal";
 import { useAuth } from "../context/AuthContext";
 import { useDatabase } from "../context/DatabaseContext";
 import { useAppNavigation } from "../context/NavigationContext";
@@ -188,10 +189,41 @@ export function GuestManagementScreen() {
   const {
     foodMenu, dayConfig, seasonEnabled, updateGuestCountDebounced, addActivityLog
   } = useDatabase();
-  const { goBack, navigate } = useAppNavigation();
+  const { goBack, navigate, isQuickGuestMode, setIsQuickGuestMode } = useAppNavigation();
 
   const styles = useStyles();
   const { theme, themeType } = useAppTheme();
+
+  const currentMealInfo = React.useMemo(() => {
+    for (const d of dayConfig.filter(d => d.enabled)) {
+      for (const mType of [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER]) {
+        if (isMealCurrent(d.id, mType, dayConfig) && isMealEnabled(d.id, mType, dayConfig)) {
+          return {
+            dayId: d.id,
+            mealType: mType,
+            dayLabel: getDayLabel(d.id, dayConfig),
+            mealLabel: getMealLabel(mType),
+          };
+        }
+      }
+    }
+    return null;
+  }, [dayConfig]);
+
+  const [modalVisible, setModalVisible] = React.useState(false);
+
+  React.useEffect(() => {
+    if (isQuickGuestMode && currentMealInfo) {
+      setModalVisible(true);
+    } else {
+      setModalVisible(false);
+    }
+  }, [isQuickGuestMode, currentMealInfo]);
+
+  const handleCloseModal = React.useCallback(() => {
+    setModalVisible(false);
+    setIsQuickGuestMode(false);
+  }, [setIsQuickGuestMode]);
 
   const activeDays = React.useMemo(() => {
     const active = dayConfig.filter((d) => d.enabled).map((d) => d.id);
@@ -440,6 +472,12 @@ export function GuestManagementScreen() {
            <Text style={styles.footerText}>{UI_TEXT.footerCopyright}</Text>
         </View>
       </ScrollView>
+
+      <QuickGuestModal
+        visible={modalVisible}
+        currentMealInfo={currentMealInfo}
+        onClose={handleCloseModal}
+      />
     </View>
   );
 }
