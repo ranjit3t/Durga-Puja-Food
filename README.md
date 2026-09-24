@@ -61,36 +61,40 @@ The application follows a decoupled, context-driven component architecture with 
 ### 2. Atomic Multi-Path Checkouts & Anti-Duplicate Lock (`checkInPassAtomic`)
 - **100% Mathematical Duplicate Prevention**: Uses server-side atomic multi-path updates (`update(ref(db), multiPathUpdates)`) to lock meal status and increment kitchen metrics in a single transaction, preventing double-checkins across 20+ concurrent counters.
 
-### 3. Member Food Taken Date & Time Tracking
+### 3. Built-in Client-Side Activity Summarization Engine
+- **Instant Local Summaries (0ms Execution)**: Features an **"ANALYZE"** button in `ActivityLogScreen.tsx`. Analyzes whatever activity log entries currently appear in the active filtered/searched list (`filteredLogs`) in **0ms** without external API keys or cloud dependencies.
+- **Scrollable Activity Summary Modal**: Displays a structured operational report (Total Events, Active User Roster, Per-Module Operations Breakdown, Scanner/Meal Checkouts, and System Error Health Status) inside an adaptive, scrollable modal window (`maxWidth: Math.min(width * 0.94, 520)`, `maxHeight: "85%"`).
+
+### 4. Member Food Taken Date & Time Tracking
 - **Synchronized Batch Timestamps**: When members, kids, or parcels are checked out together in `QuickCheckoutModal.tsx`, a single formatted timestamp string (`formatTakenTime()`, e.g. `"12 Oct, 1:15 PM"`) is assigned to all members served in that transaction.
 - **View Pass Time Badges (`DetailsScreen.tsx`)**: In the Food Taken section, each member's taken meal badge prints the exact timestamp underneath the badge (`12 Oct, 1:15 PM`). Falls back seamlessly if no timestamp exists.
-- **Excel CSV Export Timestamps (`SubscriptionListScreen.tsx`)**: The subscription directory Excel CSV export includes member-level meal taken date & time (e.g., `P1: Served (12 Oct, 1:15 PM)`).
+- **Excel CSV Export Timestamps (`SubscriptionListScreen.tsx`)**: The subscription directory Excel CSV export includes member-level meal taken date & time (`P1: Parcel Taken (24 Sep, 12:28 PM)` or `P1: Food Taken (24 Sep, 12:28 PM)`).
 
-### 4. Mid-Service Real-Time Meal Closure Auto-Alert & Redirect
+### 5. Mid-Service Real-Time Meal Closure Auto-Alert & Redirect
 - **Sub-50ms Meal Completion Guardrail**: When an Admin marks a meal as `DONE` in settings or menu editor, `QuickCheckoutModal`, `QuickGuestModal`, and `ScannerScreen` (Quick Checkout Camera Mode) receive the update in **<50ms**.
 - **Localized Alert & Auto-Redirect**: Displays an alert driven by `UI_TEXT.currentMealClosedTitle` and `UI_TEXT.currentMealClosed` (`"Current meal is closed. Thank you!"`). Tapping **OK** automatically closes the modal/screen and redirects the volunteer to the **Home Screen** (`navigate(AppScreen.HOME)`).
 - **Isolated Camera Safety**: Standard camera scanner mode (`isQuickCheckout = false`) remains 100% unhampered and fully operational for general pass lookups, searches, and edits.
 
-### 5. Adaptive Web & Responsive Modal Engine
+### 6. Adaptive Web & Responsive Modal Engine
 - **Browser Container Scaling**: Modals and checkout screens scale adaptively (`maxWidth: Math.min(width * 0.94, 500)`), providing generous spacing on Desktop Web browsers, laptops, and tablets.
 - **Compact Counter Inputs**: Compact 36px CounterInput buttons (`width: 36`) and flexbox shrink protection prevent text wrapping or button clipping on narrow viewports.
 
-### 6. Real-Time Activity Logs & Collaborative Notes Stream
+### 7. Real-Time Activity Logs & Collaborative Notes Stream
 - **Newest Items First**: Connected directly to `activityLogs` and `notes` in `DatabaseContext`.
 - **Sub-50ms Top Insertion**: In default mode (newest first), incoming real-time logs and team notes automatically insert at **Index 0 (the very top of the list)**. Supports directional sort toggle (`arrow-up-outline` / `arrow-down-outline`).
 
-### 7. Pass Directory Sorting & Multi-Tag Filters
+### 8. Pass Directory Sorting & Multi-Tag Filters
 - **Ascending / Descending Natural Sort**: Features an interactive sort direction toggle (`isAscending`) sorting by Block and Flat in natural alphanumeric order (`A-101` ➔ `Z-909` or `Z-909` ➔ `A-101`).
 - **Combined Filter Compatibility**: Sorting applies seamlessly across all search queries and active multi-tag filter pills (`All`, `Current Meal Subscribed`, `Current Meal Missed`, `Kids`, `Parcels`, `Veg Only`).
 
-### 8. Granular & Simultaneous Menu Updates
+### 9. Granular & Simultaneous Menu Updates
 - **Sub-50ms Menu Push**: Real-time `onValue(ref(db, "menu"))` listener broadcasts food items, prices, and guest counts across all screens.
 - **Collision-Free Leaf Updates**: Targeted leaf-node writes (`/menu/$dayId/$mealKey`) ensure that multiple administrators editing different meals or fields simultaneously do not overwrite each other.
 
-### 9. Pre-Aggregated Kitchen Metrics Node (`/metrics`)
+### 10. Pre-Aggregated Kitchen Metrics Node (`/metrics`)
 - **$O(1)$ Live Kitchen Analytics**: Kitchen staff and admins monitor live served/planned progress bars from pre-aggregated `/metrics` nodes without processing 10,000 pass records.
 
-### 10. Progressive Tiered App Boot (<300ms Initial Load)
+### 11. Progressive Tiered App Boot (<300ms Initial Load)
 - **Tier 1 (Local Shell)**: App layout and user session render in **<200ms** from local storage.
 - **Tier 2 (Metadata & Metrics)**: Fetches `/config` and `/metrics` (~2 KB payload) in **<300ms**, fully populating dashboard summary cards immediately.
 - **Tier 3 (On-Demand & Paginated Lookups)**: Volunteer scanners perform indexed single-key pass lookups in **20ms**. Pass directories load in pages of 50 items (~75 KB).
@@ -121,10 +125,10 @@ src/
 ├── repository.ts        # Firebase RTDB API Operations, Atomic Writes & Real-Time Listeners
 ├── config.ts            # Default App Configuration & Festival Defaults
 ├── firebase.ts          # Firebase SDK Initialization
-├── strings.ts           # Centralized Dictionary for Localized UI Text (`UI_TEXT.currentMealClosedTitle` / `currentMealClosed`) & `appVersion`
-├── styles.ts            # Global Responsive Scaling Engine (`s()` / `v()`) & Glassmorphic Styles
+├── strings.ts           # Centralized Dictionary for Localized UI Text (`UI_TEXT.currentMealClosedTitle` / `currentMealClosed` / `analyzeLogs`)
+├── styles.ts            # Global Responsive Scaling Engine (`s()` / `v()`) & Glassmorphism Styles
 └── screens/             # Top-Level Screen Views
-    ├── ActivityLogScreen.tsx     # Real-Time Audit Log Stream (Newest First at Top)
+    ├── ActivityLogScreen.tsx     # Real-Time Audit Log Stream (Newest First at Top) with Activity Summary Engine
     ├── ContactsScreen.tsx        # Resident Directory with Direct WhatsApp/Call/SMS Actions
     ├── DashboardScreen.tsx       # Live Real-Time Kitchen Counter Dashboard
     ├── GuestManagementScreen.tsx # Counter Guest Demand Manager with Quick Guest Modal & Excel Export
@@ -151,7 +155,7 @@ src/
 2. **Top-Level `appVersion` Auto-Check & Alert**:
    - Verifies `remoteAppVersion` against `UI_TEXT.appVersion` on login and triggers instant update alerts.
 3. **Role-Based Access Control (RBAC)**:
-   - **Admin**: Full authority to manage passes, settings, menus, notes, activity logs, and exports.
+   - **Admin**: Full authority to manage passes, settings, menus, notes, activity logs, activity summaries, and exports.
    - **Vendor**: Operational access to scan passes, check in meals, and view dashboards. Blocked from system settings and financial updates.
 
 ---

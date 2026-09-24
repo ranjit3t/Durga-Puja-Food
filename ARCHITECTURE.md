@@ -53,41 +53,40 @@ Eternia Food Desk is a cross-platform mobile and web application built with **Re
 ### B. Atomic Server Transactions & Anti-Duplicate Security
 - **`checkInPassAtomic`**: Uses atomic multi-path server updates (`update(ref(db), multiPathUpdates)`) to lock meal status and increment kitchen counters in a single transaction, guaranteeing **100% mathematical duplicate check-in prevention** across 20+ concurrent counter devices.
 
-### C. Member Food Taken Date & Time Tracking
-- **Synchronized Batch Timestamps**: When members, kids, or parcels are checked out together in `QuickCheckoutModal.tsx`, a single formatted timestamp string (`formatTakenTime()`, e.g. `"12 Oct, 1:15 PM"`) is assigned to all members served in that transaction.
-- **View Pass Time Badges (`DetailsScreen.tsx`)**: In the Food Taken section, each member's taken meal badge prints the exact timestamp underneath the badge (`12 Oct, 1:15 PM`). Falls back seamlessly if no timestamp exists.
-- **Excel CSV Export Timestamps (`SubscriptionListScreen.tsx`)**: The subscription directory Excel CSV export includes member-level meal taken date & time (e.g., `P1: Served (12 Oct, 1:15 PM)`).
+### C. Client-Side Activity Summarization Engine
+- **Instant Local Summaries (0ms Execution)**: Features an **"ANALYZE"** action button in `ActivityLogScreen.tsx`. Analyzes whatever activity log entries currently appear in the active filtered/searched list (`filteredLogs`) in **0ms** without network latency or external API dependencies.
+- **Scrollable Activity Summary Modal**: Displays a structured operational report (Total Events, Active User Roster, Per-Module Operations Breakdown, Scanner/Meal Checkouts, and System Error Health Status) inside an adaptive, scrollable modal window (`maxWidth: Math.min(width * 0.94, 520)`, `maxHeight: "85%"`).
 
-### D. Mid-Service Meal Closure Auto-Alert & Redirect
+### D. Member Food Taken Date & Time Tracking
+- **Synchronized Batch Timestamps**: When members, kids, or parcels are checked out together in `QuickCheckoutModal.tsx`, a single formatted timestamp string (`formatTakenTime()`, e.g. `"12 Oct, 1:15 PM"`) is assigned to all members served in that transaction.
+- **View Pass Time Badges (`DetailsScreen.tsx`)**: In the Food Taken section, each member's taken meal badge prints the exact timestamp underneath the badge (`12 Oct, 1:15 PM`).
+- **Excel CSV Export Timestamps (`SubscriptionListScreen.tsx`)**: The subscription directory Excel CSV export includes member-level meal taken date & time (`P1: Parcel Taken (24 Sep, 12:28 PM)`).
+
+### E. Mid-Service Meal Closure Auto-Alert & Redirect
 - **Sub-50ms Reactive Checks**: Connects real-time WebSocket state to `isMealCurrent` and `isMealDone` in `QuickCheckoutModal.tsx`, `QuickGuestModal.tsx`, and `ScannerScreen.tsx` (Quick Checkout Camera Mode).
 - **Localized Alert & Auto-Redirect**: When an Admin marks a meal as `DONE` mid-service, an alert stating `"Current meal is closed. Thank you!"` (driven by `UI_TEXT.currentMealClosedTitle` and `UI_TEXT.currentMealClosed` in `src/strings.ts`) appears in **<50ms**.
 - **Home Navigation**: Tapping **OK** automatically closes the modal/screen and redirects the volunteer to the **Home Screen** (`navigate(AppScreen.HOME)`).
 - **Isolated Camera Safety**: Standard camera scanner mode (`isQuickCheckout = false` in `ScannerScreen.tsx`) remains 100% unhampered and fully operational for general pass lookups, searches, and edits.
 
-### E. Adaptive Web & Responsive Modal Engine
+### F. Adaptive Web & Responsive Modal Engine
 - **Responsive Container Scaling**: Modals and checkout screens scale adaptively (`maxWidth: Math.min(width * 0.94, 500)`), providing generous spacing on Desktop Web browsers, laptops, and tablets.
 - **Compact Counter Inputs**: Compact 36px CounterInput buttons (`width: 36`) and flexbox shrink protection prevent text wrapping or button clipping on narrow viewports.
 
-### F. Real-Time Activity Logs & Team Notes Pipeline
+### G. Real-Time Activity Logs & Team Notes Pipeline
 - Connected directly to `activityLogs` and `notes` in `DatabaseContext.tsx`.
 - Incoming WebSocket logs and team notes stream in sub-50ms and insert automatically at **Index 0 (the very top of the list)** in default descending timestamp mode (`b.timestamp - a.timestamp`).
 - Features interactive directional sort toggle (`isAscending ? a.timestamp - b.timestamp : b.timestamp - a.timestamp`).
 
-### G. Pass Directory Sorting & Filter Integration
+### H. Pass Directory Sorting & Filter Integration
 - Includes natural alphanumeric sort toggle (`isAscending`) in `SubscriptionListScreen.tsx` sorting by Block then Flat (`A-101` ➔ `Z-909` or `Z-909` ➔ `A-101`).
 - Operates on filtered dataset (`visibleSubscriptions`) seamlessly combining search queries and multi-tag filter pills (`All`, `Current Meal Subscribed`, `Current Meal Missed`, `Kids`, `Parcels`, `Veg Only`).
 
-### H. Granular & Simultaneous Menu Updates
+### I. Granular & Simultaneous Menu Updates
 - Real-time `onValue(ref(db, "menu"))` listener broadcasts food items, prices, and guest counts across all screens in <50ms.
 - Targeted leaf-node writes (`/menu/$dayId/$mealKey`) ensure that multiple administrators editing different meals or fields simultaneously do not overwrite each other.
 
-### I. Pre-Aggregated Kitchen Metrics (`/metrics`)
+### J. Pre-Aggregated Kitchen Metrics (`/metrics`)
 - Kitchen staff and admins view live progress bars from pre-aggregated `/metrics` nodes without looping through 10,000 pass records ($O(1)$ read complexity).
-
-### J. Progressive Tiered App Boot (<300ms Initial Load)
-- **Tier 1 (Local Shell)**: App layout and user session render in **<200ms** from local storage.
-- **Tier 2 (Metadata & Metrics)**: Fetches `/config` and `/metrics` (~2 KB payload) in **<300ms**, populating home dashboard summary cards immediately.
-- **Tier 3 (On-Demand Lookups & Paginated List)**: Scanners query passes by passcode in **20ms**. Pass directories load in pages of 50 items (~75 KB).
 
 ---
 
@@ -101,7 +100,7 @@ Eternia Food Desk is a cross-platform mobile and web application built with **Re
 - **`DashboardScreen`**: Live kitchen counter dashboard with real-time meal metrics, progress bars, and metric grid views.
 - **`ReportScreen`**: Targeted lazy analytics suite providing 10 specialized reports with theme-aware PNG image export.
 - **`NotesScreen`**: Real-time collaborative team notes streaming newest entries to the top in <50ms with sort toggle.
-- **`ActivityLogScreen`**: Live real-time system audit log viewer streaming newest actions to the top in <50ms with username and role tracking.
+- **`ActivityLogScreen`**: Live real-time system audit log viewer streaming newest actions to the top in <50ms with Activity Summary modal window.
 
 ### B. State & Context Layer (`src/context/`)
 - **`AuthContext`**: Manages login state, roles (`Admin` / `Vendor`), and 24-hour auto-logout.

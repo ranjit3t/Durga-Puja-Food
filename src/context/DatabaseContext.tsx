@@ -81,6 +81,7 @@ interface DatabaseContextType {
   getAuthConfig: () => Promise<any>;
   addActivityLog: (log: Omit<ActivityLog, "id" | "timestamp" | "userName" | "userRole" | "device" | "os">, manualUser?: string, manualRole?: UserRole | string) => void;
   getActivityLogs: (limit?: number) => Promise<ActivityLog[]>;
+  fetchMoreLogs: (limit: number) => Promise<void>;
   upsertNote: (note: Note) => Promise<void>;
   deleteNote: (id: string) => Promise<void>;
   updateGuestCountDebounced: (dayId: string, mealKey: MealType, field: string, value: number) => void;
@@ -287,7 +288,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
           return prev.map((l) => (l.id === newLog.id ? newLog : l)).sort((a, b) => b.timestamp - a.timestamp);
         }
         const updated = [newLog, ...prev];
-        return updated.sort((a, b) => b.timestamp - a.timestamp).slice(0, 50);
+        return updated.sort((a, b) => b.timestamp - a.timestamp);
       });
     });
 
@@ -880,6 +881,15 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
     return subscriptions.reduce((sum, sub) => sum + (sub.peopleCount || 0) + (sub.kidsCount || 0), 0);
   }, [subscriptions]);
 
+  const fetchMoreLogs = useCallback(async (limitCount: number) => {
+    try {
+      const logs = await repository.getActivityLogs(limitCount);
+      setActivityLogs(logs);
+    } catch (err) {
+      console.error("Fetch more activity logs error:", err);
+    }
+  }, []);
+
   const value = useMemo(() => ({
     loading, firebaseError, refreshAllData,
     subscriptions, foodMenu, dayConfig, seasonName, seasonEnabled, paymentConfig, guestEnabled, mobileEnabled, foodPriceEnabled,
@@ -887,7 +897,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
     dashboardData, collections, totalPeople,
     upsertSubscription, deleteSubscription, updateConfig, updateMenu, updateGuestCount, updateMealMenu, updateSubscriptionStatus,
     checkInPassAtomic, getByPasscode,
-    getAuthConfig, addActivityLog, getActivityLogs, upsertNote, deleteNote, updateGuestCountDebounced
+    getAuthConfig, addActivityLog, getActivityLogs, fetchMoreLogs, upsertNote, deleteNote, updateGuestCountDebounced
   }), [
     loading, firebaseError, refreshAllData,
     subscriptions, foodMenu, dayConfig, seasonName, seasonEnabled, paymentConfig, guestEnabled, mobileEnabled, foodPriceEnabled,
@@ -895,7 +905,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
     dashboardData, collections, totalPeople,
     upsertSubscription, deleteSubscription, updateConfig, updateMenu, updateGuestCount, updateMealMenu, updateSubscriptionStatus,
     checkInPassAtomic, getByPasscode,
-    getAuthConfig, addActivityLog, getActivityLogs, upsertNote, deleteNote, updateGuestCountDebounced
+    getAuthConfig, addActivityLog, getActivityLogs, fetchMoreLogs, upsertNote, deleteNote, updateGuestCountDebounced
   ]);
 
   return <DatabaseContext.Provider value={value}>{children}</DatabaseContext.Provider>;

@@ -1,6 +1,6 @@
 /**
  * Activity Log Screen for Admins.
- * Displays a historical list of system operations with filtering and search.
+ * Displays a historical list of system operations with filtering, search, and activity log analysis.
  * Connects directly to live WebSocket-streamed logs in DatabaseContext.
  */
 import React, { useState, useMemo, useCallback, memo } from "react";
@@ -15,6 +15,9 @@ import {
   Share,
   Platform,
   Switch,
+  Modal,
+  ScrollView,
+  useWindowDimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useStyles, useScaling } from "../styles";
@@ -28,6 +31,7 @@ import { Dropdown } from "../components/common/Dropdown";
 
 import { useAuth } from "../context/AuthContext";
 import { useDatabase } from "../context/DatabaseContext";
+import { useUI } from "../context/UIContext";
 import { useAppNavigation } from "../context/NavigationContext";
 import { Subscription } from "../types";
 
@@ -182,16 +186,23 @@ const ActivityLogItem = memo(({
 
 export function ActivityLogScreen() {
   const { handleLogout } = useAuth();
-  const { activityLogs, loading, refreshAllData, subscriptions } = useDatabase();
+  const { activityLogs, loading, refreshAllData, subscriptions, fetchMoreLogs } = useDatabase();
   const { navigate, goBack, setSelectedId, setSelectedRecord } = useAppNavigation();
+  const { showAlert } = useUI();
+  const { width } = useWindowDimensions();
 
   const styles = useStyles();
   const { s } = useScaling();
   const { theme, themeType } = useAppTheme();
 
   const [refreshing, setRefreshing] = useState(false);
-  const [limit, setLimit] = useState(20);
+  const [dbLimit, setDbLimit] = useState(50);
+  const [fetchingMore, setFetchingMore] = useState(false);
   const [expandedStacks, setExpandedStacks] = useState<Record<string, boolean>>({});
+
+  // Summary Modal State
+  const [summaryModalVisible, setModalVisible] = useState(false);
+  const [summaryText, setSummaryText] = useState("");
 
   // Filters & Search
   const [selectedUser, setSelectedUser] = useState(UI_TEXT.all);
@@ -202,6 +213,22 @@ export function ActivityLogScreen() {
   const [searchText, setSearchText] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [isAscending, setIsAscending] = useState(false);
+
+  // Automatically fetch a larger log set from DB when search query or filters are active
+  React.useEffect(() => {
+    const isSearchingOrFiltering =
+      !!searchText ||
+      selectedUser !== UI_TEXT.all ||
+      selectedModule !== UI_TEXT.all ||
+      selectedTarget !== UI_TEXT.all ||
+      selectedDate !== UI_TEXT.all ||
+      errorsOnly;
+
+    if (isSearchingOrFiltering && dbLimit < 250) {
+      setDbLimit(250);
+      fetchMoreLogs(250);
+    }
+  }, [searchText, selectedUser, selectedModule, selectedTarget, selectedDate, errorsOnly, dbLimit, fetchMoreLogs]);
 
   const logs = activityLogs || [];
 
@@ -280,8 +307,8 @@ export function ActivityLogScreen() {
       result = [...result].sort((a, b) => b.timestamp - a.timestamp);
     }
 
-    return result.slice(0, limit);
-  }, [logs, selectedUser, selectedModule, selectedTarget, selectedDate, errorsOnly, searchText, limit, isAscending]);
+    return result;
+  }, [logs, selectedUser, selectedModule, selectedTarget, selectedDate, errorsOnly, searchText, dbLimit, isAscending]);
 
   const onNavigateToDetails = useCallback((id: string) => {
     const match = (subscriptions || []).find(s => s.id === id);
@@ -325,6 +352,85 @@ export function ActivityLogScreen() {
     } catch (err) {
       console.error("Export error:", err);
     }
+  };
+
+  const generateLocalLogSummary = useCallback((logsToSummary: ActivityLog[]): string => {
+    if (logsToSummary.length === 0) return UI_TEXT.noLogsToAnalyze;
+
+    const totalLogs = logsToSummary.length;
+    const users = new Set<string>();
+    const modules: Record<string, number> = {};
+    const actions: Record<string, number> = {};
+    const errorLogs: ActivityLog[] = [];
+    const checkoutLogs: ActivityLog[] = [];
+
+    logsToSummary.forEach((log) => {
+      if (log.userName) users.add(`${log.userName}${log.userRole ? ` (${String(log.userRole).toUpperCase()})` : ''}`);
+      modules[log.module] = (modules[log.module] || 0) + 1;
+      actions[log.action] = (actions[log.action] || 0) + 1;
+
+      if (log.action === ActivityAction.ERROR) {
+        errorLogs.push(log);
+      }
+      if (log.module === ActivityModule.SCANNER) {
+        checkoutLogs.push(log);
+      }
+    });
+
+    const startTime = new Date(logsToSummary[logsToSummary.length - 1].timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ', ' + new Date(logsToSummary[logsToSummary.length - 1].timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' });
+    const endTime = new Date(logsToSummary[0].timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ', ' + new Date(logsToSummary[0].timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' });
+
+    const lines: string[] = [];
+
+    lines.push(`📊 **Operational Activity Overview (${totalLogs} Events)**`);
+    lines.push(`• **Time Window**: ${startTime} ➔ ${endTime}`);
+    lines.push(`• **Active Users (${users.size})**: ${Array.from(users).join(", ")}`);
+
+    lines.push(`\n📌 **Module Activity Breakdown**`);
+    Object.entries(modules).forEach(([mod, count]) => {
+      lines.push(`• **${mod.toUpperCase()}**: ${count} operations logged`);
+    });
+
+    if (checkoutLogs.length > 0) {
+      lines.push(`\n🍽️ **Meal & Scanner Checkouts (${checkoutLogs.length})**`);
+      checkoutLogs.slice(0, 5).forEach((cl) => {
+        lines.push(`• ${cl.description}`);
+      });
+      if (checkoutLogs.length > 5) {
+        lines.push(`• ... and ${checkoutLogs.length - 5} more checkout operations.`);
+      }
+    }
+
+    if (errorLogs.length > 0) {
+      lines.push(`\n⚠️ **System Errors & Alerts (${errorLogs.length})**`);
+      errorLogs.forEach((el) => {
+        lines.push(`• [${el.module.toUpperCase()}] ${el.description}`);
+      });
+    } else {
+      lines.push(`\n✅ **System Health**: 0 errors recorded in selected log timeframe.`);
+    }
+
+    return lines.join("\n");
+  }, []);
+
+  const handleSummarizeLogs = () => {
+    if (filteredLogs.length === 0) {
+      showAlert(UI_TEXT.error, UI_TEXT.noLogsToAnalyze);
+      return;
+    }
+
+    const localSummary = generateLocalLogSummary(filteredLogs);
+    setSummaryText(localSummary);
+    setModalVisible(true);
+  };
+
+  const handleLoadMore = async () => {
+    if (fetchingMore) return;
+    setFetchingMore(true);
+    const nextLimit = dbLimit + 50;
+    await fetchMoreLogs(nextLimit);
+    setDbLimit(nextLimit);
+    setFetchingMore(false);
   };
 
   const handleRefresh = async () => {
@@ -456,24 +562,50 @@ export function ActivityLogScreen() {
             </View>
           )}
 
-          <Pressable
-            onPress={handleExport}
-            style={({ pressed }) => [
-              styles.primary,
-              {
-                height: s(48),
-                marginTop: s(4),
-                flexDirection: 'row',
-                gap: s(10),
-                borderRadius: s(14),
-                backgroundColor: theme.colors.secondary,
-              },
-              pressed && { opacity: 0.7 }
-            ]}
-          >
-            <Ionicons name="share-outline" size={20} color={theme.colors.white} />
-            <Text style={[styles.primaryText, { fontSize: 15 }]}>{UI_TEXT.exportLog.toUpperCase()}</Text>
-          </Pressable>
+          <View style={{ flexDirection: 'row', gap: s(10), marginTop: s(4) }}>
+            <Pressable
+              onPress={handleExport}
+              style={({ pressed }) => [
+                styles.primary,
+                {
+                  flex: 1,
+                  height: s(48),
+                  marginTop: 0,
+                  flexDirection: 'row',
+                  gap: s(8),
+                  borderRadius: s(14),
+                  backgroundColor: theme.colors.secondary,
+                },
+                pressed && { opacity: 0.7 }
+              ]}
+            >
+              <Ionicons name="share-outline" size={20} color={theme.colors.white} />
+              <Text style={[styles.primaryText, { fontSize: 14 }]}>{UI_TEXT.exportLog}</Text>
+            </Pressable>
+
+            <Pressable
+              onPress={handleSummarizeLogs}
+              disabled={filteredLogs.length === 0}
+              style={({ pressed }) => [
+                styles.primary,
+                {
+                  flex: 1,
+                  height: s(48),
+                  marginTop: 0,
+                  flexDirection: 'row',
+                  gap: s(8),
+                  borderRadius: s(14),
+                  backgroundColor: filteredLogs.length === 0 ? theme.colors.border : theme.colors.primary,
+                },
+                pressed && filteredLogs.length > 0 && { opacity: 0.7 }
+              ]}
+            >
+              <Ionicons name="analytics-outline" size={20} color={theme.colors.white} />
+              <Text style={[styles.primaryText, { fontSize: 14 }]}>
+                {UI_TEXT.analyzeLogs}
+              </Text>
+            </Pressable>
+          </View>
         </View>
       </View>
 
@@ -505,16 +637,21 @@ export function ActivityLogScreen() {
           }
           ListFooterComponent={
             <View style={{ gap: 20 }}>
-              {logs.length >= limit && (
+              {logs.length >= dbLimit && (
                 <Pressable
-                  onPress={() => setLimit(prev => prev + 20)}
+                  onPress={handleLoadMore}
+                  disabled={fetchingMore}
                   style={({ pressed }) => [
                     styles.secondary,
                     { borderStyle: 'dashed', marginTop: 10, height: 50, borderRadius: 12 },
                     pressed && { backgroundColor: theme.colors.surfaceDark }
                   ]}
                 >
-                   <Text style={styles.secondaryText}>{UI_TEXT.loadMore}</Text>
+                   {fetchingMore ? (
+                     <ActivityIndicator size="small" color={theme.colors.primary} />
+                   ) : (
+                     <Text style={styles.secondaryText}>{UI_TEXT.loadMore}</Text>
+                   )}
                 </Pressable>
               )}
               <View style={styles.footer}>
@@ -524,6 +661,110 @@ export function ActivityLogScreen() {
           }
         />
       )}
+
+      {/* Activity Summary Modal Window */}
+      <Modal
+        visible={summaryModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={{
+          flex: 1,
+          backgroundColor: theme.colors.shadow + "CC",
+          justifyContent: "center",
+          alignItems: "center",
+          padding: 12
+        }}>
+          <View style={{
+            width: "100%",
+            maxWidth: Math.min(width * 0.94, 520),
+            maxHeight: "85%",
+            backgroundColor: theme.colors.surface,
+            borderRadius: 20,
+            padding: 16,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            ...Platform.select({
+              ios: {
+                shadowColor: theme.colors.shadow,
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.3,
+                shadowRadius: 8
+              },
+              android: { elevation: 8 },
+              web: { boxShadow: `0 4px 16px ${theme.colors.shadow}66` }
+            })
+          }}>
+            {/* Header */}
+            <View style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: 12,
+              paddingBottom: 10,
+              borderBottomWidth: 1,
+              borderBottomColor: theme.colors.border
+            }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <Ionicons name="analytics" size={20} color={theme.colors.primary} />
+                <Text style={{ fontSize: 16, fontWeight: "900", color: theme.colors.textPrimary }}>
+                  {UI_TEXT.aiSummaryTitle}
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => setModalVisible(false)}
+                style={({ pressed }) => [
+                  { padding: 4, borderRadius: 12, backgroundColor: theme.colors.surfaceDark },
+                  pressed && { opacity: 0.7 }
+                ]}
+              >
+                <Ionicons name="close" size={20} color={theme.colors.textSecondary} />
+              </Pressable>
+            </View>
+
+            {/* Content Viewport */}
+            <ScrollView
+              showsVerticalScrollIndicator={true}
+              contentContainerStyle={{ paddingVertical: 8, gap: 12 }}
+              keyboardShouldPersistTaps="handled"
+            >
+              <View style={{
+                backgroundColor: theme.colors.surfaceDark,
+                padding: 14,
+                borderRadius: 14,
+                borderWidth: 1,
+                borderColor: theme.colors.border
+              }}>
+                <Text style={{
+                  fontSize: 14,
+                  lineHeight: 22,
+                  color: theme.colors.textPrimary,
+                  fontWeight: "600"
+                }}>
+                  {summaryText}
+                </Text>
+              </View>
+            </ScrollView>
+
+            {/* Footer Close Button */}
+            <View style={{ marginTop: 12 }}>
+              <Pressable
+                onPress={() => setModalVisible(false)}
+                style={({ pressed }) => [
+                  styles.primary,
+                  { height: 44, borderRadius: 12, backgroundColor: theme.colors.primary, marginTop: 0 },
+                  pressed && { opacity: 0.85 }
+                ]}
+              >
+                <Text style={[styles.primaryText, { fontSize: 14 }]}>
+                  {UI_TEXT.close}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

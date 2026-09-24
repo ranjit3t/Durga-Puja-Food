@@ -1,5 +1,5 @@
-import React, { useMemo, useRef, useEffect } from "react";
-import { View, Text, ScrollView, Pressable, StatusBar } from "react-native";
+import React, { useMemo, useRef, useEffect, useCallback } from "react";
+import { View, Text, ScrollView, Pressable, StatusBar, Platform, Share } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useStyles } from "../styles";
 import { StatusBarStyleMode, useAppTheme } from "../theme";
@@ -9,8 +9,9 @@ import {
   isMealEnabled,
   getSortedMealKeys,
   isMealCurrent,
+  getMealLabel,
 } from "../constants";
-import { UserRole, ConfigDay, MealType, AppScreen, AppThemeMode, ActivityModule, ActivityAction, Day } from "../types";
+import { UserRole, ConfigDay, MealType, AppScreen, AppThemeMode, ActivityModule, ActivityAction, Day, MealMenu } from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
@@ -89,6 +90,112 @@ export function ViewMenuScreen() {
     }
   }, [targetDay]);
 
+  const handleExportExcel = useCallback(async () => {
+    const activeDays = dayConfig.filter((d) => d.enabled).map((d) => d.id);
+    if (activeDays.length === 0) return;
+
+    const headers: string[] = [
+      UI_TEXT.dayNameColumn,
+      UI_TEXT.mealTypeColumn,
+      UI_TEXT.vegMenuItemsColumn,
+      UI_TEXT.nonVegMenuItemsColumn,
+      UI_TEXT.vegPriceColumn,
+      UI_TEXT.nonVegPriceColumn,
+      UI_TEXT.kidsVegPriceColumn,
+      UI_TEXT.kidsNonVegPriceColumn,
+      UI_TEXT.vegParcelPriceColumn,
+      UI_TEXT.nonVegParcelPriceColumn,
+      UI_TEXT.kidsVegParcelPriceColumn,
+      UI_TEXT.kidsNonVegParcelPriceColumn,
+    ];
+
+    const escapeCell = (val: string | number | undefined | null) => {
+      if (val === undefined || val === null) return '""';
+      const str = String(val);
+      if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
+    const rows: string[][] = [];
+
+    activeDays.forEach((dayId) => {
+      const dayLabel = getDayLabel(dayId, dayConfig);
+      const dayMenu = foodMenu[dayId] || {};
+
+      getSortedMealKeys(dayId, dayConfig)
+        .filter((mKey) => isMealEnabled(dayId, mKey, dayConfig))
+        .forEach((mKey) => {
+          const mealMenu: MealMenu = dayMenu[mKey] || { veg: [], nonVeg: [] };
+          const mealLabel = getMealLabel(mKey);
+
+          const vegItems = (mealMenu.veg && mealMenu.veg.length > 0) ? mealMenu.veg.join(", ") : UI_TEXT.none;
+          const nonVegItems = (mealMenu.nonVeg && mealMenu.nonVeg.length > 0) ? mealMenu.nonVeg.join(", ") : UI_TEXT.none;
+
+          const vegPrice = mealMenu.vegPrice || UI_TEXT.zero;
+          const nonVegPrice = mealMenu.nonVegPrice || UI_TEXT.zero;
+          const kidsVegPrice = mealMenu.kidsVegPrice || UI_TEXT.zero;
+          const kidsNonVegPrice = mealMenu.kidsNonVegPrice || UI_TEXT.zero;
+
+          const vegParcelPrice = mealMenu.vegParcelPrice || UI_TEXT.zero;
+          const nonVegParcelPrice = mealMenu.nonVegParcelPrice || UI_TEXT.zero;
+          const kidsVegParcelPrice = mealMenu.kidsVegParcelPrice || UI_TEXT.zero;
+          const kidsNonVegParcelPrice = mealMenu.kidsNonVegParcelPrice || UI_TEXT.zero;
+
+          rows.push([
+            dayLabel,
+            mealLabel,
+            vegItems,
+            nonVegItems,
+            vegPrice,
+            nonVegPrice,
+            kidsVegPrice,
+            kidsNonVegPrice,
+            vegParcelPrice,
+            nonVegParcelPrice,
+            kidsVegParcelPrice,
+            kidsNonVegParcelPrice,
+          ]);
+        });
+    });
+
+    const csvLines = [
+      headers.map(escapeCell).join(","),
+      ...rows.map((r) => r.map(escapeCell).join(",")),
+    ];
+    const csvContent = csvLines.join("\n");
+
+    const fileName = UI_TEXT.exportMenuFileName.replace("{date}", new Date().toISOString().slice(0, 10));
+
+    addActivityLog({
+      module: ActivityModule.MENU,
+      action: Platform.OS === "web" ? ActivityAction.DOWNLOAD : ActivityAction.SHARE,
+      description: UI_TEXT.logExportMenu,
+    });
+
+    try {
+      if (Platform.OS === "web") {
+        const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } else {
+        await Share.share({
+          message: csvContent,
+          title: fileName,
+        });
+      }
+    } catch (err) {
+      console.error("Menu export error:", err);
+    }
+  }, [dayConfig, foodMenu, addActivityLog]);
+
   return (
     <View style={styles.root}>
       <StatusBar barStyle={themeType === AppThemeMode.DARK ? "light-content" : "dark-content"} />
@@ -100,8 +207,43 @@ export function ViewMenuScreen() {
           </View>
           <LogoutButton onLogout={handleLogout} />
         </View>
-        <Text style={styles.title}>{UI_TEXT.foodMenu}</Text>
-        <Text style={styles.subtitle}>{UI_TEXT.menuSubtitle}</Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <View>
+            <Text style={styles.title}>{UI_TEXT.foodMenu}</Text>
+            <Text style={styles.subtitle}>{UI_TEXT.menuSubtitle}</Text>
+          </View>
+          {sortedActiveDays.length >= 1 && (
+            <Pressable
+              onPress={handleExportExcel}
+              style={({ pressed }) => [
+                {
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 6,
+                  backgroundColor: theme.colors.primary,
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                  borderRadius: 12,
+                  elevation: 2,
+                  shadowColor: theme.colors.primary,
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.2,
+                  shadowRadius: 4,
+                },
+                pressed && { opacity: 0.8 }
+              ]}
+            >
+              <Ionicons
+                name={Platform.OS === 'web' ? "download-outline" : "share-outline"}
+                size={18}
+                color={theme.colors.white}
+              />
+              <Text style={{ color: theme.colors.white, fontWeight: '800', fontSize: 13 }}>
+                {UI_TEXT.exportExcel}
+              </Text>
+            </Pressable>
+          )}
+        </View>
       </View>
       <ScrollView
         ref={scrollRef}
