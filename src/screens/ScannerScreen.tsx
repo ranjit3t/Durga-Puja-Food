@@ -45,6 +45,44 @@ export function ScannerScreen() {
   const [selectedPass, setSelectedPass] = useState<Subscription | null>(null);
   const [currentMealInfo, setCurrentMealInfo] = useState<{ dayId: string; mealType: MealType; dayLabel: string; mealLabel: string } | null>(null);
 
+  // Check if any active current meal exists ONLY for Quick Checkout mode
+  const activeCurrentMeal = React.useMemo(() => {
+    if (!isQuickCheckout) return null;
+    const activeDays = getActiveDays(dayConfig);
+    for (const dId of activeDays) {
+      for (const mType of [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER]) {
+        if (isMealCurrent(dId, mType, dayConfig) && isMealEnabled(dId, mType, dayConfig)) {
+          return { dayId: dId, mealType: mType };
+        }
+      }
+    }
+    return null;
+  }, [dayConfig, isQuickCheckout]);
+
+  const alertShownRef = useRef(false);
+
+  // Auto-alert & Redirect to Home Screen ONLY when in Quick Checkout mode and current meal closes mid-service
+  React.useEffect(() => {
+    if (!isQuickCheckout) {
+      alertShownRef.current = false;
+      return;
+    }
+
+    if (!activeCurrentMeal && !alertShownRef.current) {
+      alertShownRef.current = true;
+      showAlert(UI_TEXT.currentMealClosedTitle, UI_TEXT.currentMealClosed, [
+        {
+          text: UI_TEXT.ok,
+          onPress: () => {
+            navigate(AppScreen.HOME);
+          }
+        }
+      ]);
+    } else if (activeCurrentMeal) {
+      alertShownRef.current = false;
+    }
+  }, [isQuickCheckout, activeCurrentMeal, navigate, showAlert]);
+
   const processCodeOrData = (dataOrCode: string, isPassCode: boolean) => {
     if (isScanning.current) return;
     isScanning.current = true;

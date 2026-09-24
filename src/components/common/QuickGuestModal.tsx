@@ -3,7 +3,7 @@
  * Opens automatically over Guest Management Screen when launched from Home Screen.
  * Provides instant optimistic updates, debounced database persistence, and activity logging.
  */
-import React from "react";
+import React, { useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -17,6 +17,8 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useDatabase } from "../../context/DatabaseContext";
 import { useAuth } from "../../context/AuthContext";
+import { useUI } from "../../context/UIContext";
+import { useAppNavigation } from "../../context/NavigationContext";
 import { useAppTheme } from "../../theme";
 import { UI_TEXT } from "../../strings";
 import {
@@ -24,6 +26,7 @@ import {
   DietType,
   UserRole,
   AppThemeMode,
+  AppScreen,
 } from "../../types";
 import {
   isDietaryEnabledForDay,
@@ -52,11 +55,48 @@ export function QuickGuestModal({
   const { foodMenu, dayConfig, updateGuestCountDebounced } = useDatabase();
   const { userRole } = useAuth();
   const { theme } = useAppTheme();
+  const { showAlert } = useUI();
+  const { navigate } = useAppNavigation();
   const { width } = useWindowDimensions();
+  const alertShownRef = useRef(false);
+
+  const dayId = currentMealInfo?.dayId || "";
+  const mealType = currentMealInfo?.mealType || MealType.BREAKFAST;
+  const dayLabel = currentMealInfo?.dayLabel || "";
+  const mealLabel = currentMealInfo?.mealLabel || "";
+
+  const isStillCurrent = currentMealInfo
+    ? isMealCurrent(dayId, mealType, dayConfig)
+    : false;
+  const isDone = currentMealInfo
+    ? isMealDone(dayId, mealType, dayConfig)
+    : false;
+
+  // Auto-alert & Redirect to Home Screen when current meal is closed mid-checkout
+  useEffect(() => {
+    if (visible) {
+      const isClosed = !currentMealInfo || !isStillCurrent || isDone;
+      if (isClosed && !alertShownRef.current) {
+        alertShownRef.current = true;
+        showAlert(UI_TEXT.currentMealClosedTitle, UI_TEXT.currentMealClosed, [
+          {
+            text: UI_TEXT.ok,
+            onPress: () => {
+              onClose();
+              navigate(AppScreen.HOME);
+            }
+          }
+        ]);
+      } else if (!isClosed) {
+        alertShownRef.current = false;
+      }
+    } else {
+      alertShownRef.current = false;
+    }
+  }, [visible, isStillCurrent, isDone, currentMealInfo, onClose, navigate, showAlert]);
 
   if (!visible || !currentMealInfo) return null;
 
-  const { dayId, mealType, dayLabel, mealLabel } = currentMealInfo;
   const dayMenu = foodMenu[dayId];
   const mealMenu = dayMenu ? dayMenu[mealType] : undefined;
 
@@ -74,8 +114,9 @@ export function QuickGuestModal({
   const showDetailed = isVegEnabled && isNonVegEnabled;
 
   const isAdmin = userRole === UserRole.ADMIN;
-  const isDone = isMealDone(dayId, mealType, dayConfig);
   const isFuture = isMealInFuture(dayId, mealType, dayConfig);
+
+  const isServedDisabled = isDone || isFuture || !isStillCurrent;
 
   const anyCurrentMealEnabled = dayConfig.some(d => d.enabled && (
     (d[MealType.BREAKFAST].enabled && isMealCurrent(d.id, MealType.BREAKFAST, dayConfig)) ||
@@ -134,8 +175,8 @@ export function QuickGuestModal({
             <View style={{
               padding: 12,
               borderRadius: 14,
-              backgroundColor: theme.colors.primary,
-              borderColor: theme.colors.primary,
+              backgroundColor: (isStillCurrent && !isDone) ? theme.colors.primary : theme.colors.textMuted,
+              borderColor: (isStillCurrent && !isDone) ? theme.colors.primary : theme.colors.textMuted,
               borderWidth: 1,
               gap: 6,
               ...Platform.select({
@@ -160,7 +201,7 @@ export function QuickGuestModal({
 
                 <View style={{ backgroundColor: theme.colors.white + "33", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
                   <Text style={{ fontSize: 9, fontWeight: "900", color: theme.colors.white }}>
-                    {UI_TEXT.live.toUpperCase()}
+                    {(isStillCurrent && !isDone) ? UI_TEXT.live.toUpperCase() : (isDone ? UI_TEXT.mealDoneLabel.toUpperCase() : "INACTIVE")}
                   </Text>
                 </View>
               </View>
@@ -207,7 +248,7 @@ export function QuickGuestModal({
                         value={guestVegTaken}
                         min={0}
                         max={guestVeg}
-                        disabled={isDone || isFuture}
+                        disabled={isServedDisabled}
                         onChange={(val) => updateGuestCountDebounced(dayId, mealType, "guestVegTaken", val)}
                       />
                     </View>
@@ -230,7 +271,7 @@ export function QuickGuestModal({
                         value={guestNonVegTaken}
                         min={0}
                         max={guestNonVeg}
-                        disabled={isDone || isFuture}
+                        disabled={isServedDisabled}
                         onChange={(val) => updateGuestCountDebounced(dayId, mealType, "guestNonVegTaken", val)}
                       />
                     </View>
@@ -253,7 +294,7 @@ export function QuickGuestModal({
                       value={guestTaken}
                       min={0}
                       max={guestTotal}
-                      disabled={isDone || isFuture}
+                      disabled={isServedDisabled}
                       onChange={(val) => updateGuestCountDebounced(dayId, mealType, singleFieldTaken, val)}
                     />
                   </View>

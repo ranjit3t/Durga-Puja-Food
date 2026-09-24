@@ -38,6 +38,7 @@ import {
   getDayAbbr,
   generatePasscode,
   generateUniquePasscode,
+  formatTakenTime,
 } from "../constants";
 import {
   MealChoice,
@@ -467,13 +468,30 @@ export function SubscriptionForm() {
   };
 
   // Prepare data for saving, ensuring normalized IDs and aggregated counts
-  // We filter out undefined values because Firebase set() does not allow them
   const passId = lockIdentity
     ? value.id
     : `${form.block}-${form.flat.trim().toUpperCase()}`;
 
+  const saveTime = formatTakenTime(new Date());
+  const stampedTakenByPerson = { ...form.takenByPerson };
+  Object.keys(stampedTakenByPerson).forEach((dayId) => {
+    if (Array.isArray(stampedTakenByPerson[dayId])) {
+      stampedTakenByPerson[dayId] = stampedTakenByPerson[dayId].map((t) => {
+        const updated = { ...t };
+        if (updated.breakfast && !updated.breakfastTime) updated.breakfastTime = saveTime;
+        if (updated.lunch && !updated.lunchTime) updated.lunchTime = saveTime;
+        if (updated.dinner && !updated.dinnerTime) updated.dinnerTime = saveTime;
+        if (updated.breakfastParcel && !updated.breakfastParcelTime) updated.breakfastParcelTime = saveTime;
+        if (updated.lunchParcel && !updated.lunchParcelTime) updated.lunchParcelTime = saveTime;
+        if (updated.dinnerParcel && !updated.dinnerParcelTime) updated.dinnerParcelTime = saveTime;
+        return updated;
+      });
+    }
+  });
+
   const prepared: Subscription = {
     ...form,
+    takenByPerson: stampedTakenByPerson,
     mobile: mobileInput ? Number(mobileInput) : undefined,
     flat: form.flat.trim().toUpperCase(),
     id: passId,
@@ -573,16 +591,25 @@ export function SubscriptionForm() {
     const isParcel = slot.includes("Parcel");
     const mealKey = isParcel ? slot.replace("Parcel", "") : slot;
     const parcelKey = `${mealKey}Parcel`;
+    const timeKey = `${slot}Time`;
+    const parcelTimeKey = `${parcelKey}Time`;
     const currentTaken = getEnsureTaken(selectedDay);
+    const nowTime = formatTakenTime(new Date());
 
     set("takenByPerson", {
       ...form.takenByPerson,
       [selectedDay]: currentTaken.map((item, index) => {
         if (index === selectedPerson) {
-          const updated = { ...item, [slot]: taken };
+          const existingTime = item[timeKey as keyof TakenState] as string | undefined;
+          const updated: any = {
+            ...item,
+            [slot]: taken,
+            [timeKey]: taken ? (existingTime || nowTime) : undefined,
+          };
           // Rule: If food taken is toggled OFF, also force parcel taken to OFF
           if (!isParcel && !taken) {
-            updated[parcelKey as keyof TakenState] = false;
+            updated[parcelKey] = false;
+            updated[parcelTimeKey] = undefined;
           }
           return updated;
         }

@@ -7,8 +7,9 @@ import { UI_TEXT } from "../../strings";
 import { CounterInput } from "./CounterInput";
 import { useDatabase } from "../../context/DatabaseContext";
 import { useUI } from "../../context/UIContext";
-import { Subscription, MealType, DietaryOption, ActivityModule, ActivityAction, AppThemeMode } from "../../types";
-import { isParcelEnabled, getMealLabel } from "../../constants";
+import { useAppNavigation } from "../../context/NavigationContext";
+import { Subscription, MealType, DietaryOption, ActivityModule, ActivityAction, AppThemeMode, AppScreen, TakenState } from "../../types";
+import { isParcelEnabled, isMealCurrent, isMealDone, getMealLabel, formatTakenTime } from "../../constants";
 
 interface QuickCheckoutModalProps {
   visible: boolean;
@@ -34,11 +35,45 @@ export function QuickCheckoutModal({
   const { theme } = useAppTheme();
   const { dayConfig, kidsEnabled, addActivityLog, upsertSubscription } = useDatabase();
   const { showAlert } = useUI();
+  const { navigate } = useAppNavigation();
   const { width } = useWindowDimensions();
 
   const [adultInput, setAdultInput] = useState(0);
   const [kidInput, setKidInput] = useState(0);
   const [parcelInput, setParcelInput] = useState(0);
+
+  // Real-Time Meal Lifecycle Checks
+  const isStillCurrent = currentMealInfo
+    ? isMealCurrent(currentMealInfo.dayId, currentMealInfo.mealType, dayConfig)
+    : false;
+  const isDone = currentMealInfo
+    ? isMealDone(currentMealInfo.dayId, currentMealInfo.mealType, dayConfig)
+    : false;
+
+  const alertShownRef = useRef(false);
+
+  // Auto-alert & Redirect to Home Screen when current meal is closed mid-checkout
+  useEffect(() => {
+    if (visible) {
+      const isClosed = !currentMealInfo || !isStillCurrent || isDone;
+      if (isClosed && !alertShownRef.current) {
+        alertShownRef.current = true;
+        showAlert(UI_TEXT.currentMealClosedTitle, UI_TEXT.currentMealClosed, [
+          {
+            text: UI_TEXT.ok,
+            onPress: () => {
+              onClose();
+              navigate(AppScreen.HOME);
+            }
+          }
+        ]);
+      } else if (!isClosed) {
+        alertShownRef.current = false;
+      }
+    } else {
+      alertShownRef.current = false;
+    }
+  }, [visible, isStillCurrent, isDone, currentMealInfo, onClose, navigate, showAlert]);
 
   // Calculate Quick Checkout limits and summary
   const quickCheckoutDetails = useMemo(() => {
@@ -152,6 +187,19 @@ export function QuickCheckoutModal({
   const handleCheckoutSubmit = async () => {
     if (!subscription || !currentMealInfo || !quickCheckoutDetails) return;
 
+    if (!isStillCurrent || isDone) {
+      showAlert(UI_TEXT.currentMealClosedTitle, UI_TEXT.currentMealClosed, [
+        {
+          text: UI_TEXT.ok,
+          onPress: () => {
+            onClose();
+            navigate(AppScreen.HOME);
+          }
+        }
+      ]);
+      return;
+    }
+
     const { dayId, mealType } = currentMealInfo;
     const mealKey = mealType;
     const parcelKey = `${mealType}Parcel`;
@@ -168,6 +216,10 @@ export function QuickCheckoutModal({
     const currentSafeFoodSum = safeAdultInput + safeKidInput;
     const safeParcelInput = Math.min(Math.max(0, parcelInput), currentSafeFoodSum, quickCheckoutDetails.parcelMax);
 
+    const nowTime = formatTakenTime(new Date());
+    const timeKey = `${mealKey}Time`;
+    const parcelTimeKey = `${parcelKey}Time`;
+
     // 1. Adult Allocation
     let remAdults = safeAdultInput;
     for (let i = 0; i < peopleCount; i++) {
@@ -175,7 +227,11 @@ export function QuickCheckoutModal({
       const isSubscribed = updatedSub.mealSlots[dayId]?.[i]?.[mealKey] !== DietaryOption.NONE;
       const isUnserved = !takenList[i]?.[mealKey];
       if (isSubscribed && isUnserved) {
-        takenList[i] = { ...takenList[i], [mealKey]: true };
+        takenList[i] = {
+          ...takenList[i],
+          [mealKey]: true,
+          [timeKey]: takenList[i]?.[timeKey as keyof TakenState] || nowTime
+        };
         remAdults--;
       }
     }
@@ -188,7 +244,11 @@ export function QuickCheckoutModal({
         const isSubscribed = updatedSub.mealSlots[dayId]?.[i]?.[mealKey] !== DietaryOption.NONE;
         const isUnserved = !takenList[i]?.[mealKey];
         if (isSubscribed && isUnserved) {
-          takenList[i] = { ...takenList[i], [mealKey]: true };
+          takenList[i] = {
+            ...takenList[i],
+            [mealKey]: true,
+            [timeKey]: takenList[i]?.[timeKey as keyof TakenState] || nowTime
+          };
           remKids--;
         }
       }
@@ -202,7 +262,11 @@ export function QuickCheckoutModal({
         const isParcelOpted = updatedSub.mealSlots[dayId]?.[i]?.[parcelKey as keyof typeof updatedSub.mealSlots[typeof dayId][0]] === true;
         const isParcelUnserved = !takenList[i]?.[parcelKey as keyof typeof takenList[0]];
         if (isParcelOpted && isParcelUnserved) {
-          takenList[i] = { ...takenList[i], [parcelKey]: true };
+          takenList[i] = {
+            ...takenList[i],
+            [parcelKey]: true,
+            [parcelTimeKey]: takenList[i]?.[parcelTimeKey as keyof TakenState] || nowTime
+          };
           remParcel--;
         }
       }
@@ -212,7 +276,6 @@ export function QuickCheckoutModal({
 
     await upsertSubscription(updatedSub);
 
-    // Format context-aware log description based on kids and parcel enablement
     const counts: string[] = [];
     if (kidsEnabled) {
       counts.push(`${safeAdultInput} ${UI_TEXT.adults}`);
@@ -314,7 +377,7 @@ export function QuickCheckoutModal({
     onSuccess();
   };
 
-  const isCheckoutDisabled = (adultInput + kidInput + parcelInput) === 0;
+  const isCheckoutDisabled = (adultInput + kidInput + parcelInput) === 0 || !isStillCurrent || isDone;
   const cardMaxWidth = Math.min(width * 0.94, 500);
 
   return (
@@ -368,8 +431,8 @@ export function QuickCheckoutModal({
               <View style={{
                 padding: 14,
                 borderRadius: 16,
-                backgroundColor: theme.colors.primary,
-                borderColor: theme.colors.primary,
+                backgroundColor: (isStillCurrent && !isDone) ? theme.colors.primary : theme.colors.textMuted,
+                borderColor: (isStillCurrent && !isDone) ? theme.colors.primary : theme.colors.textMuted,
                 borderWidth: 1,
                 gap: 8,
                 ...Platform.select({
@@ -394,7 +457,7 @@ export function QuickCheckoutModal({
 
                   <View style={{ backgroundColor: theme.colors.white + "33", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, flexShrink: 0, alignSelf: "flex-start" }}>
                     <Text style={{ fontSize: 10, fontWeight: "900", color: theme.colors.white }}>
-                      {UI_TEXT.live.toUpperCase()}
+                      {(isStillCurrent && !isDone) ? UI_TEXT.live.toUpperCase() : (isDone ? UI_TEXT.mealDoneLabel.toUpperCase() : "INACTIVE")}
                     </Text>
                   </View>
                 </View>
@@ -459,7 +522,7 @@ export function QuickCheckoutModal({
               </View>
             )}
 
-            {/* Section 2: Counter Inputs Card Container (View Pass Section Aesthetics) */}
+            {/* Section 2: Counter Inputs Card Container */}
             {quickCheckoutDetails && currentMealInfo && (
               <View style={{
                 padding: 14,
@@ -483,6 +546,7 @@ export function QuickCheckoutModal({
                     value={adultInput}
                     min={0}
                     max={quickCheckoutDetails.adultsMax}
+                    disabled={!isStillCurrent || isDone}
                     onChange={setAdultInput}
                   />
                 )}
@@ -494,6 +558,7 @@ export function QuickCheckoutModal({
                     value={kidInput}
                     min={0}
                     max={quickCheckoutDetails.kidsMax}
+                    disabled={!isStillCurrent || isDone}
                     onChange={setKidInput}
                   />
                 )}
@@ -505,6 +570,7 @@ export function QuickCheckoutModal({
                     value={parcelInput}
                     min={0}
                     max={effectiveParcelMax}
+                    disabled={!isStillCurrent || isDone}
                     onChange={setParcelInput}
                   />
                 )}
@@ -547,7 +613,7 @@ export function QuickCheckoutModal({
                     android: { elevation: 4 },
                     web: { boxShadow: `0 4px 12px ${theme.colors.primary}40` }
                   }),
-                  pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] }
+                  pressed && !isCheckoutDisabled && { opacity: 0.85, transform: [{ scale: 0.98 }] }
                 ]}
               >
                 <Ionicons

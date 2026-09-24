@@ -14,6 +14,7 @@ import { QuickGuestModal } from "../components/common/QuickGuestModal";
 import { useAuth } from "../context/AuthContext";
 import { useDatabase } from "../context/DatabaseContext";
 import { useAppNavigation } from "../context/NavigationContext";
+import { useUI } from "../context/UIContext";
 
 interface GuestMealCardProps {
   dayId: string;
@@ -190,6 +191,7 @@ export function GuestManagementScreen() {
     foodMenu, dayConfig, seasonEnabled, updateGuestCountDebounced, addActivityLog
   } = useDatabase();
   const { goBack, navigate, isQuickGuestMode, setIsQuickGuestMode } = useAppNavigation();
+  const { showAlert: showGlobalAlert } = useUI();
 
   const styles = useStyles();
   const { theme, themeType } = useAppTheme();
@@ -211,14 +213,30 @@ export function GuestManagementScreen() {
   }, [dayConfig]);
 
   const [modalVisible, setModalVisible] = React.useState(false);
+  const alertShownRef = React.useRef(false);
 
   React.useEffect(() => {
-    if (isQuickGuestMode && currentMealInfo) {
-      setModalVisible(true);
+    if (isQuickGuestMode) {
+      if (currentMealInfo) {
+        setModalVisible(true);
+        alertShownRef.current = false;
+      } else if (!alertShownRef.current) {
+        alertShownRef.current = true;
+        setModalVisible(false);
+        setIsQuickGuestMode(false);
+        showGlobalAlert(UI_TEXT.currentMealClosedTitle, UI_TEXT.currentMealClosed, [
+          {
+            text: UI_TEXT.ok,
+            onPress: () => {
+              navigate(AppScreen.HOME);
+            }
+          }
+        ]);
+      }
     } else {
-      setModalVisible(false);
+      alertShownRef.current = false;
     }
-  }, [isQuickGuestMode, currentMealInfo]);
+  }, [isQuickGuestMode, currentMealInfo, setIsQuickGuestMode, showGlobalAlert, navigate]);
 
   const handleCloseModal = React.useCallback(() => {
     setModalVisible(false);

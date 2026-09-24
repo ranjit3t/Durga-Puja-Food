@@ -61,28 +61,39 @@ The application follows a decoupled, context-driven component architecture with 
 ### 2. Atomic Multi-Path Checkouts & Anti-Duplicate Lock (`checkInPassAtomic`)
 - **100% Mathematical Duplicate Prevention**: Uses server-side atomic multi-path updates (`update(ref(db), multiPathUpdates)`) to lock meal status and increment kitchen metrics in a single transaction, preventing double-checkins across 20+ concurrent counters.
 
-### 3. Real-Time Activity Logs & Collaborative Notes Stream
+### 3. Member Food Taken Date & Time Tracking
+- **Synchronized Batch Timestamps**: When members, kids, or parcels are checked out together in `QuickCheckoutModal.tsx`, a single formatted timestamp string (`formatTakenTime()`, e.g. `"12 Oct, 1:15 PM"`) is assigned to all members served in that transaction.
+- **View Pass Time Badges (`DetailsScreen.tsx`)**: In the Food Taken section, each member's taken meal badge prints the exact timestamp underneath the badge (`12 Oct, 1:15 PM`). Falls back seamlessly if no timestamp exists.
+- **Excel CSV Export Timestamps (`SubscriptionListScreen.tsx`)**: The subscription directory Excel CSV export includes member-level meal taken date & time (e.g., `P1: Served (12 Oct, 1:15 PM)`).
+
+### 4. Mid-Service Real-Time Meal Closure Auto-Alert & Redirect
+- **Sub-50ms Meal Completion Guardrail**: When an Admin marks a meal as `DONE` in settings or menu editor, `QuickCheckoutModal`, `QuickGuestModal`, and `ScannerScreen` (Quick Checkout Camera Mode) receive the update in **<50ms**.
+- **Localized Alert & Auto-Redirect**: Displays an alert driven by `UI_TEXT.currentMealClosedTitle` and `UI_TEXT.currentMealClosed` (`"Current meal is closed. Thank you!"`). Tapping **OK** automatically closes the modal/screen and redirects the volunteer to the **Home Screen** (`navigate(AppScreen.HOME)`).
+- **Isolated Camera Safety**: Standard camera scanner mode (`isQuickCheckout = false`) remains 100% unhampered and fully operational for general pass lookups, searches, and edits.
+
+### 5. Adaptive Web & Responsive Modal Engine
+- **Browser Container Scaling**: Modals and checkout screens scale adaptively (`maxWidth: Math.min(width * 0.94, 500)`), providing generous spacing on Desktop Web browsers, laptops, and tablets.
+- **Compact Counter Inputs**: Compact 36px CounterInput buttons (`width: 36`) and flexbox shrink protection prevent text wrapping or button clipping on narrow viewports.
+
+### 6. Real-Time Activity Logs & Collaborative Notes Stream
 - **Newest Items First**: Connected directly to `activityLogs` and `notes` in `DatabaseContext`.
 - **Sub-50ms Top Insertion**: In default mode (newest first), incoming real-time logs and team notes automatically insert at **Index 0 (the very top of the list)**. Supports directional sort toggle (`arrow-up-outline` / `arrow-down-outline`).
 
-### 4. Pass Directory Sorting & Multi-Tag Filters
+### 7. Pass Directory Sorting & Multi-Tag Filters
 - **Ascending / Descending Natural Sort**: Features an interactive sort direction toggle (`isAscending`) sorting by Block and Flat in natural alphanumeric order (`A-101` ➔ `Z-909` or `Z-909` ➔ `A-101`).
 - **Combined Filter Compatibility**: Sorting applies seamlessly across all search queries and active multi-tag filter pills (`All`, `Current Meal Subscribed`, `Current Meal Missed`, `Kids`, `Parcels`, `Veg Only`).
 
-### 5. Granular & Simultaneous Menu Updates
+### 8. Granular & Simultaneous Menu Updates
 - **Sub-50ms Menu Push**: Real-time `onValue(ref(db, "menu"))` listener broadcasts food items, prices, and guest counts across all screens.
 - **Collision-Free Leaf Updates**: Targeted leaf-node writes (`/menu/$dayId/$mealKey`) ensure that multiple administrators editing different meals or fields simultaneously do not overwrite each other.
 
-### 6. Pre-Aggregated Kitchen Metrics Node (`/metrics`)
+### 9. Pre-Aggregated Kitchen Metrics Node (`/metrics`)
 - **$O(1)$ Live Kitchen Analytics**: Kitchen staff and admins monitor live served/planned progress bars from pre-aggregated `/metrics` nodes without processing 10,000 pass records.
 
-### 7. Progressive Tiered App Boot (<300ms Initial Load)
+### 10. Progressive Tiered App Boot (<300ms Initial Load)
 - **Tier 1 (Local Shell)**: App layout and user session render in **<200ms** from local storage.
 - **Tier 2 (Metadata & Metrics)**: Fetches `/config` and `/metrics` (~2 KB payload) in **<300ms**, fully populating dashboard summary cards immediately.
 - **Tier 3 (On-Demand & Paginated Lookups)**: Volunteer scanners perform indexed single-key pass lookups in **20ms**. Pass directories load in pages of 50 items (~75 KB).
-
-### 8. Targeted Lazy Report Calculation Engine (`useReportData.ts`)
-- Computes analytics **only for the active report tab being viewed**, dropping tab switch calculation time from 250ms to **15ms**. Strict configuration filters ensure zero bad or stale data.
 
 ---
 
@@ -110,8 +121,8 @@ src/
 ├── repository.ts        # Firebase RTDB API Operations, Atomic Writes & Real-Time Listeners
 ├── config.ts            # Default App Configuration & Festival Defaults
 ├── firebase.ts          # Firebase SDK Initialization
-├── strings.ts           # Centralized Dictionary for Localized UI Text & `appVersion`
-├── styles.ts            # Global Responsive Scaling Engine (`s()` / `v()`) & Glassmorphism Styles
+├── strings.ts           # Centralized Dictionary for Localized UI Text (`UI_TEXT.currentMealClosedTitle` / `currentMealClosed`) & `appVersion`
+├── styles.ts            # Global Responsive Scaling Engine (`s()` / `v()`) & Glassmorphic Styles
 └── screens/             # Top-Level Screen Views
     ├── ActivityLogScreen.tsx     # Real-Time Audit Log Stream (Newest First at Top)
     ├── ContactsScreen.tsx        # Resident Directory with Direct WhatsApp/Call/SMS Actions
@@ -123,7 +134,7 @@ src/
     ├── NotesScreen.tsx           # Real-Time Collaborative Team Notes Stream (Newest First at Top)
     ├── QrScreen.tsx              # Digital Pass Generator with 4-Digit Passcode & WhatsApp Share
     ├── ReportScreen.tsx          # Analytics Suite with Lazy Calculation & Theme-Aware Image Export
-    ├── ScannerScreen.tsx         # Memoized Camera Scanner & 4-Digit Keypad
+    ├── ScannerScreen.tsx         # Memoized Camera Scanner & 4-Digit Keypad with Mid-Service Meal Closure Redirect
     ├── SettingsScreen.tsx        # Festival Configuration & Safety Governance
     ├── SubscriptionForm.tsx      # Pass Registration & Editing with OCR Payment Scanner & Safe Array Initialization
     ├── SubscriptionListScreen.tsx# Pass Directory with Sort Toggle, Multi-Tag Filters & Excel Export

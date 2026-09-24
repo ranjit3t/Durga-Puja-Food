@@ -179,6 +179,12 @@ export type TakenState = Record<MealType, boolean> & {
   breakfastParcel?: boolean;
   lunchParcel?: boolean;
   dinnerParcel?: boolean;
+  breakfastTime?: string;
+  lunchTime?: string;
+  dinnerTime?: string;
+  breakfastParcelTime?: string;
+  lunchParcelTime?: string;
+  dinnerParcelTime?: string;
 };
 
 export type MealMenu = {

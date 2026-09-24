@@ -467,6 +467,8 @@ export const UI_TEXT = {
   markDoneHelper: "Disables adding/editing for this meal",
   currentMealLabel: "Current Meal",
   currentMealHelper: "Show this meal first across the app",
+  currentMealClosedTitle: "Current Meal Closed",
+  currentMealClosed: "Current meal is closed. Thank you!",
   mealDoneLabel: "Done",
   removeDayLabel: "Delete",
   addDayButton: "Add Another Festival Day",

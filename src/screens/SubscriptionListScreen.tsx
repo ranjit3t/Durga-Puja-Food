@@ -626,11 +626,19 @@ export function SubscriptionListScreen() {
                 const isMealTaken = takenItem ? !!takenItem[mType] : false;
                 const takenParcelKey = `${mType}Parcel` as keyof TakenState;
                 const isParcelTaken = takenItem ? !!takenItem[takenParcelKey] : false;
+                const mealTime = takenItem ? (takenItem[`${mType}Time` as keyof TakenState] as string | undefined) : undefined;
+                const parcelTime = takenItem ? (takenItem[`${mType}ParcelTime` as keyof TakenState] as string | undefined) : undefined;
 
-                let takenStatusStr = `${memberLabel}: ${isMealTaken ? UI_TEXT.foodTakenLabel : UI_TEXT.foodNotTakenLabel}`;
-                if (isParcelOpted) {
-                  takenStatusStr += `, ${isParcelTaken ? UI_TEXT.parcelTakenLabel : UI_TEXT.parcelNotTakenLabel}`;
+                let takenStatusStr = `${memberLabel}: `;
+                if (isParcelTaken) {
+                  const displayTime = parcelTime || mealTime;
+                  takenStatusStr += `${UI_TEXT.parcelTakenLabel}${displayTime ? ` (${displayTime})` : ""}`;
+                } else if (isMealTaken) {
+                  takenStatusStr += `${UI_TEXT.foodTakenLabel}${mealTime ? ` (${mealTime})` : ""}`;
+                } else {
+                  takenStatusStr += `${UI_TEXT.foodNotTakenLabel}`;
                 }
+
                 takenParts.push(takenStatusStr);
               }
             }

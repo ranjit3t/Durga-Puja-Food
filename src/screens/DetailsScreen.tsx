@@ -103,9 +103,30 @@ export function DetailsScreen() {
   }, [currentMealInfo, subscription, kidsEnabled]);
 
   const handleQuickCheckoutClick = () => {
-    if (!hasUnservedFoodForCurrentMeal || !currentMealInfo || !subscription) return;
+    if (!currentMealInfo) {
+      showGlobalAlert(UI_TEXT.currentMealClosedTitle, UI_TEXT.currentMealClosed, [
+        {
+          text: UI_TEXT.ok,
+          onPress: () => navigate(AppScreen.HOME)
+        }
+      ]);
+      return;
+    }
+    if (!hasUnservedFoodForCurrentMeal || !subscription) return;
     setShowQuickCheckoutModal(true);
   };
+
+  React.useEffect(() => {
+    if (showQuickCheckoutModal && !currentMealInfo) {
+      setShowQuickCheckoutModal(false);
+      showGlobalAlert(UI_TEXT.currentMealClosedTitle, UI_TEXT.currentMealClosed, [
+        {
+          text: UI_TEXT.ok,
+          onPress: () => navigate(AppScreen.HOME)
+        }
+      ]);
+    }
+  }, [showQuickCheckoutModal, currentMealInfo, navigate, showGlobalAlert]);
 
   const onBack = () => goBack();
   const onHome = () => navigate(AppScreen.HOME);
@@ -502,9 +523,9 @@ export function DetailsScreen() {
                 const getTakenParts = () => {
                    if (!taken) return [];
                    const res = [];
-                   if (taken[MealType.BREAKFAST]) res.push({ label: UI_TEXT.breakfastAbbr, parcel: taken?.breakfastParcel });
-                   if (taken[MealType.LUNCH]) res.push({ label: UI_TEXT.lunchAbbr, parcel: taken?.lunchParcel });
-                   if (taken[MealType.DINNER]) res.push({ label: UI_TEXT.dinnerAbbr, parcel: taken?.dinnerParcel });
+                   if (taken[MealType.BREAKFAST]) res.push({ label: UI_TEXT.breakfastAbbr, parcel: taken?.breakfastParcel, time: taken?.breakfastTime });
+                   if (taken[MealType.LUNCH]) res.push({ label: UI_TEXT.lunchAbbr, parcel: taken?.lunchParcel, time: taken?.lunchTime });
+                   if (taken[MealType.DINNER]) res.push({ label: UI_TEXT.dinnerAbbr, parcel: taken?.dinnerParcel, time: taken?.dinnerTime });
                    return res;
                 };
 
@@ -516,21 +537,48 @@ export function DetailsScreen() {
                     style={[
                       styles.personDay,
                       isAnyTaken && { backgroundColor: theme.colors.background, borderColor: theme.cardColors[0].accent },
-                      { flexDirection: "row", gap: 8, minWidth: 80, justifyContent: 'space-between' }
+                      {
+                        flexDirection: "row",
+                        flexWrap: "wrap",
+                        gap: 8,
+                        paddingVertical: 8,
+                        paddingHorizontal: 10,
+                        borderRadius: 12,
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        flex: 1,
+                        minWidth: 120,
+                        maxWidth: "100%"
+                      }
                     ]}
                   >
                     <Text style={[styles.personDayText, isAnyTaken && { color: theme.cardColors[0].accent }]}>{getDayAbbr(day, dayConfig)}</Text>
-                    <View style={{ flexDirection: "row", gap: 4, flexWrap: 'wrap', justifyContent: 'center' }}>
+                    <View style={{ flexDirection: "row", gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'center', flex: 1, minWidth: 0 }}>
                        {takenParts.map((p, i) => (
-                          <View key={i} style={{ position: 'relative' }}>
-                             <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: theme.cardColors[0].accent, alignItems: "center", justifyContent: "center" }}>
-                                <Text style={{ color: theme.colors.white, fontSize: 10, fontWeight: "900" }}>{p.label}</Text>
-                             </View>
-                             {p.parcel && (
-                                <View style={{ position: 'absolute', top: -6, right: -6, width: 12, height: 12, borderRadius: 6, backgroundColor: theme.colors.secondary, alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: theme.colors.white, zIndex: 1, elevation: 2 }}>
-                                   <Text style={{ color: theme.colors.white, fontSize: 7, fontWeight: "900" }}>{UI_TEXT.parcelAbbr}</Text>
+                          <View key={i} style={{ alignItems: 'center', gap: 2, paddingVertical: 2 }}>
+                             <View style={{ position: 'relative' }}>
+                                <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: theme.cardColors[0].accent, alignItems: "center", justifyContent: "center" }}>
+                                   <Text style={{ color: theme.colors.white, fontSize: 10, fontWeight: "900" }}>{p.label}</Text>
                                 </View>
-                             )}
+                                {p.parcel && (
+                                   <View style={{ position: 'absolute', top: -6, right: -6, width: 12, height: 12, borderRadius: 6, backgroundColor: theme.colors.secondary, alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: theme.colors.white, zIndex: 1, elevation: 2 }}>
+                                      <Text style={{ color: theme.colors.white, fontSize: 7, fontWeight: "900" }}>{UI_TEXT.parcelAbbr}</Text>
+                                   </View>
+                                )}
+                             </View>
+                             {p.time ? (
+                                <View style={{
+                                  backgroundColor: theme.themeType === AppThemeMode.DARK ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)",
+                                  paddingHorizontal: 4,
+                                  paddingVertical: 1,
+                                  borderRadius: 4,
+                                  marginTop: 1
+                                }}>
+                                  <Text style={{ fontSize: 9, fontWeight: "800", color: theme.colors.textSecondary }}>
+                                     {p.time}
+                                  </Text>
+                                </View>
+                             ) : null}
                           </View>
                        ))}
                        {takenParts.length === 0 && <Text style={{ color: theme.colors.textMuted, fontSize: 10 }}>{UI_TEXT.hyphen}</Text>}

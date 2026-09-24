@@ -36,7 +36,8 @@ import {
   isDietaryEnabled,
   isParcelEnabled,
   getDayLabel,
-  getMealLabel
+  getMealLabel,
+  formatTakenTime
 } from "../constants";
 
 interface DatabaseContextType {
@@ -399,6 +400,17 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
 
   const updateConfig = useCallback(async (config: AppConfig) => {
     try {
+      // Immediate local state update (Optimistic)
+      if (config.days) setDayConfig(config.days);
+      if (config.seasonName !== undefined) setSeasonName(config.seasonName);
+      if (config.seasonEnabled !== undefined) setSeasonEnabled(config.seasonEnabled);
+      if (config.payment) setPaymentConfig(config.payment);
+      if (config.guestEnabled !== undefined) setGuestEnabled(config.guestEnabled);
+      if (config.mobileEnabled !== undefined) setMobileEnabled(config.mobileEnabled);
+      if (config.foodPriceEnabled !== undefined) setFoodPriceEnabled(config.foodPriceEnabled);
+      if (config.kidsEnabled !== undefined) setKidsEnabled(config.kidsEnabled);
+      if (config.whatsappCountryCode !== undefined) setWhatsappCountryCode(config.whatsappCountryCode);
+
       await repository.updateConfig(config);
     } catch (err: any) {
       addActivityLog({
@@ -472,8 +484,15 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
        const isParcel = slot.includes("Parcel");
        const mealKey = isParcel ? slot.replace("Parcel", "") : slot;
        const parcelKey = `${mealKey}Parcel`;
+       const timeKey = `${slot}Time`;
+       const parcelTimeKey = `${parcelKey}Time`;
+       const nowTime = formatTakenTime(new Date());
 
-       await repository.updateSubscriptionStatus(flatId, dayId, personIndex, slot, taken);
+       const targetSub = subscriptions.find(s => s.id === flatId);
+       const existingTime = targetSub?.takenByPerson?.[dayId]?.[personIndex]?.[timeKey as keyof TakenState] as string | undefined;
+       const stampTime = taken ? (existingTime || nowTime) : undefined;
+
+       await repository.updateSubscriptionStatus(flatId, dayId, personIndex, slot, taken, stampTime);
 
        if (!isParcel && !taken) {
          await repository.updateSubscriptionStatus(flatId, dayId, personIndex, parcelKey, false);
@@ -482,23 +501,31 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
        setSubscriptions(prev => prev.map(s => {
          if (s.id === flatId) {
             const updated = { ...s };
-            const personTaken = { ...updated.takenByPerson[dayId][personIndex], [slot as keyof TakenState]: taken };
+            const dayList = [...(updated.takenByPerson[dayId] || [])];
+            if (dayList[personIndex]) {
+              const personTaken: any = {
+                ...dayList[personIndex],
+                [slot]: taken,
+                [timeKey]: stampTime,
+              };
 
-            if (!isParcel && !taken) {
-              personTaken[parcelKey as keyof TakenState] = false;
+              if (!isParcel && !taken) {
+                personTaken[parcelKey] = false;
+                personTaken[parcelTimeKey] = undefined;
+              }
+
+              dayList[personIndex] = personTaken;
+              updated.takenByPerson = { ...updated.takenByPerson, [dayId]: dayList };
             }
-
-            updated.takenByPerson[dayId][personIndex] = personTaken;
             return updated;
          }
          return s;
        }));
 
-       const sub = subscriptions.find(s => s.id === flatId);
        let collectionInfo = "";
-       if (sub) {
+       if (targetSub) {
          let ft = 0, pt = 0;
-         Object.values(sub.takenByPerson || {}).forEach(dayList => {
+         Object.values(targetSub.takenByPerson || {}).forEach(dayList => {
            dayList.forEach(t => {
              if (t.breakfast) ft++;
              if (t.lunch) ft++;

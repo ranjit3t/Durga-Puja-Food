@@ -592,6 +592,27 @@ export const mealSummary = (subscription: Subscription, config: ConfigDay[], kid
     .join("  ");
 
 /**
+ * Formats a Date object into a short human-readable time string for meal checkouts.
+ * Example: "12 Oct, 1:15 PM"
+ */
+export const formatTakenTime = (d: Date = new Date()): string => {
+  try {
+    const hours = d.getHours();
+    const minutes = d.getMinutes();
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const formattedHours = hours % 12 || 12;
+    const formattedMinutes = minutes < 10 ? `0${minutes}` : minutes;
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const day = d.getDate();
+    const month = monthNames[d.getMonth()];
+
+    return `${day} ${month}, ${formattedHours}:${formattedMinutes} ${ampm}`;
+  } catch {
+    return "";
+  }
+};
+
+/**
  * Resizes 'taken' tracking array.
  */
 export const resizeTaken = (

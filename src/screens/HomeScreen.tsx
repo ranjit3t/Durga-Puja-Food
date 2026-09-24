@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, ScrollView, Pressable, StatusBar, useWindowDimensions, Linking } from "react-native";
+import { View, Text, ScrollView, Pressable, StatusBar, useWindowDimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useStyles, useScaling } from "../styles";
 import { useAppTheme, StatusBarStyleMode } from "../theme";
@@ -319,13 +319,6 @@ export function HomeScreen() {
               </Pressable>
               <Pressable accessibilityLabel={UI_TEXT.settings} onPress={() => navigate(AppScreen.SETTINGS)} style={[styles.compactSecondary, { backgroundColor: theme.colors.textMuted, borderColor: theme.colors.textMuted }]}>
                 <ActionLabel icon="settings-outline" label={UI_TEXT.settings} color={theme.colors.white} size={iconSize} vertical />
-              </Pressable>
-              <Pressable
-                accessibilityLabel={UI_TEXT.reportBug}
-                onPress={() => Linking.openURL(`mailto:${UI_TEXT.supportEmail}?subject=${encodeURIComponent(UI_TEXT.bugReportSubject)}`)}
-                style={[styles.compactSecondary, { backgroundColor: theme.colors.error, borderColor: theme.colors.error }]}
-              >
-                <ActionLabel icon="bug-outline" label={UI_TEXT.reportBug} color={theme.colors.white} size={iconSize} vertical />
               </Pressable>
             </>
           )}

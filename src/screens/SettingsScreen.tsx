@@ -385,7 +385,21 @@ export function SettingsScreen() {
       });
       setInitialized(false); // Allow re-syncing from DB
       showAlert(UI_TEXT.success, UI_TEXT.settingsUpdated, [
-        { text: UI_TEXT.ok, onPress: () => navigate(AppScreen.HOME) }
+        {
+          text: UI_TEXT.ok,
+          onPress: () => {
+            setLocalConfig(JSON.parse(JSON.stringify(localConfig)));
+            setLocalSeasonName(localSeasonName);
+            setLocalSeasonEnabled(localSeasonEnabled);
+            setLocalPayment(JSON.parse(JSON.stringify(localPayment)));
+            setLocalGuestEnabled(localGuestEnabled);
+            setLocalMobileEnabled(localMobileEnabled);
+            setLocalFoodPriceEnabled(localFoodPriceEnabled);
+            setLocalKidsEnabled(localKidsEnabled);
+            setLocalWhatsappCountryCode(localWhatsappCountryCode);
+            setInitialized(true);
+          }
+        }
       ]);
     } catch (err) {
       console.error("Save settings error:", err);
