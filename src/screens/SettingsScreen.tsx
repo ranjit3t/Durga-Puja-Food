@@ -19,6 +19,7 @@ import { ConfigDay, PaymentConfig, AppScreen, PaymentMode, AppThemeMode, Activit
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
+import { ThemeToggleButton } from "../components/common/ThemeToggleButton";
 import { ActionLabel } from "../components/common/ActionLabel";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../context/AuthContext";
@@ -429,7 +430,10 @@ export function SettingsScreen() {
             <BackButton onPress={goBack} />
             <HomeButton onPress={() => navigate(AppScreen.HOME)} />
           </View>
-          <LogoutButton onLogout={handleLogout} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <ThemeToggleButton />
+            <LogoutButton onLogout={handleLogout} />
+          </View>
         </View>
         <Text style={styles.title}>{UI_TEXT.settingsTitle}</Text>
         <Text style={styles.subtitle}>{UI_TEXT.settingsSubtitle}</Text>
@@ -438,55 +442,55 @@ export function SettingsScreen() {
       <ScrollView style={{ flex: 1, width: "100%" }} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={[styles.dashboardCard, { backgroundColor: theme.cardColors[1].bg, borderColor: theme.cardColors[1].border, borderWidth: 1.5 }, !localSeasonEnabled && { opacity: 0.6 }]}>
            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <View style={{ flex: 1 }}>
+              <View style={{ flex: 1, marginRight: 10 }}>
                  <Text style={{ fontSize: 18, fontWeight: '900', color: theme.cardColors[1].accent }}>{UI_TEXT.seasonNameLabel}</Text>
                  <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600', marginTop: 2 }}>{UI_TEXT.seasonNameHelper}</Text>
               </View>
-              <Switch value={localSeasonEnabled} onValueChange={(val) => validateAndSetSeasonEnabled(val)} trackColor={{ true: theme.colors.primary }} />
+              <Switch value={localSeasonEnabled} onValueChange={(val) => validateAndSetSeasonEnabled(val)} trackColor={{ true: theme.colors.primary }} style={{ flexShrink: 0 }} />
            </View>
            <TextInput style={styles.input} value={localSeasonName} onChangeText={setLocalSeasonName} placeholder={UI_TEXT.seasonNamePlaceholder} placeholderTextColor={theme.colors.textMuted} selectTextOnFocus />
            <View style={{ height: 1, backgroundColor: theme.colors.border, marginVertical: 20 }} />
            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-              <View>
+              <View style={{ flex: 1, marginRight: 10 }}>
                  <Text style={{ fontSize: 16, fontWeight: '800', color: theme.colors.textPrimary }}>{UI_TEXT.paymentIntegration}</Text>
                  <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600' }}>{UI_TEXT.paymentIntegrationHelper}</Text>
               </View>
-              <Switch value={localPayment.enabled} onValueChange={(val) => validateAndSetPaymentEnabled(val)} trackColor={{ true: theme.colors.primary }} />
+              <Switch value={localPayment.enabled} onValueChange={(val) => validateAndSetPaymentEnabled(val)} trackColor={{ true: theme.colors.primary }} style={{ flexShrink: 0 }} />
            </View>
            {localPayment.enabled && (
              <View style={{ backgroundColor: theme.colors.surface, borderRadius: 16, padding: 12, gap: 12 }}>
                 <Text style={{ fontSize: 12, fontWeight: '800', color: theme.colors.primary }}>{UI_TEXT.enabledMethods}</Text>
                 {([['upi', PaymentMode.UPI], ['cash', PaymentMode.CASH], ['bankTransfer', PaymentMode.BANK_TRANSFER]] as const).map(([key, mode]) => (
                   <View key={key} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                     <Text style={{ fontSize: 14, fontWeight: '700', color: theme.colors.textPrimary }}>{getPaymentModeLabel(mode)}</Text>
-                     <Switch value={localPayment.options[key]} onValueChange={(val) => validateAndSetPaymentOption(key, mode, val)} trackColor={{ true: theme.colors.success }} style={{ transform: [{ scale: 0.8 }] }} />
+                     <Text style={{ fontSize: 14, fontWeight: '700', color: theme.colors.textPrimary, flex: 1, marginRight: 10 }}>{getPaymentModeLabel(mode)}</Text>
+                     <Switch value={localPayment.options[key]} onValueChange={(val) => validateAndSetPaymentOption(key, mode, val)} trackColor={{ true: theme.colors.success }} style={{ transform: [{ scale: 0.8 }], flexShrink: 0 }} />
                   </View>
                 ))}
              </View>
            )}
            <View style={{ height: 1, backgroundColor: theme.colors.border, marginVertical: 20 }} />
            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <View>
+              <View style={{ flex: 1, marginRight: 10 }}>
                  <Text style={{ fontSize: 16, fontWeight: '800', color: theme.colors.textPrimary }}>{UI_TEXT.enableKidsSupport}</Text>
                  <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600' }}>{UI_TEXT.enableKidsSupportHelper}</Text>
               </View>
-              <Switch value={localKidsEnabled} onValueChange={(val) => validateAndSetKidsEnabled(val)} trackColor={{ true: theme.colors.primary }} />
+              <Switch value={localKidsEnabled} onValueChange={(val) => validateAndSetKidsEnabled(val)} trackColor={{ true: theme.colors.primary }} style={{ flexShrink: 0 }} />
            </View>
            <View style={{ height: 1, backgroundColor: theme.colors.border, marginVertical: 20 }} />
            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <View>
+              <View style={{ flex: 1, marginRight: 10 }}>
                  <Text style={{ fontSize: 16, fontWeight: '800', color: theme.colors.textPrimary }}>{UI_TEXT.guestManagementLabel}</Text>
                  <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600' }}>{UI_TEXT.guestManagementHelper}</Text>
               </View>
-              <Switch value={localGuestEnabled} onValueChange={(val) => validateAndSetGuestEnabled(val)} trackColor={{ true: theme.colors.primary }} />
+              <Switch value={localGuestEnabled} onValueChange={(val) => validateAndSetGuestEnabled(val)} trackColor={{ true: theme.colors.primary }} style={{ flexShrink: 0 }} />
            </View>
            <View style={{ height: 1, backgroundColor: theme.colors.border, marginVertical: 20 }} />
            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <View>
+              <View style={{ flex: 1, marginRight: 10 }}>
                  <Text style={{ fontSize: 16, fontWeight: '800', color: theme.colors.textPrimary }}>{UI_TEXT.addMobileInPass}</Text>
                  <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600' }}>{UI_TEXT.addMobileInPassHelper}</Text>
               </View>
-              <Switch value={localMobileEnabled} onValueChange={setLocalMobileEnabled} trackColor={{ true: theme.colors.primary }} />
+              <Switch value={localMobileEnabled} onValueChange={setLocalMobileEnabled} trackColor={{ true: theme.colors.primary }} style={{ flexShrink: 0 }} />
            </View>
            {localMobileEnabled && (
              <View style={{ marginTop: 20 }}>
@@ -497,11 +501,11 @@ export function SettingsScreen() {
            <View style={{ height: 1, backgroundColor: theme.colors.border, marginVertical: 20 }} />
            {localPayment.enabled && (
              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                <View>
+                <View style={{ flex: 1, marginRight: 10 }}>
                    <Text style={{ fontSize: 16, fontWeight: '800', color: theme.colors.textPrimary }}>{UI_TEXT.enableFoodPrice}</Text>
                    <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600' }}>{UI_TEXT.enableFoodPriceHelper}</Text>
                 </View>
-                <Switch value={localFoodPriceEnabled} onValueChange={setLocalFoodPriceEnabled} trackColor={{ true: theme.colors.primary }} />
+                <Switch value={localFoodPriceEnabled} onValueChange={setLocalFoodPriceEnabled} trackColor={{ true: theme.colors.primary }} style={{ flexShrink: 0 }} />
              </View>
            )}
 
@@ -519,7 +523,7 @@ export function SettingsScreen() {
           return (
             <View key={day.id} style={[styles.dashboardCard, { backgroundColor: colorScheme.bg, borderColor: colorScheme.border, borderWidth: 1.5 }, !day.enabled && { opacity: 0.6 }]}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                 <Text style={{ fontSize: 18, fontWeight: '900', color: colorScheme.accent }}>{UI_TEXT.dayConfigTitle}</Text>
+                 <Text style={{ fontSize: 18, fontWeight: '900', color: colorScheme.accent, flex: 1, marginRight: 10 }}>{UI_TEXT.dayConfigTitle}</Text>
                  {(() => {
                    const isDaySubscribed = (subscriptions || []).some(sub =>
                      (sub.mealSlots[day.id] || []).some(slot =>
@@ -539,6 +543,7 @@ export function SettingsScreen() {
                           updateDay(day.id, { enabled: val });
                        }}
                        trackColor={{ true: theme.colors.primary }}
+                       style={{ flexShrink: 0 }}
                      />
                    );
                  })()}
@@ -550,7 +555,7 @@ export function SettingsScreen() {
               {day.enabled && (
                 <View style={{ marginTop: 12 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20, backgroundColor: theme.colors.errorLight, padding: 12, borderRadius: 16, borderWidth: 1, borderColor: theme.colors.border }}>
-                    <View style={{ flex: 1 }}>
+                    <View style={{ flex: 1, marginRight: 10 }}>
                        <Text style={{ fontWeight: '800', color: theme.colors.primary, fontSize: 15 }}>{UI_TEXT.vegOnlyLabel}</Text>
                        <Text style={{ fontSize: 11, color: theme.colors.nonVeg, marginTop: 2 }}>{UI_TEXT.vegOnlyHelper}</Text>
                     </View>
@@ -559,6 +564,7 @@ export function SettingsScreen() {
                       disabled={day.breakfast.done || day.lunch.done || day.dinner.done}
                       onValueChange={(val) => updateDay(day.id, { vegOnly: val })}
                       trackColor={{ true: theme.colors.primary }}
+                      style={{ flexShrink: 0 }}
                     />
                   </View>
                   {[MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].map((mKey) => {
@@ -566,9 +572,9 @@ export function SettingsScreen() {
                     return (
                       <View key={mKey} style={[styles.dashboardMealSection, { marginBottom: 12, padding: 12, backgroundColor: theme.colors.surface }, !m.enabled && { opacity: 0.6 }]}>
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1, marginRight: 10 }}>
                              <Ionicons name={mKey === "breakfast" ? "sunny-outline" : mKey === "lunch" ? "restaurant-outline" : "moon-outline"} size={18} color={theme.colors.textPrimary} />
-                             <Text style={{ fontWeight: "800", fontSize: 16, color: theme.colors.textPrimary, textTransform: "capitalize" }}>{getMealLabel(mKey as MealType)}</Text>
+                             <Text style={{ fontWeight: "800", fontSize: 16, color: theme.colors.textPrimary, textTransform: "capitalize", flex: 1 }}>{getMealLabel(mKey as MealType)}</Text>
                           </View>
                           {(() => {
                             const isMealSubscribed = (subscriptions || []).some(sub =>
@@ -585,6 +591,7 @@ export function SettingsScreen() {
                                    updateMealConfig(day.id, mKey as any, { enabled: val });
                                 }}
                                 trackColor={{ true: theme.colors.primary }}
+                                style={{ flexShrink: 0 }}
                               />
                             );
                           })()}
@@ -602,7 +609,7 @@ export function SettingsScreen() {
                               </View>
                             )}
                             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: theme.colors.background, padding: 10, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border }}>
-                               <Text style={{ fontSize: 12, fontWeight: '800', color: theme.colors.textSecondary }}>{UI_TEXT.parcelSupportLabel.toUpperCase()}</Text>
+                               <Text style={{ fontSize: 12, fontWeight: '800', color: theme.colors.textSecondary, flex: 1, marginRight: 10 }}>{UI_TEXT.parcelSupportLabel.toUpperCase()}</Text>
                                <Switch
                                  value={m.parcel || false}
                                  disabled={m.done}
@@ -613,35 +620,35 @@ export function SettingsScreen() {
                                    });
                                  }}
                                  trackColor={{ true: theme.colors.primary }}
-                                 style={{ transform: [{ scale: 0.8 }] }}
+                                 style={{ transform: [{ scale: 0.8 }], flexShrink: 0 }}
                                />
                             </View>
                             {m.parcel && (
                                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: theme.colors.background, padding: 10, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border }}>
-                                  <Text style={{ fontSize: 12, fontWeight: '800', color: theme.colors.textSecondary }}>{UI_TEXT.parcelAlertLabel.toUpperCase()}</Text>
+                                  <Text style={{ fontSize: 12, fontWeight: '800', color: theme.colors.textSecondary, flex: 1, marginRight: 10 }}>{UI_TEXT.parcelAlertLabel.toUpperCase()}</Text>
                                   <Switch
                                     value={!!m.parcelAlert}
                                     disabled={m.done}
                                     onValueChange={(val) => updateMealConfig(day.id, mKey, { parcelAlert: val })}
                                     trackColor={{ true: theme.colors.primary }}
-                                    style={{ transform: [{ scale: 0.8 }] }}
+                                    style={{ transform: [{ scale: 0.8 }], flexShrink: 0 }}
                                   />
                                </View>
                             )}
                             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: theme.colors.background, padding: 10, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border }}>
-                               <View>
+                               <View style={{ flex: 1, marginRight: 10 }}>
                                   <Text style={{ fontSize: 12, fontWeight: '800', color: theme.colors.textSecondary }}>{UI_TEXT.markDoneLabel.toUpperCase()}</Text>
                                   <Text style={{ fontSize: 9, fontWeight: '600', color: theme.colors.textMuted }}>{UI_TEXT.markDoneHelper}</Text>
                                </View>
-                               <Switch value={m.done || false} onValueChange={(val) => validateAndSetDone(day.id, mKey as MealType, val)} trackColor={{ true: theme.colors.success }} style={{ transform: [{ scale: 0.8 }] }} />
+                               <Switch value={m.done || false} onValueChange={(val) => validateAndSetDone(day.id, mKey as MealType, val)} trackColor={{ true: theme.colors.success }} style={{ transform: [{ scale: 0.8 }], flexShrink: 0 }} />
                             </View>
                             {!m.done && (
                                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: theme.colors.background, padding: 10, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border }}>
-                                  <View>
+                                  <View style={{ flex: 1, marginRight: 10 }}>
                                      <Text style={{ fontSize: 12, fontWeight: '800', color: theme.colors.textSecondary }}>{UI_TEXT.currentMealLabel.toUpperCase()}</Text>
                                      <Text style={{ fontSize: 9, fontWeight: '600', color: theme.colors.textMuted }}>{UI_TEXT.currentMealHelper}</Text>
                                   </View>
-                                  <Switch value={m.current || false} onValueChange={(val) => validateAndSetCurrent(day.id, mKey as MealType, val)} trackColor={{ true: theme.colors.primary }} style={{ transform: [{ scale: 0.8 }] }} />
+                                  <Switch value={m.current || false} onValueChange={(val) => validateAndSetCurrent(day.id, mKey as MealType, val)} trackColor={{ true: theme.colors.primary }} style={{ transform: [{ scale: 0.8 }], flexShrink: 0 }} />
                                </View>
                             )}
                           </View>

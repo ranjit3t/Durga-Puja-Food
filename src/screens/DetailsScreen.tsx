@@ -28,10 +28,11 @@ import {
   getMealLabel,
   isParcelEnabled,
 } from "../constants";
-import { MealMenu, MealType, DietType, DietaryOption, AppScreen, UserRole, PaymentMode, ReportType, AppThemeMode, ActivityModule, ActivityAction } from "../types";
+import { MealMenu, MealType, DietType, DietaryOption, AppScreen, UserRole, PaymentMode, ReportType, AppThemeMode, ActivityModule, ActivityAction, CheckoutSource } from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
+import { ThemeToggleButton } from "../components/common/ThemeToggleButton";
 import { ActionLabel } from "../components/common/ActionLabel";
 import { MealSummaryInline } from "../components/menu/MealSummaryInline";
 import { QuickCheckoutModal } from "../components/common/QuickCheckoutModal";
@@ -113,6 +114,12 @@ export function DetailsScreen() {
       return;
     }
     if (!hasUnservedFoodForCurrentMeal || !subscription) return;
+    addActivityLog({
+      module: ActivityModule.SCANNER,
+      action: ActivityAction.UPDATE,
+      targetId: subscription.id,
+      description: UI_TEXT.logQuickCheckoutOpened.replace("{id}", subscription.id).replace("{source}", CheckoutSource.DETAILS)
+    });
     setShowQuickCheckoutModal(true);
   };
 
@@ -170,7 +177,10 @@ export function DetailsScreen() {
             <BackButton onPress={onBack} />
             <HomeButton onPress={onHome} />
           </View>
-          <LogoutButton onLogout={handleLogout} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <ThemeToggleButton />
+            <LogoutButton onLogout={handleLogout} />
+          </View>
         </View>
         <Text style={styles.title}>{UI_TEXT.foodPass}</Text>
       </View>
@@ -655,6 +665,7 @@ export function DetailsScreen() {
         visible={showQuickCheckoutModal}
         subscription={subscription}
         currentMealInfo={currentMealInfo}
+        source={CheckoutSource.DETAILS}
         onClose={() => setShowQuickCheckoutModal(false)}
         onSuccess={() => {
           setShowQuickCheckoutModal(false);

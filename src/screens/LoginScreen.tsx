@@ -23,6 +23,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../context/AuthContext";
 import { useDatabase } from "../context/DatabaseContext";
 import { useUI } from "../context/UIContext";
+import { ThemeToggleButton } from "../components/common/ThemeToggleButton";
 
 export function LoginScreen() {
   const { handleLogin } = useAuth();
@@ -86,10 +87,8 @@ export function LoginScreen() {
   return (
     <View style={styles.root}>
       <StatusBar barStyle={themeType === AppThemeMode.DARK ? "light-content" : "dark-content"} />
-      <View style={{ position: 'absolute', top: Platform.OS === 'ios' ? 60 : 40, left: 20, zIndex: 10 }}>
-        <Pressable onPress={toggleTheme} style={[styles.backButton, { width: 36, height: 36, borderRadius: 18, paddingHorizontal: 0 }]}>
-          <Ionicons name={themeType === AppThemeMode.DARK ? "sunny-outline" : "moon-outline"} size={18} color={theme.colors.secondary} />
-        </Pressable>
+      <View style={{ position: 'absolute', top: Platform.OS === 'ios' ? 60 : 40, right: 20, zIndex: 10 }}>
+        <ThemeToggleButton />
       </View>
       <KeyboardAvoidingView
         style={{ flex: 1 }}

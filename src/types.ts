@@ -28,6 +28,8 @@ import {
   Note,
   MealMetrics,
   KitchenMetrics,
+  CheckoutSource,
+  GuestCheckoutSource,
 } from "./domain";
 
 export enum FilterMode {
@@ -68,6 +70,8 @@ export {
   AppConfig,
   PaymentConfig,
   Note,
+  CheckoutSource,
+  GuestCheckoutSource,
   MealMetrics,
   KitchenMetrics,
 };

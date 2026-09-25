@@ -28,6 +28,17 @@ export enum DietaryOption {
   NONE = "None",
 }
 
+export enum CheckoutSource {
+  SCANNER = "QR Scanner",
+  DETAILS = "Pass Details",
+  SUBSCRIPTION_LIST = "Pass Directory",
+}
+
+export enum GuestCheckoutSource {
+  GUEST_MODAL = "Quick Guest Modal",
+  GUEST_SCREEN = "Guest Desk Screen",
+}
+
 export enum AppScreen {
   HOME = "home",
   FORM = "form",

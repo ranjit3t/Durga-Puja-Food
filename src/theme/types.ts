@@ -17,6 +17,8 @@ export interface ThemeColors {
   white: string;
   success: string;
   successLight: string;
+  warning: string;
+  warningLight: string;
   error: string;
   errorLight: string;
   border: string;

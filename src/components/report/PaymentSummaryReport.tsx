@@ -88,11 +88,11 @@ export function PaymentSummaryReport({
           </View>
         ))}
         <View style={{ backgroundColor: theme.colors.primary, padding: 16 }}>
-          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-            <Text style={{ color: theme.colors.white, fontWeight: "900", fontSize: 18 }}>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+            <Text style={{ color: theme.colors.white, fontWeight: "900", fontSize: 18, flex: 1, minWidth: 140 }}>
               {UI_TEXT.totalCollection}
             </Text>
-            <Text style={{ color: theme.colors.white, fontWeight: "900", fontSize: 24 }}>
+            <Text style={{ color: theme.colors.white, fontWeight: "900", fontSize: 24, flexShrink: 0 }}>
               {UI_TEXT.rs}
               {UI_TEXT.space}
               {data.summary.reduce((acc, curr) => acc + curr.total, 0).toFixed(0)}
@@ -109,21 +109,21 @@ export function PaymentSummaryReport({
               gap: 8,
             }}
           >
-            <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-              <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700" }}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 4 }}>
+              <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700", flex: 1, minWidth: 120 }}>
                 {UI_TEXT.foodCollection}
               </Text>
-              <Text style={{ color: theme.colors.white, fontSize: 14, fontWeight: "800" }}>
+              <Text style={{ color: theme.colors.white, fontSize: 14, fontWeight: "800", flexShrink: 0 }}>
                 {UI_TEXT.rs}
                 {UI_TEXT.space}
                 {data.totalFood.toFixed(0)}
               </Text>
             </View>
-            <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-              <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700" }}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 4 }}>
+              <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700", flex: 1, minWidth: 120 }}>
                 {UI_TEXT.parcelCollection}
               </Text>
-              <Text style={{ color: theme.colors.white, fontSize: 14, fontWeight: "800" }}>
+              <Text style={{ color: theme.colors.white, fontSize: 14, fontWeight: "800", flexShrink: 0 }}>
                 {UI_TEXT.rs}
                 {UI_TEXT.space}
                 {data.totalParcel.toFixed(0)}

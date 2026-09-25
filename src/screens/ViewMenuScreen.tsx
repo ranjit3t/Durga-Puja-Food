@@ -15,6 +15,7 @@ import { UserRole, ConfigDay, MealType, AppScreen, AppThemeMode, ActivityModule,
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
+import { ThemeToggleButton } from "../components/common/ThemeToggleButton";
 import { ActionLabel } from "../components/common/ActionLabel";
 import { MealDisplay } from "../components/menu/MealDisplay";
 
@@ -205,10 +206,13 @@ export function ViewMenuScreen() {
             <BackButton onPress={goBack} />
             <HomeButton onPress={() => navigate(AppScreen.HOME)} />
           </View>
-          <LogoutButton onLogout={handleLogout} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <ThemeToggleButton />
+            <LogoutButton onLogout={handleLogout} />
+          </View>
         </View>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <View>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+          <View style={{ flex: 1, minWidth: 160 }}>
             <Text style={styles.title}>{UI_TEXT.foodMenu}</Text>
             <Text style={styles.subtitle}>{UI_TEXT.menuSubtitle}</Text>
           </View>
@@ -229,6 +233,7 @@ export function ViewMenuScreen() {
                   shadowOffset: { width: 0, height: 2 },
                   shadowOpacity: 0.2,
                   shadowRadius: 4,
+                  alignSelf: 'flex-start',
                 },
                 pressed && { opacity: 0.8 }
               ]}

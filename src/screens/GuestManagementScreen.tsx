@@ -5,10 +5,11 @@ import { useStyles } from "../styles";
 import { useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
 import { getDayLabel, isMealEnabled, isMealDone, getSortedMealKeys, isDietaryEnabled, isMealCurrent, getMealLabel, isMealInFuture } from "../constants";
-import { MealMenu, ConfigDay, MealType, DietType, AppThemeMode, ActivityModule, ActivityAction, AppScreen, UserRole } from "../types";
+import { MealMenu, ConfigDay, MealType, DietType, AppThemeMode, ActivityModule, ActivityAction, AppScreen, UserRole, GuestCheckoutSource } from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
+import { ThemeToggleButton } from "../components/common/ThemeToggleButton";
 import { CounterInput } from "../components/common/CounterInput";
 import { QuickGuestModal } from "../components/common/QuickGuestModal";
 import { useAuth } from "../context/AuthContext";
@@ -269,7 +270,7 @@ export function GuestManagementScreen() {
     field: string,
     value: number
   ) => {
-    updateGuestCountDebounced(day, type, field, value);
+    updateGuestCountDebounced(day, type, field, value, GuestCheckoutSource.GUEST_SCREEN);
   }, [updateGuestCountDebounced]);
 
   const handleExportExcel = React.useCallback(async () => {
@@ -413,10 +414,13 @@ export function GuestManagementScreen() {
             <BackButton onPress={goBack} />
             <HomeButton onPress={() => navigate(AppScreen.HOME)} />
           </View>
-          <LogoutButton onLogout={handleLogout} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <ThemeToggleButton />
+            <LogoutButton onLogout={handleLogout} />
+          </View>
         </View>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <View>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+          <View style={{ flex: 1, minWidth: 160 }}>
             <Text style={styles.title}>{UI_TEXT.guestManagement}</Text>
             <Text style={styles.subtitle}>{UI_TEXT.dashboardSubtitle}</Text>
           </View>
@@ -437,6 +441,7 @@ export function GuestManagementScreen() {
                   shadowOffset: { width: 0, height: 2 },
                   shadowOpacity: 0.2,
                   shadowRadius: 4,
+                  alignSelf: 'flex-start',
                 },
                 pressed && { opacity: 0.8 }
               ]}

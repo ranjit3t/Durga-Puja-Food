@@ -12,6 +12,7 @@ import { AppScreen, UserRole, MealType, AppThemeMode, DietaryOption, DietType } 
 import { getActiveDays, isSeasonDone, isMealCurrent, getDayLabel, isMealEnabled, isDietaryEnabled, getMealLabel } from "../constants";
 import { ActionLabel } from "../components/common/ActionLabel";
 import { LogoutButton } from "../components/common/LogoutButton";
+import { ThemeToggleButton } from "../components/common/ThemeToggleButton";
 
 export function HomeScreen() {
   const styles = useStyles();
@@ -42,15 +43,15 @@ export function HomeScreen() {
   }, [remoteAppVersion, loading, versionAlertShown, markVersionAlertShown, showAlert]);
 
   const isNarrow = width < 400;
-  const cardPadding = isNarrow ? 22 : s(30);
-  const cardMinHeight = isNarrow ? 120 : (isWeb ? s(140) : s(160));
-  const mainFontSize = isNarrow ? 24 : s(32);
-  const secondaryFontSize = isNarrow ? 20 : s(26);
-  const labelFontSize = isNarrow ? 11 : s(13);
-  const rowGap = isNarrow ? 12 : s(15);
+  const cardPadding = isNarrow ? 16 : s(20);
+  const cardMinHeight = isNarrow ? 100 : (isWeb ? s(120) : s(130));
+  const mainFontSize = isNarrow ? 22 : s(28);
+  const secondaryFontSize = isNarrow ? 18 : s(22);
+  const labelFontSize = isNarrow ? 10 : s(12);
+  const rowGap = isNarrow ? 8 : s(10);
   const iconSize = s(18);
-  const actionIconSize = s(140);
-  const actionIconSizeLarge = s(180);
+  const actionIconSize = s(120);
+  const actionIconSizeLarge = s(150);
 
   // Find if there is an active current meal going on right now
   const summaryCounts = React.useMemo(() => {
@@ -154,10 +155,8 @@ export function HomeScreen() {
     <View style={styles.root}>
       <StatusBar barStyle={themeType === AppThemeMode.DARK ? "light-content" : "dark-content"} />
       <View style={styles.header}>
-        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", height: 40, marginBottom: 16 }}>
-          <Pressable onPress={toggleTheme} style={[styles.backButton, { width: 36, height: 36, borderRadius: 18, paddingHorizontal: 0 }]}>
-             <Ionicons name={themeType === AppThemeMode.DARK ? "sunny-outline" : "moon-outline"} size={18} color={theme.colors.secondary} />
-          </Pressable>
+        <View style={{ flexDirection: "row", justifyContent: "flex-end", alignItems: "center", gap: 10, height: 40, marginBottom: 16 }}>
+          <ThemeToggleButton />
           <LogoutButton onLogout={handleLogout} />
         </View>
         <Text style={styles.title}>{UI_TEXT.headerTitle}</Text>
@@ -173,25 +172,25 @@ export function HomeScreen() {
 
         <Pressable onPress={navigate.bind(null, AppScreen.SUBSCRIPTION_LIST)} style={[styles.summary, { padding: cardPadding, marginBottom: s(16), overflow: 'hidden', minHeight: cardMinHeight }]}>
           <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center', opacity: 0.08 }}>
-            <Ionicons name="ticket-outline" size={isNarrow ? 140 : actionIconSizeLarge} color={theme.colors.white} />
+            <Ionicons name="ticket-outline" size={isNarrow ? 120 : actionIconSizeLarge} color={theme.colors.white} />
           </View>
 
           <View style={{ flex: 1, justifyContent: 'center' }}>
-            {!!seasonName && <Text style={[styles.summaryLabel, { marginBottom: isNarrow ? 10 : s(16), color: theme.colors.secondary, fontSize: isNarrow ? 9 : s(11) }]}>{seasonName}</Text>}
+            {!!seasonName && <Text style={[styles.summaryLabel, { marginBottom: isNarrow ? 6 : s(8), color: theme.colors.secondary, fontSize: isNarrow ? 9 : s(11) }]}>{seasonName}</Text>}
 
             <View style={{ gap: rowGap }}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: s(12), flexWrap: 'wrap' }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: s(8), flexWrap: 'nowrap' }}>
                 <Text style={[styles.summaryLabel, { fontSize: labelFontSize }]}>{UI_TEXT.activePasses}:</Text>
-                <Text style={[styles.summaryNumber, { fontSize: mainFontSize, marginTop: 0, lineHeight: mainFontSize + 4 }]}>{subscriptions.length}</Text>
+                <Text style={[styles.summaryNumber, { fontSize: mainFontSize, marginTop: 0, lineHeight: mainFontSize + 2 }]}>{subscriptions.length}</Text>
               </View>
 
-              <View style={{ flexDirection: "row", alignItems: "center", gap: s(12), flexWrap: 'wrap' }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: s(8), flexWrap: 'nowrap' }}>
                 <Text style={[styles.summaryLabel, { opacity: 0.8, fontSize: labelFontSize }]}>{UI_TEXT.totalPeopleLabel}:</Text>
-                <Text style={[styles.summaryNumber, { fontSize: secondaryFontSize, marginTop: 0, lineHeight: secondaryFontSize + 4 }]}>
+                <Text style={[styles.summaryNumber, { fontSize: secondaryFontSize, marginTop: 0, lineHeight: secondaryFontSize + 2 }]}>
                   {totalPeople}
                 </Text>
                 {kidsEnabled && (
-                  <Text style={{ fontSize: labelFontSize, color: theme.colors.white, opacity: 0.7, fontWeight: '700', marginLeft: s(-4) }}>
+                  <Text style={{ fontSize: labelFontSize, color: theme.colors.white, opacity: 0.8, fontWeight: '700' }}>
                     {UI_TEXT.openParen}
                     {summaryCounts.adults}{UI_TEXT.space}{summaryCounts.adults === 1 ? UI_TEXT.adult : UI_TEXT.adults}
                     {UI_TEXT.plus}
@@ -202,21 +201,21 @@ export function HomeScreen() {
               </View>
 
               {guestEnabled && (
-                <View style={{ flexDirection: "row", alignItems: "center", gap: s(12), flexWrap: 'wrap' }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: s(8), flexWrap: 'nowrap' }}>
                   <Text style={[styles.summaryLabel, { opacity: 0.8, fontSize: labelFontSize }]}>{UI_TEXT.totalGuests}{UI_TEXT.colon}</Text>
-                  <Text style={[styles.summaryNumber, { fontSize: secondaryFontSize, marginTop: 0, lineHeight: secondaryFontSize + 4 }]}>
+                  <Text style={[styles.summaryNumber, { fontSize: secondaryFontSize, marginTop: 0, lineHeight: secondaryFontSize + 2 }]}>
                     {guestSummary.seasonTotal}
                   </Text>
                 </View>
               )}
 
-              <View style={{ flexDirection: "row", alignItems: "center", gap: s(12), flexWrap: 'wrap' }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: s(6), flexWrap: 'nowrap' }}>
                 <Text style={[styles.summaryLabel, { opacity: 0.8, fontSize: labelFontSize }]}>{UI_TEXT.totalPlates.toUpperCase()}:</Text>
-                <Text style={[styles.summaryNumber, { fontSize: secondaryFontSize, marginTop: 0, lineHeight: secondaryFontSize + 4 }]}>
+                <Text style={[styles.summaryNumber, { fontSize: secondaryFontSize, marginTop: 0, lineHeight: secondaryFontSize + 2 }]}>
                   {summaryCounts.totalPlates}
                 </Text>
                 {isVegEnabledGlobally && isNonVegEnabledGlobally && (
-                  <Text style={{ fontSize: labelFontSize, color: theme.colors.white, opacity: 0.7, fontWeight: '700', marginLeft: s(-4) }}>
+                  <Text style={{ fontSize: labelFontSize, color: theme.colors.white, opacity: 0.8, fontWeight: '700' }}>
                     {UI_TEXT.openParen}
                     {summaryCounts.vegPlates}{UI_TEXT.space}{UI_TEXT.vegLabel}
                     {UI_TEXT.pipe}
@@ -227,9 +226,9 @@ export function HomeScreen() {
               </View>
 
               {paymentConfig?.enabled && (
-                <View style={{ flexDirection: "row", alignItems: "center", gap: s(12), flexWrap: 'wrap' }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: s(8), flexWrap: 'nowrap' }}>
                   <Text style={[styles.summaryLabel, { opacity: 0.8, fontSize: labelFontSize }]}>{UI_TEXT.totalCollection}{UI_TEXT.colon}</Text>
-                  <Text style={[styles.summaryNumber, { fontSize: secondaryFontSize, marginTop: 0, lineHeight: secondaryFontSize + 4 }]}>{UI_TEXT.rs}{UI_TEXT.space}{collections.total.toLocaleString()}</Text>
+                  <Text style={[styles.summaryNumber, { fontSize: secondaryFontSize, marginTop: 0, lineHeight: secondaryFontSize + 2 }]}>{UI_TEXT.rs}{UI_TEXT.space}{collections.total.toLocaleString()}</Text>
                 </View>
               )}
             </View>
@@ -239,7 +238,7 @@ export function HomeScreen() {
             {currentMealInfo ? (
               <Pressable
                 onPress={() => navigate(AppScreen.DASHBOARD)}
-                style={{ flexDirection: "row", alignItems: "center", gap: s(4), backgroundColor: theme.colors.white + "33", paddingHorizontal: isNarrow ? 8 : s(10), paddingVertical: s(5), borderRadius: s(8) }}
+                style={{ flexDirection: "row", alignItems: "center", gap: s(4), backgroundColor: theme.colors.white + "33", paddingHorizontal: isNarrow ? 6 : s(8), paddingVertical: s(4), borderRadius: s(6) }}
               >
                 <View style={{ width: s(5), height: s(5), borderRadius: s(2.5), backgroundColor: theme.colors.success }} />
                 <Text style={{ fontSize: isNarrow ? 9 : s(10), fontWeight: "900", color: theme.colors.white }}>

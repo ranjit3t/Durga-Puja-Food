@@ -68,6 +68,22 @@ The application follows a **Serverless Layered Architecture** built on the **Exp
 - Compact 36px CounterInput buttons (`width: 36`) and flexbox shrink protection prevent input boxes or plus buttons from overflowing or hiding on Web viewports.
 - Adaptive 2-column to 1-column layout stacking for narrow viewports (`width < 360px`).
 
+### K. Refined Day-Wise Analytics, Complete / Planned View Modes & Current Meal Auto-Focus (`ReportScreen.tsx`, `DayWiseReport.tsx`, `SingleMealReport.tsx`)
+- **Day & Meal Filters Integration**: Refined `ReportType.DAY` in `ReportScreen.tsx` to display interactive Day Selector and Meal Selector filters, providing seamless day & meal isolation similar to Split Report (`ReportType.SINGLE`).
+- **Interactive Complete / Planned View Mode Toggle**: Added `viewMode` ("complete" | "planned") toggle bar to `DayWiseReport.tsx` and `SingleMealReport.tsx`.
+  - **`Complete View`**: Renders complete operational metrics (Demand Split, Meal Served, Awaiting Service / Not Taken, and Parcels Served).
+  - **`Planned View`**: Renders detailed subscribed preparation counts in individual stat boxes (`Resident Members`, `Kids`, `Guests`, `Parcels`) without served/taken clutter.
+- **Active Current Meal Auto-Focus**: On `ReportScreen` mount (`useEffect`) and tab switch (`onSetReportType`), detects if any active meal is enabled (`isMealCurrent` & `isMealEnabled`). Automatically sets `selectedDayId` and `selectedMealType` to focus that active meal and triggers `scrollTo({ x: dayOffsets.current[selectedDayId] - s(20) })` to center the active day card in the horizontal filter bar.
+- **Lazy Data Hook Optimization**: Updated `useReportData.ts` so `mealWiseData` is computed when `activeReportType === ReportType.DAY`.
+
+### L. Partial & Parcel Checkout Alerts with Initial-Load Snapshot Locking (`QuickCheckoutModal.tsx`, `SubscriptionForm.tsx`)
+- **Automated Partial Pickup & Parcel Alerts**: Evaluates `totalFoodAlreadyServed` and `parcelMax` when opening checkout or pass edit views. Renders stacked Animated `opacityAnim` pulsating warning banners (Parcel Pickup Alert on top, Partial Checkout Alert below).
+- **Initial Load Snapshot Locking**: Captures initial pickup state on screen/modal open (`initialPartialInfo`, `initialParcelInfo`, `parcelAlertFiredRef`), guaranteeing alerts fire strictly upon initial load and never re-trigger or flash during active form edits or checkout submission.
+
+### M. Pass Directory Auto-Deselect Stale Filters & Fallback (`SubscriptionListScreen.tsx`)
+- **Auto-Deselect 0-Selection Filters**: Reactive `useEffect` monitors filter counts and deselects stale filters whose match count drops to `0` (e.g. `FilterMode.MISSED` when all missed meals are checked out).
+- **Default `ALL` Fallback**: If deselecting a stale filter leaves no active filters remaining, it automatically falls back to `FilterMode.ALL`; if other active filters exist, it preserves them as is.
+
 ---
 
 ## 3. Database Security & Indexing Configuration (`database.rules.json`)

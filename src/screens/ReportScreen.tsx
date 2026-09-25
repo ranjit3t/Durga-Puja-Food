@@ -24,6 +24,7 @@ import { ReportType, MealType, AppScreen, UserRole, ActivityModule, ActivityActi
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
+import { ThemeToggleButton } from "../components/common/ThemeToggleButton";
 import { ActionLabel } from "../components/common/ActionLabel";
 
 // Modular Report Components
@@ -88,7 +89,7 @@ export function ReportScreen() {
 
   const onSetReportType = (type: ReportType) => {
     setReportType(type);
-    if (type === ReportType.NOT_TAKEN || type === ReportType.KIDS_MEAL || type === ReportType.PARCEL) {
+    if (type === ReportType.DAY || type === ReportType.SINGLE || type === ReportType.NOT_TAKEN || type === ReportType.KIDS_MEAL || type === ReportType.PARCEL) {
       const active = activeDays;
       for (const dId of active) {
         for (const mType of [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER]) {
@@ -102,12 +103,26 @@ export function ReportScreen() {
     }
   };
 
-  // Ensure selected day is valid if config changes
+  // Ensure selected day is valid and focuses current active meal if available
   React.useEffect(() => {
-    if (activeDays.length > 0 && (!selectedDayId || !activeDays.includes(selectedDayId))) {
-      onSetSelectedDayId(activeDays[0]);
+    if (activeDays.length > 0) {
+      let foundCurrent = false;
+      for (const dId of activeDays) {
+        for (const mType of [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER]) {
+          if (isMealCurrent(dId, mType, dayConfig) && isMealEnabled(dId, mType, dayConfig)) {
+            onSetSelectedDayId(dId);
+            onSetSelectedMealType(mType);
+            foundCurrent = true;
+            break;
+          }
+        }
+        if (foundCurrent) break;
+      }
+      if (!foundCurrent && (!selectedDayId || !activeDays.includes(selectedDayId))) {
+        onSetSelectedDayId(activeDays[0]);
+      }
     }
-  }, [activeDays, selectedDayId, onSetSelectedDayId]);
+  }, [activeDays, dayConfig, onSetSelectedDayId, onSetSelectedMealType]);
 
   // Ensure selected meal is valid for the selected day
   React.useEffect(() => {
@@ -178,15 +193,47 @@ export function ReportScreen() {
             <BackButton onPress={goBack} />
             <HomeButton onPress={() => navigate(AppScreen.HOME)} />
           </View>
-          <LogoutButton onLogout={handleLogout} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <ThemeToggleButton />
+            <LogoutButton onLogout={handleLogout} />
+          </View>
         </View>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Pressable onPress={handleShare} style={{ padding: 8 }}>
-            <Ionicons name={Platform.OS === 'web' ? "download-outline" : "share-social-outline"} size={24} color={theme.colors.primary} />
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+          <View style={{ flex: 1, minWidth: 160 }}>
+            <Text style={styles.title}>{UI_TEXT.reportTitle}</Text>
+            <Text style={styles.subtitle}>{UI_TEXT.reportSubtitle}</Text>
+          </View>
+          <Pressable
+            onPress={handleShare}
+            style={({ pressed }) => [
+              {
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 6,
+                backgroundColor: theme.colors.primary,
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+                borderRadius: 12,
+                elevation: 2,
+                shadowColor: theme.colors.primary,
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.2,
+                shadowRadius: 4,
+                alignSelf: 'flex-start',
+              },
+              pressed && { opacity: 0.8 }
+            ]}
+          >
+            <Ionicons
+              name={Platform.OS === 'web' ? "download-outline" : "share-social-outline"}
+              size={18}
+              color={theme.colors.white}
+            />
+            <Text style={{ color: theme.colors.white, fontWeight: '800', fontSize: 13 }}>
+              {Platform.OS === 'web' ? UI_TEXT.downloadReport : UI_TEXT.shareReport}
+            </Text>
           </Pressable>
         </View>
-        <Text style={styles.title}>{UI_TEXT.reportTitle}</Text>
-        <Text style={styles.subtitle}>{UI_TEXT.reportSubtitle}</Text>
       </View>
 
       <View style={[styles.maxWidthWrapper, { marginTop: 12 }]}>
@@ -241,7 +288,7 @@ export function ReportScreen() {
         style={{ flex: 1, width: "100%" }}
         contentContainerStyle={[styles.content, { paddingTop: 0 }]}
       >
-        {(reportType === ReportType.SINGLE || reportType === ReportType.NOT_TAKEN || reportType === ReportType.KIDS_MEAL || reportType === ReportType.PARCEL) && (
+        {(reportType === ReportType.DAY || reportType === ReportType.SINGLE || reportType === ReportType.NOT_TAKEN || reportType === ReportType.KIDS_MEAL || reportType === ReportType.PARCEL) && (
           <View style={[styles.card, { marginBottom: 24, marginTop: 10 }]}>
             <Text style={[styles.sectionTitle, { fontSize: 16, marginBottom: 12 }]}>{UI_TEXT.reportFilters}</Text>
 
@@ -359,8 +406,12 @@ export function ReportScreen() {
           {reportType === ReportType.DAY && (
             <DayWiseReport
               data={dayWiseData}
+              selectedDayId={selectedDayId}
+              selectedMealType={selectedMealType}
+              mealWiseData={mealWiseData}
               dayConfig={dayConfig}
               kidsEnabled={!!kidsEnabled}
+              guestEnabled={guestEnabled}
             />
           )}
 

@@ -158,7 +158,7 @@ export function useReportData(
 
   // 2. Meal-Wise Report Calculation (Lazy targeted if activeReportType is MEAL, PARCEL, or SINGLE)
   const mealWiseData = useMemo(() => {
-    if (activeReportType && activeReportType !== ReportType.MEAL && activeReportType !== ReportType.PARCEL && activeReportType !== ReportType.SINGLE) {
+    if (activeReportType && activeReportType !== ReportType.MEAL && activeReportType !== ReportType.PARCEL && activeReportType !== ReportType.SINGLE && activeReportType !== ReportType.DAY) {
       return [];
     }
     return sortedActiveDays.map((day) => {

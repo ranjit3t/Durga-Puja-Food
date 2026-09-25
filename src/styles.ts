@@ -39,7 +39,7 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
   // Vertical compact factor for web to help fit content in viewport
   const v = (size: number) => isWeb ? Math.round(size * (isDesktop ? 0.85 : 0.9)) : size;
 
-  const MAX_WIDTH = isWeb ? undefined : 600;
+  const MAX_WIDTH = isWeb ? (isDesktop ? 1000 : (isLargeScreen ? 800 : 600)) : 600;
 
   const maxWidthStyle = {
     width: "100%" as any,
@@ -66,7 +66,7 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
       width: s(500),
       height: s(500),
       borderRadius: s(250),
-      backgroundColor: theme?.cardColors[1].accent + (theme?.themeType === AppThemeMode.DARK ? "2E" : "3D"),
+      backgroundColor: theme?.cardColors[0].accent + (theme?.themeType === AppThemeMode.DARK ? "0B" : "10"),
       pointerEvents: "none" as any,
     },
     bgBlob2: {
@@ -76,7 +76,7 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
       width: s(460),
       height: s(460),
       borderRadius: s(230),
-      backgroundColor: theme?.cardColors[3].accent + (theme?.themeType === AppThemeMode.DARK ? "33" : "42"),
+      backgroundColor: theme?.cardColors[1].accent + (theme?.themeType === AppThemeMode.DARK ? "0B" : "10"),
       pointerEvents: "none" as any,
     },
     bgBlob3: {
@@ -86,7 +86,7 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
       width: s(390),
       height: s(390),
       borderRadius: s(195),
-      backgroundColor: theme?.cardColors[0].accent + (theme?.themeType === AppThemeMode.DARK ? "2E" : "3D"),
+      backgroundColor: theme?.cardColors[2].accent + (theme?.themeType === AppThemeMode.DARK ? "08" : "0D"),
       pointerEvents: "none" as any,
     },
     bgBlob4: {
@@ -96,7 +96,7 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
       width: s(410),
       height: s(410),
       borderRadius: s(205),
-      backgroundColor: theme?.cardColors[4].accent + (theme?.themeType === AppThemeMode.DARK ? "33" : "40"),
+      backgroundColor: theme?.cardColors[3].accent + (theme?.themeType === AppThemeMode.DARK ? "08" : "0D"),
       pointerEvents: "none" as any,
     },
     bgBlob5: {
@@ -106,7 +106,7 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
       width: s(500),
       height: s(500),
       borderRadius: s(250),
-      backgroundColor: theme?.cardColors[3].accent + (theme?.themeType === AppThemeMode.DARK ? "29" : "3D"),
+      backgroundColor: theme?.cardColors[4].accent + (theme?.themeType === AppThemeMode.DARK ? "0A" : "0F"),
       pointerEvents: "none" as any,
     },
     bgBlob6: {
@@ -116,7 +116,7 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
       width: s(480),
       height: s(480),
       borderRadius: s(240),
-      backgroundColor: theme?.cardColors[1].accent + (theme?.themeType === AppThemeMode.DARK ? "33" : "40"),
+      backgroundColor: theme?.cardColors[0].accent + (theme?.themeType === AppThemeMode.DARK ? "0B" : "10"),
       pointerEvents: "none" as any,
     },
     bgBlobWeb1: {
@@ -126,7 +126,7 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
       width: isWeb ? s(600) : 0,
       height: isWeb ? s(600) : 0,
       borderRadius: isWeb ? s(300) : 0,
-      backgroundColor: theme?.cardColors[3].accent + (theme?.themeType === AppThemeMode.DARK ? "1F" : "29"),
+      backgroundColor: theme?.cardColors[1].accent + (theme?.themeType === AppThemeMode.DARK ? "08" : "0C"),
       pointerEvents: "none" as any,
       opacity: isWeb ? 1 : 0,
     },
@@ -137,7 +137,7 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
       width: isWeb ? s(550) : 0,
       height: isWeb ? s(550) : 0,
       borderRadius: isWeb ? s(275) : 0,
-      backgroundColor: theme?.cardColors[0].accent + (theme?.themeType === AppThemeMode.DARK ? "1F" : "29"),
+      backgroundColor: theme?.cardColors[0].accent + (theme?.themeType === AppThemeMode.DARK ? "08" : "0C"),
       pointerEvents: "none" as any,
       opacity: isWeb ? 1 : 0,
     },
@@ -148,7 +148,7 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
       width: isWeb ? s(700) : 0,
       height: isWeb ? s(700) : 0,
       borderRadius: isWeb ? s(350) : 0,
-      backgroundColor: theme?.cardColors[4].accent + (theme?.themeType === AppThemeMode.DARK ? "24" : "2E"),
+      backgroundColor: theme?.cardColors[2].accent + (theme?.themeType === AppThemeMode.DARK ? "0A" : "0E"),
       pointerEvents: "none" as any,
       opacity: isWeb ? 1 : 0,
     },
@@ -174,7 +174,6 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
       borderBottomWidth: 1,
       borderBottomColor: COLORS.border,
       ...maxWidthStyle,
-      width: (isWeb ? "100%" : maxWidthStyle.width) as any,
     },
     title: {
       color: COLORS.textPrimary,
@@ -204,7 +203,6 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
       padding: s(SIZES.paddingMedium),
       paddingBottom: v(150),
       ...maxWidthStyle,
-      width: (isWeb ? "100%" : maxWidthStyle.width) as any,
     },
 
     // Fixed width wrapper for elements outside scrollviews/flatlists

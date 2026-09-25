@@ -27,6 +27,7 @@ import {
   UserRole,
   AppThemeMode,
   AppScreen,
+  GuestCheckoutSource,
 } from "../../types";
 import {
   isDietaryEnabledForDay,
@@ -171,6 +172,32 @@ export function QuickGuestModal({
             contentContainerStyle={{ gap: 8 }}
             keyboardShouldPersistTaps="handled"
           >
+            {/* Top Modal Header Title & Close Button */}
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+              <Text style={{ fontSize: 18, fontWeight: "900", color: theme.colors.textPrimary }}>
+                {UI_TEXT.guestCheckout}
+              </Text>
+              <Pressable
+                onPress={onClose}
+                accessibilityLabel={UI_TEXT.close}
+                style={({ pressed }) => [
+                  {
+                    width: 32,
+                    height: 32,
+                    borderRadius: 16,
+                    backgroundColor: theme.colors.surfaceDark,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    borderWidth: 1,
+                    borderColor: theme.colors.border,
+                  },
+                  pressed && { opacity: 0.7 }
+                ]}
+              >
+                <Ionicons name="close" size={20} color={theme.colors.textSecondary} />
+              </Pressable>
+            </View>
+
             {/* Section 1: Combined Red Festive Header & Summary Card */}
             <View style={{
               padding: 12,
@@ -239,7 +266,7 @@ export function QuickGuestModal({
                         value={guestVeg}
                         min={guestVegTaken}
                         disabled={!isMealEditableForAdmin}
-                        onChange={(val) => updateGuestCountDebounced(dayId, mealType, "guestVeg", val)}
+                        onChange={(val) => updateGuestCountDebounced(dayId, mealType, "guestVeg", val, GuestCheckoutSource.GUEST_MODAL)}
                       />
                     </View>
                     <View style={{ flex: 1, minWidth: 0 }}>
@@ -249,7 +276,7 @@ export function QuickGuestModal({
                         min={0}
                         max={guestVeg}
                         disabled={isServedDisabled}
-                        onChange={(val) => updateGuestCountDebounced(dayId, mealType, "guestVegTaken", val)}
+                        onChange={(val) => updateGuestCountDebounced(dayId, mealType, "guestVegTaken", val, GuestCheckoutSource.GUEST_MODAL)}
                       />
                     </View>
                   </View>
@@ -262,7 +289,7 @@ export function QuickGuestModal({
                         value={guestNonVeg}
                         min={guestNonVegTaken}
                         disabled={!isMealEditableForAdmin}
-                        onChange={(val) => updateGuestCountDebounced(dayId, mealType, "guestNonVeg", val)}
+                        onChange={(val) => updateGuestCountDebounced(dayId, mealType, "guestNonVeg", val, GuestCheckoutSource.GUEST_MODAL)}
                       />
                     </View>
                     <View style={{ flex: 1, minWidth: 0 }}>
@@ -272,7 +299,7 @@ export function QuickGuestModal({
                         min={0}
                         max={guestNonVeg}
                         disabled={isServedDisabled}
-                        onChange={(val) => updateGuestCountDebounced(dayId, mealType, "guestNonVegTaken", val)}
+                        onChange={(val) => updateGuestCountDebounced(dayId, mealType, "guestNonVegTaken", val, GuestCheckoutSource.GUEST_MODAL)}
                       />
                     </View>
                   </View>
@@ -285,7 +312,7 @@ export function QuickGuestModal({
                       value={guestTotal}
                       min={guestTaken}
                       disabled={!isMealEditableForAdmin}
-                      onChange={(val) => updateGuestCountDebounced(dayId, mealType, singleFieldPlanned, val)}
+                      onChange={(val) => updateGuestCountDebounced(dayId, mealType, singleFieldPlanned, val, GuestCheckoutSource.GUEST_MODAL)}
                     />
                   </View>
                   <View style={{ flex: 1, minWidth: 0 }}>
@@ -295,7 +322,7 @@ export function QuickGuestModal({
                       min={0}
                       max={guestTotal}
                       disabled={isServedDisabled}
-                      onChange={(val) => updateGuestCountDebounced(dayId, mealType, singleFieldTaken, val)}
+                      onChange={(val) => updateGuestCountDebounced(dayId, mealType, singleFieldTaken, val, GuestCheckoutSource.GUEST_MODAL)}
                     />
                   </View>
                 </View>

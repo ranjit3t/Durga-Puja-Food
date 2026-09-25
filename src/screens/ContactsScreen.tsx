@@ -21,6 +21,7 @@ import { AppScreen, ActivityModule, ActivityAction, AppThemeMode, SubscriptionRe
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
+import { ThemeToggleButton } from "../components/common/ThemeToggleButton";
 
 import { useAuth } from "../context/AuthContext";
 import { useDatabase } from "../context/DatabaseContext";
@@ -193,7 +194,10 @@ export function ContactsScreen() {
             <BackButton onPress={goBack} />
             <HomeButton onPress={() => navigate(AppScreen.HOME)} />
           </View>
-          <LogoutButton onLogout={handleLogout} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <ThemeToggleButton />
+            <LogoutButton onLogout={handleLogout} />
+          </View>
         </View>
         <Text style={styles.title}>{UI_TEXT.contacts}</Text>
         <Text style={styles.subtitle}>{UI_TEXT.contactsSubtitle}</Text>

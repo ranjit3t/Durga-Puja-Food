@@ -1,6 +1,6 @@
-# Eternia Food Desk — System Architecture & Technical Documentation
+# FestiveDesk Operations — System Architecture & Technical Documentation
 
-A high-performance Expo React Native & Web application designed for event administrators and volunteers to manage festival subscriptions, daily menus, meal distribution, quick meal checkouts, guest plate management, and real-time kitchen analytics during large scale community festivals like **Durga Puja**.
+A high-performance Expo React Native & Web application designed for festival committees, administrators, and volunteers to manage resident pass subscriptions, daily gourmet menus, meal distribution, quick meal checkouts, guest plate tracking, OCR payment verification, and real-time kitchen analytics during large scale community festivals like **Durga Puja**.
 
 ---
 
@@ -11,7 +11,7 @@ The application follows a decoupled, context-driven component architecture with 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
 │                          React Native / Expo UI                        │
-│  (Screens, Components, Theme Engine, Dual-Axis Viewport Scaling)      │
+│  (Screens, Components, Festive Royal Theme Engine, Responsive Breakpoints)│
 └───────────────────────────────────┬────────────────────────────────────┘
                                     │
 ┌───────────────────────────────────▼────────────────────────────────────┐
@@ -51,53 +51,82 @@ The application follows a decoupled, context-driven component architecture with 
 
 ---
 
+## 🎨 Theme Engine & Design System
+
+### 1. Festive Royal Theme Palette
+- **Primary Festive Accent**: Royal Festive Crimson Red (`#C41E3A` light / `#FB7185` dark).
+- **Secondary Accent**: Warm Satin Gold (`#D4AF37` light / `#FBBF24` dark).
+- **Light Theme Canvas**: Soft Ivory Cream (`#FAFAFA`) with crisp surface overlays (`#FFFFFF`).
+- **Dark Theme Canvas**: Obsidian Slate (`#0F172A`) with elevated slate surface tiles (`#1E293B`).
+- **Standardized Dietary Indicators**: FSSAI standard Emerald Green (`#10B981`) for Vegetarian and Crimson Red (`#EF4444`) for Non-Vegetarian.
+
+### 2. Universal Theme Toggle Button (`ThemeToggleButton.tsx`)
+- Integrated in the top-right header control bar alongside `LogoutButton` on **every screen** across the app (`HomeScreen`, `LoginScreen`, `SubscriptionListScreen`, `ViewMenuScreen`, `GuestManagementScreen`, `ReportScreen`, `DashboardScreen`, `SubscriptionForm`, `DetailsScreen`, `SettingsScreen`, `ActivityLogScreen`, `NotesScreen`, `ContactsScreen`, `QrScreen`).
+- **Camera Viewfinder Exclusion**: Intentionally excluded from camera screens (`ScannerScreen` and `PaymentScannerModal`) to keep dark camera viewfinders undisturbed.
+
+---
+
 ## ⚡ High-Scale Real-Time & Performance Architecture
 
-### 1. Universal Real-Time WebSocket Delta Engine
-- **Zero 10-Second Polling**: Legacy polling (`setInterval`) is replaced with native Firebase WebSocket push listeners (`onChildAdded`, `onChildChanged`, `onChildRemoved`, `onValue`).
+### 1. Dashboard Icon-Only 3-Way View Mode Action Bar
+Each meal card section on the Analytics & Kitchen Operations Dashboard ([`DashboardScreen.tsx`](file:///D:/Code/Durga-Puja-Food/src/screens/DashboardScreen.tsx)) features an icon-only action bar with 4 sleek 36px circular buttons:
+- **`Grid View`** ([`grid-outline`](file:///D:/Code/Durga-Puja-Food/src/components/dashboard/MealMetricGrid.tsx)): Standard view showing Planned, Served & Pending metrics.
+- **`Planned-Only View`** ([`clipboard-outline`](file:///D:/Code/Durga-Puja-Food/src/components/dashboard/MealMetricGrid.tsx)): Kitchen-focused view displaying **ONLY Subscribed/Planned demand counts** without clutter from served numbers.
+- **`Chart View`** ([`bar-chart-outline`](file:///D:/Code/Durga-Puja-Food/src/components/dashboard/MealBarChart.tsx)): Visual bar chart progress view.
+- **`WhatsApp Share`** ([`logo-whatsapp`](file:///D:/Code/Durga-Puja-Food/src/screens/DashboardScreen.tsx)): 1-tap card snapshot sharing in green accent.
+
+### 2. Multi-Source Quick Checkout Origin Tracking (`CheckoutSource`)
+Quick Checkout can be triggered from 3 distinct application entry points, tracked via `CheckoutSource` enum:
+- **`QR Scanner`** ([`ScannerScreen.tsx`](file:///D:/Code/Durga-Puja-Food/src/screens/ScannerScreen.tsx)): Live camera QR scan or 4-digit passcode entry.
+- **`Pass Details`** ([`DetailsScreen.tsx`](file:///D:/Code/Durga-Puja-Food/src/screens/DetailsScreen.tsx)): Triggered from the pass inspection view.
+- **`Pass Directory`** ([`SubscriptionListScreen.tsx`](file:///D:/Code/Durga-Puja-Food/src/screens/SubscriptionListScreen.tsx)): Interactive red missed meal badge tap.
+
+**Audit Log Origin Badges (`ActivityLogScreen.tsx`)**:
+Every quick checkout entry in the Activity Audit Log automatically displays a distinct origin tag badge (`[ 📷 QR SCANNER ]`, `[ 💳 PASS DETAILS ]`, or `[ 📜 PASS DIRECTORY ]`) in the card header.
+
+### 3. Guest Checkout Origin Tracking (`GuestCheckoutSource`)
+Guest plate updates and served counts track their origin source via `GuestCheckoutSource` enum:
+- **`Quick Guest Modal`** ([`QuickGuestModal.tsx`](file:///D:/Code/Durga-Puja-Food/src/components/common/QuickGuestModal.tsx)): Triggered from Home or Dashboard quick launch.
+- **`Guest Desk Screen`** ([`GuestManagementScreen.tsx`](file:///D:/Code/Durga-Puja-Food/src/screens/GuestManagementScreen.tsx)): Managed from the counter guest desk.
+
+**Audit Log Guest Origin Badges**:
+Displays `[ 👥 QUICK GUEST MODAL ]` or `[ 💻 GUEST DESK SCREEN ]` origin badges in the Activity Audit Log stream.
+
+### 4. Clickable Missed Meal Badge Checkout
+- On the Pass Directory screen ([`SubscriptionListScreen.tsx`](file:///D:/Code/Durga-Puja-Food/src/screens/SubscriptionListScreen.tsx)), tapping the red missed meal counter badge directly triggers the **Quick Checkout Modal** for that pass via `e.stopPropagation()`.
+
+### 5. Widescreen Breakpoint Scaling (`MAX_WIDTH`) & Overflow Protection
+- **Adaptive Max Widths**: `MAX_WIDTH` scales dynamically across viewports (`1000px` for Desktop Web, `800px` for Tablet, `600px` for Mobile Web) in [`styles.ts`](file:///D:/Code/Durga-Puja-Food/src/styles.ts).
+- **Flexbox Shrink Protection**: `Switch` controls, action buttons, and header titles use `flex: 1`, `minWidth`, and `flexShrink: 0` rules to prevent layout overflow or text clipping on narrow viewports or large fonts.
+
+### 6. Universal Real-Time WebSocket Delta Engine
+- **Zero Polling**: Firebase WebSocket push listeners (`onChildAdded`, `onChildChanged`, `onChildRemoved`, `onValue`).
 - **Sub-100ms Real-Time Propagation**: Check-ins, pass edits, deletes, new registrations, team notes, audit logs, and guest plate updates stream to all active devices in **<100ms**.
-- **99.99% Bandwidth Reduction**: Broadcasts tiny **~1.5 KB delta payloads** instead of re-downloading the full 25 MB database, saving over 360 GB of network data during a 2-hour meal window.
+- **99.99% Bandwidth Reduction**: Broadcasts tiny **~1.5 KB delta payloads** instead of re-downloading full database nodes.
 
-### 2. Atomic Multi-Path Checkouts & Anti-Duplicate Lock (`checkInPassAtomic`)
-- **100% Mathematical Duplicate Prevention**: Uses server-side atomic multi-path updates (`update(ref(db), multiPathUpdates)`) to lock meal status and increment kitchen metrics in a single transaction, preventing double-checkins across 20+ concurrent counters.
+### 7. Atomic Multi-Path Checkouts & Anti-Duplicate Lock (`checkInPassAtomic`)
+- **100% Duplicate Prevention**: Server-side atomic multi-path updates (`update(ref(db), multiPathUpdates)`) lock meal status and increment kitchen metrics in a single transaction.
 
-### 3. Built-in Client-Side Activity Summarization Engine
-- **Instant Local Summaries (0ms Execution)**: Features an **"ANALYZE"** button in `ActivityLogScreen.tsx`. Analyzes whatever activity log entries currently appear in the active filtered/searched list (`filteredLogs`) in **0ms** without external API keys or cloud dependencies.
-- **Scrollable Activity Summary Modal**: Displays a structured operational report (Total Events, Active User Roster, Per-Module Operations Breakdown, Scanner/Meal Checkouts, and System Error Health Status) inside an adaptive, scrollable modal window (`maxWidth: Math.min(width * 0.94, 520)`, `maxHeight: "85%"`).
+### 8. Member Food Taken Date & Time Tracking
+- **Synchronized Batch Timestamps**: Checkouts assign a formatted timestamp string (`formatTakenTime()`, e.g. `"12 Oct, 1:15 PM"`) to all members served in that transaction.
+- **View Pass Time Badges (`DetailsScreen.tsx`)**: Displays member-level timestamps underneath service badges.
+- **Excel CSV Export Timestamps (`SubscriptionListScreen.tsx`)**: Directory exports include member-level meal taken date & time.
 
-### 4. Member Food Taken Date & Time Tracking
-- **Synchronized Batch Timestamps**: When members, kids, or parcels are checked out together in `QuickCheckoutModal.tsx`, a single formatted timestamp string (`formatTakenTime()`, e.g. `"12 Oct, 1:15 PM"`) is assigned to all members served in that transaction.
-- **View Pass Time Badges (`DetailsScreen.tsx`)**: In the Food Taken section, each member's taken meal badge prints the exact timestamp underneath the badge (`12 Oct, 1:15 PM`). Falls back seamlessly if no timestamp exists.
-- **Excel CSV Export Timestamps (`SubscriptionListScreen.tsx`)**: The subscription directory Excel CSV export includes member-level meal taken date & time (`P1: Parcel Taken (24 Sep, 12:28 PM)` or `P1: Food Taken (24 Sep, 12:28 PM)`).
+### 9. Refined Day-Wise Analytics, Complete/Planned View Switcher & Current Meal Auto-Focus
+- **Day & Meal Filter Selection ([`ReportScreen.tsx`](file:///D:/Code/Durga-Puja-Food/src/screens/ReportScreen.tsx))**: Refined the **Day Wise Report** (`ReportType.DAY`) to support interactive Day and Meal selection filters alongside Split Report (`ReportType.SINGLE`).
+- **Complete View vs. Planned View Mode Switcher ([`DayWiseReport.tsx`](file:///D:/Code/Durga-Puja-Food/src/components/report/DayWiseReport.tsx))**: Features an integrated `[ Complete View ]` / `[ Planned View ]` toggle bar.
+  - **`Complete View`**: Displays total kitchen demand, dietary split (veg/non-veg breakdown for adults, kids, guests), Meal Served, Awaiting Service / Not Taken, and Parcels Served.
+  - **`Planned View`**: Displays detailed subscribed preparation counts in individual stat boxes (`Resident Members`, `Kids`, `Guests`, `Parcels`) without served/taken clutter.
+- **Active Current Meal Auto-Focus & Smooth Scroll**: On screen navigation or tab selection, `ReportScreen` automatically detects if any meal is currently active and enabled (`isMealCurrent` & `isMealEnabled`). It focuses `selectedDayId` and `selectedMealType` on the current active meal and smoothly scrolls the horizontal day selector to highlight the active day card.
 
-### 5. Mid-Service Real-Time Meal Closure Auto-Alert & Redirect
-- **Sub-50ms Meal Completion Guardrail**: When an Admin marks a meal as `DONE` in settings or menu editor, `QuickCheckoutModal`, `QuickGuestModal`, and `ScannerScreen` (Quick Checkout Camera Mode) receive the update in **<50ms**.
-- **Localized Alert & Auto-Redirect**: Displays an alert driven by `UI_TEXT.currentMealClosedTitle` and `UI_TEXT.currentMealClosed` (`"Current meal is closed. Thank you!"`). Tapping **OK** automatically closes the modal/screen and redirects the volunteer to the **Home Screen** (`navigate(AppScreen.HOME)`).
-- **Isolated Camera Safety**: Standard camera scanner mode (`isQuickCheckout = false`) remains 100% unhampered and fully operational for general pass lookups, searches, and edits.
+### 10. Partial & Parcel Checkout Alerts with Initial-Load Snapshot Locking (`QuickCheckoutModal.tsx`, `SubscriptionForm.tsx`)
+- **Automated Partial Pickup & Parcel Alerts**: Automatically detects prior partial checkouts (`totalFoodAlreadyServed > 0` && `totalFoodRemaining < totalFoodRegistered`) and remaining takeaway parcels (`parcelMax > 0`) for the current meal slot.
+- **Pulsating Warning Alert Banners**: Displays 60 FPS animated pulsating warning banners at the top of the checkout modal with stacked ordering (Parcel Pickup Alert on top, Partial Checkout Alert below).
+- **Initial Load Snapshot Locking**: Captures initial pickup state on screen/modal open (`initialPartialInfo`, `initialParcelInfo`, `parcelAlertFiredRef`), preventing alerts from re-triggering or flashing during active data edits or checkout submissions.
 
-### 6. Adaptive Web & Responsive Modal Engine
-- **Browser Container Scaling**: Modals and checkout screens scale adaptively (`maxWidth: Math.min(width * 0.94, 500)`), providing generous spacing on Desktop Web browsers, laptops, and tablets.
-- **Compact Counter Inputs**: Compact 36px CounterInput buttons (`width: 36`) and flexbox shrink protection prevent text wrapping or button clipping on narrow viewports.
-
-### 7. Real-Time Activity Logs & Collaborative Notes Stream
-- **Newest Items First**: Connected directly to `activityLogs` and `notes` in `DatabaseContext`.
-- **Sub-50ms Top Insertion**: In default mode (newest first), incoming real-time logs and team notes automatically insert at **Index 0 (the very top of the list)**. Supports directional sort toggle (`arrow-up-outline` / `arrow-down-outline`).
-
-### 8. Pass Directory Sorting & Multi-Tag Filters
-- **Ascending / Descending Natural Sort**: Features an interactive sort direction toggle (`isAscending`) sorting by Block and Flat in natural alphanumeric order (`A-101` ➔ `Z-909` or `Z-909` ➔ `A-101`).
-- **Combined Filter Compatibility**: Sorting applies seamlessly across all search queries and active multi-tag filter pills (`All`, `Current Meal Subscribed`, `Current Meal Missed`, `Kids`, `Parcels`, `Veg Only`).
-
-### 9. Granular & Simultaneous Menu Updates
-- **Sub-50ms Menu Push**: Real-time `onValue(ref(db, "menu"))` listener broadcasts food items, prices, and guest counts across all screens.
-- **Collision-Free Leaf Updates**: Targeted leaf-node writes (`/menu/$dayId/$mealKey`) ensure that multiple administrators editing different meals or fields simultaneously do not overwrite each other.
-
-### 10. Pre-Aggregated Kitchen Metrics Node (`/metrics`)
-- **$O(1)$ Live Kitchen Analytics**: Kitchen staff and admins monitor live served/planned progress bars from pre-aggregated `/metrics` nodes without processing 10,000 pass records.
-
-### 11. Progressive Tiered App Boot (<300ms Initial Load)
-- **Tier 1 (Local Shell)**: App layout and user session render in **<200ms** from local storage.
-- **Tier 2 (Metadata & Metrics)**: Fetches `/config` and `/metrics` (~2 KB payload) in **<300ms**, fully populating dashboard summary cards immediately.
-- **Tier 3 (On-Demand & Paginated Lookups)**: Volunteer scanners perform indexed single-key pass lookups in **20ms**. Pass directories load in pages of 50 items (~75 KB).
+### 11. Pass Directory Auto-Deselect Stale Filters & Fallback (`SubscriptionListScreen.tsx`)
+- **Auto-Deselect 0-Selection Filters**: Reactive `useEffect` monitors active filter counts and deselects stale filters whose match count drops to `0` (e.g. `FilterMode.MISSED` when all missed meals are checked out).
+- **Default `ALL` Fallback**: If deselecting a stale filter leaves no active filters remaining, it automatically falls back to `FilterMode.ALL`; if other active filters exist, it preserves them as is.
 
 ---
 
@@ -106,7 +135,7 @@ The application follows a decoupled, context-driven component architecture with 
 ```
 src/
 ├── components/          # Modular UI Components
-│   ├── common/          # Action Label, Back Button, Home Button, CounterInput, Dropdowns, QuickCheckoutModal, QuickGuestModal
+│   ├── common/          # Action Label, Back Button, Home Button, CounterInput, Dropdowns, QuickCheckoutModal, QuickGuestModal, ThemeToggleButton
 │   ├── dashboard/       # Meal Bar Chart, Meal Metric Grid
 │   ├── menu/            # Meal Display, Meal Menu Editor, Summary Bar
 │   └── report/          # DayWise, MealWise, SingleMeal, Guest, Parcel, Pending, FlatWise, Payment, Kids
@@ -118,45 +147,32 @@ src/
 ├── hooks/               # Custom Utility Hooks
 │   └── useReportData.ts # Targeted Lazy Report Aggregation Engine
 ├── navigation/          # App Navigator Router & Screen Switcher
-├── theme/               # Modern Glassmorphic Design Token Engine
+├── theme/               # Royal Festive Design Token Engine (primary.ts & dark.ts)
 ├── utils/               # Helper Utility Modules
 │   └── ocrScanner.ts    # Dual ML Kit / Tesseract OCR Payment Extractor
-├── domain.ts            # Domain Data Models, KitchenMetrics & Type Contracts
+├── domain.ts            # Domain Data Models, Enums (CheckoutSource, GuestCheckoutSource) & Type Contracts
 ├── repository.ts        # Firebase RTDB API Operations, Atomic Writes & Real-Time Listeners
 ├── config.ts            # Default App Configuration & Festival Defaults
 ├── firebase.ts          # Firebase SDK Initialization
-├── strings.ts           # Centralized Dictionary for Localized UI Text (`UI_TEXT.currentMealClosedTitle` / `currentMealClosed` / `analyzeLogs`)
-├── styles.ts            # Global Responsive Scaling Engine (`s()` / `v()`) & Glassmorphism Styles
+├── strings.ts           # Centralized Dictionary for Localized UI Text (`UI_TEXT`)
+├── styles.ts            # Global Responsive Scaling Engine (`s()` / `v()`) & Widescreen Breakpoints
 └── screens/             # Top-Level Screen Views
-    ├── ActivityLogScreen.tsx     # Real-Time Audit Log Stream (Newest First at Top) with Activity Summary Engine
+    ├── ActivityLogScreen.tsx     # Real-Time Audit Log Stream with Origin Badges & Summary Engine
     ├── ContactsScreen.tsx        # Resident Directory with Direct WhatsApp/Call/SMS Actions
-    ├── DashboardScreen.tsx       # Live Real-Time Kitchen Counter Dashboard
-    ├── GuestManagementScreen.tsx # Counter Guest Demand Manager with Quick Guest Modal & Excel Export
-    ├── HomeScreen.tsx            # Main Operational Summary with Live WebSocket Updates
+    ├── DashboardScreen.tsx       # Live Real-Time Kitchen Counter Dashboard with Icon-Only Action Bar
+    ├── GuestManagementScreen.tsx # Counter Guest Demand Manager with Source Tracking & Excel Export
+    ├── HomeScreen.tsx            # Main Operational Summary with Compact Single-Line Stat Rows
     ├── LoginScreen.tsx           # Two-Phase Secured Database Login
     ├── MenuEditorScreen.tsx      # Daily Meal Menu & Pricing Editor
-    ├── NotesScreen.tsx           # Real-Time Collaborative Team Notes Stream (Newest First at Top)
+    ├── NotesScreen.tsx           # Real-Time Collaborative Team Notes Stream
     ├── QrScreen.tsx              # Digital Pass Generator with 4-Digit Passcode & WhatsApp Share
-    ├── ReportScreen.tsx          # Analytics Suite with Lazy Calculation & Theme-Aware Image Export
-    ├── ScannerScreen.tsx         # Memoized Camera Scanner & 4-Digit Keypad with Mid-Service Meal Closure Redirect
-    ├── SettingsScreen.tsx        # Festival Configuration & Safety Governance
-    ├── SubscriptionForm.tsx      # Pass Registration & Editing with OCR Payment Scanner & Safe Array Initialization
-    ├── SubscriptionListScreen.tsx# Pass Directory with Sort Toggle, Multi-Tag Filters & Excel Export
+    ├── ReportScreen.tsx          # Analytics Suite with Share Report Action & Theme-Aware Image Export
+    ├── ScannerScreen.tsx         # Memoized Camera Scanner & 4-Digit Keypad with Multi-Source Quick Checkout
+    ├── SettingsScreen.tsx        # Festival Configuration & Switch Overflow Protection
+    ├── SubscriptionForm.tsx      # Pass Registration & Editing with OCR Payment Scanner
+    ├── SubscriptionListScreen.tsx# Pass Directory with Clickable Missed Badge & Sort Toggle
     └── ViewMenuScreen.tsx        # Daily Food Menu Viewer
 ```
-
----
-
-## 🔐 Security, Roles & Database Rules
-
-1. **Database Security & Indexing Rules (`database.rules.json`)**:
-   - Configured `.indexOn: ["passcode", "block", "flat"]` on `subscriptions` node for $O(1)$ scanner lookups.
-   - Configured read/write rules for pre-aggregated `/metrics`.
-2. **Top-Level `appVersion` Auto-Check & Alert**:
-   - Verifies `remoteAppVersion` against `UI_TEXT.appVersion` on login and triggers instant update alerts.
-3. **Role-Based Access Control (RBAC)**:
-   - **Admin**: Full authority to manage passes, settings, menus, notes, activity logs, activity summaries, and exports.
-   - **Vendor**: Operational access to scan passes, check in meals, and view dashboards. Blocked from system settings and financial updates.
 
 ---
 
@@ -181,4 +197,4 @@ npx expo run:ios           # Native iOS build
 
 ---
 
-© 2026 Eternia Festival Committee — Food Desk Architecture Document
+© 2026 Eternia Festival Committee — FestiveDesk Operations Architecture Document

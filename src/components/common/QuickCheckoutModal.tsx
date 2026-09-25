@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
-import { View, Text, Pressable, StyleSheet, Platform, Modal, ScrollView, useWindowDimensions } from "react-native";
+import { View, Text, Pressable, StyleSheet, Platform, Modal, ScrollView, useWindowDimensions, Animated } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useStyles } from "../../styles";
 import { useAppTheme } from "../../theme";
@@ -8,7 +8,7 @@ import { CounterInput } from "./CounterInput";
 import { useDatabase } from "../../context/DatabaseContext";
 import { useUI } from "../../context/UIContext";
 import { useAppNavigation } from "../../context/NavigationContext";
-import { Subscription, MealType, DietaryOption, ActivityModule, ActivityAction, AppThemeMode, AppScreen, TakenState } from "../../types";
+import { Subscription, MealType, DietaryOption, ActivityModule, ActivityAction, AppThemeMode, AppScreen, TakenState, CheckoutSource } from "../../types";
 import { isParcelEnabled, isMealCurrent, isMealDone, getMealLabel, formatTakenTime } from "../../constants";
 
 interface QuickCheckoutModalProps {
@@ -20,6 +20,7 @@ interface QuickCheckoutModalProps {
     dayLabel: string;
     mealLabel: string;
   } | null;
+  source?: CheckoutSource | string;
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -28,15 +29,21 @@ export function QuickCheckoutModal({
   visible,
   subscription,
   currentMealInfo,
+  source = CheckoutSource.SCANNER,
   onClose,
   onSuccess
 }: QuickCheckoutModalProps) {
   const styles = useStyles();
   const { theme } = useAppTheme();
-  const { dayConfig, kidsEnabled, addActivityLog, upsertSubscription } = useDatabase();
+  const { dayConfig, kidsEnabled, addActivityLog, upsertSubscription, subscriptions } = useDatabase();
   const { showAlert } = useUI();
   const { navigate } = useAppNavigation();
   const { width } = useWindowDimensions();
+
+  const activeSubscription = useMemo(() => {
+    if (!subscription) return null;
+    return subscriptions.find(s => s.id === subscription.id) || subscription;
+  }, [subscription, subscriptions]);
 
   const [adultInput, setAdultInput] = useState(0);
   const [kidInput, setKidInput] = useState(0);
@@ -75,20 +82,20 @@ export function QuickCheckoutModal({
     }
   }, [visible, isStillCurrent, isDone, currentMealInfo, onClose, navigate, showAlert]);
 
-  // Calculate Quick Checkout limits and summary
+  // Calculate Quick Checkout limits, summary & partial checkout detection
   const quickCheckoutDetails = useMemo(() => {
-    if (!subscription || !currentMealInfo) return null;
+    if (!activeSubscription || !currentMealInfo) return null;
 
     const { dayId, mealType } = currentMealInfo;
     const mealKey = mealType;
     const parcelKey = `${mealType}Parcel`;
 
-    const peopleCount = subscription.peopleCount;
-    const kidsCount = kidsEnabled ? (subscription.kidsCount || 0) : 0;
+    const peopleCount = activeSubscription.peopleCount;
+    const kidsCount = kidsEnabled ? (activeSubscription.kidsCount || 0) : 0;
     const headcount = peopleCount + kidsCount;
 
-    const slots = subscription.mealSlots?.[dayId] || [];
-    const taken = subscription.takenByPerson?.[dayId] || [];
+    const slots = activeSubscription.mealSlots?.[dayId] || [];
+    const taken = activeSubscription.takenByPerson?.[dayId] || [];
 
     let adultsPlanned = 0;
     let adultsTaken = 0;
@@ -131,6 +138,13 @@ export function QuickCheckoutModal({
     const kidsMax = Math.max(0, kidsPlanned - kidsTaken);
     const parcelMax = Math.max(0, parcelPlanned - parcelTaken);
 
+    const totalFoodRegistered = adultsPlanned + kidsPlanned;
+    const totalFoodAlreadyServed = adultsTaken + kidsTaken;
+    const totalFoodRemaining = adultsMax + kidsMax;
+
+    // Detect if a partial checkout occurred previously
+    const isPartialCheckoutEarlier = totalFoodAlreadyServed > 0 && totalFoodRemaining > 0;
+
     return {
       dayId,
       mealType,
@@ -145,26 +159,96 @@ export function QuickCheckoutModal({
       parcelMax,
       parcelSupported,
       vegCount,
-      nonVegCount
+      nonVegCount,
+      totalFoodRegistered,
+      totalFoodAlreadyServed,
+      totalFoodRemaining,
+      isPartialCheckoutEarlier
     };
-  }, [subscription, currentMealInfo, kidsEnabled, dayConfig]);
+  }, [activeSubscription, currentMealInfo, kidsEnabled, dayConfig]);
+
+  // Snapshot initial load partial checkout & parcel pickup state so alerts ONLY show if present PRIOR to opening modal
+  const [initialPartialInfo, setInitialPartialInfo] = useState<{
+    isPartial: boolean;
+    served: number;
+    total: number;
+    remaining: number;
+  } | null>(null);
+
+  const [initialParcelInfo, setInitialParcelInfo] = useState<{
+    hasParcelRemaining: boolean;
+    parcelMax: number;
+    parcelPlanned: number;
+  } | null>(null);
 
   const activePassIdRef = useRef<string | null>(null);
 
-  // Initialize inputs ONLY when modal opens or when switching to a different pass ID
+  // Initialize inputs & snapshot initial partial checkout & parcel pickup status ONLY when modal first opens or pass ID changes
   useEffect(() => {
-    if (visible && subscription) {
-      const passId = subscription.id;
+    if (visible && activeSubscription && quickCheckoutDetails) {
+      const passId = activeSubscription.id;
       if (activePassIdRef.current !== passId) {
         setAdultInput(0);
         setKidInput(0);
         setParcelInput(0);
         activePassIdRef.current = passId;
+
+        // Snapshot initial partial checkout state on modal open
+        if (quickCheckoutDetails.isPartialCheckoutEarlier) {
+          setInitialPartialInfo({
+            isPartial: true,
+            served: quickCheckoutDetails.totalFoodAlreadyServed,
+            total: quickCheckoutDetails.totalFoodRegistered,
+            remaining: quickCheckoutDetails.totalFoodRemaining,
+          });
+        } else {
+          setInitialPartialInfo(null);
+        }
+
+        // Snapshot initial parcel pickup state on modal open
+        if (quickCheckoutDetails.parcelSupported && quickCheckoutDetails.parcelMax > 0) {
+          setInitialParcelInfo({
+            hasParcelRemaining: true,
+            parcelMax: quickCheckoutDetails.parcelMax,
+            parcelPlanned: quickCheckoutDetails.parcelPlanned,
+          });
+        } else {
+          setInitialParcelInfo(null);
+        }
       }
-    } else {
+    } else if (!visible) {
       activePassIdRef.current = null;
+      setInitialPartialInfo(null);
+      setInitialParcelInfo(null);
     }
-  }, [visible, subscription?.id]);
+  }, [visible, activeSubscription?.id, quickCheckoutDetails]);
+
+  // Animated opacity value for blinking alert banners
+  const opacityAnim = useRef(new Animated.Value(1)).current;
+  const isBlinkingAlertActive = !!initialPartialInfo?.isPartial || !!initialParcelInfo?.hasParcelRemaining;
+
+  useEffect(() => {
+    if (visible && isBlinkingAlertActive) {
+      const animation = Animated.loop(
+        Animated.sequence([
+          Animated.timing(opacityAnim, {
+            toValue: 0.25,
+            duration: 650,
+            useNativeDriver: true,
+          }),
+          Animated.timing(opacityAnim, {
+            toValue: 1,
+            duration: 650,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      animation.start();
+      return () => animation.stop();
+    } else {
+      opacityAnim.setValue(1);
+    }
+  }, [visible, isBlinkingAlertActive, opacityAnim]);
 
   // Rule: Parcel max limit cannot exceed current summation of food meals (adults + kids) being checked out
   const currentFoodSum = adultInput + kidInput;
@@ -185,7 +269,7 @@ export function QuickCheckoutModal({
   }, [effectiveParcelMax, parcelInput]);
 
   const handleCheckoutSubmit = async () => {
-    if (!subscription || !currentMealInfo || !quickCheckoutDetails) return;
+    if (!activeSubscription || !currentMealInfo || !quickCheckoutDetails) return;
 
     if (!isStillCurrent || isDone) {
       showAlert(UI_TEXT.currentMealClosedTitle, UI_TEXT.currentMealClosed, [
@@ -204,11 +288,11 @@ export function QuickCheckoutModal({
     const mealKey = mealType;
     const parcelKey = `${mealType}Parcel`;
 
-    const updatedSub: Subscription = JSON.parse(JSON.stringify(subscription));
+    const updatedSub: Subscription = JSON.parse(JSON.stringify(activeSubscription));
     const takenList = [...(updatedSub.takenByPerson[dayId] || [])];
 
-    const peopleCount = subscription.peopleCount;
-    const kidsCount = kidsEnabled ? (subscription.kidsCount || 0) : 0;
+    const peopleCount = activeSubscription.peopleCount;
+    const kidsCount = kidsEnabled ? (activeSubscription.kidsCount || 0) : 0;
     const headcount = peopleCount + kidsCount;
 
     const safeAdultInput = Math.min(Math.max(0, adultInput), quickCheckoutDetails.adultsMax);
@@ -338,9 +422,10 @@ export function QuickCheckoutModal({
     addActivityLog({
       module: ActivityModule.SCANNER,
       action: ActivityAction.UPDATE,
-      targetId: subscription.id,
+      targetId: activeSubscription.id,
       description: UI_TEXT.logQuickCheckout
-        .replace("{flatId}", subscription.id)
+        .replace("{flatId}", activeSubscription.id)
+        .replace("{source}", source || CheckoutSource.SCANNER)
         .replace("{meal}", getMealLabel(mealType))
         .replace("{counts}", counts.join(", "))
         .replace("{totals}", totalsParts.join(", "))
@@ -368,8 +453,8 @@ export function QuickCheckoutModal({
       addActivityLog({
         module: ActivityModule.SUBSCRIPTION,
         action: ActivityAction.MISSED_PARCEL,
-        targetId: subscription.id,
-        description: UI_TEXT.logMissedParcel.replace("{flatId}", subscription.id).replace("{meal}", getMealLabel(mealType))
+        targetId: activeSubscription.id,
+        description: UI_TEXT.logMissedParcel.replace("{flatId}", activeSubscription.id).replace("{meal}", getMealLabel(mealType))
       });
     }
 
@@ -416,7 +501,7 @@ export function QuickCheckoutModal({
           <ScrollView contentContainerStyle={{ gap: 14 }} keyboardShouldPersistTaps="handled">
             {/* Header Title */}
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-              <View>
+              <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: 18, fontWeight: "900", color: theme.colors.textPrimary }}>
                   {UI_TEXT.quickCheckout}
                 </Text>
@@ -424,7 +509,92 @@ export function QuickCheckoutModal({
                   {UI_TEXT.pass}{UI_TEXT.space}{subscription?.id}
                 </Text>
               </View>
+
+              <Pressable
+                onPress={onClose}
+                accessibilityLabel={UI_TEXT.close}
+                style={({ pressed }) => [
+                  {
+                    width: 32,
+                    height: 32,
+                    borderRadius: 16,
+                    backgroundColor: theme.colors.surfaceDark,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    borderWidth: 1,
+                    borderColor: theme.colors.border,
+                  },
+                  pressed && { opacity: 0.7 }
+                ]}
+              >
+                <Ionicons name="close" size={20} color={theme.colors.textSecondary} />
+              </Pressable>
             </View>
+
+            {/* 1. Blinking Parcel Pickup Alert Banner (Rendered ON TOP) */}
+            {initialParcelInfo && initialParcelInfo.hasParcelRemaining && (
+              <Animated.View
+                style={{
+                  opacity: opacityAnim,
+                  backgroundColor: theme.themeType === AppThemeMode.DARK ? "rgba(212, 175, 55, 0.2)" : "#FEF3C7",
+                  borderColor: theme.colors.secondary || "#D4AF37",
+                  borderWidth: 1.5,
+                  borderRadius: 14,
+                  paddingVertical: 10,
+                  paddingHorizontal: 12,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+              >
+                <Ionicons name="cube-outline" size={20} color={theme.colors.secondary || "#D4AF37"} />
+                <Text
+                  style={{
+                    flex: 1,
+                    fontSize: 12,
+                    fontWeight: "800",
+                    color: theme.themeType === AppThemeMode.DARK ? theme.colors.secondary : theme.colors.textPrimary,
+                    lineHeight: 16,
+                  }}
+                >
+                  {UI_TEXT.parcelPickupAlert.replace("{count}", String(initialParcelInfo.parcelMax))}
+                </Text>
+              </Animated.View>
+            )}
+
+            {/* 2. Blinking Partial Checkout Alert Banner (Rendered BELOW Parcel Alert) */}
+            {initialPartialInfo && initialPartialInfo.isPartial && (
+              <Animated.View
+                style={{
+                  opacity: opacityAnim,
+                  backgroundColor: theme.colors.warningLight,
+                  borderColor: theme.colors.warning,
+                  borderWidth: 1.5,
+                  borderRadius: 14,
+                  paddingVertical: 10,
+                  paddingHorizontal: 12,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+              >
+                <Ionicons name="warning-outline" size={20} color={theme.colors.warning} />
+                <Text
+                  style={{
+                    flex: 1,
+                    fontSize: 12,
+                    fontWeight: "800",
+                    color: theme.themeType === AppThemeMode.DARK ? theme.colors.warning : theme.colors.textPrimary,
+                    lineHeight: 16,
+                  }}
+                >
+                  {UI_TEXT.partialCheckoutAlert
+                    .replace("{served}", String(initialPartialInfo.served))
+                    .replace("{total}", String(initialPartialInfo.total))
+                    .replace("{remaining}", String(initialPartialInfo.remaining))}
+                </Text>
+              </Animated.View>
+            )}
 
             {/* Header Summary Box - Exact Dashboard Summary Card Pattern (Solid Red Theme) */}
             {quickCheckoutDetails && currentMealInfo && (
@@ -622,6 +792,8 @@ export function QuickCheckoutModal({
                   color={isCheckoutDisabled ? theme.colors.textMuted : theme.colors.white}
                 />
                 <Text
+                  numberOfLines={1}
+                  adjustsFontSizeToFit={true}
                   style={[
                     modalStyles.checkoutText,
                     { color: isCheckoutDisabled ? theme.colors.textMuted : theme.colors.white }
@@ -658,9 +830,10 @@ const modalStyles = StyleSheet.create({
     fontWeight: "800",
   },
   checkoutButton: {
-    flex: 1,
+    flex: 1.4,
     height: 44,
     borderRadius: 12,
+    paddingHorizontal: 8,
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row",

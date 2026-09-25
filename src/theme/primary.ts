@@ -4,32 +4,34 @@ import { AppTheme } from "./types";
 export const primaryTheme: AppTheme = {
   themeType: AppThemeMode.LIGHT,
   colors: {
-    primary: "#E31837",
-    secondary: "#FFB300",
-    background: "#FFFFFF",
-    surface: "#F8F9FA",
-    surfaceDark: "#F1F3F5",
-    textPrimary: "#1A1C1E",
-    textSecondary: "#6A6E73",
-    textMuted: "#ADB5BD",
+    primary: "#C41E3A", // Festive Royal Crimson Red
+    secondary: "#D4AF37", // Satin Warm Gold
+    background: "#FAFAFA", // Soft Ivory/Cream Canvas
+    surface: "#FFFFFF", // Crisp Clean White Surface
+    surfaceDark: "#F1F5F9", // Slate Surface Dark
+    textPrimary: "#0F172A", // Deep Navy/Slate Black Text
+    textSecondary: "#475569", // Slate Grey Secondary Text
+    textMuted: "#94A3B8", // Subtle Muted Grey
     white: "#FFFFFF",
-    success: "#28A745",
-    successLight: "#EBFBEE",
-    error: "#DC3545",
-    errorLight: "#FFF5F5",
-    border: "#E9ECEF",
-    shadow: "#000000",
-    veg: "#28A745",
-    nonVeg: "#DC3545",
+    success: "#10B981", // Emerald Veg/Success
+    successLight: "#ECFDF5",
+    warning: "#D97706", // Amber Warning Accent
+    warningLight: "#FEF3C7", // Amber Light Background
+    error: "#EF4444", // Crimson Non-Veg/Error
+    errorLight: "#FEF2F2",
+    border: "#E2E8F0", // Soft Slate Border
+    shadow: "#0F172A",
+    veg: "#10B981", // FSSAI Standard Veg Emerald Green
+    nonVeg: "#EF4444", // FSSAI Standard Non-Veg Crimson Red
     whatsapp: "#25D366",
   },
   cardColors: [
-    { bg: "rgba(255, 245, 245, 0.6)", border: "#FFE3E3", accent: "#E31837", accentLight: "rgba(255, 245, 245, 0.5)" }, // Red
-    { bg: "rgba(231, 245, 255, 0.6)", border: "#D0EBFF", accent: "#007BFF", accentLight: "rgba(231, 245, 255, 0.5)" }, // Blue
-    { bg: "rgba(235, 251, 238, 0.6)", border: "#D3F9D8", accent: "#28A745", accentLight: "rgba(235, 251, 238, 0.5)" }, // Green
-    { bg: "rgba(255, 244, 230, 0.6)", border: "#FFE8CC", accent: "#FD7E14", accentLight: "rgba(255, 244, 230, 0.5)" }, // Orange
-    { bg: "rgba(248, 240, 252, 0.6)", border: "#F3D9FA", accent: "#6F42C1", accentLight: "rgba(248, 240, 252, 0.5)" }, // Purple
-    { bg: "rgba(227, 250, 252, 0.6)", border: "#C5F6FA", accent: "#17A2B8", accentLight: "rgba(227, 250, 252, 0.5)" }, // Cyan
+    { bg: "rgba(255, 250, 250, 0.95)", border: "#FECDD3", accent: "#C41E3A", accentLight: "rgba(255, 241, 242, 0.8)" }, // Royal Crimson
+    { bg: "rgba(255, 253, 245, 0.95)", border: "#FDE68A", accent: "#D4AF37", accentLight: "rgba(254, 243, 199, 0.8)" }, // Warm Gold
+    { bg: "rgba(240, 253, 244, 0.95)", border: "#A7F3D0", accent: "#10B981", accentLight: "rgba(209, 250, 229, 0.8)" }, // Emerald Green
+    { bg: "rgba(240, 249, 255, 0.95)", border: "#BAE6FD", accent: "#0284C7", accentLight: "rgba(224, 242, 254, 0.8)" }, // Sapphire Blue
+    { bg: "rgba(250, 245, 255, 0.95)", border: "#DDD6FE", accent: "#7C3AED", accentLight: "rgba(237, 233, 254, 0.8)" }, // Amethyst Purple
+    { bg: "rgba(245, 245, 244, 0.95)", border: "#E7E5E4", accent: "#78716C", accentLight: "rgba(245, 245, 244, 0.8)" }, // Warm Stone
   ],
   sizes: {
     buttonHeight: 52,

@@ -10,7 +10,7 @@ import { QuickCheckoutModal } from "../components/common/QuickCheckoutModal";
 import { useAppNavigation } from "../context/NavigationContext";
 import { useDatabase } from "../context/DatabaseContext";
 import { useUI } from "../context/UIContext";
-import { AppScreen, AppThemeMode, ActivityModule, ActivityAction, Subscription, MealType, DietaryOption } from "../types";
+import { AppScreen, AppThemeMode, ActivityModule, ActivityAction, Subscription, MealType, DietaryOption, CheckoutSource } from "../types";
 import { getActiveDays, isMealCurrent, isMealEnabled, getDayLabel, getMealLabel, qrValueFor, isParcelEnabled } from "../constants";
 
 // Memoized Camera View to prevent UI/WebSocket re-renders from dropping camera FPS
@@ -443,6 +443,7 @@ export function ScannerScreen() {
         visible={!!selectedPass}
         subscription={selectedPass}
         currentMealInfo={currentMealInfo}
+        source={CheckoutSource.SCANNER}
         onClose={handleCancelQuickCheckout}
         onSuccess={handleCheckoutSuccess}
       />

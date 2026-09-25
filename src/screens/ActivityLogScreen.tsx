@@ -23,10 +23,11 @@ import { Ionicons } from "@expo/vector-icons";
 import { useStyles, useScaling } from "../styles";
 import { useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
-import { ActivityLog, ActivityModule, ActivityAction, AppThemeMode, AppScreen } from "../domain";
+import { ActivityLog, ActivityModule, ActivityAction, AppThemeMode, AppScreen, CheckoutSource, GuestCheckoutSource } from "../domain";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
+import { ThemeToggleButton } from "../components/common/ThemeToggleButton";
 import { Dropdown } from "../components/common/Dropdown";
 
 import { useAuth } from "../context/AuthContext";
@@ -71,6 +72,33 @@ const ActivityLogItem = memo(({
     const date = new Date(ts);
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ', ' + date.toLocaleDateString([], { month: 'short', day: 'numeric' });
   };
+
+  const checkoutSource = useMemo(() => {
+    if (!item.description) return null;
+    const desc = item.description;
+    if (desc.includes(`via ${CheckoutSource.SCANNER}`) || desc.includes(`via QR Scanner`) || desc.includes(`via Scanner`)) {
+      return { label: CheckoutSource.SCANNER, icon: "qr-code-outline" };
+    }
+    if (desc.includes(`via ${CheckoutSource.DETAILS}`) || desc.includes(`via Pass Details`) || desc.includes(`via Details`)) {
+      return { label: CheckoutSource.DETAILS, icon: "card-outline" };
+    }
+    if (desc.includes(`via ${CheckoutSource.SUBSCRIPTION_LIST}`) || desc.includes(`via Pass Directory`)) {
+      return { label: CheckoutSource.SUBSCRIPTION_LIST, icon: "list-outline" };
+    }
+    return null;
+  }, [item.description]);
+
+  const guestSource = useMemo(() => {
+    if (!item.description || item.module !== ActivityModule.GUEST) return null;
+    const desc = item.description;
+    if (desc.includes(`via ${GuestCheckoutSource.GUEST_MODAL}`) || desc.includes(`via Quick Guest Modal`)) {
+      return { label: GuestCheckoutSource.GUEST_MODAL, icon: "people-circle-outline" };
+    }
+    if (desc.includes(`via ${GuestCheckoutSource.GUEST_SCREEN}`) || desc.includes(`via Guest Desk Screen`)) {
+      return { label: GuestCheckoutSource.GUEST_SCREEN, icon: "desktop-outline" };
+    }
+    return null;
+  }, [item.description, item.module]);
 
   return (
     <Pressable
@@ -117,6 +145,18 @@ const ActivityLogItem = memo(({
              {item.targetId && (
                <View style={{ backgroundColor: theme.colors.surfaceDark, paddingHorizontal: s(8), paddingVertical: s(4), borderRadius: s(6), borderWidth: 1, borderColor: theme.colors.border }}>
                  <Text style={{ fontSize: s(11), fontWeight: '900', color: theme.colors.secondary }}>{item.targetId}</Text>
+               </View>
+             )}
+             {checkoutSource && (
+               <View style={{ backgroundColor: theme.colors.primary + "18", paddingHorizontal: s(8), paddingVertical: s(4), borderRadius: s(6), borderWidth: 1, borderColor: theme.colors.primary + "40", flexDirection: 'row', alignItems: 'center', gap: s(4) }}>
+                 <Ionicons name={checkoutSource.icon as any} size={s(12)} color={theme.colors.primary} />
+                 <Text style={{ fontSize: s(10), fontWeight: '900', color: theme.colors.primary, textTransform: 'uppercase' }}>{checkoutSource.label}</Text>
+               </View>
+             )}
+             {guestSource && (
+               <View style={{ backgroundColor: theme.cardColors[2].accent + "18", paddingHorizontal: s(8), paddingVertical: s(4), borderRadius: s(6), borderWidth: 1, borderColor: theme.cardColors[2].accent + "40", flexDirection: 'row', alignItems: 'center', gap: s(4) }}>
+                 <Ionicons name={guestSource.icon as any} size={s(12)} color={theme.cardColors[2].accent} />
+                 <Text style={{ fontSize: s(10), fontWeight: '900', color: theme.cardColors[2].accent, textTransform: 'uppercase' }}>{guestSource.label}</Text>
                </View>
              )}
              {isClickable && (
@@ -462,10 +502,13 @@ export function ActivityLogScreen() {
             <BackButton onPress={goBack} />
             <HomeButton onPress={() => navigate(AppScreen.HOME)} />
           </View>
-          <LogoutButton onLogout={handleLogout} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <ThemeToggleButton />
+            <LogoutButton onLogout={handleLogout} />
+          </View>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-           <View>
+           <View style={{ flex: 1, minWidth: 160 }}>
               <Text style={styles.title}>{UI_TEXT.activityLog}</Text>
               <Text style={styles.subtitle}>{UI_TEXT.activityLogSubtitle}</Text>
            </View>
@@ -491,8 +534,8 @@ export function ActivityLogScreen() {
 
       <View style={{ backgroundColor: theme.colors.surfaceDark + (theme.themeType === AppThemeMode.DARK ? "66" : "80"), borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
         <View style={[styles.maxWidthWrapper, { paddingVertical: 20, gap: 16 }]}>
-          <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
-            <View style={[styles.searchBox, { flex: 1, marginBottom: 0, height: 52, borderRadius: 14, maxWidth: undefined }]}>
+          <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+            <View style={[styles.searchBox, { flex: 1, minWidth: 160, marginBottom: 0, height: 52, borderRadius: 14, maxWidth: undefined }]}>
               <Ionicons name="search-outline" size={20} color={theme.colors.textMuted} />
               <TextInput
                 style={[styles.searchInput, { fontSize: 15 }]}

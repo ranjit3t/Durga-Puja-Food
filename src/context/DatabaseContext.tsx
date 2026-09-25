@@ -24,7 +24,8 @@ import {
   Note,
   TakenState,
   UserRole,
-  KitchenMetrics
+  KitchenMetrics,
+  GuestCheckoutSource
 } from "../types";
 import { useAuth } from "./AuthContext";
 
@@ -84,7 +85,7 @@ interface DatabaseContextType {
   fetchMoreLogs: (limit: number) => Promise<void>;
   upsertNote: (note: Note) => Promise<void>;
   deleteNote: (id: string) => Promise<void>;
-  updateGuestCountDebounced: (dayId: string, mealKey: MealType, field: string, value: number) => void;
+  updateGuestCountDebounced: (dayId: string, mealKey: MealType, field: string, value: number, source?: GuestCheckoutSource | string) => void;
 }
 
 const DatabaseContext = createContext<DatabaseContextType | undefined>(undefined);
@@ -620,7 +621,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
 
   const guestUpdateTimers = useRef<Record<string, any>>({});
 
-  const updateGuestCountDebounced = useCallback((dayId: string, mealKey: MealType, field: string, value: number) => {
+  const updateGuestCountDebounced = useCallback((dayId: string, mealKey: MealType, field: string, value: number, source?: GuestCheckoutSource | string) => {
      setFoodMenu(prev => {
         const updatedDay = { ...(prev[dayId] || {}) };
         const updatedMeal = { ...(updatedDay[mealKey] || { veg: [], nonVeg: [] }), [field]: value };
@@ -648,6 +649,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
               .replace("{value}", String(value))
               .replace("{day}", getDayLabel(dayId, dayConfig))
               .replace("{meal}", getMealLabel(mealKey))
+              .replace("{source}", source || GuestCheckoutSource.GUEST_SCREEN)
           });
         } catch (err: any) {
           addActivityLog({

@@ -24,6 +24,7 @@ import {
   isDietaryEnabled,
   isParcelEnabled,
   isMealCurrent,
+  isMealInFuture,
   getSortedMealKeys,
   getMealLabel,
 } from "../constants";
@@ -31,6 +32,7 @@ import { MealMenu, UserRole, ConfigDay, MealType, DietType, AppScreen, AppThemeM
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
+import { ThemeToggleButton } from "../components/common/ThemeToggleButton";
 import { MealSummaryInline } from "../components/menu/MealSummaryInline";
 import { MealMetricGrid } from "../components/dashboard/MealMetricGrid";
 import { MealBarChart } from "../components/dashboard/MealBarChart";
@@ -117,15 +119,26 @@ const DashboardMealSection = memo(
     labels,
     seasonName,
   }: MealSectionProps) => {
-    const [showChart, setShowChart] = React.useState(false);
-    const [contentHeight, setContentHeight] = React.useState<number | null>(null);
-    const vegItems = menu?.veg || [];
+    const styles = useStyles();
+    const { s, v } = useScaling();
+    const { theme } = useAppTheme();
+    const { shareQr } = useUI();
+    const mealRef = useRef<View>(null);
 
-    const toggleChart = (val: boolean) => {
-      setShowChart(val);
-      // Removed automatic scrolling to top to maintain user's current scroll position
-      // and focus on the action area at the bottom of the card.
-    };
+    const mealLabel = getMealLabel(type);
+    const isCurrent = isMealCurrent(day, type, config);
+    const isDone = isMealDone(day, type, config);
+    const isFuture = isMealInFuture(day, type, config) && !isDone;
+
+    const initialViewMode = isFuture ? "planned" : "grid";
+    const [viewMode, setViewMode] = React.useState<"grid" | "planned" | "chart">(initialViewMode);
+
+    React.useEffect(() => {
+      setViewMode(isFuture ? "planned" : "grid");
+    }, [isFuture]);
+
+    const [maxContentHeight, setMaxContentHeight] = React.useState<number>(s(200));
+    const vegItems = menu?.veg || [];
     const nonVegItems = menu?.nonVeg || [];
 
     const isVegEnabled = isDietaryEnabled(day, type, DietType.VEG, config);
@@ -135,16 +148,6 @@ const DashboardMealSection = memo(
     const totalVegTaken = flatVegTaken + kidsVegTaken + guestVegTaken;
     const totalNonVegTaken = flatNonVegTaken + kidsNonVegTaken + guestNonVegTaken;
     const totalMealTaken = totalVegTaken + totalNonVegTaken;
-
-    const mealLabel = getMealLabel(type);
-    const isCurrent = isMealCurrent(day, type, config);
-    const isDone = isMealDone(day, type, config);
-
-    const styles = useStyles();
-    const { s, v } = useScaling();
-    const { theme } = useAppTheme();
-    const { shareQr } = useUI();
-    const mealRef = useRef<View>(null);
 
     /**
      * Captures the current meal section as a PNG and shares it via WhatsApp.
@@ -239,19 +242,19 @@ const DashboardMealSection = memo(
 
           {/* Aggregated Demand Metrics / Chart */}
           <View
-            style={[
-              { minHeight: contentHeight || undefined, justifyContent: 'flex-end' },
-              showChart && { paddingBottom: s(10) }
-            ]}
+            style={{
+              minHeight: maxContentHeight,
+              justifyContent: 'flex-end',
+              paddingBottom: viewMode === "chart" ? s(10) : 0,
+            }}
             onLayout={(e) => {
-              // Only update contentHeight if we are in Grid mode (standard view)
-              // this provides the baseline height to prevent flicker.
-              if (!showChart) {
-                setContentHeight(e.nativeEvent.layout.height);
+              const h = Math.round(e.nativeEvent.layout.height);
+              if (h > 0 && h > maxContentHeight) {
+                setMaxContentHeight(h);
               }
             }}
           >
-            {showChart ? (
+            {viewMode === "chart" ? (
               <MealBarChart
                 day={day} type={type} total={total} veg={veg} nonVeg={nonVeg}
                 kidsTotal={kidsTotal} kidsVeg={kidsVeg} kidsNonVeg={kidsNonVeg}
@@ -274,6 +277,7 @@ const DashboardMealSection = memo(
                 totalMealTaken={totalMealTaken} kidsEnabled={kidsEnabled} guestEnabled={guestEnabled}
                 isParcelEnabled={isParcelEnabled(day, type, config)}
                 isBothEnabled={isBothEnabled} labels={labels as any}
+                showPlannedOnly={viewMode === "planned"}
               />
             )}
           </View>
@@ -283,44 +287,99 @@ const DashboardMealSection = memo(
         <View style={{
           borderTopWidth: 1,
           borderTopColor: theme.colors.border,
-          padding: s(8),
+          paddingHorizontal: s(12),
+          paddingVertical: s(8),
           flexDirection: 'row',
           justifyContent: 'space-between',
           alignItems: 'center',
           backgroundColor: theme.colors.surfaceDark
         }}>
-          <View>
-            {!showChart ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(8) }}>
+            {/* 1. PLANNED BUTTON */}
+            <Pressable
+              onPress={() => setViewMode("planned")}
+              accessibilityLabel={UI_TEXT.plannedOnly}
+              style={({ pressed }) => [
+                {
+                  width: s(36),
+                  height: s(36),
+                  borderRadius: s(18),
+                  backgroundColor: viewMode === "planned" ? theme.colors.primary : theme.colors.surface,
+                  borderWidth: 1,
+                  borderColor: viewMode === "planned" ? theme.colors.primary : theme.colors.border,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                },
+                pressed && { opacity: 0.7 }
+              ]}
+            >
+              <Ionicons name="clipboard-outline" size={s(18)} color={viewMode === "planned" ? theme.colors.white : theme.colors.textSecondary} />
+            </Pressable>
+
+            {/* 2. COMPLETE BUTTON (Hidden for future meals) */}
+            {!isFuture && (
               <Pressable
-                onPress={() => toggleChart(true)}
+                onPress={() => setViewMode("grid")}
+                accessibilityLabel={UI_TEXT.fullGrid}
                 style={({ pressed }) => [
-                  { padding: s(8), borderRadius: s(20), backgroundColor: theme.colors.surfaceDark },
+                  {
+                    width: s(36),
+                    height: s(36),
+                    borderRadius: s(18),
+                    backgroundColor: viewMode === "grid" ? theme.colors.primary : theme.colors.surface,
+                    borderWidth: 1,
+                    borderColor: viewMode === "grid" ? theme.colors.primary : theme.colors.border,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  },
                   pressed && { opacity: 0.7 }
                 ]}
               >
-                <Ionicons name="bar-chart-outline" size={s(18)} color={theme.colors.primary} />
-              </Pressable>
-            ) : (
-              <Pressable
-                onPress={() => toggleChart(false)}
-                style={({ pressed }) => [
-                  { padding: s(8), borderRadius: s(20), backgroundColor: theme.colors.surfaceDark },
-                  pressed && { opacity: 0.7 }
-                ]}
-              >
-                <Ionicons name="grid-outline" size={s(18)} color={theme.colors.textMuted} />
+                <Ionicons name="grid-outline" size={s(18)} color={viewMode === "grid" ? theme.colors.white : theme.colors.textSecondary} />
               </Pressable>
             )}
+
+            {/* 3. CHART BUTTON */}
+            <Pressable
+              onPress={() => setViewMode("chart")}
+              accessibilityLabel={UI_TEXT.chartView}
+              style={({ pressed }) => [
+                {
+                  width: s(36),
+                  height: s(36),
+                  borderRadius: s(18),
+                  backgroundColor: viewMode === "chart" ? theme.colors.primary : theme.colors.surface,
+                  borderWidth: 1,
+                  borderColor: viewMode === "chart" ? theme.colors.primary : theme.colors.border,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                },
+                pressed && { opacity: 0.7 }
+              ]}
+            >
+              <Ionicons name="bar-chart-outline" size={s(18)} color={viewMode === "chart" ? theme.colors.white : theme.colors.textSecondary} />
+            </Pressable>
           </View>
 
+          {/* 4. SHARE BUTTON */}
           <Pressable
             onPress={handleShare}
+            accessibilityLabel="Share on WhatsApp"
             style={({ pressed }) => [
-              { padding: s(8), borderRadius: s(20), backgroundColor: theme.colors.successLight },
+              {
+                width: s(36),
+                height: s(36),
+                borderRadius: s(18),
+                backgroundColor: theme.colors.whatsapp + "20",
+                borderWidth: 1,
+                borderColor: theme.colors.whatsapp + "40",
+                alignItems: 'center',
+                justifyContent: 'center',
+              },
               pressed && { opacity: 0.7 }
             ]}
           >
-            <Ionicons name="logo-whatsapp" size={s(18)} color={theme.colors.success} />
+            <Ionicons name="logo-whatsapp" size={s(18)} color={theme.colors.whatsapp} />
           </Pressable>
         </View>
       </View>
@@ -534,7 +593,10 @@ export function DashboardScreen() {
             <BackButton onPress={goBack} />
             <HomeButton onPress={() => navigate(AppScreen.HOME)} />
           </View>
-          <LogoutButton onLogout={handleLogout} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <ThemeToggleButton />
+            <LogoutButton onLogout={handleLogout} />
+          </View>
         </View>
         <Text style={styles.title}>{UI_TEXT.dashboardTitle}</Text>
         <Text style={styles.subtitle}>{UI_TEXT.dashboardSubtitle}</Text>
@@ -553,64 +615,65 @@ export function DashboardScreen() {
             {
               backgroundColor: theme.colors.primary,
               borderColor: theme.colors.primary,
-              marginBottom: s(24),
+              padding: s(12),
+              marginBottom: s(16),
               ...Platform.select({
                 ios: {
                   shadowColor: theme.colors.primary,
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.3,
-                  shadowRadius: 6,
+                  shadowOffset: { width: 0, height: 3 },
+                  shadowOpacity: 0.25,
+                  shadowRadius: 5,
                 },
                 android: {
-                  elevation: 6,
+                  elevation: 5,
                 },
                 web: {
-                  boxShadow: `0 4px 12px ${theme.colors.primary}40`,
+                  boxShadow: `0 3px 10px ${theme.colors.primary}33`,
                 }
               })
             },
             pressed && { opacity: 0.8 }
           ]}
         >
-          <View style={[styles.previewTop, { flexWrap: 'wrap', gap: s(8) }]}>
-            <View style={{ flex: 1, paddingRight: s(10), minWidth: '60%' }}>
-              <Text style={[styles.previewLabel, { color: theme.colors.white, opacity: 0.7, fontSize: s(12) }]}>{UI_TEXT.dailyDemandSummary}</Text>
+          <View style={[styles.previewTop, { flexWrap: 'wrap', gap: s(6) }]}>
+            <View style={{ flex: 1, paddingRight: s(8), minWidth: '60%' }}>
+              <Text style={[styles.previewLabel, { color: theme.colors.white, opacity: 0.7, fontSize: s(11) }]}>{UI_TEXT.dailyDemandSummary}</Text>
               {!!seasonName && (
-                <Text style={[styles.previewTitle, { color: theme.colors.white, fontSize: s(22) }]} numberOfLines={2}>
+                <Text style={[styles.previewTitle, { color: theme.colors.white, fontSize: s(18) }]} numberOfLines={1}>
                   {seasonName}
                 </Text>
               )}
             </View>
             <View style={{ alignItems: 'flex-end', justifyContent: 'center' }}>
-               <Text style={[styles.previewAmount, { color: theme.colors.white, fontSize: s(32) }]}>
+               <Text style={[styles.previewAmount, { color: theme.colors.white, fontSize: s(24) }]}>
                  {summaryTotals.total}
                </Text>
-               <Text style={{ color: theme.colors.white, opacity: 0.8, fontSize: s(12), fontWeight: "700" }}>{UI_TEXT.plates.toUpperCase()}</Text>
+               <Text style={{ color: theme.colors.white, opacity: 0.8, fontSize: s(10), fontWeight: "700" }}>{UI_TEXT.plates.toUpperCase()}</Text>
             </View>
           </View>
 
-          <View style={{ height: 1, backgroundColor: theme.colors.white, opacity: 0.2, marginVertical: s(12) }} />
+          <View style={{ height: 1, backgroundColor: theme.colors.white, opacity: 0.2, marginVertical: s(8) }} />
 
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: s(8) }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: s(6) }}>
               <View style={{ flexShrink: 1 }}>
-                <View style={{ gap: s(4) }}>
+                <View style={{ gap: s(2) }}>
                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(6) }}>
-                      <Text style={{ fontSize: s(13), fontWeight: '800', color: theme.colors.white }}>{kidsEnabled ? UI_TEXT.adults : UI_TEXT.members}:</Text>
-                      <Text style={{ fontSize: s(14), fontWeight: '900', color: theme.colors.white }}>
+                      <Text style={{ fontSize: s(12), fontWeight: '800', color: theme.colors.white }}>{kidsEnabled ? UI_TEXT.adults : UI_TEXT.members}:</Text>
+                      <Text style={{ fontSize: s(13), fontWeight: '900', color: theme.colors.white }}>
                         {summaryTotals.veg + summaryTotals.nonVeg}
                       </Text>
-                      <Text style={{ fontSize: s(11), fontWeight: '700', color: theme.colors.white, opacity: 0.8 }}>
+                      <Text style={{ fontSize: s(10), fontWeight: '700', color: theme.colors.white, opacity: 0.85 }}>
                         ({summaryTotals.veg}{UI_TEXT.vegAbbrLabel}{UI_TEXT.pipe}{summaryTotals.nonVeg}{UI_TEXT.nonVegAbbrLabel}) ({UI_TEXT.taken}{UI_TEXT.colon}{UI_TEXT.space}{summaryTotals.adultTaken})
                       </Text>
                    </View>
 
                   {kidsEnabled && summaryTotals.kidsTotal > 0 && (
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(6) }}>
-                      <Text style={{ fontSize: s(12), fontWeight: '800', color: theme.colors.white, opacity: 0.9 }}>{UI_TEXT.kids}:</Text>
-                      <Text style={{ fontSize: s(12), fontWeight: '900', color: theme.colors.white, opacity: 0.9 }}>
+                      <Text style={{ fontSize: s(11), fontWeight: '800', color: theme.colors.white, opacity: 0.9 }}>{UI_TEXT.kids}:</Text>
+                      <Text style={{ fontSize: s(11), fontWeight: '900', color: theme.colors.white, opacity: 0.9 }}>
                         {summaryTotals.kidsTotal}
                       </Text>
-                      <Text style={{ fontSize: s(10), fontWeight: '700', color: theme.colors.white, opacity: 0.7 }}>
+                      <Text style={{ fontSize: s(10), fontWeight: '700', color: theme.colors.white, opacity: 0.8 }}>
                         ({summaryTotals.kidsVeg}{UI_TEXT.vegAbbrLabel}{UI_TEXT.pipe}{summaryTotals.kidsNonVeg}{UI_TEXT.nonVegAbbrLabel}) ({UI_TEXT.taken}{UI_TEXT.colon}{UI_TEXT.space}{summaryTotals.kidsTaken})
                       </Text>
                     </View>
@@ -618,11 +681,11 @@ export function DashboardScreen() {
 
                   {guestEnabled && summaryTotals.guestTotal > 0 && (
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(6) }}>
-                      <Text style={{ fontSize: s(12), fontWeight: '800', color: theme.colors.white, opacity: 0.9 }}>{UI_TEXT.guest}:</Text>
-                      <Text style={{ fontSize: s(12), fontWeight: '900', color: theme.colors.white, opacity: 0.9 }}>
+                      <Text style={{ fontSize: s(11), fontWeight: '800', color: theme.colors.white, opacity: 0.9 }}>{UI_TEXT.guest}:</Text>
+                      <Text style={{ fontSize: s(11), fontWeight: '900', color: theme.colors.white, opacity: 0.9 }}>
                         {summaryTotals.guestTotal}
                       </Text>
-                      <Text style={{ fontSize: s(10), fontWeight: '700', color: theme.colors.white, opacity: 0.7 }}>
+                      <Text style={{ fontSize: s(10), fontWeight: '700', color: theme.colors.white, opacity: 0.8 }}>
                         ({summaryTotals.guestVeg}{UI_TEXT.vegAbbrLabel}{UI_TEXT.pipe}{summaryTotals.guestNonVeg}{UI_TEXT.nonVegAbbrLabel}) ({UI_TEXT.taken}{UI_TEXT.colon}{UI_TEXT.space}{summaryTotals.guestTaken})
                       </Text>
                     </View>
@@ -630,8 +693,8 @@ export function DashboardScreen() {
                 </View>
               </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(4) }}>
-               <Ionicons name="checkmark-done-circle" size={s(16)} color={theme.colors.white} />
-               <Text style={{ color: theme.colors.white, fontWeight: "800", fontSize: s(14) }}>
+               <Ionicons name="checkmark-done-circle" size={s(15)} color={theme.colors.white} />
+               <Text style={{ color: theme.colors.white, fontWeight: "800", fontSize: s(13) }}>
                  {summaryTotals.taken} {UI_TEXT.taken.toUpperCase()}
                </Text>
             </View>
@@ -639,10 +702,10 @@ export function DashboardScreen() {
 
           {currentMealSummary && (
             <>
-              <View style={{ height: 1, backgroundColor: theme.colors.white, opacity: 0.2, marginVertical: s(12) }} />
-              <View style={{ gap: s(10) }}>
+              <View style={{ height: 1, backgroundColor: theme.colors.white, opacity: 0.2, marginVertical: s(8) }} />
+              <View style={{ gap: s(6) }}>
                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(6), flexWrap: 'wrap' }}>
-                    <Text style={{ color: theme.colors.white, fontSize: s(11), fontWeight: '800', opacity: 0.8, textTransform: 'uppercase' }}>
+                    <Text style={{ color: theme.colors.white, fontSize: s(10), fontWeight: '800', opacity: 0.85, textTransform: 'uppercase' }}>
                        {currentMealSummary.dayLabel}{UI_TEXT.space}{UI_TEXT.hyphen}{UI_TEXT.space}{currentMealSummary.mealLabel}
                     </Text>
                     {(!currentMealSummary.isVegEnabled || !currentMealSummary.isNonVegEnabled) && (
@@ -657,20 +720,20 @@ export function DashboardScreen() {
 
                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
                     <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: s(6) }}>
-                      <Text style={{ color: theme.colors.white, fontSize: s(18), fontWeight: '900' }}>
+                      <Text style={{ color: theme.colors.white, fontSize: s(16), fontWeight: '900' }}>
                          {currentMealSummary.total}
                       </Text>
-                      <Text style={{ color: theme.colors.white, fontSize: s(11), fontWeight: '700', opacity: 0.8 }}>
+                      <Text style={{ color: theme.colors.white, fontSize: s(10), fontWeight: '700', opacity: 0.8 }}>
                          {UI_TEXT.plates.toUpperCase()}
                       </Text>
                     </View>
 
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(6) }}>
-                       <Ionicons name="checkmark-done-circle" size={s(16)} color={theme.colors.white} />
-                       <Text style={{ color: theme.colors.white, fontSize: s(16), fontWeight: '900' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(4) }}>
+                       <Ionicons name="checkmark-done-circle" size={s(15)} color={theme.colors.white} />
+                       <Text style={{ color: theme.colors.white, fontSize: s(15), fontWeight: '900' }}>
                           {currentMealSummary.taken}
                        </Text>
-                       <Text style={{ color: theme.colors.white, fontSize: s(11), fontWeight: '700', opacity: 0.8 }}>
+                       <Text style={{ color: theme.colors.white, fontSize: s(10), fontWeight: '700', opacity: 0.8 }}>
                           {UI_TEXT.taken.toUpperCase()}
                        </Text>
                     </View>

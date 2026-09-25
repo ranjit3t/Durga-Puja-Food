@@ -88,6 +88,21 @@ Eternia Food Desk is a cross-platform mobile and web application built with **Re
 ### J. Pre-Aggregated Kitchen Metrics (`/metrics`)
 - Kitchen staff and admins view live progress bars from pre-aggregated `/metrics` nodes without looping through 10,000 pass records ($O(1)$ read complexity).
 
+### K. Refined Day-Wise Analytics, Complete/Planned View Switcher & Current Meal Auto-Focus
+- **Day & Meal Filters for Day-Wise Report (`ReportScreen.tsx`)**: Refined the **Day Wise Report** (`ReportType.DAY`) to support interactive Day and Meal selection filters alongside Split Report (`ReportType.SINGLE`).
+- **Complete View vs. Planned View Switcher (`DayWiseReport.tsx`, `SingleMealReport.tsx`)**: Renders an interactive `[ Complete View ]` / `[ Planned View ]` toggle bar.
+  - **`Complete View`**: Displays total demand, dietary split (veg/non-veg breakdown for adults, kids, guests), Meal Served, Awaiting Service / Not Taken, and Parcels Served.
+  - **`Planned View`**: Displays detailed subscribed preparation counts in individual stat boxes (`Resident Members`, `Kids`, `Guests`, `Parcels`) without served/taken clutter.
+- **Active Current Meal Auto-Focus & Smooth Scroll**: On screen navigation or tab selection, `ReportScreen` automatically detects if any meal is currently active and enabled (`isMealCurrent` & `isMealEnabled`). It focuses `selectedDayId` and `selectedMealType` on the current active meal and smoothly scrolls the horizontal day selector to highlight the active day card.
+
+### L. Partial & Parcel Checkout Alerts with Initial-Load Snapshot Locking (`QuickCheckoutModal.tsx`, `SubscriptionForm.tsx`)
+- **Automated Partial Pickup & Parcel Alerts**: Evaluates `totalFoodAlreadyServed` and `parcelMax` when opening checkout or pass edit views. Renders stacked Animated `opacityAnim` pulsating warning banners (Parcel Pickup Alert on top, Partial Checkout Alert below).
+- **Initial Load Snapshot Locking**: Captures initial pickup state on screen/modal open (`initialPartialInfo`, `initialParcelInfo`, `parcelAlertFiredRef`), guaranteeing alerts fire strictly upon initial load and never re-trigger or flash during active form edits or checkout submission.
+
+### M. Pass Directory Auto-Deselect Stale Filters & Fallback (`SubscriptionListScreen.tsx`)
+- **Auto-Deselect 0-Selection Filters**: Reactive `useEffect` monitors filter counts and deselects stale filters whose match count drops to `0` (e.g. `FilterMode.MISSED` when all missed meals are checked out).
+- **Default `ALL` Fallback**: If deselecting a stale filter leaves no active filters remaining, it automatically falls back to `FilterMode.ALL`; if other active filters exist, it preserves them as is.
+
 ---
 
 ## 4. Core Architecture & Layers

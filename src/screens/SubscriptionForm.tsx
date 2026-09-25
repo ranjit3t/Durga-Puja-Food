@@ -61,6 +61,7 @@ import { Dropdown } from "../components/common/Dropdown";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
+import { ThemeToggleButton } from "../components/common/ThemeToggleButton";
 import { CounterInput } from "../components/common/CounterInput";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -160,17 +161,21 @@ export function SubscriptionForm() {
     });
   };
 
-  const alertShown = useRef(false);
+  const parcelAlertFiredRef = useRef<string | null>(null);
 
+  // Initial load check for pending parcel alert (fires ONCE on initial form load, never during user edits)
   useEffect(() => {
-    if (lockIdentity && currentMealInfo && !alertShown.current) {
+    if (lockIdentity && currentMealInfo && value) {
+      const passId = value.id;
+      if (parcelAlertFiredRef.current === passId) return;
+
       const { dayId, type } = currentMealInfo;
       const dayConf = dayConfig.find(d => d.id === dayId);
       const mealConf = dayConf ? dayConf[type] : null;
 
       if (mealConf?.enabled && mealConf.parcel && mealConf.parcelAlert) {
-         const personSlots = form.mealSlots[dayId] || [];
-         const takenDays = form.takenByPerson[dayId] || [];
+         const personSlots = value.mealSlots?.[dayId] || [];
+         const takenDays = value.takenByPerson?.[dayId] || [];
 
          const hasPendingParcel = personSlots.some((slot: MealSlot, pIdx: number) => {
             const t = takenDays[pIdx];
@@ -181,13 +186,14 @@ export function SubscriptionForm() {
             return optedParcel && !takenFood && !takenParcel;
          });
 
+         parcelAlertFiredRef.current = passId;
+
          if (hasPendingParcel) {
-            alertShown.current = true;
             showGlobalAlert(UI_TEXT.appName, UI_TEXT.parcelAlertActive);
          }
       }
     }
-  }, [lockIdentity, currentMealInfo, dayConfig, showGlobalAlert, form.mealSlots, form.takenByPerson]);
+  }, [lockIdentity, currentMealInfo, dayConfig, value?.id, showGlobalAlert]);
 
   const getLogDetails = (sub: Subscription, isEdit: boolean) => {
     const activeDaysLog = getActiveDays(dayConfig);
@@ -767,7 +773,10 @@ export function SubscriptionForm() {
             <BackButton onPress={onCancel} />
             <HomeButton onPress={onHome} />
           </View>
-          <LogoutButton onLogout={handleLogout} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <ThemeToggleButton />
+            <LogoutButton onLogout={handleLogout} />
+          </View>
         </View>
         <Text style={styles.title}>
           {lockIdentity ? UI_TEXT.editFlat : UI_TEXT.addFlatTitle}

@@ -2,7 +2,7 @@
  * Subscription List Screen.
  * Displays all flat records with search and filtering capabilities.
  */
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -46,11 +46,13 @@ import {
   PaymentConfig,
   TakenState,
   MealSlot,
-  DietType,
+  CheckoutSource,
 } from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
+import { ThemeToggleButton } from "../components/common/ThemeToggleButton";
+import { QuickCheckoutModal } from "../components/common/QuickCheckoutModal";
 
 const SubscriptionCard = React.memo(({
   item,
@@ -65,6 +67,7 @@ const SubscriptionCard = React.memo(({
   hasParcel,
   isVegOnly,
   onSelect,
+  onOpenQuickCheckout,
   addActivityLog,
   missedCount
 }: {
@@ -80,6 +83,7 @@ const SubscriptionCard = React.memo(({
   hasParcel: boolean;
   isVegOnly: boolean;
   onSelect: (sub: Subscription) => void;
+  onOpenQuickCheckout?: (sub: Subscription) => void;
   addActivityLog: any;
   missedCount?: number;
 }) => {
@@ -98,9 +102,35 @@ const SubscriptionCard = React.memo(({
       ]}
     >
       {missedCount ? (
-        <View style={{ position: 'absolute', top: -s(10), right: -s(10), width: s(28), height: s(28), borderRadius: s(14), backgroundColor: theme.colors.error, alignItems: 'center', justifyContent: 'center', zIndex: 10, elevation: 4, borderWidth: 2, borderColor: theme.colors.white }}>
-           <Text style={{ color: theme.colors.white, fontSize: s(12), fontWeight: '900' }}>{missedCount}</Text>
-        </View>
+        <Pressable
+          onPress={(e) => {
+            e.stopPropagation();
+            if (onOpenQuickCheckout) {
+              onOpenQuickCheckout(item);
+            }
+          }}
+          accessibilityLabel={UI_TEXT.quickCheckout}
+          style={({ pressed }) => [
+            {
+              position: 'absolute',
+              top: -s(10),
+              right: -s(10),
+              width: s(32),
+              height: s(32),
+              borderRadius: s(16),
+              backgroundColor: theme.colors.error,
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 20,
+              elevation: 6,
+              borderWidth: 2,
+              borderColor: theme.colors.white,
+            },
+            pressed && { opacity: 0.8, transform: [{ scale: 1.1 }] }
+          ]}
+        >
+           <Text style={{ color: theme.colors.white, fontSize: s(13), fontWeight: '900' }}>{missedCount}</Text>
+        </Pressable>
       ) : null}
       <View style={styles.cardTop}>
         <View style={{ flex: 1 }}>
@@ -207,7 +237,7 @@ const SubscriptionCard = React.memo(({
 export function SubscriptionListScreen() {
   const { userRole, handleLogout } = useAuth();
   const {
-    subscriptions, dayConfig, paymentConfig, seasonEnabled, whatsappCountryCode, kidsEnabled, addActivityLog
+    subscriptions, dayConfig, paymentConfig, seasonEnabled, whatsappCountryCode, kidsEnabled, addActivityLog, refreshAllData
   } = useDatabase();
 
   const {
@@ -234,17 +264,37 @@ export function SubscriptionListScreen() {
     for (const dId of active) {
       for (const mType of [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER]) {
         if (isMealCurrent(dId, mType, dayConfig) && isMealEnabled(dId, mType, dayConfig)) {
-          return { dayId: dId, type: mType };
+          return {
+            dayId: dId,
+            type: mType,
+            mealType: mType,
+            dayLabel: getDayLabel(dId, dayConfig),
+            mealLabel: getMealLabel(mType)
+          };
         }
       }
     }
     return null;
   }, [dayConfig]);
 
+  const [quickCheckoutSub, setQuickCheckoutSub] = useState<Subscription | null>(null);
+  const [quickCheckoutVisible, setQuickCheckoutVisible] = useState(false);
+
+  const onOpenQuickCheckout = useCallback((sub: Subscription) => {
+    addActivityLog({
+      module: ActivityModule.SCANNER,
+      action: ActivityAction.UPDATE,
+      targetId: sub.id,
+      description: UI_TEXT.logQuickCheckoutOpened.replace("{id}", sub.id).replace("{source}", CheckoutSource.SUBSCRIPTION_LIST)
+    });
+    setQuickCheckoutSub(sub);
+    setQuickCheckoutVisible(true);
+  }, [addActivityLog]);
+
   const [activeFilters, setActiveFilters] = useState<FilterMode[]>([FilterMode.ALL]);
   const [isAscending, setIsAscending] = useState(true);
 
-  const toggleFilter = (mode: FilterMode) => {
+  const toggleFilter = useCallback((mode: FilterMode) => {
     if (mode === FilterMode.ALL) {
       setActiveFilters([FilterMode.ALL]);
       return;
@@ -259,7 +309,7 @@ export function SubscriptionListScreen() {
       }
       return next.length === 0 ? [FilterMode.ALL] : next;
     });
-  };
+  }, []);
 
   const passesWithKidsCount = useMemo(() => {
     return subscriptions.filter(sub => (sub.kidsCount || 0) > 0).length;
@@ -343,6 +393,36 @@ export function SubscriptionListScreen() {
   }, [subscriptions, currentMealInfo]);
 
   const hasAnyMissed = missedData.count > 0;
+
+  // Auto-deselect filters when their selection count drops to 0 (e.g., after quick checkout clears the last missed pass)
+  useEffect(() => {
+    setActiveFilters(prev => {
+      if (prev.includes(FilterMode.ALL)) return prev;
+
+      let next = [...prev];
+
+      if (next.includes(FilterMode.MISSED) && (!currentMealInfo || !hasAnyMissed)) {
+        next = next.filter(m => m !== FilterMode.MISSED);
+      }
+      if (next.includes(FilterMode.SUBSCRIBED) && (!currentMealInfo || !hasAnySubscribed)) {
+        next = next.filter(m => m !== FilterMode.SUBSCRIBED);
+      }
+      if (next.includes(FilterMode.KIDS) && (!kidsEnabled || !hasAnyKids)) {
+        next = next.filter(m => m !== FilterMode.KIDS);
+      }
+      if (next.includes(FilterMode.PARCEL) && !hasAnyParcel) {
+        next = next.filter(m => m !== FilterMode.PARCEL);
+      }
+      if (next.includes(FilterMode.VEG_ONLY) && !hasAnyVegOnly) {
+        next = next.filter(m => m !== FilterMode.VEG_ONLY);
+      }
+
+      if (next.length === 0) {
+        return [FilterMode.ALL];
+      }
+      return next.length === prev.length ? prev : next;
+    });
+  }, [currentMealInfo, hasAnyMissed, hasAnySubscribed, kidsEnabled, hasAnyKids, hasAnyParcel, hasAnyVegOnly]);
 
   const visibleSubscriptions = useMemo(() => {
     let filtered = subscriptions;
@@ -744,11 +824,12 @@ export function SubscriptionListScreen() {
         hasParcel={!!item._hasParcel}
         isVegOnly={!!item._isVegOnly}
         onSelect={onSelect}
+        onOpenQuickCheckout={onOpenQuickCheckout}
         addActivityLog={addActivityLog}
         missedCount={item._missedCount}
       />
     );
-  }, [theme, styles, s, kidsEnabled, paymentConfig, whatsappCountryCode, onSelect]);
+  }, [theme, styles, s, kidsEnabled, paymentConfig, whatsappCountryCode, onSelect, onOpenQuickCheckout, addActivityLog]);
 
   const showFilters = (currentMealInfo && hasAnySubscribed) || (kidsEnabled && hasAnyKids) || hasAnyParcel || (isNonVegSeason && hasAnyVegOnly) || (currentMealInfo && hasAnyMissed);
 
@@ -765,7 +846,10 @@ export function SubscriptionListScreen() {
               <BackButton onPress={goBack} />
               <HomeButton onPress={() => navigate(AppScreen.HOME)} />
             </View>
-            <LogoutButton onLogout={handleLogout} />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <ThemeToggleButton />
+              <LogoutButton onLogout={handleLogout} />
+            </View>
           </View>
           <Text style={styles.title}>{UI_TEXT.subscriptions}</Text>
           <Text style={styles.subtitle}>{UI_TEXT.activePasses}: {subscriptions.length}</Text>
@@ -980,8 +1064,8 @@ export function SubscriptionListScreen() {
         )}
 
         <View style={[styles.maxWidthWrapper, { marginTop: showFilters ? 4 : 20 }]}>
-          <View style={{ flexDirection: 'row', gap: s(8), alignItems: 'center' }}>
-            <View style={[styles.searchBox, { flex: 1, marginBottom: 0, maxWidth: undefined }]}>
+          <View style={{ flexDirection: 'row', gap: s(8), alignItems: 'center', flexWrap: 'wrap' }}>
+            <View style={[styles.searchBox, { flex: 1, minWidth: 160, marginBottom: 0, maxWidth: undefined }]}>
               <Ionicons name="search-outline" size={22} color={theme.colors.textSecondary} />
               <TextInput
                 value={subscriptionSearch}
@@ -993,59 +1077,61 @@ export function SubscriptionListScreen() {
                 clearButtonMode="while-editing"
               />
             </View>
-            <Pressable
-              onPress={() => setIsAscending(!isAscending)}
-              style={({ pressed }) => [
-                {
-                  width: s(44),
-                  height: s(44),
-                  borderRadius: s(12),
-                  backgroundColor: theme.colors.surfaceDark,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  borderWidth: 1,
-                  borderColor: theme.colors.border,
-                },
-                pressed && { opacity: 0.7 }
-              ]}
-            >
-              <Ionicons
-                name={isAscending ? "arrow-up-outline" : "arrow-down-outline"}
-                size={s(20)}
-                color={theme.colors.primary}
-              />
-            </Pressable>
-            {visibleSubscriptions.length >= 1 && (
+            <View style={{ flexDirection: 'row', gap: s(8), alignItems: 'center', flexShrink: 0 }}>
               <Pressable
-                onPress={handleExportExcel}
+                onPress={() => setIsAscending(!isAscending)}
                 style={({ pressed }) => [
                   {
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: s(6),
-                    backgroundColor: theme.colors.primary,
-                    paddingHorizontal: s(12),
-                    paddingVertical: s(10),
+                    width: s(44),
+                    height: s(44),
                     borderRadius: s(12),
-                    elevation: 2,
-                    shadowColor: theme.colors.primary,
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.2,
-                    shadowRadius: 4,
+                    backgroundColor: theme.colors.surfaceDark,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderWidth: 1,
+                    borderColor: theme.colors.border,
                   },
-                  pressed && { opacity: 0.8 }
+                  pressed && { opacity: 0.7 }
                 ]}
               >
                 <Ionicons
-                  name={Platform.OS === 'web' ? "download-outline" : "share-outline"}
-                  size={s(18)}
-                  color={theme.colors.white}
+                  name={isAscending ? "arrow-up-outline" : "arrow-down-outline"}
+                  size={s(20)}
+                  color={theme.colors.primary}
                 />
-                <Text style={{ color: theme.colors.white, fontWeight: '800', fontSize: s(13) }}>
-                  {UI_TEXT.exportExcel}
-                </Text>
               </Pressable>
-            )}
+              {visibleSubscriptions.length >= 1 && (
+                <Pressable
+                  onPress={handleExportExcel}
+                  style={({ pressed }) => [
+                    {
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: s(6),
+                      backgroundColor: theme.colors.primary,
+                      paddingHorizontal: s(12),
+                      paddingVertical: s(10),
+                      borderRadius: s(12),
+                      elevation: 2,
+                      shadowColor: theme.colors.primary,
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.2,
+                      shadowRadius: 4,
+                    },
+                    pressed && { opacity: 0.8 }
+                  ]}
+                >
+                  <Ionicons
+                    name={Platform.OS === 'web' ? "download-outline" : "share-outline"}
+                    size={s(18)}
+                    color={theme.colors.white}
+                  />
+                  <Text style={{ color: theme.colors.white, fontWeight: '800', fontSize: s(13) }}>
+                    {UI_TEXT.exportExcel}
+                  </Text>
+                </Pressable>
+              )}
+            </View>
           </View>
         </View>
 
@@ -1086,6 +1172,22 @@ export function SubscriptionListScreen() {
           <Ionicons name="add" size={32} color={theme.colors.white} />
         </Pressable>
       ) : null}
+
+      <QuickCheckoutModal
+        visible={quickCheckoutVisible && !!quickCheckoutSub}
+        subscription={quickCheckoutSub}
+        currentMealInfo={currentMealInfo}
+        source={CheckoutSource.SUBSCRIPTION_LIST}
+        onClose={() => {
+          setQuickCheckoutVisible(false);
+          setQuickCheckoutSub(null);
+        }}
+        onSuccess={() => {
+          setQuickCheckoutVisible(false);
+          setQuickCheckoutSub(null);
+          void refreshAllData(true);
+        }}
+      />
     </View>
   );
 }

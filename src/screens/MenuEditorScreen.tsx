@@ -27,6 +27,7 @@ import { Day, DayMenu, MealMenu, ConfigDay, MealType, AppScreen, ActivityModule,
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
+import { ThemeToggleButton } from "../components/common/ThemeToggleButton";
 import { ActionLabel } from "../components/common/ActionLabel";
 import { MealMenuEditor } from "../components/menu/MealMenuEditor";
 
@@ -201,7 +202,10 @@ export function MenuEditorScreen() {
             <BackButton onPress={goBack} />
             <HomeButton onPress={() => navigate(AppScreen.HOME)} />
           </View>
-          <LogoutButton onLogout={handleLogout} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <ThemeToggleButton />
+            <LogoutButton onLogout={handleLogout} />
+          </View>
         </View>
         <Text style={styles.title}>{UI_TEXT.foodMenu}</Text>
         <Text style={styles.subtitle}>{UI_TEXT.menuEditorSubtitle}</Text>

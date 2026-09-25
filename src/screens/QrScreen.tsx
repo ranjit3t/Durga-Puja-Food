@@ -10,6 +10,7 @@ import { AppScreen, AppThemeMode, ActivityModule, ActivityAction } from "../type
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
+import { ThemeToggleButton } from "../components/common/ThemeToggleButton";
 import { ActionLabel } from "../components/common/ActionLabel";
 
 import { useAuth } from "../context/AuthContext";
@@ -58,7 +59,10 @@ export function QrScreen() {
             <BackButton onPress={goBack} />
             <HomeButton onPress={() => navigate(AppScreen.HOME)} />
           </View>
-          <LogoutButton onLogout={handleLogout} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <ThemeToggleButton />
+            <LogoutButton onLogout={handleLogout} />
+          </View>
         </View>
         <Text style={styles.title}>{UI_TEXT.foodPass}</Text>
         <Text style={styles.subtitle}>{UI_TEXT.qrIdentityStay}</Text>
