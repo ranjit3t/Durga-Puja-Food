@@ -5,7 +5,7 @@ import { useStyles, useScaling } from "../styles";
 import { useAppTheme, StatusBarStyleMode } from "../theme";
 import { UI_TEXT } from "../strings";
 import { useAuth } from "../context/AuthContext";
-import { useDatabase } from "../context/DatabaseContext";
+import { useCoreDatabase } from "../context/DatabaseContext";
 import { useUI } from "../context/UIContext";
 import { useAppNavigation } from "../context/NavigationContext";
 import { AppScreen, UserRole, MealType, AppThemeMode, DietaryOption, DietType } from "../types";
@@ -21,7 +21,7 @@ export function HomeScreen() {
   const { userRole, handleLogout, versionAlertShown, markVersionAlertShown } = useAuth();
   const {
     subscriptions, dayConfig, seasonName, seasonEnabled, guestEnabled, totalPeople, firebaseError, paymentConfig, collections, kidsEnabled, foodMenu, remoteAppVersion, loading
-  } = useDatabase();
+  } = useCoreDatabase();
   const { navigate, startNew, setIsQuickCheckout, setIsQuickGuestMode } = useAppNavigation();
   const { showAlert, showGlobalError } = useUI();
   const { width } = useWindowDimensions();

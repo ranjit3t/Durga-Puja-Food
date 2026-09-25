@@ -32,15 +32,16 @@ import { ActionLabel } from "../components/common/ActionLabel";
 import { MealMenuEditor } from "../components/menu/MealMenuEditor";
 
 import { useAuth } from "../context/AuthContext";
-import { useDatabase } from "../context/DatabaseContext";
+import { useCoreDatabase, useActivityLogs } from "../context/DatabaseContext";
 import { useAppNavigation } from "../context/NavigationContext";
 import { useUI } from "../context/UIContext";
 
 export function MenuEditorScreen() {
   const { handleLogout } = useAuth();
   const {
-    foodMenu: menu, dayConfig: config, seasonEnabled, foodPriceEnabled, updateMenu, updateMealMenu, kidsEnabled, addActivityLog
-  } = useDatabase();
+    foodMenu: menu, dayConfig: config, seasonEnabled, foodPriceEnabled, updateMenu, updateMealMenu, kidsEnabled
+  } = useCoreDatabase();
+  const { addActivityLog } = useActivityLogs();
   const { showAlert } = useUI();
   const { navigate, goBack, targetDay, targetMeal, setTargetDay, setTargetMeal } = useAppNavigation();
 

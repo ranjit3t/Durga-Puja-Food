@@ -31,7 +31,7 @@ import { ThemeToggleButton } from "../components/common/ThemeToggleButton";
 import { Dropdown } from "../components/common/Dropdown";
 
 import { useAuth } from "../context/AuthContext";
-import { useDatabase } from "../context/DatabaseContext";
+import { useCoreDatabase, useActivityLogs } from "../context/DatabaseContext";
 import { useUI } from "../context/UIContext";
 import { useAppNavigation } from "../context/NavigationContext";
 import { Subscription } from "../types";
@@ -226,7 +226,8 @@ const ActivityLogItem = memo(({
 
 export function ActivityLogScreen() {
   const { handleLogout } = useAuth();
-  const { activityLogs, loading, refreshAllData, subscriptions, fetchMoreLogs } = useDatabase();
+  const { loading, refreshAllData, subscriptions } = useCoreDatabase();
+  const { activityLogs, fetchMoreLogs } = useActivityLogs();
   const { navigate, goBack, setSelectedId, setSelectedRecord } = useAppNavigation();
   const { showAlert } = useUI();
   const { width } = useWindowDimensions();

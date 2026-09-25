@@ -24,12 +24,13 @@ import { LogoutButton } from "../components/common/LogoutButton";
 import { ThemeToggleButton } from "../components/common/ThemeToggleButton";
 
 import { useAuth } from "../context/AuthContext";
-import { useDatabase } from "../context/DatabaseContext";
+import { useCoreDatabase, useActivityLogs } from "../context/DatabaseContext";
 import { useAppNavigation } from "../context/NavigationContext";
 
 export function ContactsScreen() {
   const { handleLogout } = useAuth();
-  const { subscriptions, addActivityLog, whatsappCountryCode, kidsEnabled } = useDatabase();
+  const { subscriptions, whatsappCountryCode, kidsEnabled } = useCoreDatabase();
+  const { addActivityLog } = useActivityLogs();
   const { navigate, goBack, setSelectedId, setSelectedRecord } = useAppNavigation();
 
   const styles = useStyles();

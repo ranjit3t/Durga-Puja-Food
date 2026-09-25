@@ -20,7 +20,7 @@ import { useStyles, useScaling } from "../styles";
 import { StatusBarStyleMode, useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
 import { useAuth } from "../context/AuthContext";
-import { useDatabase } from "../context/DatabaseContext";
+import { useCoreDatabase, useActivityLogs } from "../context/DatabaseContext";
 import { useAppNavigation } from "../context/NavigationContext";
 import {
   getActiveDays,
@@ -237,8 +237,9 @@ const SubscriptionCard = React.memo(({
 export function SubscriptionListScreen() {
   const { userRole, handleLogout } = useAuth();
   const {
-    subscriptions, dayConfig, paymentConfig, seasonEnabled, whatsappCountryCode, kidsEnabled, addActivityLog, refreshAllData
-  } = useDatabase();
+    subscriptions, dayConfig, paymentConfig, seasonEnabled, whatsappCountryCode, kidsEnabled, refreshAllData
+  } = useCoreDatabase();
+  const { addActivityLog } = useActivityLogs();
 
   const {
     subscriptionSearch, setSubscriptionSearch, navigate, goBack, startNew,

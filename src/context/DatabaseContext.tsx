@@ -41,7 +41,7 @@ import {
   formatTakenTime
 } from "../constants";
 
-interface DatabaseContextType {
+export interface CoreDatabaseContextType {
   // Sync Status
   loading: boolean;
   firebaseError: string;
@@ -60,8 +60,6 @@ interface DatabaseContextType {
   kidsEnabled: boolean;
   whatsappCountryCode: string;
   remoteAppVersion: string | null;
-  notes: Note[];
-  activityLogs: ActivityLog[];
   kitchenMetrics: KitchenMetrics | null;
 
   // Derived Metrics
@@ -80,15 +78,27 @@ interface DatabaseContextType {
   checkInPassAtomic: (flatId: string, updatesMap: Record<string, boolean>, metricsIncrements?: Record<string, number>) => Promise<void>;
   getByPasscode: (passcode: string) => Promise<Subscription | undefined>;
   getAuthConfig: () => Promise<any>;
-  addActivityLog: (log: Omit<ActivityLog, "id" | "timestamp" | "userName" | "userRole" | "device" | "os">, manualUser?: string, manualRole?: UserRole | string) => void;
-  getActivityLogs: (limit?: number) => Promise<ActivityLog[]>;
-  fetchMoreLogs: (limit: number) => Promise<void>;
-  upsertNote: (note: Note) => Promise<void>;
-  deleteNote: (id: string) => Promise<void>;
   updateGuestCountDebounced: (dayId: string, mealKey: MealType, field: string, value: number, source?: GuestCheckoutSource | string) => void;
 }
 
-const DatabaseContext = createContext<DatabaseContextType | undefined>(undefined);
+export interface ActivityLogsContextType {
+  activityLogs: ActivityLog[];
+  addActivityLog: (log: Omit<ActivityLog, "id" | "timestamp" | "userName" | "userRole" | "device" | "os">, manualUser?: string, manualRole?: UserRole | string) => void;
+  getActivityLogs: (limit?: number) => Promise<ActivityLog[]>;
+  fetchMoreLogs: (limit: number) => Promise<void>;
+}
+
+export interface NotesContextType {
+  notes: Note[];
+  upsertNote: (note: Note) => Promise<void>;
+  deleteNote: (id: string) => Promise<void>;
+}
+
+export type DatabaseContextType = CoreDatabaseContextType & ActivityLogsContextType & NotesContextType;
+
+const CoreDatabaseContext = createContext<CoreDatabaseContextType | undefined>(undefined);
+const ActivityLogsContext = createContext<ActivityLogsContextType | undefined>(undefined);
+const NotesContext = createContext<NotesContextType | undefined>(undefined);
 
 export function DatabaseProvider({ children }: { children: React.ReactNode }) {
   const { userRole, userName } = useAuth();
@@ -134,6 +144,15 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
 
   const getActivityLogs = useCallback((limitCount?: number) => {
     return repository.getActivityLogs(limitCount);
+  }, []);
+
+  const fetchMoreLogs = useCallback(async (limitCount: number) => {
+    try {
+      const logs = await repository.getActivityLogs(limitCount);
+      setActivityLogs(logs);
+    } catch (err) {
+      console.error("Fetch more activity logs error:", err);
+    }
   }, []);
 
   const getByPasscode = useCallback((passcode: string) => {
@@ -247,21 +266,56 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
 
     const activeDays = getActiveDays(dayConfig);
 
-    // Register Universal Real-Time WebSocket Listeners
+    // Register Universal Real-Time WebSocket Listeners with Debounced Batching
+    let subBuffer: { type: "add" | "update" | "remove"; record?: Subscription; id?: string }[] = [];
+    let subBatchTimer: any = null;
+
+    const flushSubsBuffer = () => {
+      if (!isMounted || subBuffer.length === 0) return;
+      const currentBatch = [...subBuffer];
+      subBuffer = [];
+      subBatchTimer = null;
+
+      setSubscriptions((prev) => {
+        let list = [...prev];
+        let changed = false;
+        for (const op of currentBatch) {
+          if (op.type === "add" && op.record) {
+            if (!list.some((s) => s.id === op.record!.id)) {
+              list.push(op.record);
+              changed = true;
+            }
+          } else if (op.type === "update" && op.record) {
+            const idx = list.findIndex((s) => s.id === op.record!.id);
+            if (idx !== -1) {
+              list[idx] = op.record;
+              changed = true;
+            }
+          } else if (op.type === "remove" && op.id) {
+            const filtered = list.filter((s) => s.id !== op.id);
+            if (filtered.length !== list.length) {
+              list = filtered;
+              changed = true;
+            }
+          }
+        }
+        if (!changed) return prev;
+        return sortSubscriptions(list);
+      });
+    };
+
     const unsubSubs = repository.onSubscriptionsDelta(
       (newRecord) => {
-        setSubscriptions((prev) => {
-          if (prev.some((s) => s.id === newRecord.id)) return prev;
-          return sortSubscriptions([...prev, newRecord]);
-        });
+        subBuffer.push({ type: "add", record: newRecord });
+        if (!subBatchTimer) subBatchTimer = setTimeout(flushSubsBuffer, 100);
       },
       (updatedRecord) => {
-        setSubscriptions((prev) =>
-          prev.map((s) => (s.id === updatedRecord.id ? updatedRecord : s))
-        );
+        subBuffer.push({ type: "update", record: updatedRecord });
+        if (!subBatchTimer) subBatchTimer = setTimeout(flushSubsBuffer, 100);
       },
       (removedId) => {
-        setSubscriptions((prev) => prev.filter((s) => s.id !== removedId));
+        subBuffer.push({ type: "remove", id: removedId });
+        if (!subBatchTimer) subBatchTimer = setTimeout(flushSubsBuffer, 100);
       },
       activeDays
     );
@@ -283,14 +337,36 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       }
     );
 
+    let logBuffer: ActivityLog[] = [];
+    let logBatchTimer: any = null;
+
     const unsubLogs = repository.onLogsDelta((newLog) => {
-      setActivityLogs((prev) => {
-        if (prev.some((l) => l.id === newLog.id)) {
-          return prev.map((l) => (l.id === newLog.id ? newLog : l)).sort((a, b) => b.timestamp - a.timestamp);
-        }
-        const updated = [newLog, ...prev];
-        return updated.sort((a, b) => b.timestamp - a.timestamp);
-      });
+      logBuffer.push(newLog);
+      if (!logBatchTimer) {
+        logBatchTimer = setTimeout(() => {
+          if (!isMounted) return;
+          const currentBatch = [...logBuffer];
+          logBuffer = [];
+          logBatchTimer = null;
+
+          setActivityLogs((prev) => {
+            let updated = [...prev];
+            let changed = false;
+            for (const item of currentBatch) {
+              const existingIdx = updated.findIndex((l) => l.id === item.id);
+              if (existingIdx !== -1) {
+                updated[existingIdx] = item;
+                changed = true;
+              } else {
+                updated.push(item);
+                changed = true;
+              }
+            }
+            if (!changed) return prev;
+            return updated.sort((a, b) => b.timestamp - a.timestamp);
+          });
+        }, 150);
+      }
     });
 
     const unsubMenu = repository.onMenuChange((menu) => {
@@ -319,6 +395,8 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       isMounted = false;
+      if (subBatchTimer) clearTimeout(subBatchTimer);
+      if (logBatchTimer) clearTimeout(logBatchTimer);
       unsubSubs();
       unsubNotes();
       unsubLogs();
@@ -883,38 +961,73 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
     return subscriptions.reduce((sum, sub) => sum + (sub.peopleCount || 0) + (sub.kidsCount || 0), 0);
   }, [subscriptions]);
 
-  const fetchMoreLogs = useCallback(async (limitCount: number) => {
-    try {
-      const logs = await repository.getActivityLogs(limitCount);
-      setActivityLogs(logs);
-    } catch (err) {
-      console.error("Fetch more activity logs error:", err);
-    }
-  }, []);
-
-  const value = useMemo(() => ({
+  const coreValue = useMemo(() => ({
     loading, firebaseError, refreshAllData,
     subscriptions, foodMenu, dayConfig, seasonName, seasonEnabled, paymentConfig, guestEnabled, mobileEnabled, foodPriceEnabled,
-    kidsEnabled, whatsappCountryCode, remoteAppVersion, notes, activityLogs, kitchenMetrics,
+    kidsEnabled, whatsappCountryCode, remoteAppVersion, kitchenMetrics,
     dashboardData, collections, totalPeople,
     upsertSubscription, deleteSubscription, updateConfig, updateMenu, updateGuestCount, updateMealMenu, updateSubscriptionStatus,
     checkInPassAtomic, getByPasscode,
-    getAuthConfig, addActivityLog, getActivityLogs, fetchMoreLogs, upsertNote, deleteNote, updateGuestCountDebounced
+    getAuthConfig, updateGuestCountDebounced
   }), [
     loading, firebaseError, refreshAllData,
     subscriptions, foodMenu, dayConfig, seasonName, seasonEnabled, paymentConfig, guestEnabled, mobileEnabled, foodPriceEnabled,
-    kidsEnabled, whatsappCountryCode, remoteAppVersion, notes, activityLogs, kitchenMetrics,
+    kidsEnabled, whatsappCountryCode, remoteAppVersion, kitchenMetrics,
     dashboardData, collections, totalPeople,
     upsertSubscription, deleteSubscription, updateConfig, updateMenu, updateGuestCount, updateMealMenu, updateSubscriptionStatus,
     checkInPassAtomic, getByPasscode,
-    getAuthConfig, addActivityLog, getActivityLogs, fetchMoreLogs, upsertNote, deleteNote, updateGuestCountDebounced
+    getAuthConfig, updateGuestCountDebounced
   ]);
 
-  return <DatabaseContext.Provider value={value}>{children}</DatabaseContext.Provider>;
+  const logsValue = useMemo(() => ({
+    activityLogs, addActivityLog, getActivityLogs, fetchMoreLogs
+  }), [activityLogs, addActivityLog, getActivityLogs, fetchMoreLogs]);
+
+  const notesValue = useMemo(() => ({
+    notes, upsertNote, deleteNote
+  }), [notes, upsertNote, deleteNote]);
+
+  return (
+    <CoreDatabaseContext.Provider value={coreValue}>
+      <NotesContext.Provider value={notesValue}>
+        <ActivityLogsContext.Provider value={logsValue}>
+          {children}
+        </ActivityLogsContext.Provider>
+      </NotesContext.Provider>
+    </CoreDatabaseContext.Provider>
+  );
 }
 
-export function useDatabase() {
-  const context = useContext(DatabaseContext);
-  if (!context) throw new Error("useDatabase must be used within DatabaseProvider");
+export function useCoreDatabase(): CoreDatabaseContextType {
+  const context = useContext(CoreDatabaseContext);
+  if (!context) throw new Error("useCoreDatabase must be used within DatabaseProvider");
   return context;
+}
+
+export function useActivityLogs(): ActivityLogsContextType {
+  const context = useContext(ActivityLogsContext);
+  if (!context) throw new Error("useActivityLogs must be used within DatabaseProvider");
+  return context;
+}
+
+export function useNotes(): NotesContextType {
+  const context = useContext(NotesContext);
+  if (!context) throw new Error("useNotes must be used within DatabaseProvider");
+  return context;
+}
+
+export function useDatabase(): DatabaseContextType {
+  const core = useContext(CoreDatabaseContext);
+  const notesCtx = useContext(NotesContext);
+  const logsCtx = useContext(ActivityLogsContext);
+
+  if (!core || !notesCtx || !logsCtx) {
+    throw new Error("useDatabase must be used within DatabaseProvider");
+  }
+
+  return useMemo(() => ({
+    ...core,
+    ...notesCtx,
+    ...logsCtx,
+  }), [core, notesCtx, logsCtx]);
 }

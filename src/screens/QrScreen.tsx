@@ -14,15 +14,16 @@ import { ThemeToggleButton } from "../components/common/ThemeToggleButton";
 import { ActionLabel } from "../components/common/ActionLabel";
 
 import { useAuth } from "../context/AuthContext";
-import { useDatabase } from "../context/DatabaseContext";
+import { useCoreDatabase, useActivityLogs } from "../context/DatabaseContext";
 import { useUI } from "../context/UIContext";
 import { useAppNavigation } from "../context/NavigationContext";
 
 export function QrScreen() {
   const { userRole, handleLogout } = useAuth();
   const {
-    dayConfig, seasonName, seasonEnabled, mobileEnabled, subscriptions, whatsappCountryCode, kidsEnabled, addActivityLog
-  } = useDatabase();
+    dayConfig, seasonName, seasonEnabled, mobileEnabled, subscriptions, whatsappCountryCode, kidsEnabled
+  } = useCoreDatabase();
+  const { addActivityLog } = useActivityLogs();
   const { shareQr } = useUI();
   const { selectedId, selectedRecord, goBack, navigate } = useAppNavigation();
 

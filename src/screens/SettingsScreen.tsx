@@ -23,7 +23,7 @@ import { ThemeToggleButton } from "../components/common/ThemeToggleButton";
 import { ActionLabel } from "../components/common/ActionLabel";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../context/AuthContext";
-import { useDatabase } from "../context/DatabaseContext";
+import { useCoreDatabase, useActivityLogs } from "../context/DatabaseContext";
 import { useUI } from "../context/UIContext";
 import { useAppNavigation } from "../context/NavigationContext";
 import { getPaymentModeLabel, getMealLabel, getMealConstraints } from "../constants";
@@ -33,8 +33,9 @@ export function SettingsScreen() {
   const { handleLogout } = useAuth();
   const {
     dayConfig: config, seasonName, seasonEnabled, paymentConfig: payment, guestEnabled, mobileEnabled, foodPriceEnabled,
-    whatsappCountryCode, updateConfig, kidsEnabled, subscriptions, addActivityLog, foodMenu
-  } = useDatabase();
+    whatsappCountryCode, updateConfig, kidsEnabled, subscriptions, foodMenu
+  } = useCoreDatabase();
+  const { addActivityLog } = useActivityLogs();
   const { showAlert } = useUI();
   const { navigate, goBack } = useAppNavigation();
 

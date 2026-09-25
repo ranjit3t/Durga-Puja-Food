@@ -39,7 +39,7 @@ import { QuickCheckoutModal } from "../components/common/QuickCheckoutModal";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useAuth } from "../context/AuthContext";
-import { useDatabase } from "../context/DatabaseContext";
+import { useCoreDatabase, useActivityLogs } from "../context/DatabaseContext";
 import { useUI } from "../context/UIContext";
 import { useAppNavigation } from "../context/NavigationContext";
 
@@ -47,8 +47,9 @@ export function DetailsScreen() {
   const { userRole, handleLogout } = useAuth();
   const {
     subscriptions, dayConfig, paymentConfig, seasonEnabled, foodMenu, mobileEnabled,
-    deleteSubscription, whatsappCountryCode, kidsEnabled, addActivityLog
-  } = useDatabase();
+    deleteSubscription, whatsappCountryCode, kidsEnabled
+  } = useCoreDatabase();
+  const { addActivityLog } = useActivityLogs();
   const { showAlert: showGlobalAlert } = useUI();
   const {
     selectedId, selectedRecord, setSelectedId, setSelectedRecord, navigate, setEditing, setReportType, goBack

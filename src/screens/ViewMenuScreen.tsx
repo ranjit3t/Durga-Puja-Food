@@ -20,14 +20,15 @@ import { ActionLabel } from "../components/common/ActionLabel";
 import { MealDisplay } from "../components/menu/MealDisplay";
 
 import { useAuth } from "../context/AuthContext";
-import { useDatabase } from "../context/DatabaseContext";
+import { useCoreDatabase, useActivityLogs } from "../context/DatabaseContext";
 import { useAppNavigation } from "../context/NavigationContext";
 
 export function ViewMenuScreen() {
   const { userRole, handleLogout } = useAuth();
   const {
-    foodMenu, dayConfig, guestEnabled, seasonEnabled, foodPriceEnabled, paymentConfig, kidsEnabled, addActivityLog
-  } = useDatabase();
+    foodMenu, dayConfig, guestEnabled, seasonEnabled, foodPriceEnabled, paymentConfig, kidsEnabled
+  } = useCoreDatabase();
+  const { addActivityLog } = useActivityLogs();
   const { navigate, goBack, targetDay, setTargetDay, targetMeal, setTargetMeal } = useAppNavigation();
 
   const styles = useStyles();

@@ -38,7 +38,7 @@ import { MealMetricGrid } from "../components/dashboard/MealMetricGrid";
 import { MealBarChart } from "../components/dashboard/MealBarChart";
 
 import { useAuth } from "../context/AuthContext";
-import { useDatabase } from "../context/DatabaseContext";
+import { useCoreDatabase } from "../context/DatabaseContext";
 import { useUI } from "../context/UIContext";
 import { useAppNavigation } from "../context/NavigationContext";
 
@@ -392,7 +392,7 @@ export function DashboardScreen() {
   const {
     foodMenu, dayConfig, seasonName, paymentConfig, guestEnabled, seasonEnabled,
     dashboardData, collections, updateGuestCount, kidsEnabled
-  } = useDatabase();
+  } = useCoreDatabase();
 
   const { navigate, goBack } = useAppNavigation();
   const { showAlert } = useUI();

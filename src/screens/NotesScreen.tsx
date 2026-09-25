@@ -28,7 +28,7 @@ import { Dropdown } from "../components/common/Dropdown";
 import { ActionLabel } from "../components/common/ActionLabel";
 
 import { useAuth } from "../context/AuthContext";
-import { useDatabase } from "../context/DatabaseContext";
+import { useCoreDatabase, useNotes, useActivityLogs } from "../context/DatabaseContext";
 import { useAppNavigation } from "../context/NavigationContext";
 import { useUI } from "../context/UIContext";
 
@@ -117,7 +117,9 @@ const NoteItem = memo(({
 
 export function NotesScreen() {
   const { userRole, userName, handleLogout } = useAuth();
-  const { notes, loading, deleteNote, refreshAllData, upsertNote, addActivityLog } = useDatabase();
+  const { loading, refreshAllData } = useCoreDatabase();
+  const { notes, deleteNote, upsertNote } = useNotes();
+  const { addActivityLog } = useActivityLogs();
   const { navigate, goBack } = useAppNavigation();
   const { showAlert } = useUI();
 

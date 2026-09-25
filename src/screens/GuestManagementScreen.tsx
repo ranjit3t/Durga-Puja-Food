@@ -13,7 +13,7 @@ import { ThemeToggleButton } from "../components/common/ThemeToggleButton";
 import { CounterInput } from "../components/common/CounterInput";
 import { QuickGuestModal } from "../components/common/QuickGuestModal";
 import { useAuth } from "../context/AuthContext";
-import { useDatabase } from "../context/DatabaseContext";
+import { useCoreDatabase, useActivityLogs } from "../context/DatabaseContext";
 import { useAppNavigation } from "../context/NavigationContext";
 import { useUI } from "../context/UIContext";
 
@@ -189,8 +189,9 @@ const GuestMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, onUp
 export function GuestManagementScreen() {
   const { userRole, handleLogout } = useAuth();
   const {
-    foodMenu, dayConfig, seasonEnabled, updateGuestCountDebounced, addActivityLog
-  } = useDatabase();
+    foodMenu, dayConfig, seasonEnabled, updateGuestCountDebounced
+  } = useCoreDatabase();
+  const { addActivityLog } = useActivityLogs();
   const { goBack, navigate, isQuickGuestMode, setIsQuickGuestMode } = useAppNavigation();
   const { showAlert: showGlobalAlert } = useUI();
 

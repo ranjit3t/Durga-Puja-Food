@@ -43,7 +43,7 @@ import { KidsReport } from "../components/report/KidsReport";
 import { useReportData } from "../hooks/useReportData";
 
 import { useAuth } from "../context/AuthContext";
-import { useDatabase } from "../context/DatabaseContext";
+import { useCoreDatabase } from "../context/DatabaseContext";
 import { useUI } from "../context/UIContext";
 import { useAppNavigation } from "../context/NavigationContext";
 
@@ -51,7 +51,7 @@ export function ReportScreen() {
   const { userRole, handleLogout } = useAuth();
   const {
     subscriptions, foodMenu, dayConfig, seasonName, paymentConfig, guestEnabled, kidsEnabled
-  } = useDatabase();
+  } = useCoreDatabase();
   const { shareQr } = useUI();
   const {
     reportType, setReportType, reportDayId: selectedDayId, setReportDayId: onSetSelectedDayId, reportMealType: selectedMealType, setReportMealType: onSetSelectedMealType,

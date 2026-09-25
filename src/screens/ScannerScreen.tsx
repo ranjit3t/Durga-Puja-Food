@@ -8,7 +8,7 @@ import { BackButton } from "../components/common/BackButton";
 import { QuickCheckoutModal } from "../components/common/QuickCheckoutModal";
 
 import { useAppNavigation } from "../context/NavigationContext";
-import { useDatabase } from "../context/DatabaseContext";
+import { useCoreDatabase, useActivityLogs } from "../context/DatabaseContext";
 import { useUI } from "../context/UIContext";
 import { AppScreen, AppThemeMode, ActivityModule, ActivityAction, Subscription, MealType, DietaryOption, CheckoutSource } from "../types";
 import { getActiveDays, isMealCurrent, isMealEnabled, getDayLabel, getMealLabel, qrValueFor, isParcelEnabled } from "../constants";
@@ -33,7 +33,8 @@ export function ScannerScreen() {
   const [permission, requestPermission] = useCameraPermissions();
 
   const { openScannedValue, goBack, navigate, isQuickCheckout } = useAppNavigation();
-  const { subscriptions, dayConfig, kidsEnabled, addActivityLog } = useDatabase();
+  const { subscriptions, dayConfig, kidsEnabled } = useCoreDatabase();
+  const { addActivityLog } = useActivityLogs();
   const { showAlert } = useUI();
 
   const scanSize = Math.min(width * 0.85, 320);

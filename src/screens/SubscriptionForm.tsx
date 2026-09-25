@@ -66,7 +66,7 @@ import { CounterInput } from "../components/common/CounterInput";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useAuth } from "../context/AuthContext";
-import { useDatabase } from "../context/DatabaseContext";
+import { useCoreDatabase, useActivityLogs } from "../context/DatabaseContext";
 import { useUI } from "../context/UIContext";
 import { useAppNavigation } from "../context/NavigationContext";
 import { Day, Subscription } from "../types";
@@ -75,8 +75,9 @@ export function SubscriptionForm() {
   const { userRole, handleLogout } = useAuth();
   const {
     dayConfig, paymentConfig, seasonEnabled, foodPriceEnabled, foodMenu, mobileEnabled,
-    upsertSubscription, deleteSubscription, kidsEnabled, addActivityLog, subscriptions
-  } = useDatabase();
+    upsertSubscription, deleteSubscription, kidsEnabled, subscriptions
+  } = useCoreDatabase();
+  const { addActivityLog } = useActivityLogs();
   const { showAlert: showGlobalAlert } = useUI();
   const {
     editing: value, navigate, goBack, setSelectedId, setSelectedRecord
