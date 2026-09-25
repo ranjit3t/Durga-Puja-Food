@@ -27,6 +27,11 @@ export function LogoutButton({ onLogout }: { onLogout: () => void }) {
   return (
     <Pressable
       onPress={handlePress}
+      accessible={true}
+      accessibilityRole="button"
+      accessibilityLabel={UI_TEXT.logout}
+      accessibilityHint={UI_TEXT.logoutHint}
+      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
       style={[styles.backButton, { width: 36, height: 36, borderRadius: 18, paddingHorizontal: 0 }]}
     >
       <Ionicons

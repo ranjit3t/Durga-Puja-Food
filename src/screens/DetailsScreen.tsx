@@ -578,7 +578,7 @@ export function DetailsScreen() {
                              </View>
                              {p.time ? (
                                 <View style={{
-                                  backgroundColor: theme.themeType === AppThemeMode.DARK ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)",
+                                  backgroundColor: theme.colors.surfaceDark,
                                   paddingHorizontal: 4,
                                   paddingVertical: 1,
                                   borderRadius: 4,

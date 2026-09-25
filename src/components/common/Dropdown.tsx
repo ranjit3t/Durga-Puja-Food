@@ -32,11 +32,17 @@ export function Dropdown({
         onPress={() => !disabled && setOpen(true)}
         style={[styles.dropdownButton, disabled && { opacity: 0.6, backgroundColor: theme.colors.surface }]}
         disabled={disabled}
+        accessible={true}
+        accessibilityRole="combobox"
+        accessibilityLabel={label || UI_TEXT.dropdownLabel}
+        accessibilityValue={{ text: value || UI_TEXT.notSelected }}
+        accessibilityState={{ expanded: open, disabled: !!disabled }}
+        accessibilityHint={UI_TEXT.chooseOptionHint}
       >
         <Text style={styles.dropdownValue}>
           {value || `${UI_TEXT.selectPrefix} ${(label ?? UI_TEXT.optionDefault).toLowerCase()}`}
         </Text>
-        {!disabled && <Text style={styles.dropdownChevron}>▼</Text>}
+        {!disabled && <Text style={styles.dropdownChevron} importantForAccessibility="no">▼</Text>}
       </Pressable>
 
       <Modal
@@ -45,9 +51,9 @@ export function Dropdown({
         animationType="fade"
         onRequestClose={() => setOpen(false)}
       >
-        <View style={styles.dropdownModalBackdrop}>
+        <View style={styles.dropdownModalBackdrop} accessibilityViewIsModal={true}>
           <View style={styles.dropdownModalCard}>
-            <Text style={styles.dropdownModalTitle}>
+            <Text style={styles.dropdownModalTitle} accessibilityRole="header">
               {UI_TEXT.selectPrefix} {label ?? UI_TEXT.optionDefault}
             </Text>
 
@@ -63,6 +69,10 @@ export function Dropdown({
                     onChange(option);
                     setOpen(false);
                   }}
+                  accessible={true}
+                  accessibilityRole="menuitem"
+                  accessibilityLabel={option}
+                  accessibilityState={{ selected: option === value }}
                   style={[
                     styles.dropdownOption,
                     option === value && styles.dropdownOptionSelected,
@@ -83,6 +93,9 @@ export function Dropdown({
             <Pressable
               onPress={() => setOpen(false)}
               style={styles.dropdownModalCancel}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={UI_TEXT.cancel}
             >
               <Text style={styles.secondaryText}>{UI_TEXT.cancel}</Text>
             </Pressable>

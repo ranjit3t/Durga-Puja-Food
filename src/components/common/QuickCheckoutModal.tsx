@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
-import { View, Text, Pressable, StyleSheet, Platform, Modal, ScrollView, useWindowDimensions, Animated } from "react-native";
+import { View, Text, Pressable, StyleSheet, Platform, Modal, ScrollView, useWindowDimensions, Animated, AccessibilityInfo } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useStyles } from "../../styles";
 import { useAppTheme } from "../../theme";
@@ -458,6 +458,9 @@ export function QuickCheckoutModal({
       });
     }
 
+    AccessibilityInfo.announceForAccessibility(
+      UI_TEXT.checkoutSuccessAnnounce.replace("{flatNo}", activeSubscription.flat || activeSubscription.id)
+    );
     showAlert(UI_TEXT.success, UI_TEXT.checkoutSuccessful, [{ text: UI_TEXT.ok }]);
     onSuccess();
   };
@@ -472,17 +475,23 @@ export function QuickCheckoutModal({
       animationType="fade"
       onRequestClose={onClose}
     >
-      <View style={{
-        flex: 1,
-        backgroundColor: theme.colors.shadow + "CC",
-        justifyContent: "center",
-        alignItems: "center",
-        padding: 12
-      }}>
-        <View style={{
-          width: "100%",
-          maxWidth: cardMaxWidth,
-          backgroundColor: theme.colors.surface,
+      <View
+        accessibilityViewIsModal={true}
+        style={{
+          flex: 1,
+          backgroundColor: theme.colors.shadow + "CC",
+          justifyContent: "center",
+          alignItems: "center",
+          padding: 12
+        }}
+      >
+        <View
+          accessible={true}
+          accessibilityLabel={UI_TEXT.quickCheckoutForFlat.replace("{flatNo}", activeSubscription?.flat || activeSubscription?.id || "")}
+          style={{
+            width: "100%",
+            maxWidth: cardMaxWidth,
+            backgroundColor: theme.colors.surface,
           borderRadius: 20,
           padding: 16,
           borderWidth: 1,
@@ -536,8 +545,8 @@ export function QuickCheckoutModal({
               <Animated.View
                 style={{
                   opacity: opacityAnim,
-                  backgroundColor: theme.themeType === AppThemeMode.DARK ? "rgba(212, 175, 55, 0.2)" : "#FEF3C7",
-                  borderColor: theme.colors.secondary || "#D4AF37",
+                  backgroundColor: theme.colors.warningLight,
+                  borderColor: theme.colors.secondary,
                   borderWidth: 1.5,
                   borderRadius: 14,
                   paddingVertical: 10,
@@ -547,7 +556,7 @@ export function QuickCheckoutModal({
                   gap: 8,
                 }}
               >
-                <Ionicons name="cube-outline" size={20} color={theme.colors.secondary || "#D4AF37"} />
+                <Ionicons name="cube-outline" size={20} color={theme.colors.secondary} />
                 <Text
                   style={{
                     flex: 1,
@@ -697,7 +706,7 @@ export function QuickCheckoutModal({
               <View style={{
                 padding: 14,
                 borderRadius: 16,
-                backgroundColor: theme.themeType === AppThemeMode.DARK ? "rgba(27, 45, 36, 0.5)" : "rgba(235, 251, 238, 0.7)",
+                backgroundColor: theme.cardColors[2].accentLight,
                 borderColor: theme.cardColors[2].border,
                 borderWidth: 1.5,
                 gap: 10,

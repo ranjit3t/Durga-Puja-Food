@@ -11,7 +11,7 @@ export const primaryTheme: AppTheme = {
     surfaceDark: "#F1F5F9", // Slate Surface Dark
     textPrimary: "#0F172A", // Deep Navy/Slate Black Text
     textSecondary: "#475569", // Slate Grey Secondary Text
-    textMuted: "#94A3B8", // Subtle Muted Grey
+    textMuted: "#64748B", // Slate Grey Muted Text (WCAG AA Compliant 4.6:1)
     white: "#FFFFFF",
     success: "#10B981", // Emerald Veg/Success
     successLight: "#ECFDF5",

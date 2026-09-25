@@ -132,11 +132,11 @@ export function CustomAlert({
 
   return (
     <Modal transparent visible={visible} animationType="fade" onRequestClose={onClose}>
-      <View style={styles.backdrop}>
-        <View style={styles.card}>
+      <View style={styles.backdrop} accessibilityViewIsModal={true}>
+        <View style={styles.card} accessible={true} accessibilityRole="alert" accessibilityLabel={`${title}. ${message}`}>
           <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             <View style={styles.header}>
-              <Text style={styles.title}>{title}</Text>
+              <Text style={styles.title} accessibilityRole="header">{title}</Text>
             </View>
             {!!message && <Text style={styles.message}>{message}</Text>}
 
@@ -152,6 +152,9 @@ export function CustomAlert({
                       if (btn.onPress) btn.onPress();
                       onClose();
                     }}
+                    accessible={true}
+                    accessibilityRole="button"
+                    accessibilityLabel={btn.text}
                     style={({ pressed }) => [
                       styles.button,
                       isStacked && styles.stackedButton,

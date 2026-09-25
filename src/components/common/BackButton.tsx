@@ -13,8 +13,11 @@ export function BackButton({ onPress }: { onPress: () => void }) {
   const { theme } = useAppTheme();
   return (
     <Pressable
-      accessibilityLabel={UI_TEXT.back}
+      accessible={true}
+      accessibilityLabel={UI_TEXT.goBack}
       accessibilityRole="button"
+      accessibilityHint={UI_TEXT.navigateBackHint}
+      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
       onPress={onPress}
       style={styles.backButton}
     >

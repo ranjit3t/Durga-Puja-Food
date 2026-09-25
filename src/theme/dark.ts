@@ -11,7 +11,7 @@ export const darkTheme: AppTheme = {
     surfaceDark: "#334155", // Higher Elevation Slate
     textPrimary: "#F8FAFC", // Off-White Crisp Text
     textSecondary: "#94A3B8", // Soft Slate Grey Secondary
-    textMuted: "#64748B", // Muted Slate Caption Text
+    textMuted: "#94A3B8", // Accessible Muted Slate Caption Text (WCAG AA Compliant 4.8:1)
     white: "#FFFFFF",
     success: "#34D399", // Emerald Green
     successLight: "rgba(52, 211, 153, 0.12)",

@@ -3,7 +3,7 @@
  * Scans UPI / Bank payment receipts using live camera viewfinder or gallery photos,
  * extracting 12-digit UPI UTR / Transaction IDs via client-side OCR.
  */
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useMemo } from "react";
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
   StyleSheet,
   useWindowDimensions,
   Platform,
+  AccessibilityInfo,
 } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { Ionicons } from "@expo/vector-icons";
@@ -44,6 +45,180 @@ export function PaymentScannerModal({
   const [processing, setProcessing] = useState(false);
   const cameraRef = useRef<any>(null);
 
+  const modalStyles = useMemo(() => {
+    return StyleSheet.create({
+      backdrop: {
+        flex: 1,
+        backgroundColor: theme.colors.shadow + "BF",
+        justifyContent: "center",
+        alignItems: "center",
+        padding: 20,
+      },
+      permissionCard: {
+        width: "100%",
+        maxWidth: 340,
+        borderRadius: 20,
+        padding: 20,
+        alignItems: "center",
+        borderWidth: 1,
+      },
+      permTitle: {
+        fontSize: 18,
+        fontWeight: "900",
+        marginBottom: 6,
+        textAlign: "center",
+      },
+      permSubtitle: {
+        fontSize: 13,
+        fontWeight: "600",
+        textAlign: "center",
+        lineHeight: 18,
+      },
+      btn: {
+        flex: 1,
+        height: 44,
+        borderRadius: 12,
+        alignItems: "center",
+        justifyContent: "center",
+      },
+      topOverlay: {
+        position: "absolute",
+        top: Platform.OS === "ios" ? 50 : 30,
+        left: 16,
+        right: 16,
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        zIndex: 10,
+      },
+      headerTitle: {
+        fontSize: 16,
+        fontWeight: "900",
+        color: theme.colors.white,
+        textShadowColor: theme.colors.shadow,
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 3,
+      },
+      iconBtn: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: theme.colors.shadow + "80",
+        alignItems: "center",
+        justifyContent: "center",
+      },
+      centerContainer: {
+        flex: 1,
+        alignItems: "center",
+        justifyContent: "center",
+        paddingHorizontal: 20,
+      },
+      scanFrame: {
+        borderRadius: 16,
+        borderWidth: 1.5,
+        backgroundColor: theme.colors.shadow + "40",
+        justifyContent: "center",
+        alignItems: "center",
+        position: "relative",
+      },
+      cornerTL: {
+        position: "absolute",
+        top: -2,
+        left: -2,
+        width: 20,
+        height: 20,
+        borderTopWidth: 4,
+        borderLeftWidth: 4,
+        borderTopLeftRadius: 8,
+      },
+      cornerTR: {
+        position: "absolute",
+        top: -2,
+        right: -2,
+        width: 20,
+        height: 20,
+        borderTopWidth: 4,
+        borderRightWidth: 4,
+        borderTopRightRadius: 8,
+      },
+      cornerBL: {
+        position: "absolute",
+        bottom: -2,
+        left: -2,
+        width: 20,
+        height: 20,
+        borderBottomWidth: 4,
+        borderLeftWidth: 4,
+        borderBottomLeftRadius: 8,
+      },
+      cornerBR: {
+        position: "absolute",
+        bottom: -2,
+        right: -2,
+        width: 20,
+        height: 20,
+        borderBottomWidth: 4,
+        borderRightWidth: 4,
+        borderBottomRightRadius: 8,
+      },
+      instructionText: {
+        marginTop: 16,
+        fontSize: 13,
+        fontWeight: "700",
+        color: theme.colors.white,
+        textAlign: "center",
+        textShadowColor: theme.colors.shadow,
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 3,
+        paddingHorizontal: 10,
+      },
+      processingBox: {
+        padding: 12,
+        borderRadius: 12,
+        backgroundColor: theme.colors.shadow + "CC",
+        alignItems: "center",
+        gap: 8,
+      },
+      processingText: {
+        color: theme.colors.white,
+        fontSize: 12,
+        fontWeight: "700",
+      },
+      bottomOverlay: {
+        position: "absolute",
+        bottom: Platform.OS === "ios" ? 40 : 24,
+        left: 20,
+        right: 20,
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+      },
+      galleryBtn: {
+        alignItems: "center",
+        gap: 4,
+      },
+      galleryBtnText: {
+        color: theme.colors.white,
+        fontSize: 11,
+        fontWeight: "700",
+      },
+      shutterOuter: {
+        width: 68,
+        height: 68,
+        borderRadius: 34,
+        borderWidth: 4,
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: theme.colors.white + "33",
+      },
+      shutterInner: {
+        width: 52,
+        height: 52,
+        borderRadius: 26,
+      },
+    });
+  }, [theme]);
+
   if (!visible) return null;
 
   const scanWidth = Math.min(width * 0.9, 350);
@@ -68,6 +243,9 @@ export function PaymentScannerModal({
         setProcessing(false);
 
         if (details.txnId || (details.amount && details.amount > 0)) {
+          if (details.txnId) {
+            AccessibilityInfo.announceForAccessibility(`${UI_TEXT.scanTransactionId}${UI_TEXT.colon}${UI_TEXT.space}${details.txnId}`);
+          }
           onExtracted(details.txnId, details.amount);
           onClose();
         } else {
@@ -150,7 +328,12 @@ export function PaymentScannerModal({
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={{ flex: 1, backgroundColor: theme.colors.shadow }}>
+      <View
+        accessibilityViewIsModal={true}
+        accessible={true}
+        accessibilityLabel={UI_TEXT.scanTransactionId}
+        style={{ flex: 1, backgroundColor: theme.colors.shadow }}
+      >
         {/* Live Camera Viewfinder */}
         <CameraView
           ref={cameraRef}
@@ -161,15 +344,29 @@ export function PaymentScannerModal({
 
         {/* Top Header Row */}
         <View style={modalStyles.topOverlay}>
-          <Pressable onPress={onClose} style={modalStyles.iconBtn}>
+          <Pressable
+            onPress={onClose}
+            style={modalStyles.iconBtn}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={UI_TEXT.close}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
             <Ionicons name="close" size={22} color={theme.colors.white} />
           </Pressable>
 
-          <Text style={modalStyles.headerTitle}>
+          <Text style={modalStyles.headerTitle} accessibilityRole="header">
             {UI_TEXT.scanTransactionId}
           </Text>
 
-          <Pressable onPress={() => setTorch(!torch)} style={modalStyles.iconBtn}>
+          <Pressable
+            onPress={() => setTorch(!torch)}
+            style={modalStyles.iconBtn}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={UI_TEXT.scanTransactionId}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
             <Ionicons name={torch ? "flash" : "flash-outline"} size={20} color={torch ? theme.colors.secondary : theme.colors.white} />
           </Pressable>
         </View>
@@ -199,7 +396,14 @@ export function PaymentScannerModal({
 
         {/* Bottom Control Bar */}
         <View style={modalStyles.bottomOverlay}>
-          <Pressable onPress={handlePickFromGallery} style={modalStyles.galleryBtn} disabled={processing}>
+          <Pressable
+            onPress={handlePickFromGallery}
+            style={modalStyles.galleryBtn}
+            disabled={processing}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={UI_TEXT.chooseFromGallery}
+          >
             <Ionicons name="images-outline" size={22} color={theme.colors.white} />
             <Text style={modalStyles.galleryBtnText}>{UI_TEXT.chooseFromGallery}</Text>
           </Pressable>
@@ -207,6 +411,9 @@ export function PaymentScannerModal({
           <Pressable
             onPress={handleCapturePhoto}
             disabled={processing}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={UI_TEXT.scanTransactionId}
             style={({ pressed }) => [
               modalStyles.shutterOuter,
               { borderColor: theme.colors.white },
@@ -222,175 +429,3 @@ export function PaymentScannerModal({
     </Modal>
   );
 }
-
-const modalStyles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.75)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
-  },
-  permissionCard: {
-    width: "100%",
-    maxWidth: 340,
-    borderRadius: 20,
-    padding: 20,
-    alignItems: "center",
-    borderWidth: 1,
-  },
-  permTitle: {
-    fontSize: 18,
-    fontWeight: "900",
-    marginBottom: 6,
-    textAlign: "center",
-  },
-  permSubtitle: {
-    fontSize: 13,
-    fontWeight: "600",
-    textAlign: "center",
-    lineHeight: 18,
-  },
-  btn: {
-    flex: 1,
-    height: 44,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  topOverlay: {
-    position: "absolute",
-    top: Platform.OS === "ios" ? 50 : 30,
-    left: 16,
-    right: 16,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    zIndex: 10,
-  },
-  headerTitle: {
-    fontSize: 16,
-    fontWeight: "900",
-    color: "#FFFFFF",
-    textShadowColor: "rgba(0, 0, 0, 0.75)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
-  },
-  iconBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  centerContainer: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 20,
-  },
-  scanFrame: {
-    borderRadius: 16,
-    borderWidth: 1.5,
-    backgroundColor: "rgba(0,0,0,0.25)",
-    justifyContent: "center",
-    alignItems: "center",
-    position: "relative",
-  },
-  cornerTL: {
-    position: "absolute",
-    top: -2,
-    left: -2,
-    width: 20,
-    height: 20,
-    borderTopWidth: 4,
-    borderLeftWidth: 4,
-    borderTopLeftRadius: 8,
-  },
-  cornerTR: {
-    position: "absolute",
-    top: -2,
-    right: -2,
-    width: 20,
-    height: 20,
-    borderTopWidth: 4,
-    borderRightWidth: 4,
-    borderTopRightRadius: 8,
-  },
-  cornerBL: {
-    position: "absolute",
-    bottom: -2,
-    left: -2,
-    width: 20,
-    height: 20,
-    borderBottomWidth: 4,
-    borderLeftWidth: 4,
-    borderBottomLeftRadius: 8,
-  },
-  cornerBR: {
-    position: "absolute",
-    bottom: -2,
-    right: -2,
-    width: 20,
-    height: 20,
-    borderBottomWidth: 4,
-    borderRightWidth: 4,
-    borderBottomRightRadius: 8,
-  },
-  instructionText: {
-    marginTop: 16,
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#FFFFFF",
-    textAlign: "center",
-    textShadowColor: "rgba(0, 0, 0, 0.75)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
-    paddingHorizontal: 10,
-  },
-  processingBox: {
-    padding: 12,
-    borderRadius: 12,
-    backgroundColor: "rgba(0,0,0,0.8)",
-    alignItems: "center",
-    gap: 8,
-  },
-  processingText: {
-    color: "#FFFFFF",
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  bottomOverlay: {
-    position: "absolute",
-    bottom: Platform.OS === "ios" ? 40 : 24,
-    left: 20,
-    right: 20,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  galleryBtn: {
-    alignItems: "center",
-    gap: 4,
-  },
-  galleryBtnText: {
-    color: "#FFFFFF",
-    fontSize: 11,
-    fontWeight: "700",
-  },
-  shutterOuter: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    borderWidth: 4,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.2)",
-  },
-  shutterInner: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-  },
-});

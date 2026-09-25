@@ -65,7 +65,11 @@ export function EditableMetric({
 
   if (isEditing) {
     return (
-      <View style={[styles.metric, { borderColor: finalColor, borderStyle: "dashed", borderWidth: 2 }]}>
+      <View
+        style={[styles.metric, { borderColor: finalColor, borderStyle: "dashed", borderWidth: 2 }]}
+        accessible={true}
+        accessibilityLabel={`${label}${UI_TEXT.colon}${UI_TEXT.space}${value}`}
+      >
         <TextInput
           style={[
             styles.metricValue,
@@ -79,10 +83,18 @@ export function EditableMetric({
           returnKeyType="done"
           onSubmitEditing={handleSave}
           selectTextOnFocus
+          accessible={true}
+          accessibilityLabel={label}
         />
         <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
           <Text style={styles.metricLabel}>{label}</Text>
-          <Pressable onPress={handleSave}>
+          <Pressable
+            onPress={handleSave}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={UI_TEXT.saveChanges}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
             <Ionicons name="checkmark-circle" size={12} color={finalColor} />
           </Pressable>
         </View>
@@ -105,6 +117,10 @@ export function EditableMetric({
       ]}
       onPress={() => !disabled && setIsEditing(true)}
       disabled={disabled}
+      accessible={true}
+      accessibilityRole="button"
+      accessibilityLabel={`${label}${UI_TEXT.colon}${UI_TEXT.space}${value}`}
+      accessibilityState={{ disabled }}
     >
       <Ionicons name={icon} size={18} color={finalColor} />
       <Text style={[styles.metricValue, { color: finalColor }]}>{value}</Text>

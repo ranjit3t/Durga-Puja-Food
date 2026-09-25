@@ -13,6 +13,7 @@ import {
   Platform,
   StyleSheet,
   useWindowDimensions,
+  AccessibilityInfo,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useDatabase } from "../../context/DatabaseContext";
@@ -140,18 +141,24 @@ export function QuickGuestModal({
       animationType="fade"
       onRequestClose={onClose}
     >
-      <View style={{
-        flex: 1,
-        backgroundColor: theme.colors.shadow + "CC",
-        justifyContent: "center",
-        alignItems: "center",
-        padding: 12
-      }}>
-        <View style={{
-          width: "100%",
-          maxWidth: cardMaxWidth,
-          maxHeight: "88%",
-          backgroundColor: theme.colors.surface,
+      <View
+        accessibilityViewIsModal={true}
+        style={{
+          flex: 1,
+          backgroundColor: theme.colors.shadow + "CC",
+          justifyContent: "center",
+          alignItems: "center",
+          padding: 12
+        }}
+      >
+        <View
+          accessible={true}
+          accessibilityLabel={`${UI_TEXT.guestCheckout} for ${mealLabel}`}
+          style={{
+            width: "100%",
+            maxWidth: cardMaxWidth,
+            maxHeight: "88%",
+            backgroundColor: theme.colors.surface,
           borderRadius: 20,
           padding: 16,
           borderWidth: 1,
@@ -251,7 +258,7 @@ export function QuickGuestModal({
             <View style={{
               padding: 10,
               borderRadius: 14,
-              backgroundColor: theme.themeType === AppThemeMode.DARK ? "rgba(27, 45, 36, 0.5)" : "rgba(235, 251, 238, 0.7)",
+              backgroundColor: theme.cardColors[2].accentLight,
               borderColor: theme.cardColors[2].border,
               borderWidth: 1.5,
               gap: 8,

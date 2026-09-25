@@ -175,7 +175,7 @@ export function DayWiseReport({
                 borderColor: viewMode === "complete" ? theme.colors.primary : theme.colors.border,
                 ...Platform.select({
                   ios: {
-                    shadowColor: viewMode === "complete" ? theme.colors.primary : "#000",
+                    shadowColor: viewMode === "complete" ? theme.colors.primary : theme.colors.shadow,
                     shadowOffset: { width: 0, height: 1 },
                     shadowOpacity: viewMode === "complete" ? 0.3 : 0.05,
                     shadowRadius: 2,
@@ -221,7 +221,7 @@ export function DayWiseReport({
                 borderColor: viewMode === "planned" ? theme.colors.primary : theme.colors.border,
                 ...Platform.select({
                   ios: {
-                    shadowColor: viewMode === "planned" ? theme.colors.primary : "#000",
+                    shadowColor: viewMode === "planned" ? theme.colors.primary : theme.colors.shadow,
                     shadowOffset: { width: 0, height: 1 },
                     shadowOpacity: viewMode === "planned" ? 0.3 : 0.05,
                     shadowRadius: 2,

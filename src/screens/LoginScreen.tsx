@@ -117,6 +117,9 @@ export function LoginScreen() {
                 autoCapitalize="none"
                 placeholder={UI_TEXT.usernamePlaceholder}
                 placeholderTextColor={theme.colors.textMuted}
+                accessible={true}
+                accessibilityLabel={UI_TEXT.username}
+                returnKeyType="next"
               />
 
               <Text style={styles.label}>{UI_TEXT.password}</Text>
@@ -129,10 +132,18 @@ export function LoginScreen() {
                   autoCapitalize="none"
                   placeholder={UI_TEXT.passwordPlaceholder}
                   placeholderTextColor={theme.colors.textMuted}
+                  accessible={true}
+                  accessibilityLabel={UI_TEXT.password}
+                  returnKeyType="done"
+                  onSubmitEditing={onLoginSubmit}
                 />
                 <Pressable
                   onPress={() => setShowPassword(!showPassword)}
                   style={{ position: 'absolute', right: 16, padding: 4 }}
+                  accessible={true}
+                  accessibilityRole="button"
+                  accessibilityLabel={UI_TEXT.password}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
                   <Ionicons
                     name={showPassword ? "eye-off-outline" : "eye-outline"}
@@ -146,6 +157,10 @@ export function LoginScreen() {
                 style={[styles.primary, (!username || !password || loading || verifying) && { opacity: 0.5 }, { marginTop: 40 }]}
                 onPress={onLoginSubmit}
                 disabled={!username || !password || loading || verifying}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={verifying ? UI_TEXT.verifying : loading ? UI_TEXT.loading : UI_TEXT.loginButton}
+                accessibilityState={{ disabled: !username || !password || loading || verifying }}
               >
                 <Text style={styles.primaryText}>{verifying ? UI_TEXT.verifying : loading ? UI_TEXT.loading : UI_TEXT.loginButton}</Text>
               </Pressable>

@@ -3,6 +3,7 @@ import { View, Text, TextInput, Pressable, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useStyles } from "../../styles";
 import { useAppTheme } from "../../theme";
+import { UI_TEXT } from "../../strings";
 
 interface CounterInputProps {
   label: string;
@@ -77,6 +78,11 @@ export function CounterInput({
           onPress={handleDecrement}
           style={[localStyles.button, disabled && { opacity: 0.5 }, { borderRightWidth: 1, borderRightColor: theme.colors.border }]}
           disabled={disabled || value <= min}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel={`${UI_TEXT.decrease}${UI_TEXT.space}${label}`}
+          accessibilityHint={UI_TEXT.decrementsValue.replace("{label}", label).replace("{value}", String(value))}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
           <Ionicons name="remove" size={16} color={theme.colors.textPrimary} />
         </Pressable>
@@ -89,12 +95,20 @@ export function CounterInput({
           keyboardType="numeric"
           editable={!disabled}
           selectTextOnFocus
+          accessible={true}
+          accessibilityLabel={`${label}${UI_TEXT.space}${UI_TEXT.quantity}`}
+          accessibilityValue={{ min, max, now: value }}
         />
 
         <Pressable
           onPress={handleIncrement}
           style={[localStyles.button, disabled && { opacity: 0.5 }, { borderLeftWidth: 1, borderLeftColor: theme.colors.border }]}
           disabled={disabled || value >= max}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel={`${UI_TEXT.increase}${UI_TEXT.space}${label}`}
+          accessibilityHint={UI_TEXT.incrementsValue.replace("{label}", label).replace("{value}", String(value))}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
           <Ionicons name="add" size={16} color={theme.colors.textPrimary} />
         </Pressable>

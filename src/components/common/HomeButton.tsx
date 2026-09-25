@@ -13,8 +13,11 @@ export function HomeButton({ onPress }: { onPress: () => void }) {
   const { theme } = useAppTheme();
   return (
     <Pressable
-      accessibilityLabel={UI_TEXT.home}
+      accessible={true}
+      accessibilityLabel={UI_TEXT.navigateHome}
       accessibilityRole="button"
+      accessibilityHint={UI_TEXT.returnHomeHint}
+      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
       onPress={onPress}
       style={[styles.backButton, { width: 36, height: 36, borderRadius: 18, paddingHorizontal: 0 }]}
     >
