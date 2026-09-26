@@ -512,9 +512,11 @@ export function createFirebaseRepository(): SubscriptionRepository {
           seasonEnabled: val.seasonEnabled !== false,
           kidsEnabled: val.kidsEnabled || false,
           whatsappCountryCode: val.whatsappCountryCode || "91",
+          quickCheckoutAutoCloseMs: val.quickCheckoutAutoCloseMs ?? 3000,
+          soundEnabled: val.soundEnabled !== undefined ? Boolean(val.soundEnabled) : true,
         };
       }
-      return { seasonName: "", days: [], payment: defaultPayment, guestEnabled: true, mobileEnabled: true, foodPriceEnabled: false, seasonEnabled: true, kidsEnabled: false };
+      return { seasonName: "", days: [], payment: defaultPayment, guestEnabled: true, mobileEnabled: true, foodPriceEnabled: false, seasonEnabled: true, kidsEnabled: false, soundEnabled: true };
     },
     async updateConfig(config) {
       const services = await ensureFirebaseAuth();
@@ -742,6 +744,7 @@ export function createFirebaseRepository(): SubscriptionRepository {
               seasonEnabled: val.seasonEnabled !== false,
               kidsEnabled: val.kidsEnabled || false,
               whatsappCountryCode: val.whatsappCountryCode || "91",
+              quickCheckoutAutoCloseMs: val.quickCheckoutAutoCloseMs ?? 3000,
             });
           }
         });

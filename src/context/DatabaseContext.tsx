@@ -59,6 +59,8 @@ export interface CoreDatabaseContextType {
   foodPriceEnabled: boolean;
   kidsEnabled: boolean;
   whatsappCountryCode: string;
+  quickCheckoutAutoCloseMs: number;
+  soundEnabled: boolean;
   remoteAppVersion: string | null;
   kitchenMetrics: KitchenMetrics | null;
 
@@ -120,6 +122,8 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
   const [foodPriceEnabled, setFoodPriceEnabled] = useState(false);
   const [kidsEnabled, setKidsEnabled] = useState(false);
   const [whatsappCountryCode, setWhatsappCountryCode] = useState(UI_TEXT.defaultCountryCode);
+  const [quickCheckoutAutoCloseMs, setQuickCheckoutAutoCloseMs] = useState<number>(3000);
+  const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
   const [remoteAppVersion, setRemoteAppVersion] = useState<string | null>(null);
   const [notes, setNotes] = useState<Note[]>([]);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
@@ -203,6 +207,8 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       setFoodPriceEnabled(config.foodPriceEnabled || false);
       setKidsEnabled(config.kidsEnabled || false);
       setWhatsappCountryCode(config.whatsappCountryCode || "91");
+      setQuickCheckoutAutoCloseMs(config.quickCheckoutAutoCloseMs ?? 3000);
+      setSoundEnabled(config.soundEnabled !== false);
       setFoodMenu(menu);
       setNotes(notesData);
       setActivityLogs(logsData);
@@ -244,6 +250,8 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       setFoodPriceEnabled(config.foodPriceEnabled || false);
       setKidsEnabled(config.kidsEnabled || false);
       setWhatsappCountryCode(config.whatsappCountryCode || "91");
+      setQuickCheckoutAutoCloseMs(config.quickCheckoutAutoCloseMs ?? 3000);
+      setSoundEnabled(config.soundEnabled !== false);
       setFoodMenu(menu);
       setNotes(notesData || []);
       setActivityLogs(logsData || []);
@@ -383,6 +391,8 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       setFoodPriceEnabled(config.foodPriceEnabled || false);
       setKidsEnabled(config.kidsEnabled || false);
       setWhatsappCountryCode(config.whatsappCountryCode || "91");
+      setQuickCheckoutAutoCloseMs(config.quickCheckoutAutoCloseMs ?? 3000);
+      setSoundEnabled(config.soundEnabled !== false);
     });
 
     const unsubMetrics = repository.onMetricsChange((metrics) => {
@@ -490,6 +500,8 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       if (config.foodPriceEnabled !== undefined) setFoodPriceEnabled(config.foodPriceEnabled);
       if (config.kidsEnabled !== undefined) setKidsEnabled(config.kidsEnabled);
       if (config.whatsappCountryCode !== undefined) setWhatsappCountryCode(config.whatsappCountryCode);
+      if (config.quickCheckoutAutoCloseMs !== undefined) setQuickCheckoutAutoCloseMs(config.quickCheckoutAutoCloseMs);
+      if (config.soundEnabled !== undefined) setSoundEnabled(config.soundEnabled);
 
       await repository.updateConfig(config);
     } catch (err: any) {
@@ -964,7 +976,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
   const coreValue = useMemo(() => ({
     loading, firebaseError, refreshAllData,
     subscriptions, foodMenu, dayConfig, seasonName, seasonEnabled, paymentConfig, guestEnabled, mobileEnabled, foodPriceEnabled,
-    kidsEnabled, whatsappCountryCode, remoteAppVersion, kitchenMetrics,
+    kidsEnabled, whatsappCountryCode, quickCheckoutAutoCloseMs, soundEnabled, remoteAppVersion, kitchenMetrics,
     dashboardData, collections, totalPeople,
     upsertSubscription, deleteSubscription, updateConfig, updateMenu, updateGuestCount, updateMealMenu, updateSubscriptionStatus,
     checkInPassAtomic, getByPasscode,
@@ -972,7 +984,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
   }), [
     loading, firebaseError, refreshAllData,
     subscriptions, foodMenu, dayConfig, seasonName, seasonEnabled, paymentConfig, guestEnabled, mobileEnabled, foodPriceEnabled,
-    kidsEnabled, whatsappCountryCode, remoteAppVersion, kitchenMetrics,
+    kidsEnabled, whatsappCountryCode, quickCheckoutAutoCloseMs, soundEnabled, remoteAppVersion, kitchenMetrics,
     dashboardData, collections, totalPeople,
     upsertSubscription, deleteSubscription, updateConfig, updateMenu, updateGuestCount, updateMealMenu, updateSubscriptionStatus,
     checkInPassAtomic, getByPasscode,

@@ -2,7 +2,7 @@
  * Application Settings Screen for Admins.
  * Allows managing the festival day configuration, enabling/disabling meals, dietary choices, and parcels.
  */
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -33,7 +33,7 @@ export function SettingsScreen() {
   const { handleLogout } = useAuth();
   const {
     dayConfig: config, seasonName, seasonEnabled, paymentConfig: payment, guestEnabled, mobileEnabled, foodPriceEnabled,
-    whatsappCountryCode, updateConfig, kidsEnabled, subscriptions, foodMenu
+    whatsappCountryCode, updateConfig, kidsEnabled, subscriptions, foodMenu, quickCheckoutAutoCloseMs, soundEnabled
   } = useCoreDatabase();
   const { addActivityLog } = useActivityLogs();
   const { showAlert } = useUI();
@@ -54,24 +54,58 @@ export function SettingsScreen() {
   const [localFoodPriceEnabled, setLocalFoodPriceEnabled] = useState(false);
   const [localKidsEnabled, setLocalKidsEnabled] = useState(false);
   const [localWhatsappCountryCode, setLocalWhatsappCountryCode] = useState(UI_TEXT.defaultCountryCode);
+  const [localQuickCheckoutAutoCloseMs, setLocalQuickCheckoutAutoCloseMs] = useState<number>(3000);
+  const [localSoundEnabled, setLocalSoundEnabled] = useState<boolean>(true);
   const [saving, setSaving] = useState(false);
-  const [initialized, setInitialized] = useState(false);
 
-  // Sync local state when database config is loaded (Once only or when saved)
+  // Saved baseline state representing the current persisted configuration
+  const [savedBaseline, setSavedBaseline] = useState<{
+    config: ConfigDay[];
+    seasonName: string;
+    seasonEnabled: boolean;
+    payment: PaymentConfig;
+    guestEnabled: boolean;
+    mobileEnabled: boolean;
+    foodPriceEnabled: boolean;
+    kidsEnabled: boolean;
+    whatsappCountryCode: string;
+    quickCheckoutAutoCloseMs: number;
+    soundEnabled: boolean;
+  } | null>(null);
+
+  // Sync saved baseline & local state when database config is loaded
   React.useEffect(() => {
-    if (config && !initialized) {
-      setLocalConfig(Array.isArray(config) ? JSON.parse(JSON.stringify(config)) : []);
-      setLocalSeasonName(seasonName || "");
-      setLocalSeasonEnabled(seasonEnabled);
-      if (payment) setLocalPayment(JSON.parse(JSON.stringify(payment)));
-      setLocalGuestEnabled(guestEnabled);
-      setLocalMobileEnabled(mobileEnabled);
-      setLocalFoodPriceEnabled(foodPriceEnabled);
-      setLocalKidsEnabled(kidsEnabled || false);
-      setLocalWhatsappCountryCode(whatsappCountryCode || UI_TEXT.defaultCountryCode);
-      setInitialized(true);
+    if (config) {
+      const currentContextBaseline = {
+        config: Array.isArray(config) ? JSON.parse(JSON.stringify(config)) : [],
+        seasonName: seasonName || "",
+        seasonEnabled,
+        payment: payment ? JSON.parse(JSON.stringify(payment)) : { enabled: true, options: { upi: true, cash: true, bankTransfer: true } },
+        guestEnabled,
+        mobileEnabled,
+        foodPriceEnabled,
+        kidsEnabled: kidsEnabled || false,
+        whatsappCountryCode: whatsappCountryCode || UI_TEXT.defaultCountryCode,
+        quickCheckoutAutoCloseMs: quickCheckoutAutoCloseMs ?? 3000,
+        soundEnabled: soundEnabled !== false,
+      };
+
+      if (!savedBaseline) {
+        setLocalConfig(JSON.parse(JSON.stringify(currentContextBaseline.config)));
+        setLocalSeasonName(currentContextBaseline.seasonName);
+        setLocalSeasonEnabled(currentContextBaseline.seasonEnabled);
+        setLocalPayment(JSON.parse(JSON.stringify(currentContextBaseline.payment)));
+        setLocalGuestEnabled(currentContextBaseline.guestEnabled);
+        setLocalMobileEnabled(currentContextBaseline.mobileEnabled);
+        setLocalFoodPriceEnabled(currentContextBaseline.foodPriceEnabled);
+        setLocalKidsEnabled(currentContextBaseline.kidsEnabled);
+        setLocalWhatsappCountryCode(currentContextBaseline.whatsappCountryCode);
+        setLocalQuickCheckoutAutoCloseMs(currentContextBaseline.quickCheckoutAutoCloseMs);
+        setLocalSoundEnabled(currentContextBaseline.soundEnabled);
+      }
+      setSavedBaseline(currentContextBaseline);
     }
-  }, [config, seasonName, seasonEnabled, payment, guestEnabled, mobileEnabled, foodPriceEnabled, whatsappCountryCode, initialized]);
+  }, [config, seasonName, seasonEnabled, payment, guestEnabled, mobileEnabled, foodPriceEnabled, whatsappCountryCode, quickCheckoutAutoCloseMs, soundEnabled]);
 
   const updateDay = (id: string, next: Partial<ConfigDay>) => {
     setLocalConfig((current) =>
@@ -311,6 +345,8 @@ export function SettingsScreen() {
     if (localFoodPriceEnabled !== foodPriceEnabled) changes.push(`Pricing: ${foodPriceEnabled ? 'ON' : 'OFF'} -> ${localFoodPriceEnabled ? 'ON' : 'OFF'}`);
     if (localKidsEnabled !== kidsEnabled) changes.push(`Kids: ${kidsEnabled ? 'ON' : 'OFF'} -> ${localKidsEnabled ? 'ON' : 'OFF'}`);
     if (localWhatsappCountryCode !== whatsappCountryCode) changes.push(`WA Code: ${whatsappCountryCode} -> ${localWhatsappCountryCode}`);
+    if (localQuickCheckoutAutoCloseMs !== quickCheckoutAutoCloseMs) changes.push(`Splash Timeout: ${quickCheckoutAutoCloseMs ?? 3000}ms -> ${localQuickCheckoutAutoCloseMs}ms`);
+    if (localSoundEnabled !== soundEnabled) changes.push(`Sound: ${soundEnabled ? 'ON' : 'OFF'} -> ${localSoundEnabled ? 'ON' : 'OFF'}`);
 
     if (JSON.stringify(localPayment) !== JSON.stringify(payment)) {
       if (localPayment.enabled !== payment.enabled) changes.push(`Payment: ${payment.enabled ? 'ON' : 'OFF'} -> ${localPayment.enabled ? 'ON' : 'OFF'}`);
@@ -369,6 +405,21 @@ export function SettingsScreen() {
     setSaving(true);
     try {
       const changeLog = getSettingsChangeLog();
+
+      const newBaseline = {
+        config: JSON.parse(JSON.stringify(localConfig)),
+        seasonName: localSeasonName,
+        seasonEnabled: localSeasonEnabled,
+        payment: JSON.parse(JSON.stringify(localPayment)),
+        guestEnabled: localGuestEnabled,
+        mobileEnabled: localMobileEnabled,
+        foodPriceEnabled: localFoodPriceEnabled,
+        kidsEnabled: localKidsEnabled,
+        whatsappCountryCode: localWhatsappCountryCode,
+        quickCheckoutAutoCloseMs: localQuickCheckoutAutoCloseMs,
+        soundEnabled: localSoundEnabled,
+      };
+
       await updateConfig({
         seasonName: localSeasonName,
         seasonEnabled: localSeasonEnabled,
@@ -379,29 +430,20 @@ export function SettingsScreen() {
         foodPriceEnabled: localFoodPriceEnabled,
         kidsEnabled: localKidsEnabled,
         whatsappCountryCode: localWhatsappCountryCode,
+        quickCheckoutAutoCloseMs: localQuickCheckoutAutoCloseMs,
+        soundEnabled: localSoundEnabled,
       });
+
+      setSavedBaseline(newBaseline);
+
       addActivityLog({
         module: ActivityModule.CONFIG,
         action: ActivityAction.UPDATE,
         description: UI_TEXT.logUpdateConfigDetails.replace("{changes}", changeLog || UI_TEXT.logUpdateConfig)
       });
-      setInitialized(false); // Allow re-syncing from DB
+
       showAlert(UI_TEXT.success, UI_TEXT.settingsUpdated, [
-        {
-          text: UI_TEXT.ok,
-          onPress: () => {
-            setLocalConfig(JSON.parse(JSON.stringify(localConfig)));
-            setLocalSeasonName(localSeasonName);
-            setLocalSeasonEnabled(localSeasonEnabled);
-            setLocalPayment(JSON.parse(JSON.stringify(localPayment)));
-            setLocalGuestEnabled(localGuestEnabled);
-            setLocalMobileEnabled(localMobileEnabled);
-            setLocalFoodPriceEnabled(localFoodPriceEnabled);
-            setLocalKidsEnabled(localKidsEnabled);
-            setLocalWhatsappCountryCode(localWhatsappCountryCode);
-            setInitialized(true);
-          }
-        }
+        { text: UI_TEXT.ok }
       ]);
     } catch (err) {
       console.error("Save settings error:", err);
@@ -411,16 +453,36 @@ export function SettingsScreen() {
     }
   };
 
-  const hasChanged =
-    JSON.stringify(config) !== JSON.stringify(localConfig) ||
-    localSeasonName !== seasonName ||
-    localSeasonEnabled !== seasonEnabled ||
-    JSON.stringify(payment) !== JSON.stringify(localPayment) ||
-    localGuestEnabled !== guestEnabled ||
-    localMobileEnabled !== mobileEnabled ||
-    localFoodPriceEnabled !== foodPriceEnabled ||
-    localKidsEnabled !== kidsEnabled ||
-    localWhatsappCountryCode !== whatsappCountryCode;
+  const hasChanged = useMemo(() => {
+    if (!savedBaseline) return false;
+
+    return (
+      JSON.stringify(savedBaseline.config) !== JSON.stringify(localConfig) ||
+      localSeasonName !== savedBaseline.seasonName ||
+      localSeasonEnabled !== savedBaseline.seasonEnabled ||
+      JSON.stringify(localPayment) !== JSON.stringify(savedBaseline.payment) ||
+      localGuestEnabled !== savedBaseline.guestEnabled ||
+      localMobileEnabled !== savedBaseline.mobileEnabled ||
+      localFoodPriceEnabled !== savedBaseline.foodPriceEnabled ||
+      localKidsEnabled !== savedBaseline.kidsEnabled ||
+      localWhatsappCountryCode !== savedBaseline.whatsappCountryCode ||
+      localQuickCheckoutAutoCloseMs !== savedBaseline.quickCheckoutAutoCloseMs ||
+      localSoundEnabled !== savedBaseline.soundEnabled
+    );
+  }, [
+    savedBaseline,
+    localConfig,
+    localSeasonName,
+    localSeasonEnabled,
+    localPayment,
+    localGuestEnabled,
+    localMobileEnabled,
+    localFoodPriceEnabled,
+    localKidsEnabled,
+    localWhatsappCountryCode,
+    localQuickCheckoutAutoCloseMs,
+    localSoundEnabled,
+  ]);
 
   return (
     <View style={styles.root}>
@@ -447,16 +509,46 @@ export function SettingsScreen() {
                  <Text style={{ fontSize: 18, fontWeight: '900', color: theme.cardColors[1].accent }}>{UI_TEXT.seasonNameLabel}</Text>
                  <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600', marginTop: 2 }}>{UI_TEXT.seasonNameHelper}</Text>
               </View>
-              <Switch value={localSeasonEnabled} onValueChange={(val) => validateAndSetSeasonEnabled(val)} trackColor={{ true: theme.colors.primary }} style={{ flexShrink: 0 }} />
+              <Switch
+                accessible={true}
+                accessibilityRole="switch"
+                accessibilityLabel={UI_TEXT.seasonNameLabel}
+                accessibilityHint={UI_TEXT.seasonStatusHelper}
+                accessibilityState={{ checked: localSeasonEnabled }}
+                value={localSeasonEnabled}
+                onValueChange={(val) => validateAndSetSeasonEnabled(val)}
+                trackColor={{ true: theme.colors.primary }}
+                style={{ flexShrink: 0 }}
+              />
            </View>
-           <TextInput style={styles.input} value={localSeasonName} onChangeText={setLocalSeasonName} placeholder={UI_TEXT.seasonNamePlaceholder} placeholderTextColor={theme.colors.textMuted} selectTextOnFocus />
+           <TextInput
+             accessible={true}
+             accessibilityLabel={UI_TEXT.seasonNameLabel}
+             accessibilityHint={UI_TEXT.seasonNamePlaceholder}
+             style={styles.input}
+             value={localSeasonName}
+             onChangeText={setLocalSeasonName}
+             placeholder={UI_TEXT.seasonNamePlaceholder}
+             placeholderTextColor={theme.colors.textMuted}
+             selectTextOnFocus
+           />
            <View style={{ height: 1, backgroundColor: theme.colors.border, marginVertical: 20 }} />
            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
               <View style={{ flex: 1, marginRight: 10 }}>
                  <Text style={{ fontSize: 16, fontWeight: '800', color: theme.colors.textPrimary }}>{UI_TEXT.paymentIntegration}</Text>
                  <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600' }}>{UI_TEXT.paymentIntegrationHelper}</Text>
               </View>
-              <Switch value={localPayment.enabled} onValueChange={(val) => validateAndSetPaymentEnabled(val)} trackColor={{ true: theme.colors.primary }} style={{ flexShrink: 0 }} />
+              <Switch
+                accessible={true}
+                accessibilityRole="switch"
+                accessibilityLabel={UI_TEXT.paymentIntegration}
+                accessibilityHint={UI_TEXT.paymentIntegrationHelper}
+                accessibilityState={{ checked: localPayment.enabled }}
+                value={localPayment.enabled}
+                onValueChange={(val) => validateAndSetPaymentEnabled(val)}
+                trackColor={{ true: theme.colors.primary }}
+                style={{ flexShrink: 0 }}
+              />
            </View>
            {localPayment.enabled && (
              <View style={{ backgroundColor: theme.colors.surface, borderRadius: 16, padding: 12, gap: 12 }}>
@@ -464,7 +556,16 @@ export function SettingsScreen() {
                 {([['upi', PaymentMode.UPI], ['cash', PaymentMode.CASH], ['bankTransfer', PaymentMode.BANK_TRANSFER]] as const).map(([key, mode]) => (
                   <View key={key} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                      <Text style={{ fontSize: 14, fontWeight: '700', color: theme.colors.textPrimary, flex: 1, marginRight: 10 }}>{getPaymentModeLabel(mode)}</Text>
-                     <Switch value={localPayment.options[key]} onValueChange={(val) => validateAndSetPaymentOption(key, mode, val)} trackColor={{ true: theme.colors.success }} style={{ transform: [{ scale: 0.8 }], flexShrink: 0 }} />
+                     <Switch
+                       accessible={true}
+                       accessibilityRole="switch"
+                       accessibilityLabel={getPaymentModeLabel(mode)}
+                       accessibilityState={{ checked: localPayment.options[key] }}
+                       value={localPayment.options[key]}
+                       onValueChange={(val) => validateAndSetPaymentOption(key, mode, val)}
+                       trackColor={{ true: theme.colors.success }}
+                       style={{ transform: [{ scale: 0.8 }], flexShrink: 0 }}
+                     />
                   </View>
                 ))}
              </View>
@@ -475,7 +576,17 @@ export function SettingsScreen() {
                  <Text style={{ fontSize: 16, fontWeight: '800', color: theme.colors.textPrimary }}>{UI_TEXT.enableKidsSupport}</Text>
                  <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600' }}>{UI_TEXT.enableKidsSupportHelper}</Text>
               </View>
-              <Switch value={localKidsEnabled} onValueChange={(val) => validateAndSetKidsEnabled(val)} trackColor={{ true: theme.colors.primary }} style={{ flexShrink: 0 }} />
+              <Switch
+                accessible={true}
+                accessibilityRole="switch"
+                accessibilityLabel={UI_TEXT.enableKidsSupport}
+                accessibilityHint={UI_TEXT.enableKidsSupportHelper}
+                accessibilityState={{ checked: localKidsEnabled }}
+                value={localKidsEnabled}
+                onValueChange={(val) => validateAndSetKidsEnabled(val)}
+                trackColor={{ true: theme.colors.primary }}
+                style={{ flexShrink: 0 }}
+              />
            </View>
            <View style={{ height: 1, backgroundColor: theme.colors.border, marginVertical: 20 }} />
            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -483,7 +594,17 @@ export function SettingsScreen() {
                  <Text style={{ fontSize: 16, fontWeight: '800', color: theme.colors.textPrimary }}>{UI_TEXT.guestManagementLabel}</Text>
                  <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600' }}>{UI_TEXT.guestManagementHelper}</Text>
               </View>
-              <Switch value={localGuestEnabled} onValueChange={(val) => validateAndSetGuestEnabled(val)} trackColor={{ true: theme.colors.primary }} style={{ flexShrink: 0 }} />
+              <Switch
+                accessible={true}
+                accessibilityRole="switch"
+                accessibilityLabel={UI_TEXT.guestManagementLabel}
+                accessibilityHint={UI_TEXT.guestManagementHelper}
+                accessibilityState={{ checked: localGuestEnabled }}
+                value={localGuestEnabled}
+                onValueChange={(val) => validateAndSetGuestEnabled(val)}
+                trackColor={{ true: theme.colors.primary }}
+                style={{ flexShrink: 0 }}
+              />
            </View>
            <View style={{ height: 1, backgroundColor: theme.colors.border, marginVertical: 20 }} />
            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -491,12 +612,33 @@ export function SettingsScreen() {
                  <Text style={{ fontSize: 16, fontWeight: '800', color: theme.colors.textPrimary }}>{UI_TEXT.addMobileInPass}</Text>
                  <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600' }}>{UI_TEXT.addMobileInPassHelper}</Text>
               </View>
-              <Switch value={localMobileEnabled} onValueChange={setLocalMobileEnabled} trackColor={{ true: theme.colors.primary }} style={{ flexShrink: 0 }} />
+              <Switch
+                accessible={true}
+                accessibilityRole="switch"
+                accessibilityLabel={UI_TEXT.addMobileInPass}
+                accessibilityHint={UI_TEXT.addMobileInPassHelper}
+                accessibilityState={{ checked: localMobileEnabled }}
+                value={localMobileEnabled}
+                onValueChange={setLocalMobileEnabled}
+                trackColor={{ true: theme.colors.primary }}
+                style={{ flexShrink: 0 }}
+              />
            </View>
            {localMobileEnabled && (
              <View style={{ marginTop: 20 }}>
                 <Text style={{ fontSize: 12, color: theme.colors.textSecondary, fontWeight: "700", marginBottom: 6, marginLeft: 4 }}>{UI_TEXT.whatsappCountryCodeLabel.toUpperCase()}</Text>
-                <TextInput style={styles.input} value={localWhatsappCountryCode} onChangeText={setLocalWhatsappCountryCode} placeholder={UI_TEXT.whatsappCountryCodePlaceholder} placeholderTextColor={theme.colors.textMuted} keyboardType="phone-pad" selectTextOnFocus />
+                <TextInput
+                  accessible={true}
+                  accessibilityLabel={UI_TEXT.whatsappCountryCodeLabel}
+                  accessibilityHint={UI_TEXT.whatsappCountryCodePlaceholder}
+                  style={styles.input}
+                  value={localWhatsappCountryCode}
+                  onChangeText={setLocalWhatsappCountryCode}
+                  placeholder={UI_TEXT.whatsappCountryCodePlaceholder}
+                  placeholderTextColor={theme.colors.textMuted}
+                  keyboardType="phone-pad"
+                  selectTextOnFocus
+                />
              </View>
            )}
            <View style={{ height: 1, backgroundColor: theme.colors.border, marginVertical: 20 }} />
@@ -506,11 +648,71 @@ export function SettingsScreen() {
                    <Text style={{ fontSize: 16, fontWeight: '800', color: theme.colors.textPrimary }}>{UI_TEXT.enableFoodPrice}</Text>
                    <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600' }}>{UI_TEXT.enableFoodPriceHelper}</Text>
                 </View>
-                <Switch value={localFoodPriceEnabled} onValueChange={setLocalFoodPriceEnabled} trackColor={{ true: theme.colors.primary }} style={{ flexShrink: 0 }} />
+                <Switch
+                  accessible={true}
+                  accessibilityRole="switch"
+                  accessibilityLabel={UI_TEXT.enableFoodPrice}
+                  accessibilityHint={UI_TEXT.enableFoodPriceHelper}
+                  accessibilityState={{ checked: localFoodPriceEnabled }}
+                  value={localFoodPriceEnabled}
+                  onValueChange={setLocalFoodPriceEnabled}
+                  trackColor={{ true: theme.colors.primary }}
+                  style={{ flexShrink: 0 }}
+                />
              </View>
            )}
 
+           <View style={{ height: 1, backgroundColor: theme.colors.border, marginVertical: 20 }} />
+           <View style={{ gap: 8 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                 <View style={{ flex: 1, marginRight: 10 }}>
+                    <Text style={{ fontSize: 16, fontWeight: '800', color: theme.colors.textPrimary }}>{UI_TEXT.splashTimeoutLabel}</Text>
+                    <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600', marginTop: 2 }}>{UI_TEXT.splashTimeoutHelper}</Text>
+                 </View>
+              </View>
+              <TextInput
+                 accessible={true}
+                 accessibilityLabel={UI_TEXT.splashTimeoutLabel}
+                 accessibilityHint={UI_TEXT.splashTimeoutHelper}
+                 style={styles.input}
+                 value={String(localQuickCheckoutAutoCloseMs)}
+                 onChangeText={(txt) => {
+                   const num = parseInt(txt.replace(/[^0-9]/g, ""), 10);
+                   if (isNaN(num)) {
+                     setLocalQuickCheckoutAutoCloseMs(0);
+                   } else {
+                     setLocalQuickCheckoutAutoCloseMs(Math.min(10000, Math.max(0, num)));
+                   }
+                 }}
+                 keyboardType="numeric"
+                 selectTextOnFocus
+              />
+           </View>
+
+           <View style={{ height: 1, backgroundColor: theme.colors.border, marginVertical: 20 }} />
+           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <View style={{ flex: 1, marginRight: 10 }}>
+                 <Text style={{ fontSize: 16, fontWeight: '800', color: theme.colors.textPrimary }}>{UI_TEXT.soundEnabledLabel}</Text>
+                 <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600', marginTop: 2 }}>{UI_TEXT.soundEnabledHelper}</Text>
+              </View>
+              <Switch
+                accessible={true}
+                accessibilityRole="switch"
+                accessibilityLabel={UI_TEXT.soundEnabledLabel}
+                accessibilityHint={UI_TEXT.soundEnabledHelper}
+                accessibilityState={{ checked: localSoundEnabled }}
+                value={localSoundEnabled}
+                onValueChange={setLocalSoundEnabled}
+                trackColor={{ true: theme.colors.primary }}
+                style={{ flexShrink: 0 }}
+              />
+           </View>
+
            <Pressable
+             accessible={true}
+             accessibilityRole="button"
+             accessibilityLabel={UI_TEXT.saveChanges}
+             accessibilityState={{ disabled: saving || !hasChanged }}
              onPress={handleSave}
              style={[styles.primary, { height: 44, marginTop: 24, backgroundColor: theme.colors.primary }, (saving || !hasChanged) && { opacity: 0.5 }]}
              disabled={saving || !hasChanged}

@@ -4,13 +4,12 @@ import { AppConfig } from "./types";
  * Default Festival App Configuration
  * Used when no configuration is found in the database.
  */
-export const QUICK_CHECKOUT_AUTO_CLOSE_MS = 2500;
-
 const emptyMeal = { enabled: false, veg: true, nonVeg: true, parcel: false };
 
 export const DEFAULT_APP_CONFIG: AppConfig = {
   seasonName: "ETERNIA FESTIVAL",
-  quickCheckoutAutoCloseMs: QUICK_CHECKOUT_AUTO_CLOSE_MS,
+  quickCheckoutAutoCloseMs: 3000,
+  soundEnabled: true,
   days: [
     {
       id: "Shashthi",

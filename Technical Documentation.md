@@ -1,6 +1,6 @@
 # Technical Documentation - Eternia Food Desk
 
-A comprehensive technical breakdown of the implementation, data flow, real-time WebSocket synchronization, context-split state architecture, and high-scale performance optimizations within the Eternia Food Desk application.
+A comprehensive technical breakdown of the implementation, data flow, real-time WebSocket synchronization, context-split state architecture, accessibility compliance, and high-scale performance optimizations within the Eternia Food Desk application.
 
 ---
 
@@ -33,9 +33,9 @@ The application follows a **Serverless Layered Architecture** built on the **Exp
 - **Debounced Batching**: Flushes 50+ rapid startup `onChildAdded` events in a single state update, preventing startup UI freezing.
 - **99.99% Bandwidth Reduction**: Transfers 1.5 KB per event instead of re-downloading 25 MB database payloads, saving 360 GB of network data during a 2-hour meal window.
 
-### B. Dual OCR Engine Strategy (`ocrScanner.ts`)
-- On **Native Android / iOS**, uses `@react-native-ml-kit/text-recognition` directly (~1MB RAM footprint, sub-15ms execution), with automatic `tesseract.js` fallback if ML Kit returns empty text.
-- On **Web Browsers**, `tesseract.js` is dynamically loaded for 100% Web OCR parity.
+### B. Lightweight On-Device Google ML Kit OCR Engine (`ocrScanner.ts`)
+- On **Native Android / iOS**, uses `@react-native-ml-kit/text-recognition` directly (~1MB RAM footprint, sub-15ms execution).
+- Optimized native build footprint by removing heavy WASM dependencies (`tesseract.js`), reducing bundle size significantly.
 
 ### C. Metro Bundler Module Deferral (`metro.config.js`)
 - Configured Metro transformer with `inlineRequires: true`.
@@ -44,15 +44,17 @@ The application follows a **Serverless Layered Architecture** built on the **Exp
 ### D. Atomic Multi-Path Checkouts & Anti-Duplicate Lock (`checkInPassAtomic`)
 - Uses atomic multi-path server updates (`update(ref(db), multiPathUpdates)`) to lock meal status and increment kitchen counters in a single transaction, guaranteeing **100% mathematical duplicate check-in prevention** across 20+ concurrent counters.
 
-### E. Full-Height Festive Quick Checkout Success Overlay & Audio Feedback (`QuickCheckoutModal.tsx`)
+### E. Full-Height Festive Quick Checkout Success Overlay, Audio & Global Settings (`QuickCheckoutModal.tsx`, `SettingsScreen.tsx`)
 - **Vibrant Full-Height Overlay**: Replaced alert dialogs upon successful checkout with a full-height, theme-enabled success window (`theme.colors.successLight`).
 - **Glowing Green Checkmark Badge**: Renders a large glowing green checkmark badge (`checkmark-done` in 96px circular badge).
 - **Multi-Source Origin Tracking**: Tracks checkout origin via `CheckoutSource` enum (`QR Code Scan`, `Numeric Passcode Keypad`, `Pass Details`, `Pass Directory`).
 - **Comprehensive Summary**: Displays complete checkout information (Resident Block & Flat, Day & Meal, Served member breakdown, Total Plates, and Timestamp).
+- **`expo-audio` Integration**: Uses Expo SDK 57's native `expo-audio` engine (`createAudioPlayer`) to play [`assets/checkout.mp3`](file:///D:/Code/Durga-Puja-Food/assets/checkout.mp3) sound tone.
+- **Strict Splash Audio Triggering**: Sound triggers **ONLY when the success splash overlay window opens** AND **Audio Sound Feedback is explicitly enabled (`soundEnabled === true`)**. When sound is turned OFF in Settings, checkouts remain 100% silent.
+- **Global Audio Sound Feedback Setting**: Managed via WCAG compliant accessible switch (`accessibilityRole="switch"`, `accessibilityLabel`, `accessibilityHint`, `accessibilityState={{ checked }}`) in System Settings ([`SettingsScreen.tsx`](file:///D:/Code/Durga-Puja-Food/src/screens/SettingsScreen.tsx)) and broadcast real-time to all connected devices.
+- **Configurable Splash Timeout (0ms to 10000ms, default 3000ms)**: Managed directly in System Settings ([`SettingsScreen.tsx`](file:///D:/Code/Durga-Puja-Food/src/screens/SettingsScreen.tsx)) with accessible numeric text input bindings.
 - **Zero Hardcoded Colors & Text**: 100% theme-driven styling (`theme.colors`) and 100% localized text (`UI_TEXT`).
-- **Audio Chime & Haptic Feedback**: Synthesizes a 2-tone festive audio chime (`playSuccessChime()`) + haptic vibration + speech accessibility announcement on checkout submit.
-- **Configurable Auto-Close (`QUICK_CHECKOUT_AUTO_CLOSE_MS = 1400` in `config.ts`)**: Auto-closes smoothly without manual close buttons, returning volunteers back to origin screens (`ScannerScreen`, `SubscriptionListScreen`, or `DetailsScreen`).
-- **Web Browser & Accessibility Compliant**: Full 100% viewport portal scaling on Web browsers, `accessibilityRole="alert"`, and VoiceOver / TalkBack live speech announcements.
+- **Web Browser & Accessibility Compliant**: Full 100% viewport portal scaling on Web browsers, `accessibilityRole="alert"`, `accessibilityLiveRegion="assertive"`, and VoiceOver / TalkBack live speech announcements.
 
 ### F. Client-Side Activity Summarization Engine (`ActivityLogScreen.tsx`)
 - **Fast 0ms Execution**: `generateLocalLogSummary` formats `filteredLogs` into a structured operational report (Total Events, Active User Roster, Per-Module Operations Breakdown, Scanner/Meal Checkouts, and System Error Health Status).

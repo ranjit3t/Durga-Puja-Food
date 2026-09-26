@@ -1,11 +1,11 @@
 # Eternia Food Desk — Architecture Documentation
 
-This document describes the high-level system architecture, data models, design patterns, real-time synchronization, context splitting, and security workflows used in the **Eternia Food Desk** application.
+This document describes the high-level system architecture, data models, design patterns, real-time synchronization, context splitting, accessibility compliance, and security workflows used in the **Eternia Food Desk** application.
 
 ---
 
 ## 1. System Overview
-Eternia Food Desk is a cross-platform mobile and web application built with **React Native (Expo v57+)** designed to manage high-volume food distribution during community festivals. It uses a **Serverless Layered Architecture** with **Firebase Realtime Database** for sub-100ms real-time WebSocket synchronization, progressive state persistence, context-split state isolation, and dynamic configuration.
+Eternia Food Desk is a cross-platform mobile and web application built with **React Native (Expo v57+)** designed to manage high-volume food distribution during community festivals. It uses a **Serverless Layered Architecture** with **Firebase Realtime Database** for sub-100ms real-time WebSocket synchronization, progressive state persistence, context-split state isolation, WCAG Level AA accessibility compliance, and dynamic configuration.
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
@@ -40,8 +40,9 @@ Eternia Food Desk is a cross-platform mobile and web application built with **Re
 - **Database Rules & Indexing**: `.indexOn: ["passcode", "block", "flat"]` under `subscriptions` for $O(1)$ single-pass lookups.
 - **Authentication**: Hybrid model using Database-driven Role Authentication (`auth_config` node) with ephemeral 24-hour sessions.
 - **Scanning & Pass Generation**: Isolated `MemoizedCamera` (`expo-camera`) for 60 FPS QR code pass scanning and `react-native-qrcode-svg` for matrix generation.
-- **Dual OCR Engine**: On-device Google ML Kit Text Recognition on mobile app bundles (~1MB RAM footprint, sub-15ms speed) with client-side `tesseract.js` Web Workers as fallback on mobile and primary on Web.
+- **OCR Engine**: On-device Google ML Kit Text Recognition (`@react-native-ml-kit/text-recognition`) on mobile app bundles (~1MB RAM footprint, sub-15ms speed). Optimized app bundle size by removing heavy WebAssembly/worker modules.
 - **Snapshot & Sharing**: `react-native-view-shot` (`captureRef`) with theme-aware solid background padding for WhatsApp PNG sharing.
+- **Audio Feedback Engine**: Modern Expo SDK 57 `expo-audio` (`~57.0.5`) player engine playing [`assets/checkout.mp3`](file:///D:/Code/Durga-Puja-Food/assets/checkout.mp3) sound tone strictly when quick checkout success splash window opens (if sound is enabled).
 
 ---
 
@@ -63,14 +64,16 @@ Eternia Food Desk is a cross-platform mobile and web application built with **Re
 ### C. Atomic Server Transactions & Anti-Duplicate Security
 - **`checkInPassAtomic`**: Uses atomic multi-path server updates (`update(ref(db), multiPathUpdates)`) to lock meal status and increment kitchen counters in a single transaction, guaranteeing **100% mathematical duplicate check-in prevention** across 20+ concurrent counter devices.
 
-### D. Full-Height Festive Quick Checkout Success Overlay & Audio Feedback (`QuickCheckoutModal.tsx`)
+### D. Full-Height Festive Quick Checkout Success Overlay, Audio & Sound Settings (`QuickCheckoutModal.tsx`, `SettingsScreen.tsx`)
 - **Vibrant Full-Height Overlay**: Replaced alert dialogs upon successful checkout with a full-height, theme-enabled success window (`theme.colors.successLight`).
 - **Glowing Green Checkmark Badge**: Renders a large glowing green checkmark badge (`checkmark-done` in 96px circular badge).
 - **Comprehensive Summary**: Displays complete checkout information (Resident Block & Flat, Day & Meal, Served member breakdown, Total Plates, and Timestamp).
 - **Zero Hardcoded Colors & Text**: 100% theme-driven styling (`theme.colors`) and 100% localized text (`UI_TEXT`).
-- **Audio Chime & Haptic Feedback**: Synthesizes a 2-tone festive audio chime (`playSuccessChime()`) + haptic vibration + speech accessibility announcement on checkout submit.
-- **Configurable Auto-Close (`QUICK_CHECKOUT_AUTO_CLOSE_MS = 1400` in `config.ts`)**: Auto-closes smoothly without manual close buttons, returning volunteers back to origin screens (`ScannerScreen`, `SubscriptionListScreen`, or `DetailsScreen`).
-- **Web Browser & Accessibility Compliant**: Full 100% viewport portal scaling on Web browsers, `accessibilityRole="alert"`, and VoiceOver / TalkBack live speech announcements.
+- **`expo-audio` Chime Integration**: Uses Expo SDK 57's native `expo-audio` engine (`createAudioPlayer`) to play [`assets/checkout.mp3`](file:///D:/Code/Durga-Puja-Food/assets/checkout.mp3) sound tone.
+- **Strict Splash Audio Triggering**: Sound triggers **ONLY when the success splash overlay window opens** AND **Audio Sound Feedback is explicitly enabled (`soundEnabled === true`)**. When sound is turned OFF in Settings, checkouts remain 100% silent.
+- **Global Audio Sound Feedback Setting**: Managed via WCAG compliant accessible switch (`accessibilityRole="switch"`, `accessibilityLabel`, `accessibilityHint`, `accessibilityState={{ checked }}`) in System Settings ([`SettingsScreen.tsx`](file:///D:/Code/Durga-Puja-Food/src/screens/SettingsScreen.tsx)) and persisted across app reloads via Firebase repository rules (`val.soundEnabled !== undefined ? Boolean(val.soundEnabled) : true`).
+- **Configurable Splash Timeout (0ms to 10000ms, default 3000ms)**: Managed directly in System Settings ([`SettingsScreen.tsx`](file:///D:/Code/Durga-Puja-Food/src/screens/SettingsScreen.tsx)) with accessible text input bindings.
+- **Web Browser & Accessibility Compliant**: Full 100% viewport portal scaling on Web browsers, `accessibilityRole="alert"`, `accessibilityLiveRegion="assertive"`, and VoiceOver / TalkBack live speech announcements.
 
 ### E. Client-Side Activity Summarization Engine
 - **Instant Local Summaries (0ms Execution)**: Features an **"ANALYZE"** action button in `ActivityLogScreen.tsx`. Analyzes whatever activity log entries currently appear in the active filtered/searched list (`filteredLogs`) in **0ms** without network latency or external API dependencies.

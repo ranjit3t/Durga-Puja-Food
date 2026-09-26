@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
-import { View, Text, Pressable, StyleSheet, Platform, Modal, ScrollView, useWindowDimensions, Animated, AccessibilityInfo, Vibration } from "react-native";
+import { View, Text, Pressable, StyleSheet, Platform, Modal, ScrollView, useWindowDimensions, Animated, AccessibilityInfo, Vibration, NativeModules } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useStyles } from "../../styles";
 import { useAppTheme } from "../../theme";
@@ -10,12 +10,43 @@ import { useUI } from "../../context/UIContext";
 import { useAppNavigation } from "../../context/NavigationContext";
 import { Subscription, MealType, DietaryOption, ActivityModule, ActivityAction, AppThemeMode, AppScreen, TakenState, CheckoutSource } from "../../types";
 import { isParcelEnabled, isMealCurrent, isMealDone, getMealLabel, formatTakenTime } from "../../constants";
-import { QUICK_CHECKOUT_AUTO_CLOSE_MS } from "../../config";
 
 /**
- * Synthesizes a crisp, festive 2-tone success chime (D5 -> A5) using Web Audio API.
+ * Universal fail-safe audio sound player for assets/checkout.mp3.
+ * Uses modern expo-audio in Expo SDK 57 with safe fallbacks for Web & Synthesizer.
  */
-function playSuccessChime() {
+async function playCheckoutSound() {
+  try {
+    if (Platform.OS !== "web") {
+      try {
+        const ExpoAudio = await import("expo-audio");
+        if (ExpoAudio && typeof ExpoAudio.createAudioPlayer === "function") {
+          const checkoutAsset = require("../../../assets/checkout.mp3");
+          const player = ExpoAudio.createAudioPlayer(checkoutAsset);
+          player.play();
+          return;
+        }
+      } catch (err) {
+        console.warn("expo-audio playback notice:", err);
+      }
+    }
+
+    const checkoutAsset = require("../../../assets/checkout.mp3");
+    const audioUri = typeof checkoutAsset === "string" ? checkoutAsset : (checkoutAsset?.default || checkoutAsset?.uri);
+    if (typeof Audio !== "undefined") {
+      const audio = new Audio(audioUri || checkoutAsset);
+      audio.volume = 1.0;
+      await audio.play().catch(() => playSynthesizedChime());
+      return;
+    }
+  } catch (err) {
+    // Silent catch
+  }
+
+  playSynthesizedChime();
+}
+
+function playSynthesizedChime() {
   try {
     const AudioCtx = typeof window !== "undefined" ? (window.AudioContext || (window as any).webkitAudioContext) : null;
     if (AudioCtx) {
@@ -47,7 +78,7 @@ function playSuccessChime() {
       osc2.stop(now + 0.55);
     }
   } catch (err) {
-    console.warn("Audio chime notice:", err);
+    // Silent fallback
   }
 }
 
@@ -90,7 +121,7 @@ export function QuickCheckoutModal({
 }: QuickCheckoutModalProps) {
   const styles = useStyles();
   const { theme } = useAppTheme();
-  const { dayConfig, kidsEnabled, addActivityLog, upsertSubscription, subscriptions } = useDatabase();
+  const { dayConfig, kidsEnabled, addActivityLog, upsertSubscription, subscriptions, quickCheckoutAutoCloseMs, soundEnabled } = useDatabase();
   const { showAlert } = useUI();
   const { navigate } = useAppNavigation();
   const { width } = useWindowDimensions();
@@ -112,6 +143,16 @@ export function QuickCheckoutModal({
       if (successTimerRef.current) clearTimeout(successTimerRef.current);
     };
   }, []);
+
+  // Trigger audio sound chime & haptics ONLY when success splash window opens and soundEnabled is ON (explicitly true)
+  useEffect(() => {
+    if (visible && successData && soundEnabled === true) {
+      void playCheckoutSound();
+      try {
+        Vibration.vibrate([0, 70, 40, 90]);
+      } catch (_) {}
+    }
+  }, [visible, successData, soundEnabled]);
 
   // Real-Time Meal Lifecycle Checks
   const isStillCurrent = currentMealInfo
@@ -524,17 +565,11 @@ export function QuickCheckoutModal({
       });
     }
 
-    // 1. Play audio chime & haptic feedback
-    playSuccessChime();
-    try {
-      Vibration.vibrate([0, 70, 40, 90]);
-    } catch (_) {}
-
     AccessibilityInfo.announceForAccessibility(
       UI_TEXT.checkoutSuccessAnnounce.replace("{flatNo}", activeSubscription.flat || activeSubscription.id)
     );
 
-    // 2. Set success overlay state for full-screen festive checkout confirmation
+    // Set success overlay state for full-screen festive checkout confirmation
     const totalPlatesServed = safeAdultInput + safeKidInput;
 
     setSuccessData({
@@ -552,7 +587,7 @@ export function QuickCheckoutModal({
       totalsText: totalsParts.join(", "),
     });
 
-    const autoCloseDuration = QUICK_CHECKOUT_AUTO_CLOSE_MS;
+    const autoCloseDuration = quickCheckoutAutoCloseMs ?? 3000;
 
     if (successTimerRef.current) clearTimeout(successTimerRef.current);
     successTimerRef.current = setTimeout(() => {

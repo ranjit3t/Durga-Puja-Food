@@ -106,6 +106,7 @@ export type AppConfig = {
   kidsEnabled?: boolean;
   whatsappCountryCode?: string;
   quickCheckoutAutoCloseMs?: number;
+  soundEnabled?: boolean;
 };
 
 export enum ActivityModule {

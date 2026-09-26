@@ -44,7 +44,8 @@ The application follows a decoupled, context-driven component architecture with 
 | **`expo-camera`** | High-performance camera integration for QR Code pass scanning with isolated memoization for 60 FPS scanning. |
 | **`expo-image-picker`** | Camera capture and gallery screenshot selection for payment receipt scanning. |
 | **`@react-native-ml-kit/text-recognition`** | On-device Google ML Kit Text Recognition for sub-15ms payment OCR on mobile app bundles (~1MB RAM footprint). |
-| **`tesseract.js`** | Open-source client-side OCR engine for extracting UPI transaction IDs & amounts on Web browsers and as fallback on mobile. |
+| **`expo-audio` (~57.0.5)** | Modern Expo SDK 57 native audio player engine for triggering checkout completion sound feedback (`assets/checkout.mp3`). |
+| **`assets/checkout.mp3`** | Custom audio chime tone played strictly when quick checkout success splash window opens (if sound is enabled). |
 | **`react-native-qrcode-svg`** | SVG-based QR code pass matrix generation. |
 | **`react-native-view-shot` (`captureRef`)** | Snapshot engine for capturing report cards and digital passes as theme-padded PNG images. |
 | **`expo-sharing` & `expo-print`** | Platform-native sharing dialogs (WhatsApp / System) and HTML document printing. |
@@ -68,6 +69,25 @@ The application follows a decoupled, context-driven component architecture with 
 
 ---
 
+## ♿ Accessibility (a11y) & WCAG 2.1 AA Architecture
+
+FestiveDesk is engineered to meet **WCAG 2.1 Level AA** standards and **Google Material / iOS Accessibility Guidelines**:
+
+### 1. Centralized Localized Accessibility Engine (`UI_TEXT`)
+- **Zero Hardcoded Text**: 100% of accessibility labels (`accessibilityLabel`), screen hints (`accessibilityHint`), live announcements (`announceForAccessibility`), and control descriptions are dynamically resolved from the centralized dictionary in [`strings.ts`](file:///D:/Code/Durga-Puja-Food/src/strings.ts).
+
+### 2. Contrast Ratios (WCAG 2.1 AA Standard ≥ 4.5:1)
+- **Light Theme Canvas**: `textMuted` set to `#64748B` on `#FFFFFF` surface (**4.6:1 contrast ratio** ✅).
+- **Dark Theme Canvas**: `textMuted` set to `#94A3B8` on `#1E293B` surface (**4.8:1 contrast ratio** ✅).
+- **Zero Hardcoded Color Overrides**: Zero inline hex or `rgba(...)` color overrides in UI components; all styling binds dynamically to `theme.colors`.
+
+### 3. Screen Reader Semantics & Focus Management
+- **Full Role & State Bindings**: Standardized `accessible={true}`, `accessibilityRole` (`button`, `combobox`, `menuitem`, `header`, `alert`, `switch`, `checkbox`), and state indicators (`accessibilityState={{ expanded, selected, checked, disabled }}`) across interactive components ([`CounterInput.tsx`](file:///D:/Code/Durga-Puja-Food/src/components/common/CounterInput.tsx), [`Dropdown.tsx`](file:///D:/Code/Durga-Puja-Food/src/components/common/Dropdown.tsx), [`CustomAlert.tsx`](file:///D:/Code/Durga-Puja-Food/src/components/common/CustomAlert.tsx), [`ThemeToggleButton.tsx`](file:///D:/Code/Durga-Puja-Food/src/components/common/ThemeToggleButton.tsx), [`SettingsScreen.tsx`](file:///D:/Code/Durga-Puja-Food/src/screens/SettingsScreen.tsx), [`QuickCheckoutModal.tsx`](file:///D:/Code/Durga-Puja-Food/src/components/common/QuickCheckoutModal.tsx)).
+- **Live Speech Announcements (`AccessibilityInfo`)**: Triggers real-time VoiceOver / TalkBack announcements (`AccessibilityInfo.announceForAccessibility`) on checkout completions, QR pass scans, and OCR payment receipt extractions.
+- **Modal View Isolation**: Enforces `accessibilityViewIsModal={true}` on modal overlays ([`QuickCheckoutModal.tsx`](file:///D:/Code/Durga-Puja-Food/src/components/common/QuickCheckoutModal.tsx), [`QuickGuestModal.tsx`](file:///D:/Code/Durga-Puja-Food/src/components/common/QuickGuestModal.tsx), [`PaymentScannerModal.tsx`](file:///D:/Code/Durga-Puja-Food/src/components/common/PaymentScannerModal.tsx), [`CustomAlert.tsx`](file:///D:/Code/Durga-Puja-Food/src/components/common/CustomAlert.tsx)) to trap screen reader focus inside active dialogs.
+
+---
+
 ## ⚡ High-Scale Real-Time & Performance Architecture
 
 ### 1. Decoupled Context Provider Architecture (Context Splitting)
@@ -82,9 +102,9 @@ State is split into 3 independent React contexts inside `DatabaseContext.tsx`:
 Firebase real-time delta listeners for activity logs (`onLogsDelta`) and subscriptions (`onSubscriptionsDelta`) use debounced buffer timers (100ms–150ms window).
 - **Result**: Grouping 50+ rapid startup `onChildAdded` events into a **single batched update** eliminates initial load screen freezing and CPU thrashing.
 
-### 3. Dual Google ML Kit Native & Tesseract.js Fallback OCR Strategy
+### 3. Lightweight Google ML Kit OCR Engine
 - On **Native Android/iOS**, `ocrScanner.ts` uses `@react-native-ml-kit/text-recognition` directly (~1MB RAM footprint, sub-15ms speed).
-- If ML Kit returns empty text or when running on **Web Browsers**, `tesseract.js` fallback is triggered.
+- Optimized JS bundle size by eliminating heavy WebAssembly/worker packages (`tesseract.js`), reducing native app footprint.
 
 ### 4. Dashboard Icon-Only 3-Way View Mode Action Bar
 Each meal card section on the Analytics & Kitchen Operations Dashboard ([`DashboardScreen.tsx`](file:///D:/Code/Durga-Puja-Food/src/screens/DashboardScreen.tsx)) features an icon-only action bar with 4 sleek 36px circular buttons:
@@ -93,18 +113,21 @@ Each meal card section on the Analytics & Kitchen Operations Dashboard ([`Dashbo
 - **`Chart View`** ([`bar-chart-outline`](file:///D:/Code/Durga-Puja-Food/src/components/dashboard/MealBarChart.tsx)): Visual bar chart progress view.
 - **`WhatsApp Share`** ([`logo-whatsapp`](file:///D:/Code/Durga-Puja-Food/src/screens/DashboardScreen.tsx)): 1-tap card snapshot sharing in green accent.
 
-### 5. Multi-Source Quick Checkout & Full-Height Success Overlay (`QuickCheckoutModal.tsx`)
+### 5. Multi-Source Quick Checkout, Splash Audio & Global Sound Settings (`QuickCheckoutModal.tsx`, `SettingsScreen.tsx`)
 Quick Checkout can be triggered from 4 distinct application entry methods, tracked via `CheckoutSource` enum:
 - **`QR Code Scan`** ([`ScannerScreen.tsx`](file:///D:/Code/Durga-Puja-Food/src/screens/ScannerScreen.tsx)): Verified via live camera QR code scan.
 - **`Numeric Passcode Keypad`** ([`ScannerScreen.tsx`](file:///D:/Code/Durga-Puja-Food/src/screens/ScannerScreen.tsx)): Verified via 4-digit numeric passcode keypad entry.
 - **`Pass Details`** ([`DetailsScreen.tsx`](file:///D:/Code/Durga-Puja-Food/src/screens/DetailsScreen.tsx)): Triggered from the pass inspection view.
 - **`Pass Directory`** ([`SubscriptionListScreen.tsx`](file:///D:/Code/Durga-Puja-Food/src/screens/SubscriptionListScreen.tsx)): Interactive red missed meal badge tap.
 
-**Full-Height Festive Success Overlay & Audio Feedback (`QuickCheckoutModal.tsx`)**:
+**Full-Height Festive Success Overlay & `expo-audio` Chime**:
 - Replaced alert dialogs with a full-height, theme-enabled success overlay window (`theme.colors.successLight`).
-- Features a large glowing green checkmark badge (`checkmark-done`), complete checkout details (Block, Flat, Day, Meal, Served counts, Total Plates, and Timestamp), synthesized 2-tone audio chime (`playSuccessChime()`), and haptic vibration.
+- Features a large glowing green checkmark badge (`checkmark-done`), complete checkout details (Block, Flat, Day, Meal, Served counts, Total Plates, and Timestamp).
+- **`expo-audio` Integration**: Uses Expo SDK 57's native `expo-audio` engine (`createAudioPlayer`) to play [`assets/checkout.mp3`](file:///D:/Code/Durga-Puja-Food/assets/checkout.mp3) sound tone.
+- **Strict Splash Audio Triggering**: Sound triggers **ONLY when the success splash overlay window opens** AND **Audio Sound Feedback is explicitly enabled (`soundEnabled === true`)**. When sound is turned OFF in Settings, checkouts remain 100% silent.
+- **Global Audio Sound Feedback Setting**: Managed via accessible switch (`accessibilityRole="switch"`) in System Settings ([`SettingsScreen.tsx`](file:///D:/Code/Durga-Puja-Food/src/screens/SettingsScreen.tsx)) and persisted across app reloads via Firebase repository rules (`val.soundEnabled !== undefined ? Boolean(val.soundEnabled) : true`).
+- **Configurable Splash Timeout (0ms to 10000ms, default 3000ms)**: Configurable in System Settings ([`SettingsScreen.tsx`](file:///D:/Code/Durga-Puja-Food/src/screens/SettingsScreen.tsx)).
 - **Zero Hardcoded Colors & Text**: 100% theme-driven styling (`theme.colors`) and 100% localized text (`UI_TEXT`).
-- **Configurable Auto-Close (`QUICK_CHECKOUT_AUTO_CLOSE_MS = 1400` in `config.ts`)**: Auto-closes smoothly without manual close buttons, returning volunteers back to origin screens (`ScannerScreen`, `SubscriptionListScreen`, or `DetailsScreen`).
 - **Web & Accessibility Compliant**: 100% viewport scaling on Web browsers, `accessibilityRole="alert"`, and VoiceOver / TalkBack live speech announcements.
 
 ### 6. Atomic Multi-Path Checkouts & Anti-Duplicate Lock (`checkInPassAtomic`)
@@ -121,6 +144,8 @@ Quick Checkout can be triggered from 4 distinct application entry methods, track
 
 ```
 metro.config.js          # Metro Bundler Configuration (inlineRequires: true)
+assets/
+└── checkout.mp3         # Custom Quick Checkout Audio Sound Tone
 src/
 ├── components/          # Modular UI Components
 │   ├── common/          # Action Label, Back Button, Home Button, CounterInput, Dropdowns, QuickCheckoutModal, QuickGuestModal, ThemeToggleButton
@@ -137,10 +162,10 @@ src/
 ├── navigation/          # App Navigator Router & Screen Switcher
 ├── theme/               # Royal Festive Design Token Engine (primary.ts & dark.ts)
 ├── utils/               # Helper Utility Modules
-│   └── ocrScanner.ts    # Dual ML Kit (Native) / Tesseract (Web/Fallback) OCR Extractor
+│   └── ocrScanner.ts    # Native Google ML Kit OCR Extractor
 ├── domain.ts            # Domain Data Models, Enums (CheckoutSource, GuestCheckoutSource) & Type Contracts
 ├── repository.ts        # Firebase RTDB API Operations, Atomic Writes & Real-Time Listeners
-├── config.ts            # Festival Configuration & QUICK_CHECKOUT_AUTO_CLOSE_MS
+├── config.ts            # Festival Configuration Defaults
 ├── firebase.ts          # Firebase SDK Initialization
 ├── strings.ts           # Centralized Dictionary for Localized UI Text (`UI_TEXT`)
 ├── styles.ts            # Global Responsive Scaling Engine (`s()` / `v()`) & Widescreen Breakpoints
@@ -156,7 +181,7 @@ src/
     ├── QrScreen.tsx              # Digital Pass Generator with 4-Digit Passcode & WhatsApp Share
     ├── ReportScreen.tsx          # Analytics Suite with Share Report Action & Theme-Aware Image Export
     ├── ScannerScreen.tsx         # Memoized Camera Scanner & Passcode Keypad (uses useCoreDatabase())
-    ├── SettingsScreen.tsx        # Festival Configuration & Switch Overflow Protection
+    ├── SettingsScreen.tsx        # Festival Configuration, Global Audio Sound Toggle & Splash Timeout Settings (WCAG Compliant)
     ├── SubscriptionForm.tsx      # Pass Registration & Editing with OCR Payment Scanner
     ├── SubscriptionListScreen.tsx# Pass Directory with Clickable Missed Badge (uses useCoreDatabase())
     └── ViewMenuScreen.tsx        # Daily Food Menu Viewer

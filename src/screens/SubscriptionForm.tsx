@@ -13,7 +13,7 @@ import {
   Platform,
   StatusBar,
 } from "react-native";
-import * as Contacts from "expo-contacts/legacy";
+import * as Contacts from "expo-contacts";
 import { useStyles, useScaling } from "../styles";
 import { useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
