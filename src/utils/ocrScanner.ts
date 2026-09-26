@@ -319,8 +319,14 @@ export async function extractPaymentDetailsFromImage(imageUri: string): Promise<
     }
   }
 
-  // 2. Web Runtime OR Fallback for Mobile (if ML Kit text is empty): Use Tesseract.js
-  if (!rawText || Platform.OS === "web") {
+  // 2. Web Runtime OR Fallback (only when Web Worker environment is available)
+  const hasWorkerSupport = (
+    (typeof globalThis !== "undefined" && typeof (globalThis as any).Worker !== "undefined") ||
+    (typeof window !== "undefined" && typeof (window as any).Worker !== "undefined") ||
+    typeof Worker !== "undefined"
+  );
+
+  if ((!rawText || Platform.OS === "web") && hasWorkerSupport) {
     try {
       if (typeof globalThis !== "undefined" && typeof (globalThis as any).Worker === "undefined") {
         if (typeof window !== "undefined" && typeof (window as any).Worker !== "undefined") {

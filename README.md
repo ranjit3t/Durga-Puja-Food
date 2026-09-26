@@ -44,6 +44,7 @@ The application follows a decoupled, context-driven component architecture with 
 | **`expo-camera`** | High-performance camera integration for QR Code pass scanning with isolated memoization for 60 FPS scanning. |
 | **`expo-image-picker`** | Camera capture and gallery screenshot selection for payment receipt scanning. |
 | **`@react-native-ml-kit/text-recognition`** | On-device Google ML Kit Text Recognition for sub-15ms payment OCR on mobile app bundles (~1MB RAM footprint). |
+| **`tesseract.js`** | Open-source client-side OCR engine for extracting UPI transaction IDs & amounts on Web browsers and as fallback on mobile. |
 | **`expo-audio` (~57.0.5)** | Modern Expo SDK 57 native audio player engine for triggering checkout completion sound feedback (`assets/checkout.mp3`). |
 | **`assets/checkout.mp3`** | Custom audio chime tone played strictly when quick checkout success splash window opens (if sound is enabled). |
 | **`react-native-qrcode-svg`** | SVG-based QR code pass matrix generation. |
@@ -102,9 +103,9 @@ State is split into 3 independent React contexts inside `DatabaseContext.tsx`:
 Firebase real-time delta listeners for activity logs (`onLogsDelta`) and subscriptions (`onSubscriptionsDelta`) use debounced buffer timers (100ms–150ms window).
 - **Result**: Grouping 50+ rapid startup `onChildAdded` events into a **single batched update** eliminates initial load screen freezing and CPU thrashing.
 
-### 3. Lightweight Google ML Kit OCR Engine
+### 3. Dual Google ML Kit Native & Tesseract.js Fallback OCR Strategy
 - On **Native Android/iOS**, `ocrScanner.ts` uses `@react-native-ml-kit/text-recognition` directly (~1MB RAM footprint, sub-15ms speed).
-- Optimized JS bundle size by eliminating heavy WebAssembly/worker packages (`tesseract.js`), reducing native app footprint.
+- On **Web Browsers** and Web Worker environments (`hasWorkerSupport`), `tesseract.js` fallback is triggered for 100% Mobile & Web parity without Hermes `Worker` runtime errors.
 
 ### 4. Dashboard Icon-Only 3-Way View Mode Action Bar
 Each meal card section on the Analytics & Kitchen Operations Dashboard ([`DashboardScreen.tsx`](file:///D:/Code/Durga-Puja-Food/src/screens/DashboardScreen.tsx)) features an icon-only action bar with 4 sleek 36px circular buttons:

@@ -40,7 +40,7 @@ Eternia Food Desk is a cross-platform mobile and web application built with **Re
 - **Database Rules & Indexing**: `.indexOn: ["passcode", "block", "flat"]` under `subscriptions` for $O(1)$ single-pass lookups.
 - **Authentication**: Hybrid model using Database-driven Role Authentication (`auth_config` node) with ephemeral 24-hour sessions.
 - **Scanning & Pass Generation**: Isolated `MemoizedCamera` (`expo-camera`) for 60 FPS QR code pass scanning and `react-native-qrcode-svg` for matrix generation.
-- **OCR Engine**: On-device Google ML Kit Text Recognition (`@react-native-ml-kit/text-recognition`) on mobile app bundles (~1MB RAM footprint, sub-15ms speed). Optimized app bundle size by removing heavy WebAssembly/worker modules.
+- **Dual OCR Engine**: On-device Google ML Kit Text Recognition on mobile app bundles (~1MB RAM footprint, sub-15ms speed) with `hasWorkerSupport`-guarded client-side `tesseract.js` Web Workers as fallback on Web and worker-enabled runtimes.
 - **Snapshot & Sharing**: `react-native-view-shot` (`captureRef`) with theme-aware solid background padding for WhatsApp PNG sharing.
 - **Audio Feedback Engine**: Modern Expo SDK 57 `expo-audio` (`~57.0.5`) player engine playing [`assets/checkout.mp3`](file:///D:/Code/Durga-Puja-Food/assets/checkout.mp3) sound tone strictly when quick checkout success splash window opens (if sound is enabled).
 

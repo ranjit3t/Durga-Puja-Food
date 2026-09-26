@@ -13,7 +13,7 @@ import {
   Platform,
   StatusBar,
 } from "react-native";
-import * as Contacts from "expo-contacts";
+import { Contact, requestPermissionsAsync } from "expo-contacts";
 import { useStyles, useScaling } from "../styles";
 import { useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
@@ -440,25 +440,49 @@ export function SubscriptionForm() {
     setForm({ ...form, [key]: next });
 
   /**
-   * Opens the device contact picker and populates the mobile field.
+   * Opens the device contact picker and populates the mobile field using Expo SDK 57 Contact class API.
    */
   const pickContact = async () => {
     try {
-      const { status } = await Contacts.requestPermissionsAsync();
+      let status: string | undefined;
+      if (typeof requestPermissionsAsync === 'function') {
+        const res = await requestPermissionsAsync();
+        status = res?.status;
+      } else {
+        const legacyContacts = await import("expo-contacts/legacy");
+        const res = await legacyContacts.requestPermissionsAsync();
+        status = res?.status;
+      }
+
       if (status === 'granted') {
-        const contact = await Contacts.presentContactPickerAsync();
-        if (contact && contact.phoneNumbers && contact.phoneNumbers.length > 0) {
-          // Find the first mobile number or just the first number available
-          const mobileNum = contact.phoneNumbers.find(p => p.label === 'mobile') || contact.phoneNumbers[0];
-          if (mobileNum && mobileNum.number) {
-            // Strip non-digits and cap at 10 digits (handling +91 etc)
-            let digits = mobileNum.number.replace(/[^0-9]/g, "");
+        let contact: any = null;
+        if (typeof Contact !== 'undefined' && typeof (Contact as any).presentPicker === 'function') {
+          contact = await (Contact as any).presentPicker();
+        } else {
+          const legacyContacts = await import("expo-contacts/legacy");
+          contact = await legacyContacts.presentContactPickerAsync();
+        }
+
+        if (!contact) return;
+
+        let phoneList: any[] = [];
+        if (typeof contact.getPhones === 'function') {
+          phoneList = await contact.getPhones();
+        } else if (Array.isArray(contact.phones)) {
+          phoneList = contact.phones;
+        } else if (Array.isArray(contact.phoneNumbers)) {
+          phoneList = contact.phoneNumbers;
+        }
+
+        if (phoneList && phoneList.length > 0) {
+          const mobileNum = phoneList.find((p: any) => p.label === 'mobile' || p.label === 'cell') || phoneList[0];
+          const rawNumber = mobileNum?.number || mobileNum?.digits || (typeof mobileNum === 'string' ? mobileNum : '');
+          if (rawNumber) {
+            let digits = String(rawNumber).replace(/[^0-9]/g, "");
             if (digits.length > 10) {
-              // If it starts with 91 and is 12 digits, strip the 91
               if (digits.length === 12 && digits.startsWith('91')) {
                 digits = digits.slice(2);
               } else {
-                // Otherwise just take the last 10
                 digits = digits.slice(-10);
               }
             }

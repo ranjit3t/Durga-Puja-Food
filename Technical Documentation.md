@@ -33,9 +33,9 @@ The application follows a **Serverless Layered Architecture** built on the **Exp
 - **Debounced Batching**: Flushes 50+ rapid startup `onChildAdded` events in a single state update, preventing startup UI freezing.
 - **99.99% Bandwidth Reduction**: Transfers 1.5 KB per event instead of re-downloading 25 MB database payloads, saving 360 GB of network data during a 2-hour meal window.
 
-### B. Lightweight On-Device Google ML Kit OCR Engine (`ocrScanner.ts`)
+### B. Dual OCR Engine Strategy (`ocrScanner.ts`)
 - On **Native Android / iOS**, uses `@react-native-ml-kit/text-recognition` directly (~1MB RAM footprint, sub-15ms execution).
-- Optimized native build footprint by removing heavy WASM dependencies (`tesseract.js`), reducing bundle size significantly.
+- On **Web Browsers** and environments with Web Worker support (`hasWorkerSupport`), `tesseract.js` is dynamically loaded for 100% Web OCR parity without Hermes runtime `Worker` errors.
 
 ### C. Metro Bundler Module Deferral (`metro.config.js`)
 - Configured Metro transformer with `inlineRequires: true`.
