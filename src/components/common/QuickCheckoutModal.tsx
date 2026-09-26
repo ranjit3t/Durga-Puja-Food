@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
-import { View, Text, Pressable, StyleSheet, Platform, Modal, ScrollView, useWindowDimensions, Animated, AccessibilityInfo } from "react-native";
+import { View, Text, Pressable, StyleSheet, Platform, Modal, ScrollView, useWindowDimensions, Animated, AccessibilityInfo, Vibration } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useStyles } from "../../styles";
 import { useAppTheme } from "../../theme";
@@ -10,6 +10,46 @@ import { useUI } from "../../context/UIContext";
 import { useAppNavigation } from "../../context/NavigationContext";
 import { Subscription, MealType, DietaryOption, ActivityModule, ActivityAction, AppThemeMode, AppScreen, TakenState, CheckoutSource } from "../../types";
 import { isParcelEnabled, isMealCurrent, isMealDone, getMealLabel, formatTakenTime } from "../../constants";
+import { QUICK_CHECKOUT_AUTO_CLOSE_MS } from "../../config";
+
+/**
+ * Synthesizes a crisp, festive 2-tone success chime (D5 -> A5) using Web Audio API.
+ */
+function playSuccessChime() {
+  try {
+    const AudioCtx = typeof window !== "undefined" ? (window.AudioContext || (window as any).webkitAudioContext) : null;
+    if (AudioCtx) {
+      const ctx = new AudioCtx();
+      const now = ctx.currentTime;
+
+      // Tone 1: D5 (587.33 Hz)
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = "sine";
+      osc1.frequency.setValueAtTime(587.33, now);
+      gain1.gain.setValueAtTime(0.3, now);
+      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+      osc1.connect(gain1);
+      gain1.connect(ctx.destination);
+      osc1.start(now);
+      osc1.stop(now + 0.25);
+
+      // Tone 2: A5 (880.00 Hz)
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = "sine";
+      osc2.frequency.setValueAtTime(880.00, now + 0.1);
+      gain2.gain.setValueAtTime(0.4, now + 0.1);
+      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.start(now + 0.1);
+      osc2.stop(now + 0.55);
+    }
+  } catch (err) {
+    console.warn("Audio chime notice:", err);
+  }
+}
 
 interface QuickCheckoutModalProps {
   visible: boolean;
@@ -23,6 +63,21 @@ interface QuickCheckoutModalProps {
   source?: CheckoutSource | string;
   onClose: () => void;
   onSuccess: () => void;
+}
+
+interface SuccessData {
+  passId: string;
+  block: string;
+  flat: string;
+  dayLabel: string;
+  mealLabel: string;
+  adultsCount: number;
+  kidsCount: number;
+  parcelsCount: number;
+  totalPlates: number;
+  timestamp: string;
+  countsText: string;
+  totalsText: string;
 }
 
 export function QuickCheckoutModal({
@@ -48,6 +103,15 @@ export function QuickCheckoutModal({
   const [adultInput, setAdultInput] = useState(0);
   const [kidInput, setKidInput] = useState(0);
   const [parcelInput, setParcelInput] = useState(0);
+
+  const [successData, setSuccessData] = useState<SuccessData | null>(null);
+  const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (successTimerRef.current) clearTimeout(successTimerRef.current);
+    };
+  }, []);
 
   // Real-Time Meal Lifecycle Checks
   const isStillCurrent = currentMealInfo
@@ -191,6 +255,7 @@ export function QuickCheckoutModal({
         setAdultInput(0);
         setKidInput(0);
         setParcelInput(0);
+        setSuccessData(null);
         activePassIdRef.current = passId;
 
         // Snapshot initial partial checkout state on modal open
@@ -220,6 +285,7 @@ export function QuickCheckoutModal({
       activePassIdRef.current = null;
       setInitialPartialInfo(null);
       setInitialParcelInfo(null);
+      setSuccessData(null);
     }
   }, [visible, activeSubscription?.id, quickCheckoutDetails]);
 
@@ -458,15 +524,229 @@ export function QuickCheckoutModal({
       });
     }
 
+    // 1. Play audio chime & haptic feedback
+    playSuccessChime();
+    try {
+      Vibration.vibrate([0, 70, 40, 90]);
+    } catch (_) {}
+
     AccessibilityInfo.announceForAccessibility(
       UI_TEXT.checkoutSuccessAnnounce.replace("{flatNo}", activeSubscription.flat || activeSubscription.id)
     );
-    showAlert(UI_TEXT.success, UI_TEXT.checkoutSuccessful, [{ text: UI_TEXT.ok }]);
-    onSuccess();
+
+    // 2. Set success overlay state for full-screen festive checkout confirmation
+    const totalPlatesServed = safeAdultInput + safeKidInput;
+
+    setSuccessData({
+      passId: activeSubscription.id,
+      block: activeSubscription.block || "",
+      flat: activeSubscription.flat || activeSubscription.id,
+      dayLabel: currentMealInfo.dayLabel,
+      mealLabel: currentMealInfo.mealLabel,
+      adultsCount: safeAdultInput,
+      kidsCount: safeKidInput,
+      parcelsCount: safeParcelInput,
+      totalPlates: totalPlatesServed,
+      timestamp: nowTime,
+      countsText: counts.join(", "),
+      totalsText: totalsParts.join(", "),
+    });
+
+    const autoCloseDuration = QUICK_CHECKOUT_AUTO_CLOSE_MS;
+
+    if (successTimerRef.current) clearTimeout(successTimerRef.current);
+    successTimerRef.current = setTimeout(() => {
+      setSuccessData(null);
+      onSuccess();
+      onClose();
+    }, autoCloseDuration);
   };
 
   const isCheckoutDisabled = (adultInput + kidInput + parcelInput) === 0 || !isStillCurrent || isDone;
   const cardMaxWidth = Math.min(width * 0.94, 500);
+
+  // Full-Height Theme-Driven Success Overlay Window (Works on Mobile & Web)
+  if (visible && successData) {
+    const successA11yLabel = `${UI_TEXT.checkoutSuccessful}. ${UI_TEXT.block} ${successData.block} ${UI_TEXT.flatUpper} ${successData.flat}. ${successData.mealLabel}. ${UI_TEXT.served} ${successData.countsText}. ${UI_TEXT.total} ${successData.totalPlates} ${UI_TEXT.plates}. ${successData.timestamp}.`;
+
+    return (
+      <Modal
+        visible={visible}
+        transparent={false}
+        animationType="fade"
+        onRequestClose={() => {
+          if (successTimerRef.current) clearTimeout(successTimerRef.current);
+          setSuccessData(null);
+          onSuccess();
+          onClose();
+        }}
+      >
+        <View
+          accessibilityViewIsModal={true}
+          accessibilityRole="alert"
+          accessibilityLiveRegion="assertive"
+          accessible={true}
+          accessibilityLabel={successA11yLabel}
+          style={{
+            flex: 1,
+            width: "100%",
+            height: "100%",
+            backgroundColor: theme.colors.successLight,
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 20,
+          }}
+        >
+          <ScrollView
+            style={{ width: "100%", flex: 1 }}
+            contentContainerStyle={{
+              flexGrow: 1,
+              alignItems: "center",
+              justifyContent: "center",
+              paddingVertical: 24,
+              width: "100%",
+            }}
+            keyboardShouldPersistTaps="handled"
+          >
+            {/* Theme-Driven Glowing Green Checkmark Badge */}
+            <View
+              style={[
+                {
+                  width: 96,
+                  height: 96,
+                  borderRadius: 48,
+                  backgroundColor: theme.colors.success,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginBottom: 18,
+                  borderWidth: 4,
+                  borderColor: theme.colors.surface,
+                },
+                Platform.select({
+                  ios: {
+                    shadowColor: theme.colors.success,
+                    shadowOffset: { width: 0, height: 6 },
+                    shadowOpacity: 0.4,
+                    shadowRadius: 12,
+                  },
+                  android: { elevation: 8 },
+                  default: {
+                    boxShadow: `0px 6px 20px ${theme.colors.success}66`,
+                  },
+                }),
+              ]}
+            >
+              <Ionicons name="checkmark-done" size={62} color={theme.colors.white} />
+            </View>
+
+            <Text
+              style={{
+                fontSize: 26,
+                fontWeight: "900",
+                color: theme.colors.success,
+                textAlign: "center",
+                letterSpacing: 1.2,
+                textTransform: "uppercase",
+              }}
+            >
+              {UI_TEXT.checkoutSuccessful}
+            </Text>
+
+            <View style={{ height: 2, backgroundColor: theme.colors.success, width: 80, marginVertical: 18, opacity: 0.4 }} />
+
+            {/* Complete Checkout Details Card */}
+            <View
+              style={[
+                {
+                  width: "100%",
+                  maxWidth: cardMaxWidth,
+                  backgroundColor: theme.colors.surface,
+                  borderRadius: 20,
+                  padding: 20,
+                  borderWidth: 2,
+                  borderColor: theme.colors.success,
+                  gap: 12,
+                },
+                Platform.select({
+                  ios: {
+                    shadowColor: theme.colors.shadow,
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.15,
+                    shadowRadius: 8,
+                  },
+                  android: { elevation: 4 },
+                  default: {
+                    boxShadow: `0px 4px 16px ${theme.colors.shadow}22`,
+                  },
+                }),
+              ]}
+            >
+              {/* Resident Pass / Block & Flat */}
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                <Text style={{ fontSize: 12, fontWeight: "800", color: theme.colors.textSecondary, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                  {UI_TEXT.flatUpper}
+                </Text>
+                <Text style={{ fontSize: 22, fontWeight: "900", color: theme.colors.textPrimary }}>
+                  {UI_TEXT.block} {successData.block} - {UI_TEXT.flatUpper} {successData.flat}
+                </Text>
+              </View>
+
+              {/* Meal & Day */}
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                <Text style={{ fontSize: 12, fontWeight: "800", color: theme.colors.textSecondary, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                  {UI_TEXT.meal}
+                </Text>
+                <Text style={{ fontSize: 16, fontWeight: "800", color: theme.colors.textPrimary }}>
+                  {successData.dayLabel} - {successData.mealLabel}
+                </Text>
+              </View>
+
+              {/* Served Items Breakdown */}
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                <Text style={{ fontSize: 12, fontWeight: "800", color: theme.colors.textSecondary, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                  {UI_TEXT.served}
+                </Text>
+                <Text style={{ fontSize: 16, fontWeight: "800", color: theme.colors.textPrimary }}>
+                  {successData.countsText}
+                </Text>
+              </View>
+
+              {/* Total Plates */}
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                <Text style={{ fontSize: 12, fontWeight: "800", color: theme.colors.textSecondary, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                  {UI_TEXT.total}
+                </Text>
+                <Text style={{ fontSize: 18, fontWeight: "900", color: theme.colors.success }}>
+                  {successData.totalPlates} {UI_TEXT.plates.toUpperCase()}
+                </Text>
+              </View>
+
+              {/* Overall Progress Totals */}
+              {successData.totalsText ? (
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                  <Text style={{ fontSize: 12, fontWeight: "800", color: theme.colors.textSecondary, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                    {UI_TEXT.overallStatus}
+                  </Text>
+                  <Text style={{ fontSize: 13, fontWeight: "700", color: theme.colors.textSecondary }}>
+                    {successData.totalsText}
+                  </Text>
+                </View>
+              ) : null}
+
+              {/* Timestamp */}
+              <View style={{ height: 1, backgroundColor: theme.colors.border, marginVertical: 4 }} />
+              <View style={{ flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 6 }}>
+                <Ionicons name="time-outline" size={16} color={theme.colors.textMuted} />
+                <Text style={{ fontSize: 13, fontWeight: "700", color: theme.colors.textMuted }}>
+                  {successData.timestamp}
+                </Text>
+              </View>
+            </View>
+          </ScrollView>
+        </View>
+      </Modal>
+    );
+  }
 
   return (
     <Modal

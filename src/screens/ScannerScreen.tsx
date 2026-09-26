@@ -45,6 +45,7 @@ export function ScannerScreen() {
   // Quick Checkout State
   const [selectedPass, setSelectedPass] = useState<Subscription | null>(null);
   const [currentMealInfo, setCurrentMealInfo] = useState<{ dayId: string; mealType: MealType; dayLabel: string; mealLabel: string } | null>(null);
+  const [lastCheckoutSource, setLastCheckoutSource] = useState<CheckoutSource>(CheckoutSource.SCANNER);
 
   // Check if any active current meal exists ONLY for Quick Checkout mode
   const activeCurrentMeal = React.useMemo(() => {
@@ -263,12 +264,17 @@ export function ScannerScreen() {
       return;
     }
 
+    const currentCheckoutSource = isPassCode ? CheckoutSource.PASSCODE : CheckoutSource.SCANNER;
+    setLastCheckoutSource(currentCheckoutSource);
+
     // Unserved members exist -> Open Quick Checkout Modal
     addActivityLog({
       module: ActivityModule.SCANNER,
       action: isPassCode ? ActivityAction.PASS : ActivityAction.SCAN,
       targetId: match.id,
-      description: UI_TEXT.logQuickCheckoutOpened.replace("{id}", match.id)
+      description: UI_TEXT.logQuickCheckoutOpened
+        .replace("{id}", match.id)
+        .replace("{source}", currentCheckoutSource)
     });
 
     setSelectedPass(match);
@@ -444,7 +450,7 @@ export function ScannerScreen() {
         visible={!!selectedPass}
         subscription={selectedPass}
         currentMealInfo={currentMealInfo}
-        source={CheckoutSource.SCANNER}
+        source={lastCheckoutSource}
         onClose={handleCancelQuickCheckout}
         onSuccess={handleCheckoutSuccess}
       />

@@ -76,16 +76,15 @@ State is split into 3 independent React contexts inside `DatabaseContext.tsx`:
 - `ActivityLogsContext` (System Audit Trail Logs)
 - `NotesContext` (Collaborative Team Notes)
 
-**Impact**: Operational views (`DashboardScreen`, `SubscriptionListScreen`, `ScannerScreen`, `ReportScreen`, `HomeScreen`) subscribe exclusively to `useCoreDatabase()`. Background activity logs or note updates **never trigger re-renders** on main operational screens.
+**Impact**: Operational views (`DashboardScreen`, `SubscriptionListScreen`, `ScannerScreen`, `ReportScreen`, `HomeScreen`, etc.) subscribe exclusively to `useCoreDatabase()`. Background activity logs or note updates **never trigger re-renders** on main operational screens.
 
 ### 2. Debounced WebSocket Listener Batching
 Firebase real-time delta listeners for activity logs (`onLogsDelta`) and subscriptions (`onSubscriptionsDelta`) use debounced buffer timers (100ms–150ms window).
 - **Result**: Grouping 50+ rapid startup `onChildAdded` events into a **single batched update** eliminates initial load screen freezing and CPU thrashing.
 
-### 3. Platform-Gated OCR Engine Strategy
+### 3. Dual Google ML Kit Native & Tesseract.js Fallback OCR Strategy
 - On **Native Android/iOS**, `ocrScanner.ts` uses `@react-native-ml-kit/text-recognition` directly (~1MB RAM footprint, sub-15ms speed).
-- On **Web Browsers**, `tesseract.js` is dynamically loaded for Web OCR parity.
-- **Result**: Eliminates **~50MB to 100MB+ peak RAM allocation** during OCR scanning on native mobile devices.
+- If ML Kit returns empty text or when running on **Web Browsers**, `tesseract.js` fallback is triggered.
 
 ### 4. Dashboard Icon-Only 3-Way View Mode Action Bar
 Each meal card section on the Analytics & Kitchen Operations Dashboard ([`DashboardScreen.tsx`](file:///D:/Code/Durga-Puja-Food/src/screens/DashboardScreen.tsx)) features an icon-only action bar with 4 sleek 36px circular buttons:
@@ -94,11 +93,19 @@ Each meal card section on the Analytics & Kitchen Operations Dashboard ([`Dashbo
 - **`Chart View`** ([`bar-chart-outline`](file:///D:/Code/Durga-Puja-Food/src/components/dashboard/MealBarChart.tsx)): Visual bar chart progress view.
 - **`WhatsApp Share`** ([`logo-whatsapp`](file:///D:/Code/Durga-Puja-Food/src/screens/DashboardScreen.tsx)): 1-tap card snapshot sharing in green accent.
 
-### 5. Multi-Source Quick Checkout Origin Tracking (`CheckoutSource`)
-Quick Checkout can be triggered from 3 distinct application entry points, tracked via `CheckoutSource` enum:
-- **`QR Scanner`** ([`ScannerScreen.tsx`](file:///D:/Code/Durga-Puja-Food/src/screens/ScannerScreen.tsx)): Live camera QR scan or 4-digit passcode entry.
+### 5. Multi-Source Quick Checkout & Full-Height Success Overlay (`QuickCheckoutModal.tsx`)
+Quick Checkout can be triggered from 4 distinct application entry methods, tracked via `CheckoutSource` enum:
+- **`QR Code Scan`** ([`ScannerScreen.tsx`](file:///D:/Code/Durga-Puja-Food/src/screens/ScannerScreen.tsx)): Verified via live camera QR code scan.
+- **`Numeric Passcode Keypad`** ([`ScannerScreen.tsx`](file:///D:/Code/Durga-Puja-Food/src/screens/ScannerScreen.tsx)): Verified via 4-digit numeric passcode keypad entry.
 - **`Pass Details`** ([`DetailsScreen.tsx`](file:///D:/Code/Durga-Puja-Food/src/screens/DetailsScreen.tsx)): Triggered from the pass inspection view.
 - **`Pass Directory`** ([`SubscriptionListScreen.tsx`](file:///D:/Code/Durga-Puja-Food/src/screens/SubscriptionListScreen.tsx)): Interactive red missed meal badge tap.
+
+**Full-Height Festive Success Overlay & Audio Feedback (`QuickCheckoutModal.tsx`)**:
+- Replaced alert dialogs with a full-height, theme-enabled success overlay window (`theme.colors.successLight`).
+- Features a large glowing green checkmark badge (`checkmark-done`), complete checkout details (Block, Flat, Day, Meal, Served counts, Total Plates, and Timestamp), synthesized 2-tone audio chime (`playSuccessChime()`), and haptic vibration.
+- **Zero Hardcoded Colors & Text**: 100% theme-driven styling (`theme.colors`) and 100% localized text (`UI_TEXT`).
+- **Configurable Auto-Close (`QUICK_CHECKOUT_AUTO_CLOSE_MS = 1400` in `config.ts`)**: Auto-closes smoothly without manual close buttons, returning volunteers back to origin screens (`ScannerScreen`, `SubscriptionListScreen`, or `DetailsScreen`).
+- **Web & Accessibility Compliant**: 100% viewport scaling on Web browsers, `accessibilityRole="alert"`, and VoiceOver / TalkBack live speech announcements.
 
 ### 6. Atomic Multi-Path Checkouts & Anti-Duplicate Lock (`checkInPassAtomic`)
 - **100% Duplicate Prevention**: Server-side atomic multi-path updates (`update(ref(db), multiPathUpdates)`) lock meal status and increment kitchen metrics in a single transaction.
@@ -130,10 +137,10 @@ src/
 ├── navigation/          # App Navigator Router & Screen Switcher
 ├── theme/               # Royal Festive Design Token Engine (primary.ts & dark.ts)
 ├── utils/               # Helper Utility Modules
-│   └── ocrScanner.ts    # Dual ML Kit (Native) / Tesseract (Web) OCR Payment Extractor
+│   └── ocrScanner.ts    # Dual ML Kit (Native) / Tesseract (Web/Fallback) OCR Extractor
 ├── domain.ts            # Domain Data Models, Enums (CheckoutSource, GuestCheckoutSource) & Type Contracts
 ├── repository.ts        # Firebase RTDB API Operations, Atomic Writes & Real-Time Listeners
-├── config.ts            # Default App Configuration & Festival Defaults
+├── config.ts            # Festival Configuration & QUICK_CHECKOUT_AUTO_CLOSE_MS
 ├── firebase.ts          # Firebase SDK Initialization
 ├── strings.ts           # Centralized Dictionary for Localized UI Text (`UI_TEXT`)
 ├── styles.ts            # Global Responsive Scaling Engine (`s()` / `v()`) & Widescreen Breakpoints

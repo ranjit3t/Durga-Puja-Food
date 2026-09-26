@@ -29,7 +29,8 @@ export enum DietaryOption {
 }
 
 export enum CheckoutSource {
-  SCANNER = "QR Scanner",
+  SCANNER = "QR Code Scan",
+  PASSCODE = "Numeric Passcode",
   DETAILS = "Pass Details",
   SUBSCRIPTION_LIST = "Pass Directory",
 }
@@ -104,6 +105,7 @@ export type AppConfig = {
   seasonEnabled?: boolean;
   kidsEnabled?: boolean;
   whatsappCountryCode?: string;
+  quickCheckoutAutoCloseMs?: number;
 };
 
 export enum ActivityModule {

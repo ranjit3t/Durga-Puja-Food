@@ -272,6 +272,7 @@ export const UI_TEXT = {
   quickCheckoutNoSubscription: "No active meal subscription found for this slot.",
   quickCheckoutAllServed: "All meals for this slot have already been served.",
   checkoutSuccessful: "Checkout Successful",
+  overallStatus: "Overall Status",
   maxLimit: "Max Limit",
   for: "for",
   food: "Food Service",

@@ -63,51 +63,60 @@ Eternia Food Desk is a cross-platform mobile and web application built with **Re
 ### C. Atomic Server Transactions & Anti-Duplicate Security
 - **`checkInPassAtomic`**: Uses atomic multi-path server updates (`update(ref(db), multiPathUpdates)`) to lock meal status and increment kitchen counters in a single transaction, guaranteeing **100% mathematical duplicate check-in prevention** across 20+ concurrent counter devices.
 
-### D. Client-Side Activity Summarization Engine
+### D. Full-Height Festive Quick Checkout Success Overlay & Audio Feedback (`QuickCheckoutModal.tsx`)
+- **Vibrant Full-Height Overlay**: Replaced alert dialogs upon successful checkout with a full-height, theme-enabled success window (`theme.colors.successLight`).
+- **Glowing Green Checkmark Badge**: Renders a large glowing green checkmark badge (`checkmark-done` in 96px circular badge).
+- **Comprehensive Summary**: Displays complete checkout information (Resident Block & Flat, Day & Meal, Served member breakdown, Total Plates, and Timestamp).
+- **Zero Hardcoded Colors & Text**: 100% theme-driven styling (`theme.colors`) and 100% localized text (`UI_TEXT`).
+- **Audio Chime & Haptic Feedback**: Synthesizes a 2-tone festive audio chime (`playSuccessChime()`) + haptic vibration + speech accessibility announcement on checkout submit.
+- **Configurable Auto-Close (`QUICK_CHECKOUT_AUTO_CLOSE_MS = 1400` in `config.ts`)**: Auto-closes smoothly without manual close buttons, returning volunteers back to origin screens (`ScannerScreen`, `SubscriptionListScreen`, or `DetailsScreen`).
+- **Web Browser & Accessibility Compliant**: Full 100% viewport portal scaling on Web browsers, `accessibilityRole="alert"`, and VoiceOver / TalkBack live speech announcements.
+
+### E. Client-Side Activity Summarization Engine
 - **Instant Local Summaries (0ms Execution)**: Features an **"ANALYZE"** action button in `ActivityLogScreen.tsx`. Analyzes whatever activity log entries currently appear in the active filtered/searched list (`filteredLogs`) in **0ms** without network latency or external API dependencies.
 - **Scrollable Activity Summary Modal**: Displays a structured operational report (Total Events, Active User Roster, Per-Module Operations Breakdown, Scanner/Meal Checkouts, and System Error Health Status) inside an adaptive, scrollable modal window (`maxWidth: Math.min(width * 0.94, 520)`, `maxHeight: "85%"`).
 
-### E. Member Food Taken Date & Time Tracking
+### F. Member Food Taken Date & Time Tracking
 - **Synchronized Batch Timestamps**: When members, kids, or parcels are checked out together in `QuickCheckoutModal.tsx`, a single formatted timestamp string (`formatTakenTime()`, e.g. `"12 Oct, 1:15 PM"`) is assigned to all members served in that transaction.
 - **View Pass Time Badges (`DetailsScreen.tsx`)**: In the Food Taken section, each member's taken meal badge prints the exact timestamp underneath the badge (`12 Oct, 1:15 PM`).
 - **Excel CSV Export Timestamps (`SubscriptionListScreen.tsx`)**: The subscription directory Excel CSV export includes member-level meal taken date & time (`P1: Parcel Taken (24 Sep, 12:28 PM)`).
 
-### F. Mid-Service Meal Closure Auto-Alert & Redirect
+### G. Mid-Service Meal Closure Auto-Alert & Redirect
 - **Sub-50ms Reactive Checks**: Connects real-time WebSocket state to `isMealCurrent` and `isMealDone` in `QuickCheckoutModal.tsx`, `QuickGuestModal.tsx`, and `ScannerScreen.tsx` (Quick Checkout Camera Mode).
 - **Localized Alert & Auto-Redirect**: When an Admin marks a meal as `DONE` mid-service, an alert stating `"Current meal is closed. Thank you!"` appears in **<50ms**.
 - **Home Navigation**: Tapping **OK** automatically closes the modal/screen and redirects the volunteer to the **Home Screen** (`navigate(AppScreen.HOME)`).
 - **Isolated Camera Safety**: Standard camera scanner mode (`isQuickCheckout = false` in `ScannerScreen.tsx`) remains 100% unhampered and fully operational for general pass lookups, searches, and edits.
 
-### G. Adaptive Web & Responsive Modal Engine
+### H. Adaptive Web & Responsive Modal Engine
 - **Responsive Container Scaling**: Modals and checkout screens scale adaptively (`maxWidth: Math.min(width * 0.94, 500)`), providing generous spacing on Desktop Web browsers, laptops, and tablets.
 - **Compact Counter Inputs**: Compact 36px CounterInput buttons (`width: 36`) and flexbox shrink protection prevent text wrapping or button clipping on narrow viewports.
 
-### H. Real-Time Activity Logs & Team Notes Pipeline
+### I. Real-Time Activity Logs & Team Notes Pipeline
 - Connected directly to `activityLogs` (via `useActivityLogs()`) and `notes` (via `useNotes()`).
 - Incoming WebSocket logs and team notes stream in sub-50ms and insert automatically at **Index 0 (the very top of the list)** in default descending timestamp mode (`b.timestamp - a.timestamp`).
 - Features interactive directional sort toggle (`isAscending ? a.timestamp - b.timestamp : b.timestamp - a.timestamp`).
 
-### I. Pass Directory Sorting & Filter Integration
+### J. Pass Directory Sorting & Filter Integration
 - Includes natural alphanumeric sort toggle (`isAscending`) in `SubscriptionListScreen.tsx` sorting by Block then Flat (`A-101` ➔ `Z-909` or `Z-909` ➔ `A-101`).
 - Operates on filtered dataset (`visibleSubscriptions`) seamlessly combining search queries and multi-tag filter pills (`All`, `Current Meal Subscribed`, `Current Meal Missed`, `Kids`, `Parcels`, `Veg Only`).
 
-### J. Granular & Simultaneous Menu Updates
+### K. Granular & Simultaneous Menu Updates
 - Real-time `onValue(ref(db, "menu"))` listener broadcasts food items, prices, and guest counts across all screens in <50ms.
 - Targeted leaf-node writes (`/menu/$dayId/$mealKey`) ensure that multiple administrators editing different meals or fields simultaneously do not overwrite each other.
 
-### K. Pre-Aggregated Kitchen Metrics (`/metrics`)
+### L. Pre-Aggregated Kitchen Metrics (`/metrics`)
 - Kitchen staff and admins view live progress bars from pre-aggregated `/metrics` nodes without looping through 10,000 pass records ($O(1)$ read complexity).
 
-### L. Refined Day-Wise Analytics, Complete/Planned View Switcher & Current Meal Auto-Focus
+### M. Refined Day-Wise Analytics, Complete/Planned View Switcher & Current Meal Auto-Focus
 - **Day & Meal Filters for Day-Wise Report (`ReportScreen.tsx`)**: Refined the **Day Wise Report** (`ReportType.DAY`) to support interactive Day and Meal selection filters alongside Split Report (`ReportType.SINGLE`).
 - **Complete View vs. Planned View Switcher (`DayWiseReport.tsx`, `SingleMealReport.tsx`)**: Renders an interactive `[ Complete View ]` / `[ Planned View ]` toggle bar.
 - **Active Current Meal Auto-Focus & Smooth Scroll**: On screen navigation or tab selection, `ReportScreen` automatically detects if any meal is currently active and enabled (`isMealCurrent` & `isMealEnabled`). It focuses `selectedDayId` and `selectedMealType` on the current active meal and smoothly scrolls the horizontal day selector to highlight the active day card.
 
-### M. Partial & Parcel Checkout Alerts with Initial-Load Snapshot Locking (`QuickCheckoutModal.tsx`, `SubscriptionForm.tsx`)
+### N. Partial & Parcel Checkout Alerts with Initial-Load Snapshot Locking (`QuickCheckoutModal.tsx`, `SubscriptionForm.tsx`)
 - **Automated Partial Pickup & Parcel Alerts**: Evaluates `totalFoodAlreadyServed` and `parcelMax` when opening checkout or pass edit views. Renders stacked Animated `opacityAnim` pulsating warning banners.
 - **Initial Load Snapshot Locking**: Captures initial pickup state on screen/modal open (`initialPartialInfo`, `initialParcelInfo`, `parcelAlertFiredRef`), guaranteeing alerts fire strictly upon initial load and never re-trigger or flash during active form edits.
 
-### N. Pass Directory Auto-Deselect Stale Filters & Fallback (`SubscriptionListScreen.tsx`)
+### O. Pass Directory Auto-Deselect Stale Filters & Fallback (`SubscriptionListScreen.tsx`)
 - **Auto-Deselect 0-Selection Filters**: Reactive `useEffect` monitors filter counts and deselects stale filters whose match count drops to `0`.
 - **Default `ALL` Fallback**: Automatically falls back to `FilterMode.ALL` if deselecting a stale filter leaves no active filters remaining.
 
@@ -119,7 +128,7 @@ Eternia Food Desk is a cross-platform mobile and web application built with **Re
 - **`HomeScreen`**: Live operational summary cards, real-time current meal badges, shortcuts, auto version-check alert, and Quick Checkout & Quick Guest modal launchers (uses `useCoreDatabase()`).
 - **`SubscriptionListScreen`**: Virtualized pass directory (`initialNumToRender={12}`, `maxToRenderPerBatch={10}`, `windowSize={5}`) with natural alphanumeric sort toggle, search, multi-tag filters, and Excel CSV export with timestamp auditing (uses `useCoreDatabase()` & `useActivityLogs()`).
 - **`SubscriptionForm`**: Registration & edit view with headcount protection, automated pricing, identity locking, safe array initialization helpers, timestamp stamping, and OCR Payment Scanner.
-- **`ScannerScreen`**: Dual-mode verification interface featuring isolated `MemoizedCamera` QR scanning, 4-digit numeric passcode keypad, and Quick Checkout mode with mid-service meal closure redirect.
+- **`ScannerScreen`**: Dual-mode verification interface featuring isolated `MemoizedCamera` QR scanning (`CheckoutSource.SCANNER`), 4-digit numeric passcode keypad (`CheckoutSource.PASSCODE`), and Quick Checkout mode with mid-service meal closure redirect.
 - **`DashboardScreen`**: Live kitchen counter dashboard with real-time meal metrics, progress bars, and metric grid views (uses `useCoreDatabase()`).
 - **`ReportScreen`**: Targeted lazy analytics suite providing 10 specialized reports with theme-aware PNG image export.
 - **`NotesScreen`**: Real-time collaborative team notes streaming newest entries to the top in <50ms with sort toggle (uses `useNotes()`).
