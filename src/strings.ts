@@ -25,6 +25,7 @@ export const UI_TEXT = {
   plannedView: "Planned",
   partialCheckoutAlert: "Partial Pickup Alert: {served} of {total} meals already collected on this pass ({remaining} remaining).",
   parcelPickupAlert: "Parcel Pickup Alert: {count} takeaway parcel(s) remaining for pickup on this pass.",
+  importantReminders: "Important Reminders",
   operationalSummary: "Operational Summary",
   plannedTotal: "Total Subscribed",
   noMealsSelected: "No pending meals for this selection.",

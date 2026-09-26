@@ -13,6 +13,7 @@ interface CounterInputProps {
   min?: number;
   max?: number;
   disabled?: boolean;
+  compact?: boolean;
 }
 
 export function CounterInput({
@@ -23,6 +24,7 @@ export function CounterInput({
   min = 0,
   max = 9999,
   disabled = false,
+  compact = false,
 }: CounterInputProps) {
   const styles = useStyles();
   const { theme } = useAppTheme();
@@ -60,6 +62,63 @@ export function CounterInput({
     setLocalText(String(clamped));
     onChange(clamped);
   };
+
+  if (compact) {
+    return (
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", minHeight: 38, marginVertical: 2, minWidth: 0, flexShrink: 1 }}>
+        <View style={{ flex: 1, paddingRight: 8, justifyContent: "center" }}>
+          <Text style={[styles.label, { marginTop: 0, marginBottom: 0, fontSize: 13, fontWeight: "800" }]} numberOfLines={1} ellipsizeMode="tail">
+            {label}
+          </Text>
+          {description ? (
+            <Text style={{ fontSize: 11, fontWeight: "700", color: theme.colors.primary, marginTop: 1 }}>
+              {description}
+            </Text>
+          ) : null}
+        </View>
+        <View style={[localStyles.container, { width: 114, height: 36, backgroundColor: theme.colors.surfaceDark, borderColor: theme.colors.border }]}>
+          <Pressable
+            onPress={handleDecrement}
+            style={[localStyles.button, disabled && { opacity: 0.5 }, { width: 34, borderRightWidth: 1, borderRightColor: theme.colors.border }]}
+            disabled={disabled || value <= min}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={`${UI_TEXT.decrease}${UI_TEXT.space}${label}`}
+            accessibilityHint={UI_TEXT.decrementsValue.replace("{label}", label).replace("{value}", String(value))}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="remove" size={16} color={theme.colors.textPrimary} />
+          </Pressable>
+
+          <TextInput
+            style={[localStyles.input, { color: theme.colors.textPrimary, fontSize: 14 }]}
+            value={localText}
+            onChangeText={handleTextChange}
+            onBlur={handleBlur}
+            keyboardType="numeric"
+            editable={!disabled}
+            selectTextOnFocus
+            accessible={true}
+            accessibilityLabel={`${label}${UI_TEXT.space}${UI_TEXT.quantity}`}
+            accessibilityValue={{ min, max, now: value }}
+          />
+
+          <Pressable
+            onPress={handleIncrement}
+            style={[localStyles.button, disabled && { opacity: 0.5 }, { width: 34, borderLeftWidth: 1, borderLeftColor: theme.colors.border }]}
+            disabled={disabled || value >= max}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={`${UI_TEXT.increase}${UI_TEXT.space}${label}`}
+            accessibilityHint={UI_TEXT.incrementsValue.replace("{label}", label).replace("{value}", String(value))}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="add" size={16} color={theme.colors.textPrimary} />
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={{ marginBottom: 8, minWidth: 0, flexShrink: 1 }}>

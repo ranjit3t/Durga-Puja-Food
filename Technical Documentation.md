@@ -44,7 +44,10 @@ The application follows a **Serverless Layered Architecture** built on the **Exp
 ### D. Atomic Multi-Path Checkouts & Anti-Duplicate Lock (`checkInPassAtomic`)
 - Uses atomic multi-path server updates (`update(ref(db), multiPathUpdates)`) to lock meal status and increment kitchen counters in a single transaction, guaranteeing **100% mathematical duplicate check-in prevention** across 20+ concurrent counters.
 
-### E. Full-Height Festive Quick Checkout Success Overlay, Audio & Global Settings (`QuickCheckoutModal.tsx`, `SettingsScreen.tsx`)
+### E. Full-Height Festive Quick Checkout Success Overlay, Height Management & Compact Controls (`QuickCheckoutModal.tsx`, `CounterInput.tsx`, `SettingsScreen.tsx`)
+- **Intelligent Viewport Height Cap (`maxHeight: Math.min(height * 0.88, 620)`)**: Restricts the modal container height to 88% of the viewport with flexbox scroll containment, preventing dialog overflow on small mobile screens or narrow desktop viewports.
+- **Consolidated Alert Banner Engine**: Merges Parcel Pickup Alerts and Partial Checkout Alerts into a single unified alert box with bulleted items when both are active, reducing alert banner vertical space by **> 50%**.
+- **Compact Horizontal Row Counter Inputs (`CounterInput.tsx`)**: Added `compact={true}` mode featuring Label & Max Limit on the Left and `[- 0 +]` counter controls on the Right, reducing input section height by **~45%**.
 - **Vibrant Full-Height Overlay**: Replaced alert dialogs upon successful checkout with a full-height, theme-enabled success window (`theme.colors.successLight`).
 - **Glowing Green Checkmark Badge**: Renders a large glowing green checkmark badge (`checkmark-done` in 96px circular badge).
 - **Multi-Source Origin Tracking**: Tracks checkout origin via `CheckoutSource` enum (`QR Code Scan`, `Numeric Passcode Keypad`, `Pass Details`, `Pass Directory`).

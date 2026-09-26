@@ -124,7 +124,7 @@ export function QuickCheckoutModal({
   const { dayConfig, kidsEnabled, addActivityLog, upsertSubscription, subscriptions, quickCheckoutAutoCloseMs, soundEnabled } = useDatabase();
   const { showAlert } = useUI();
   const { navigate } = useAppNavigation();
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
 
   const activeSubscription = useMemo(() => {
     if (!subscription) return null;
@@ -599,6 +599,7 @@ export function QuickCheckoutModal({
 
   const isCheckoutDisabled = (adultInput + kidInput + parcelInput) === 0 || !isStillCurrent || isDone;
   const cardMaxWidth = Math.min(width * 0.94, 500);
+  const maxCardHeight = Math.min(height * 0.88, 620);
 
   // Full-Height Theme-Driven Success Overlay Window (Works on Mobile & Web)
   if (visible && successData) {
@@ -783,6 +784,9 @@ export function QuickCheckoutModal({
     );
   }
 
+  const showParcelAlert = !!(initialParcelInfo && initialParcelInfo.hasParcelRemaining);
+  const showPartialAlert = !!(initialPartialInfo && initialPartialInfo.isPartial);
+
   return (
     <Modal
       visible={visible && !!subscription}
@@ -806,30 +810,40 @@ export function QuickCheckoutModal({
           style={{
             width: "100%",
             maxWidth: cardMaxWidth,
+            maxHeight: maxCardHeight,
             backgroundColor: theme.colors.surface,
-          borderRadius: 20,
-          padding: 16,
-          borderWidth: 1,
-          borderColor: theme.colors.border,
-          ...Platform.select({
-            ios: {
-              shadowColor: theme.colors.shadow,
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.3,
-              shadowRadius: 8
-            },
-            android: { elevation: 8 },
-            web: { boxShadow: `0 4px 16px ${theme.colors.shadow}66` }
-          })
-        }}>
-          <ScrollView contentContainerStyle={{ gap: 14 }} keyboardShouldPersistTaps="handled">
+            borderRadius: 20,
+            padding: 14,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+            ...Platform.select({
+              ios: {
+                shadowColor: theme.colors.shadow,
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.3,
+                shadowRadius: 8
+              },
+              android: { elevation: 8 },
+              web: { boxShadow: `0 4px 16px ${theme.colors.shadow}66` }
+            })
+          }}
+        >
+          <ScrollView
+            style={{ flexShrink: 1 }}
+            contentContainerStyle={{ gap: 10, paddingBottom: 2 }}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={true}
+          >
             {/* Header Title */}
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 18, fontWeight: "900", color: theme.colors.textPrimary }}>
+                <Text style={{ fontSize: 17, fontWeight: "900", color: theme.colors.textPrimary }}>
                   {UI_TEXT.quickCheckout}
                 </Text>
-                <Text style={{ fontSize: 13, fontWeight: "700", color: theme.colors.primary, marginTop: 2 }}>
+                <Text style={{ fontSize: 12, fontWeight: "700", color: theme.colors.primary, marginTop: 1 }}>
                   {UI_TEXT.pass}{UI_TEXT.space}{subscription?.id}
                 </Text>
               </View>
@@ -855,80 +869,114 @@ export function QuickCheckoutModal({
               </Pressable>
             </View>
 
-            {/* 1. Blinking Parcel Pickup Alert Banner (Rendered ON TOP) */}
-            {initialParcelInfo && initialParcelInfo.hasParcelRemaining && (
-              <Animated.View
-                style={{
-                  opacity: opacityAnim,
-                  backgroundColor: theme.colors.warningLight,
-                  borderColor: theme.colors.secondary,
-                  borderWidth: 1.5,
-                  borderRadius: 14,
-                  paddingVertical: 10,
-                  paddingHorizontal: 12,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 8,
-                }}
-              >
-                <Ionicons name="cube-outline" size={20} color={theme.colors.secondary} />
-                <Text
-                  style={{
-                    flex: 1,
-                    fontSize: 12,
-                    fontWeight: "800",
-                    color: theme.themeType === AppThemeMode.DARK ? theme.colors.secondary : theme.colors.textPrimary,
-                    lineHeight: 16,
-                  }}
-                >
-                  {UI_TEXT.parcelPickupAlert.replace("{count}", String(initialParcelInfo.parcelMax))}
-                </Text>
-              </Animated.View>
-            )}
-
-            {/* 2. Blinking Partial Checkout Alert Banner (Rendered BELOW Parcel Alert) */}
-            {initialPartialInfo && initialPartialInfo.isPartial && (
+            {/* Intelligent Consolidated Alerts (Compact & Combined when both alerts are present) */}
+            {showParcelAlert && showPartialAlert ? (
               <Animated.View
                 style={{
                   opacity: opacityAnim,
                   backgroundColor: theme.colors.warningLight,
                   borderColor: theme.colors.warning,
                   borderWidth: 1.5,
-                  borderRadius: 14,
-                  paddingVertical: 10,
-                  paddingHorizontal: 12,
+                  borderRadius: 12,
+                  paddingVertical: 8,
+                  paddingHorizontal: 10,
+                  gap: 4,
+                }}
+              >
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                  <Ionicons name="warning-outline" size={18} color={theme.colors.warning} />
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      fontWeight: "900",
+                      color: theme.themeType === AppThemeMode.DARK ? theme.colors.warning : theme.colors.textPrimary,
+                    }}
+                  >
+                    {UI_TEXT.importantReminders || "Important Reminders"}
+                  </Text>
+                </View>
+                <View style={{ gap: 2, paddingLeft: 22 }}>
+                  <Text style={{ fontSize: 11, fontWeight: "700", color: theme.themeType === AppThemeMode.DARK ? theme.colors.secondary : theme.colors.textPrimary, lineHeight: 15 }}>
+                    • {UI_TEXT.parcelPickupAlert.replace("{count}", String(initialParcelInfo!.parcelMax))}
+                  </Text>
+                  <Text style={{ fontSize: 11, fontWeight: "700", color: theme.themeType === AppThemeMode.DARK ? theme.colors.warning : theme.colors.textPrimary, lineHeight: 15 }}>
+                    • {UI_TEXT.partialCheckoutAlert
+                        .replace("{served}", String(initialPartialInfo!.served))
+                        .replace("{total}", String(initialPartialInfo!.total))
+                        .replace("{remaining}", String(initialPartialInfo!.remaining))}
+                  </Text>
+                </View>
+              </Animated.View>
+            ) : showParcelAlert ? (
+              <Animated.View
+                style={{
+                  opacity: opacityAnim,
+                  backgroundColor: theme.colors.warningLight,
+                  borderColor: theme.colors.secondary,
+                  borderWidth: 1.5,
+                  borderRadius: 12,
+                  paddingVertical: 8,
+                  paddingHorizontal: 10,
                   flexDirection: "row",
                   alignItems: "center",
                   gap: 8,
                 }}
               >
-                <Ionicons name="warning-outline" size={20} color={theme.colors.warning} />
+                <Ionicons name="cube-outline" size={18} color={theme.colors.secondary} />
                 <Text
                   style={{
                     flex: 1,
-                    fontSize: 12,
+                    fontSize: 11,
+                    fontWeight: "800",
+                    color: theme.themeType === AppThemeMode.DARK ? theme.colors.secondary : theme.colors.textPrimary,
+                    lineHeight: 15,
+                  }}
+                >
+                  {UI_TEXT.parcelPickupAlert.replace("{count}", String(initialParcelInfo!.parcelMax))}
+                </Text>
+              </Animated.View>
+            ) : showPartialAlert ? (
+              <Animated.View
+                style={{
+                  opacity: opacityAnim,
+                  backgroundColor: theme.colors.warningLight,
+                  borderColor: theme.colors.warning,
+                  borderWidth: 1.5,
+                  borderRadius: 12,
+                  paddingVertical: 8,
+                  paddingHorizontal: 10,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+              >
+                <Ionicons name="warning-outline" size={18} color={theme.colors.warning} />
+                <Text
+                  style={{
+                    flex: 1,
+                    fontSize: 11,
                     fontWeight: "800",
                     color: theme.themeType === AppThemeMode.DARK ? theme.colors.warning : theme.colors.textPrimary,
-                    lineHeight: 16,
+                    lineHeight: 15,
                   }}
                 >
                   {UI_TEXT.partialCheckoutAlert
-                    .replace("{served}", String(initialPartialInfo.served))
-                    .replace("{total}", String(initialPartialInfo.total))
-                    .replace("{remaining}", String(initialPartialInfo.remaining))}
+                    .replace("{served}", String(initialPartialInfo!.served))
+                    .replace("{total}", String(initialPartialInfo!.total))
+                    .replace("{remaining}", String(initialPartialInfo!.remaining))}
                 </Text>
               </Animated.View>
-            )}
+            ) : null}
 
             {/* Header Summary Box - Exact Dashboard Summary Card Pattern (Solid Red Theme) */}
             {quickCheckoutDetails && currentMealInfo && (
               <View style={{
-                padding: 14,
-                borderRadius: 16,
+                padding: 10,
+                borderRadius: 14,
                 backgroundColor: (isStillCurrent && !isDone) ? theme.colors.primary : theme.colors.textMuted,
                 borderColor: (isStillCurrent && !isDone) ? theme.colors.primary : theme.colors.textMuted,
                 borderWidth: 1,
-                gap: 8,
+                gap: 5,
                 ...Platform.select({
                   ios: {
                     shadowColor: theme.colors.primary,
@@ -936,20 +984,20 @@ export function QuickCheckoutModal({
                     shadowOpacity: 0.25,
                     shadowRadius: 6,
                   },
-                  android: { elevation: 4 },
-                  web: { boxShadow: `0 3px 12px ${theme.colors.primary}33` }
+                  android: { elevation: 3 },
+                  web: { boxShadow: `0 3px 10px ${theme.colors.primary}33` }
                 })
               }}>
                 {/* Heading: Saptami - Breakfast */}
-                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-                  <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 6, flex: 1 }}>
-                    <Ionicons name="restaurant" size={16} color={theme.colors.white} style={{ marginTop: 1 }} />
-                    <Text style={{ fontSize: 13, fontWeight: "900", color: theme.colors.white, textTransform: "uppercase", letterSpacing: 0.8, flex: 1, flexWrap: "wrap" }}>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 6 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flex: 1 }}>
+                    <Ionicons name="restaurant" size={15} color={theme.colors.white} />
+                    <Text style={{ fontSize: 12, fontWeight: "900", color: theme.colors.white, textTransform: "uppercase", letterSpacing: 0.8, flex: 1 }} numberOfLines={1}>
                       {currentMealInfo.dayLabel}{UI_TEXT.space}{UI_TEXT.hyphen}{UI_TEXT.space}{currentMealInfo.mealLabel}
                     </Text>
                   </View>
 
-                  <View style={{ backgroundColor: theme.colors.white + "33", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, flexShrink: 0, alignSelf: "flex-start" }}>
+                  <View style={{ backgroundColor: theme.colors.white + "33", paddingHorizontal: 7, paddingVertical: 2, borderRadius: 5, flexShrink: 0 }}>
                     <Text style={{ fontSize: 10, fontWeight: "900", color: theme.colors.white }}>
                       {(isStillCurrent && !isDone) ? UI_TEXT.live.toUpperCase() : (isDone ? UI_TEXT.mealDoneLabel.toUpperCase() : "INACTIVE")}
                     </Text>
@@ -958,7 +1006,7 @@ export function QuickCheckoutModal({
 
                 {/* Headcount & Dietary Breakdown */}
                 <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                  <Text style={{ fontSize: 13, fontWeight: "800", color: theme.colors.white }}>
+                  <Text style={{ fontSize: 12, fontWeight: "800", color: theme.colors.white }}>
                     {(() => {
                       if (!subscription) return "";
                       if (kidsEnabled) {
@@ -979,19 +1027,19 @@ export function QuickCheckoutModal({
                     })()}
                   </Text>
 
-                  <Text style={{ fontSize: 12, fontWeight: "700", color: theme.colors.white, opacity: 0.9 }}>
+                  <Text style={{ fontSize: 11, fontWeight: "700", color: theme.colors.white, opacity: 0.9 }}>
                     {quickCheckoutDetails.vegCount > 0 ? `${quickCheckoutDetails.vegCount} ${UI_TEXT.veg}` : ""}
                     {quickCheckoutDetails.vegCount > 0 && quickCheckoutDetails.nonVegCount > 0 ? `${UI_TEXT.pipe}` : ""}
                     {quickCheckoutDetails.nonVegCount > 0 ? `${quickCheckoutDetails.nonVegCount} ${UI_TEXT.nonVeg}` : ""}
                   </Text>
                 </View>
 
-                <View style={{ height: 1, backgroundColor: theme.colors.white, opacity: 0.2 }} />
+                <View style={{ height: 1, backgroundColor: theme.colors.white, opacity: 0.2, marginVertical: 1 }} />
 
                 {/* Food Demand & Serving Status */}
-                <View style={{ gap: 4 }}>
+                <View style={{ gap: 2 }}>
                   <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                    <Text style={{ fontSize: 12, fontWeight: "800", color: theme.colors.white }}>
+                    <Text style={{ fontSize: 11, fontWeight: "800", color: theme.colors.white }}>
                       {UI_TEXT.food}{UI_TEXT.colon}{UI_TEXT.space}
                       {UI_TEXT.planned}{UI_TEXT.space}{quickCheckoutDetails.adultsPlanned + quickCheckoutDetails.kidsPlanned}
                     </Text>
@@ -1003,7 +1051,7 @@ export function QuickCheckoutModal({
                   {/* Parcel Demand & Serving Status */}
                   {quickCheckoutDetails.parcelSupported && quickCheckoutDetails.parcelPlanned > 0 && (
                     <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                      <Text style={{ fontSize: 12, fontWeight: "800", color: theme.colors.white }}>
+                      <Text style={{ fontSize: 11, fontWeight: "800", color: theme.colors.white }}>
                         {UI_TEXT.parcels}{UI_TEXT.colon}{UI_TEXT.space}
                         {UI_TEXT.planned}{UI_TEXT.space}{quickCheckoutDetails.parcelPlanned}
                       </Text>
@@ -1019,22 +1067,23 @@ export function QuickCheckoutModal({
             {/* Section 2: Counter Inputs Card Container */}
             {quickCheckoutDetails && currentMealInfo && (
               <View style={{
-                padding: 14,
-                borderRadius: 16,
+                padding: 10,
+                borderRadius: 14,
                 backgroundColor: theme.cardColors[2].accentLight,
                 borderColor: theme.cardColors[2].border,
                 borderWidth: 1.5,
-                gap: 10,
+                gap: 6,
               }}>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                  <Ionicons name="flash-outline" size={16} color={theme.cardColors[2].accent} />
-                  <Text style={{ fontSize: 12, fontWeight: "800", color: theme.cardColors[2].accent, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 2 }}>
+                  <Ionicons name="flash-outline" size={15} color={theme.cardColors[2].accent} />
+                  <Text style={{ fontSize: 11, fontWeight: "800", color: theme.cardColors[2].accent, textTransform: "uppercase", letterSpacing: 0.5 }}>
                     {UI_TEXT.quickCheckout}
                   </Text>
                 </View>
 
                 {quickCheckoutDetails.adultsMax > 0 && (
                   <CounterInput
+                    compact={true}
                     label={kidsEnabled ? UI_TEXT.adults : UI_TEXT.members}
                     description={`${UI_TEXT.maxLimit}${UI_TEXT.colon}${UI_TEXT.space}${quickCheckoutDetails.adultsMax}`}
                     value={adultInput}
@@ -1047,6 +1096,7 @@ export function QuickCheckoutModal({
 
                 {kidsEnabled && quickCheckoutDetails.kidsMax > 0 && (
                   <CounterInput
+                    compact={true}
                     label={UI_TEXT.kids}
                     description={`${UI_TEXT.maxLimit}${UI_TEXT.colon}${UI_TEXT.space}${quickCheckoutDetails.kidsMax}`}
                     value={kidInput}
@@ -1059,6 +1109,7 @@ export function QuickCheckoutModal({
 
                 {quickCheckoutDetails.parcelSupported && effectiveParcelMax > 0 && (
                   <CounterInput
+                    compact={true}
                     label={UI_TEXT.parcels}
                     description={`${UI_TEXT.maxLimit}${UI_TEXT.colon}${UI_TEXT.space}${effectiveParcelMax}`}
                     value={parcelInput}

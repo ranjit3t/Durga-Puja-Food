@@ -114,22 +114,29 @@ Each meal card section on the Analytics & Kitchen Operations Dashboard ([`Dashbo
 - **`Chart View`** ([`bar-chart-outline`](file:///D:/Code/Durga-Puja-Food/src/components/dashboard/MealBarChart.tsx)): Visual bar chart progress view.
 - **`WhatsApp Share`** ([`logo-whatsapp`](file:///D:/Code/Durga-Puja-Food/src/screens/DashboardScreen.tsx)): 1-tap card snapshot sharing in green accent.
 
-### 5. Multi-Source Quick Checkout, Splash Audio & Global Sound Settings (`QuickCheckoutModal.tsx`, `SettingsScreen.tsx`)
+### 5. Multi-Source Quick Checkout, Height Management & Compact Inputs (`QuickCheckoutModal.tsx`, `CounterInput.tsx`, `SettingsScreen.tsx`)
 Quick Checkout can be triggered from 4 distinct application entry methods, tracked via `CheckoutSource` enum:
 - **`QR Code Scan`** ([`ScannerScreen.tsx`](file:///D:/Code/Durga-Puja-Food/src/screens/ScannerScreen.tsx)): Verified via live camera QR code scan.
 - **`Numeric Passcode Keypad`** ([`ScannerScreen.tsx`](file:///D:/Code/Durga-Puja-Food/src/screens/ScannerScreen.tsx)): Verified via 4-digit numeric passcode keypad entry.
 - **`Pass Details`** ([`DetailsScreen.tsx`](file:///D:/Code/Durga-Puja-Food/src/screens/DetailsScreen.tsx)): Triggered from the pass inspection view.
 - **`Pass Directory`** ([`SubscriptionListScreen.tsx`](file:///D:/Code/Durga-Puja-Food/src/screens/SubscriptionListScreen.tsx)): Interactive red missed meal badge tap.
 
-**Full-Height Festive Success Overlay & `expo-audio` Chime**:
-- Replaced alert dialogs with a full-height, theme-enabled success overlay window (`theme.colors.successLight`).
-- Features a large glowing green checkmark badge (`checkmark-done`), complete checkout details (Block, Flat, Day, Meal, Served counts, Total Plates, and Timestamp).
+**Intelligent Quick Checkout Modal Height Management & Compact Controls**:
+- **Dynamic Viewport Height Cap (`maxHeight: Math.min(height * 0.88, 620)`)**: Restricts modal container height to 88% of the viewport with flexbox scroll containment, preventing dialog overflow on small mobile screens or narrow desktop windows.
+- **Consolidated Alert Banner Engine**: Merges Parcel Pickup Alerts and Partial Checkout Alerts into a single unified alert box with bulleted items when both are active, reducing alert banner vertical space by **> 50%**.
+- **Compact Horizontal Row Counter Inputs (`CounterInput.tsx`)**: Added `compact={true}` mode featuring Label & Max Limit on the Left and `[- 0 +]` counter controls on the Right, reducing input section height by **~45%**.
+- **Full-Height Festive Success Overlay & `expo-audio` Chime**: Replaced standard alert popups with a full-height, theme-enabled success overlay (`theme.colors.successLight`) with a large glowing green checkmark badge (`checkmark-done`), complete checkout details (Block, Flat, Day, Meal, Served counts, Total Plates, and Timestamp).
 - **`expo-audio` Integration**: Uses Expo SDK 57's native `expo-audio` engine (`createAudioPlayer`) to play [`assets/checkout.mp3`](file:///D:/Code/Durga-Puja-Food/assets/checkout.mp3) sound tone.
 - **Strict Splash Audio Triggering**: Sound triggers **ONLY when the success splash overlay window opens** AND **Audio Sound Feedback is explicitly enabled (`soundEnabled === true`)**. When sound is turned OFF in Settings, checkouts remain 100% silent.
 - **Global Audio Sound Feedback Setting**: Managed via accessible switch (`accessibilityRole="switch"`) in System Settings ([`SettingsScreen.tsx`](file:///D:/Code/Durga-Puja-Food/src/screens/SettingsScreen.tsx)) and persisted across app reloads via Firebase repository rules (`val.soundEnabled !== undefined ? Boolean(val.soundEnabled) : true`).
 - **Configurable Splash Timeout (0ms to 10000ms, default 3000ms)**: Configurable in System Settings ([`SettingsScreen.tsx`](file:///D:/Code/Durga-Puja-Food/src/screens/SettingsScreen.tsx)).
 - **Zero Hardcoded Colors & Text**: 100% theme-driven styling (`theme.colors`) and 100% localized text (`UI_TEXT`).
 - **Web & Accessibility Compliant**: 100% viewport scaling on Web browsers, `accessibilityRole="alert"`, and VoiceOver / TalkBack live speech announcements.
+
+### 6. Zero-App-Install QR Code Web Ordering & Free Firebase Realtime Status Engine
+- **Mobile Browser Execution**: Foodies and attendees scan a QR code at the stall to open the web application on Chrome or Safari **without downloading any native app**.
+- **Sub-100ms Live Order Status Page**: Real-time Firebase WebSocket synchronization updates the customer's browser screen instantly (`"Preparing" -> "Token #42 Ready!"`) with a bright green visual alert and audio chime when food is prepared.
+- **Zero-Cost Operation (₹0)**: Leverages Firebase Realtime Database and browser Web Push Notifications / Realtime Web Sockets for 100% free automated customer updates.
 
 ### 6. Atomic Multi-Path Checkouts & Anti-Duplicate Lock (`checkInPassAtomic`)
 - **100% Duplicate Prevention**: Server-side atomic multi-path updates (`update(ref(db), multiPathUpdates)`) lock meal status and increment kitchen metrics in a single transaction.

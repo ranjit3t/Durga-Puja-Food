@@ -64,7 +64,10 @@ Eternia Food Desk is a cross-platform mobile and web application built with **Re
 ### C. Atomic Server Transactions & Anti-Duplicate Security
 - **`checkInPassAtomic`**: Uses atomic multi-path server updates (`update(ref(db), multiPathUpdates)`) to lock meal status and increment kitchen counters in a single transaction, guaranteeing **100% mathematical duplicate check-in prevention** across 20+ concurrent counter devices.
 
-### D. Full-Height Festive Quick Checkout Success Overlay, Audio & Sound Settings (`QuickCheckoutModal.tsx`, `SettingsScreen.tsx`)
+### D. Full-Height Festive Quick Checkout Success Overlay, Height Management & Compact Inputs (`QuickCheckoutModal.tsx`, `CounterInput.tsx`, `SettingsScreen.tsx`)
+- **Intelligent Height Management (`maxHeight: Math.min(height * 0.88, 620)`)**: Caps the modal container height to 88% of the viewport with flexbox scroll containment, preventing dialog overflow on small mobile screens or narrow desktop viewports.
+- **Consolidated Alert Banner Engine**: Merges Parcel Pickup Alerts and Partial Checkout Alerts into a single unified alert box with bulleted items when both are active, reducing alert banner vertical space by **> 50%**.
+- **Compact Horizontal Row Counter Inputs (`CounterInput.tsx`)**: Added `compact={true}` mode featuring Label & Max Limit on the Left and `[- 0 +]` counter controls on the Right, reducing input section height by **~45%**.
 - **Vibrant Full-Height Overlay**: Replaced alert dialogs upon successful checkout with a full-height, theme-enabled success window (`theme.colors.successLight`).
 - **Glowing Green Checkmark Badge**: Renders a large glowing green checkmark badge (`checkmark-done` in 96px circular badge).
 - **Comprehensive Summary**: Displays complete checkout information (Resident Block & Flat, Day & Meal, Served member breakdown, Total Plates, and Timestamp).
