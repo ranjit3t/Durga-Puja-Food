@@ -242,6 +242,19 @@ export const UI_TEXT = {
   logParcelSuffix: " (including {count} Parcels)",
   logMealSplitSuffix: " [V:{v} N:{n}]",
 
+  // Activity Log Screen & Summary Templates
+  analyzeLogs: "Summarize",
+  noLogsToAnalyze: "No activity logs found to analyze.",
+  operationalOverview: "Operational Activity Overview",
+  timeWindow: "Time Window",
+  activeUsers: "Active Users",
+  moduleActivityBreakdown: "Module Activity Breakdown",
+  operationsLogged: "operations logged",
+  mealScannerCheckouts: "Meal & Scanner Checkouts",
+  moreCheckoutOperations: "more checkout operations",
+  systemErrorsAlerts: "System Errors & Alerts",
+  systemHealthZeroErrors: "System Health: 0 errors recorded in selected log timeframe.",
+
   // Data Values (Matches Database)
   veg: "Veg",
   nonVeg: "Non-Veg",
@@ -526,9 +539,7 @@ export const UI_TEXT = {
   currentMealHelper: "Prioritize this meal slot across all operational screens",
   currentMealClosedTitle: "Service Closed",
   currentMealClosed: "Service for this meal slot is closed. Thank you!",
-  analyzeLogs: "Summarize",
   aiSummaryTitle: "Operations AI Summary",
-  noLogsToAnalyze: "No operational logs available for analysis.",
   mealDoneLabel: "Completed",
   removeDayLabel: "Remove Day",
   addDayButton: "Add Festival Day",

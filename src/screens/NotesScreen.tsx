@@ -290,8 +290,8 @@ export function NotesScreen() {
         </View>
       </View>
 
-      <View style={{ backgroundColor: theme.colors.surfaceDark + (theme.themeType === AppThemeMode.DARK ? "66" : "80"), borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
-        <View style={[styles.maxWidthWrapper, { paddingVertical: 20, gap: 16 }]}>
+      <View style={[styles.maxWidthWrapper, { paddingVertical: 12 }]}>
+        <View style={[styles.card, { backgroundColor: theme.colors.surfaceDark + (theme.themeType === AppThemeMode.DARK ? "66" : "80"), marginBottom: 0, gap: 16 }]}>
           <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
             <View style={[styles.searchBox, { flex: 1, marginBottom: 0, height: 52, borderRadius: 14, maxWidth: undefined }]}>
               <Ionicons name="search-outline" size={20} color={theme.colors.textMuted} />

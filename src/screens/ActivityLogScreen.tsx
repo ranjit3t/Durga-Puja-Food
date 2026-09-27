@@ -430,32 +430,32 @@ export function ActivityLogScreen() {
 
     const lines: string[] = [];
 
-    lines.push(`📊 **Operational Activity Overview (${totalLogs} Events)**`);
-    lines.push(`• **Time Window**: ${startTime} ➔ ${endTime}`);
-    lines.push(`• **Active Users (${users.size})**: ${Array.from(users).join(", ")}`);
+    lines.push(`📊 **${UI_TEXT.operationalOverview} (${totalLogs} Events)**`);
+    lines.push(`• **${UI_TEXT.timeWindow}**: ${startTime} ➔ ${endTime}`);
+    lines.push(`• **${UI_TEXT.activeUsers} (${users.size})**: ${Array.from(users).join(", ")}`);
 
-    lines.push(`\n📌 **Module Activity Breakdown**`);
+    lines.push(`\n📌 **${UI_TEXT.moduleActivityBreakdown}**`);
     Object.entries(modules).forEach(([mod, count]) => {
-      lines.push(`• **${mod.toUpperCase()}**: ${count} operations logged`);
+      lines.push(`• **${mod.toUpperCase()}**: ${count} ${UI_TEXT.operationsLogged}`);
     });
 
     if (checkoutLogs.length > 0) {
-      lines.push(`\n🍽️ **Meal & Scanner Checkouts (${checkoutLogs.length})**`);
+      lines.push(`\n🍽️ **${UI_TEXT.mealScannerCheckouts} (${checkoutLogs.length})**`);
       checkoutLogs.slice(0, 5).forEach((cl) => {
         lines.push(`• ${cl.description}`);
       });
       if (checkoutLogs.length > 5) {
-        lines.push(`• ... and ${checkoutLogs.length - 5} more checkout operations.`);
+        lines.push(`• ... and ${checkoutLogs.length - 5} ${UI_TEXT.moreCheckoutOperations}.`);
       }
     }
 
     if (errorLogs.length > 0) {
-      lines.push(`\n⚠️ **System Errors & Alerts (${errorLogs.length})**`);
+      lines.push(`\n⚠️ **${UI_TEXT.systemErrorsAlerts} (${errorLogs.length})**`);
       errorLogs.forEach((el) => {
         lines.push(`• [${el.module.toUpperCase()}] ${el.description}`);
       });
     } else {
-      lines.push(`\n✅ **System Health**: 0 errors recorded in selected log timeframe.`);
+      lines.push(`\n✅ **${UI_TEXT.systemHealthZeroErrors}**`);
     }
 
     return lines.join("\n");
@@ -550,134 +550,6 @@ export function ActivityLogScreen() {
         </View>
       </View>
 
-      <View style={{ backgroundColor: theme.colors.surfaceDark + (theme.themeType === AppThemeMode.DARK ? "66" : "80"), borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
-        <View style={[styles.maxWidthWrapper, { paddingVertical: 20, gap: 16 }]}>
-          <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-            <View style={[styles.searchBox, { flex: 1, minWidth: 160, marginBottom: 0, height: 52, borderRadius: 14, maxWidth: undefined }]}>
-              <Ionicons name="search-outline" size={20} color={theme.colors.textMuted} />
-              <TextInput
-                style={[styles.searchInput, { fontSize: 15 }]}
-                value={searchText}
-                onChangeText={setSearchText}
-                placeholder={UI_TEXT.searchActivities}
-                placeholderTextColor={theme.colors.textMuted}
-                accessible={true}
-                accessibilityLabel={UI_TEXT.searchActivities}
-              />
-            </View>
-            <Pressable
-              onPress={() => setIsAscending(!isAscending)}
-              accessible={true}
-              accessibilityRole="button"
-              accessibilityLabel={UI_TEXT.activityLog}
-              style={({ pressed }) => [
-                { width: 52, height: 52, borderRadius: 14, backgroundColor: theme.colors.surfaceDark, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: theme.colors.border },
-                pressed && { opacity: 0.7 }
-              ]}
-            >
-              <Ionicons name={isAscending ? "arrow-up-outline" : "arrow-down-outline"} size={22} color={theme.colors.primary} />
-            </Pressable>
-            <Pressable
-              onPress={() => setShowFilters(!showFilters)}
-              accessible={true}
-              accessibilityRole="button"
-              accessibilityLabel={UI_TEXT.reportFilters}
-              style={({ pressed }) => [
-                { width: 52, height: 52, borderRadius: 14, backgroundColor: showFilters ? theme.colors.primary : theme.colors.surfaceDark, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: theme.colors.border },
-                pressed && { opacity: 0.7 }
-              ]}
-            >
-              <Ionicons name="options-outline" size={22} color={showFilters ? theme.colors.white : theme.colors.textPrimary} />
-            </Pressable>
-          </View>
-
-          {showFilters && (
-            <View style={{ gap: 16, paddingTop: 4 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: theme.colors.surfaceDark, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 14, borderWidth: 1, borderColor: theme.colors.border }}>
-                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                    <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: theme.colors.error + "20", alignItems: 'center', justifyContent: 'center' }}>
-                      <Ionicons name="alert-circle" size={20} color={theme.colors.error} />
-                    </View>
-                    <Text style={{ fontSize: 14, fontWeight: '800', color: theme.colors.textPrimary }}>{UI_TEXT.filterErrors}</Text>
-                 </View>
-                 <Switch
-                   value={errorsOnly}
-                   onValueChange={setErrorsOnly}
-                   trackColor={{ true: theme.colors.error }}
-                   style={{ transform: [{ scale: 0.9 }] }}
-                 />
-              </View>
-
-              <View>
-                <Text style={{ fontSize: 11, fontWeight: '800', color: theme.colors.textSecondary, marginBottom: 8, textTransform: 'uppercase', marginLeft: 4 }}>{UI_TEXT.filterByUser}</Text>
-                <Dropdown value={selectedUser} options={userOptions} onChange={setSelectedUser} />
-              </View>
-
-              <View>
-                <Text style={{ fontSize: 11, fontWeight: '800', color: theme.colors.textSecondary, marginBottom: 8, textTransform: 'uppercase', marginLeft: 4 }}>{UI_TEXT.filterByDate}</Text>
-                <Dropdown value={selectedDate} options={dateOptions} onChange={setSelectedDate} />
-              </View>
-
-              <View style={{ flexDirection: 'row', gap: 12 }}>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 11, fontWeight: '800', color: theme.colors.textSecondary, marginBottom: 8, textTransform: 'uppercase', marginLeft: 4 }}>{UI_TEXT.filterByEvent}</Text>
-                  <Dropdown value={selectedModule} options={moduleOptions} onChange={setSelectedModule} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 11, fontWeight: '800', color: theme.colors.textSecondary, marginBottom: 8, textTransform: 'uppercase', marginLeft: 4 }}>{UI_TEXT.filterByTarget}</Text>
-                  <Dropdown value={selectedTarget} options={targetOptions} onChange={setSelectedTarget} />
-                </View>
-              </View>
-            </View>
-          )}
-
-          <View style={{ flexDirection: 'row', gap: s(10), marginTop: s(4) }}>
-            <Pressable
-              onPress={handleExport}
-              style={({ pressed }) => [
-                styles.primary,
-                {
-                  flex: 1,
-                  height: s(48),
-                  marginTop: 0,
-                  flexDirection: 'row',
-                  gap: s(8),
-                  borderRadius: s(14),
-                  backgroundColor: theme.colors.secondary,
-                },
-                pressed && { opacity: 0.7 }
-              ]}
-            >
-              <Ionicons name="share-outline" size={20} color={theme.colors.white} />
-              <Text style={[styles.primaryText, { fontSize: 14 }]}>{UI_TEXT.exportLog}</Text>
-            </Pressable>
-
-            <Pressable
-              onPress={handleSummarizeLogs}
-              disabled={filteredLogs.length === 0}
-              style={({ pressed }) => [
-                styles.primary,
-                {
-                  flex: 1,
-                  height: s(48),
-                  marginTop: 0,
-                  flexDirection: 'row',
-                  gap: s(8),
-                  borderRadius: s(14),
-                  backgroundColor: filteredLogs.length === 0 ? theme.colors.border : theme.colors.primary,
-                },
-                pressed && filteredLogs.length > 0 && { opacity: 0.7 }
-              ]}
-            >
-              <Ionicons name="analytics-outline" size={20} color={theme.colors.white} />
-              <Text style={[styles.primaryText, { fontSize: 14 }]}>
-                {UI_TEXT.analyzeLogs}
-              </Text>
-            </Pressable>
-          </View>
-        </View>
-      </View>
-
       {loading && !refreshing && logs.length === 0 ? (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
@@ -695,6 +567,133 @@ export function ActivityLogScreen() {
           initialNumToRender={10}
           maxToRenderPerBatch={10}
           windowSize={5}
+          ListHeaderComponent={
+            <View style={[styles.card, { backgroundColor: theme.colors.surfaceDark + (theme.themeType === AppThemeMode.DARK ? "66" : "80"), marginBottom: 16, gap: 16 }]}>
+              <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                <View style={[styles.searchBox, { flex: 1, minWidth: 160, marginBottom: 0, height: 52, borderRadius: 14, maxWidth: undefined }]}>
+                  <Ionicons name="search-outline" size={20} color={theme.colors.textMuted} />
+                  <TextInput
+                    style={[styles.searchInput, { fontSize: 15 }]}
+                    value={searchText}
+                    onChangeText={setSearchText}
+                    placeholder={UI_TEXT.searchActivities}
+                    placeholderTextColor={theme.colors.textMuted}
+                    accessible={true}
+                    accessibilityLabel={UI_TEXT.searchActivities}
+                  />
+                </View>
+                <Pressable
+                  onPress={() => setIsAscending(!isAscending)}
+                  accessible={true}
+                  accessibilityRole="button"
+                  accessibilityLabel={UI_TEXT.activityLog}
+                  style={({ pressed }) => [
+                    { width: 52, height: 52, borderRadius: 14, backgroundColor: theme.colors.surfaceDark, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: theme.colors.border },
+                    pressed && { opacity: 0.7 }
+                  ]}
+                >
+                  <Ionicons name={isAscending ? "arrow-up-outline" : "arrow-down-outline"} size={22} color={theme.colors.primary} />
+                </Pressable>
+                <Pressable
+                  onPress={() => setShowFilters(!showFilters)}
+                  accessible={true}
+                  accessibilityRole="button"
+                  accessibilityLabel={UI_TEXT.reportFilters}
+                  style={({ pressed }) => [
+                    { width: 52, height: 52, borderRadius: 14, backgroundColor: showFilters ? theme.colors.primary : theme.colors.surfaceDark, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: theme.colors.border },
+                    pressed && { opacity: 0.7 }
+                  ]}
+                >
+                  <Ionicons name="options-outline" size={22} color={showFilters ? theme.colors.white : theme.colors.textPrimary} />
+                </Pressable>
+              </View>
+
+              {showFilters && (
+                <View style={{ gap: 16, paddingTop: 4 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: theme.colors.surfaceDark, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 14, borderWidth: 1, borderColor: theme.colors.border }}>
+                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                        <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: theme.colors.error + "20", alignItems: 'center', justifyContent: 'center' }}>
+                          <Ionicons name="alert-circle" size={20} color={theme.colors.error} />
+                        </View>
+                        <Text style={{ fontSize: 14, fontWeight: '800', color: theme.colors.textPrimary }}>{UI_TEXT.filterErrors}</Text>
+                     </View>
+                     <Switch
+                       value={errorsOnly}
+                       onValueChange={setErrorsOnly}
+                       trackColor={{ true: theme.colors.error }}
+                       style={{ transform: [{ scale: 0.9 }] }}
+                     />
+                  </View>
+
+                  <View>
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: theme.colors.textSecondary, marginBottom: 8, textTransform: 'uppercase', marginLeft: 4 }}>{UI_TEXT.filterByUser}</Text>
+                    <Dropdown value={selectedUser} options={userOptions} onChange={setSelectedUser} />
+                  </View>
+
+                  <View>
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: theme.colors.textSecondary, marginBottom: 8, textTransform: 'uppercase', marginLeft: 4 }}>{UI_TEXT.filterByDate}</Text>
+                    <Dropdown value={selectedDate} options={dateOptions} onChange={setSelectedDate} />
+                  </View>
+
+                  <View style={{ flexDirection: 'row', gap: 12 }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 11, fontWeight: '800', color: theme.colors.textSecondary, marginBottom: 8, textTransform: 'uppercase', marginLeft: 4 }}>{UI_TEXT.filterByEvent}</Text>
+                      <Dropdown value={selectedModule} options={moduleOptions} onChange={setSelectedModule} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 11, fontWeight: '800', color: theme.colors.textSecondary, marginBottom: 8, textTransform: 'uppercase', marginLeft: 4 }}>{UI_TEXT.filterByTarget}</Text>
+                      <Dropdown value={selectedTarget} options={targetOptions} onChange={setSelectedTarget} />
+                    </View>
+                  </View>
+                </View>
+              )}
+
+              <View style={{ flexDirection: 'row', gap: s(10), marginTop: s(4) }}>
+                <Pressable
+                  onPress={handleExport}
+                  style={({ pressed }) => [
+                    styles.primary,
+                    {
+                      flex: 1,
+                      height: s(48),
+                      marginTop: 0,
+                      flexDirection: 'row',
+                      gap: s(8),
+                      borderRadius: s(14),
+                      backgroundColor: theme.colors.secondary,
+                    },
+                    pressed && { opacity: 0.7 }
+                  ]}
+                >
+                  <Ionicons name="share-outline" size={20} color={theme.colors.white} />
+                  <Text style={[styles.primaryText, { fontSize: 14 }]}>{UI_TEXT.exportLog}</Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={handleSummarizeLogs}
+                  disabled={filteredLogs.length === 0}
+                  style={({ pressed }) => [
+                    styles.primary,
+                    {
+                      flex: 1,
+                      height: s(48),
+                      marginTop: 0,
+                      flexDirection: 'row',
+                      gap: s(8),
+                      borderRadius: s(14),
+                      backgroundColor: filteredLogs.length === 0 ? theme.colors.border : theme.colors.primary,
+                    },
+                    pressed && filteredLogs.length > 0 && { opacity: 0.7 }
+                  ]}
+                >
+                  <Ionicons name="analytics-outline" size={20} color={theme.colors.white} />
+                  <Text style={[styles.primaryText, { fontSize: 14 }]}>
+                    {UI_TEXT.analyzeLogs}
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          }
           ListEmptyComponent={
             <View style={{ alignItems: 'center', marginTop: 60 }}>
               <View style={{ backgroundColor: theme.colors.surfaceDark, padding: 20, borderRadius: 30, marginBottom: 16 }}>
