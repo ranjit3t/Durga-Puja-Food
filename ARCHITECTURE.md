@@ -119,6 +119,9 @@ Eternia Food Desk is a cross-platform mobile and web application built with **Re
 - Real-time `onValue(ref(db, "menu"))` listener broadcasts food items, prices, and guest counts across all screens in <50ms.
 - Targeted leaf-node writes (`/menu/$dayId/$mealKey`) ensure that multiple administrators editing different meals or fields simultaneously do not overwrite each other.
 
+### L. Web DOM Hydration & Non-Nested Sibling Pressables
+- Strictly prevents `<button>` inside `<button>` nesting errors in React Native Web by utilizing clean `View` containers and non-nested sibling `Pressable` components across `HomeScreen` (summary card body vs dashboard meal pill), `SubscriptionListScreen`, and `ActivityLogScreen`.
+
 ### L. Pre-Aggregated Kitchen Metrics (`/metrics`)
 - Kitchen staff and admins view live progress bars from pre-aggregated `/metrics` nodes without looping through 10,000 pass records ($O(1)$ read complexity).
 

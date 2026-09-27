@@ -169,18 +169,20 @@ export function HomeScreen() {
           </Pressable>
         ) : null}
 
-        <Pressable
-          onPress={navigate.bind(null, AppScreen.SUBSCRIPTION_LIST)}
-          accessible={true}
-          accessibilityRole="button"
-          accessibilityLabel={`${UI_TEXT.subscriptions}, ${UI_TEXT.activePasses}: ${subscriptions.length}`}
+        <View
           style={[styles.summary, { padding: cardPadding, marginBottom: s(16), overflow: 'hidden', minHeight: cardMinHeight }]}
         >
           <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center', opacity: 0.08 }}>
             <Ionicons name="ticket-outline" size={isNarrow ? 120 : actionIconSizeLarge} color={theme.colors.white} />
           </View>
 
-          <View style={{ flex: 1, justifyContent: 'center' }}>
+          <Pressable
+            onPress={navigate.bind(null, AppScreen.SUBSCRIPTION_LIST)}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={`${UI_TEXT.subscriptions}, ${UI_TEXT.activePasses}: ${subscriptions.length}`}
+            style={{ flex: 1, justifyContent: 'center' }}
+          >
             {!!seasonName && <Text style={[styles.summaryLabel, { marginBottom: isNarrow ? 6 : s(8), color: theme.colors.secondary, fontSize: isNarrow ? 9 : s(11) }]}>{seasonName}</Text>}
 
             <View style={{ gap: rowGap }}>
@@ -237,21 +239,28 @@ export function HomeScreen() {
                 </View>
               )}
             </View>
-          </View>
+          </Pressable>
 
-          <View style={{ position: 'absolute', top: cardPadding, right: cardPadding }}>
+          <View style={{ position: 'absolute', top: cardPadding, right: cardPadding, zIndex: 10 }}>
             {currentMealInfo ? (
-              <View
-                style={{ flexDirection: "row", alignItems: "center", gap: s(4), backgroundColor: theme.colors.white + "33", paddingHorizontal: isNarrow ? 6 : s(8), paddingVertical: s(4), borderRadius: s(6) }}
+              <Pressable
+                onPress={() => navigate(AppScreen.DASHBOARD)}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={`${currentMealInfo.dayLabel} ${currentMealInfo.mealLabel}, open dashboard`}
+                style={({ pressed }) => [
+                  { flexDirection: "row", alignItems: "center", gap: s(4), backgroundColor: theme.colors.white + "33", paddingHorizontal: isNarrow ? 6 : s(8), paddingVertical: s(4), borderRadius: s(6) },
+                  pressed && { opacity: 0.7 }
+                ]}
               >
                 <View style={{ width: s(5), height: s(5), borderRadius: s(2.5), backgroundColor: theme.colors.success }} />
                 <Text style={{ fontSize: isNarrow ? 9 : s(10), fontWeight: "900", color: theme.colors.white }}>
                   {currentMealInfo.dayLabel.toUpperCase()}{UI_TEXT.space}{currentMealInfo.mealLabel.toUpperCase()}
                 </Text>
-              </View>
+              </Pressable>
             ) : null}
           </View>
-        </Pressable>
+        </View>
 
         <View style={styles.compactActions}>
           {userRole === UserRole.ADMIN && seasonEnabled && !isSeasonDone(dayConfig) && (
