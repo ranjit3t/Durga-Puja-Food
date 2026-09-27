@@ -222,6 +222,23 @@ src/
 
 ---
 
+## 🧩 Feature-Based Modularization & Architecture Refactoring
+
+To maintain high maintainability, testability, and scalability as the codebase grew, major monolithic screens and modals were systematically refactored into domain-specific feature modules under `src/features/`:
+
+### 1. Feature Directory Breakdown
+- **`src/features/activity/`**: Encapsulates audit log items and advanced filter bars (`ActivityLogItem`, `ActivityLogFilterBar`).
+- **`src/features/checkout/`**: Encapsulates quick checkout modal headers and item count cards (`QuickCheckoutHeader`, `QuickCheckoutItemCard`).
+- **`src/features/subscriptions/`**: Encapsulates pass registration form sections such as basic resident info and multi-payment entry trackers (`SubscriptionBasicInfoSection`, `SubscriptionPaymentSection`).
+
+### 2. Architectural Guarantees
+- **Zero Hardcoded Text**: All text/labels are bound to centralized keys in [`strings.ts`](file:///D:/Code/Durga-Puja-Food/src/strings.ts) via `UI_TEXT`.
+- **Theme-Driven Styling**: Colors and scaling strictly adhere to `theme.colors`, `theme.cardColors`, and responsive scaling utilities.
+- **Accessibility (WCAG 2.1 AA)**: All extracted interactive components include comprehensive `accessible={true}`, `accessibilityRole`, `accessibilityLabel`, and `accessibilityHint` bindings.
+- **Zero Type Errors**: Verified via strict TypeScript compiler checks (`npx tsc --noEmit`).
+
+---
+
 ## 🚀 Build, Setup & Local Execution
 
 ```bash

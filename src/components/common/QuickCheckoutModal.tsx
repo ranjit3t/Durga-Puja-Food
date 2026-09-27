@@ -8,6 +8,8 @@ import { useUI } from "../../context/UIContext";
 import { useAppNavigation } from "../../context/NavigationContext";
 import { Subscription, MealType, DietaryOption, DietType, ActivityModule, ActivityAction, AppThemeMode, AppScreen, TakenState, CheckoutSource, MealSlot } from "../../types";
 import { isParcelEnabled, isMealCurrent, isMealDone, getMealLabel, formatTakenTime, isVegOnlyDay, isDietaryEnabled } from "../../constants";
+import { QuickCheckoutHeader } from "../../features/checkout/components/QuickCheckoutHeader";
+import { QuickCheckoutItemCard } from "../../features/checkout/components/QuickCheckoutItemCard";
 
 /**
  * Universal fail-safe audio sound player for assets/checkout.mp3.
@@ -138,131 +140,7 @@ interface SuccessData {
   totalsText: string;
 }
 
-/**
- * Compact, accessible counter widget for side-by-side Parcel & Dine-In inputs.
- */
-function SubsectionCounterWidget({
-  label,
-  max,
-  value,
-  disabled,
-  onChange,
-  accentColor,
-  iconName,
-}: {
-  label: string;
-  max: number;
-  value: number;
-  disabled?: boolean;
-  onChange: (val: number) => void;
-  accentColor?: string;
-  iconName?: keyof typeof Ionicons.glyphMap;
-}) {
-  const { theme } = useAppTheme();
-
-  return (
-    <View style={{ flex: 1, minWidth: 0, flexShrink: 1 }}>
-      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 3 }}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 4, flex: 1, minWidth: 0 }}>
-          {iconName && <Ionicons name={iconName} size={12} color={accentColor || theme.colors.textSecondary} />}
-          <Text style={{ fontSize: 11, fontWeight: "800", color: theme.colors.textPrimary }} numberOfLines={1}>
-            {label}
-          </Text>
-        </View>
-        <Text style={{ fontSize: 10, fontWeight: "700", color: theme.colors.primary, flexShrink: 0, marginLeft: 4 }}>
-          {UI_TEXT.maxLimit}: {max}
-        </Text>
-      </View>
-
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          height: 36,
-          backgroundColor: theme.colors.surfaceDark,
-          borderRadius: 8,
-          borderWidth: 1,
-          borderColor: theme.colors.border,
-          overflow: "hidden",
-        }}
-      >
-        <Pressable
-          onPress={() => onChange(Math.max(0, value - 1))}
-          disabled={disabled || value <= 0}
-          style={({ pressed }) => [
-            {
-              width: 34,
-              height: "100%",
-              alignItems: "center",
-              justifyContent: "center",
-              backgroundColor: theme.colors.border + "22",
-            },
-            (disabled || value <= 0) && { opacity: 0.3 },
-            pressed && { opacity: 0.7 },
-          ]}
-          accessible={true}
-          accessibilityRole="button"
-          accessibilityLabel={`${UI_TEXT.decrease} ${label}`}
-          accessibilityHint={UI_TEXT.decrementsValue?.replace("{label}", label).replace("{value}", String(value))}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <Ionicons name="remove" size={14} color={theme.colors.textPrimary} />
-        </Pressable>
-
-        <TextInput
-          style={{
-            flex: 1,
-            minWidth: 0,
-            textAlign: "center",
-            fontSize: 14,
-            fontWeight: "800",
-            color: theme.colors.textPrimary,
-            padding: 0,
-          }}
-          value={String(value)}
-          onChangeText={(txt) => {
-            const clean = txt.replace(/[^0-9]/g, "");
-            if (clean === "") {
-              onChange(0);
-            } else {
-              const num = parseInt(clean, 10);
-              onChange(Math.max(0, Math.min(max, num)));
-            }
-          }}
-          keyboardType="numeric"
-          editable={!disabled}
-          selectTextOnFocus
-          accessible={true}
-          accessibilityLabel={`${label} ${UI_TEXT.quantity}`}
-          accessibilityValue={{ min: 0, max, now: value }}
-        />
-
-        <Pressable
-          onPress={() => onChange(Math.min(max, value + 1))}
-          disabled={disabled || value >= max}
-          style={({ pressed }) => [
-            {
-              width: 34,
-              height: "100%",
-              alignItems: "center",
-              justifyContent: "center",
-              backgroundColor: theme.colors.border + "22",
-            },
-            (disabled || value >= max) && { opacity: 0.3 },
-            pressed && { opacity: 0.7 },
-          ]}
-          accessible={true}
-          accessibilityRole="button"
-          accessibilityLabel={`${UI_TEXT.increase} ${label}`}
-          accessibilityHint={UI_TEXT.incrementsValue?.replace("{label}", label).replace("{value}", String(value))}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <Ionicons name="add" size={14} color={theme.colors.textPrimary} />
-        </Pressable>
-      </View>
-    </View>
-  );
-}
+/* SubsectionCounterWidget replaced by QuickCheckoutItemCard */
 
 export function QuickCheckoutModal({
   visible,
@@ -1348,43 +1226,19 @@ export function QuickCheckoutModal({
           }}
         >
           {/* Main Scrollable Content */}
+          <QuickCheckoutHeader
+            subscription={activeSubscription || subscription!}
+            currentMealLabel={currentMealInfo?.mealLabel || ""}
+            onClose={onClose}
+            theme={theme}
+            s={(n: number) => n}
+          />
           <ScrollView
             style={{ flexShrink: 1 }}
-            contentContainerStyle={{ gap: 10, paddingBottom: 6 }}
+            contentContainerStyle={{ gap: 10, paddingBottom: 6, paddingHorizontal: 14 }}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={true}
           >
-            {/* Header Title */}
-            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 17, fontWeight: "900", color: theme.colors.textPrimary }}>
-                  {UI_TEXT.quickCheckout}
-                </Text>
-                <Text style={{ fontSize: 12, fontWeight: "700", color: theme.colors.primary, marginTop: 1 }}>
-                  {UI_TEXT.pass}{UI_TEXT.space}{subscription?.id}
-                </Text>
-              </View>
-
-              <Pressable
-                onPress={onClose}
-                accessibilityLabel={UI_TEXT.close}
-                style={({ pressed }) => [
-                  {
-                    width: 32,
-                    height: 32,
-                    borderRadius: 16,
-                    backgroundColor: theme.colors.surfaceDark,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    borderWidth: 1,
-                    borderColor: theme.colors.border,
-                  },
-                  pressed && { opacity: 0.7 }
-                ]}
-              >
-                <Ionicons name="close" size={20} color={theme.colors.textSecondary} />
-              </Pressable>
-            </View>
 
             {/* Consolidated Banners (Compact & Combined when both alerts are present) */}
             {showParcelAlert && showPartialAlert ? (
@@ -1649,28 +1503,33 @@ export function QuickCheckoutModal({
                             </Text>
                           </View>
 
-                          {/* Side-by-side Counter Input Row */}
-                          <View style={{ flexDirection: "row", gap: 8, marginTop: 2, width: "100%" }}>
+                          <View style={{ gap: 8, marginTop: 4, width: "100%" }}>
                             {quickCheckoutDetails.parcelSupported && cat.remParcelCount > 0 && (
-                              <SubsectionCounterWidget
-                                label={UI_TEXT.parcels}
-                                max={cat.remParcelCount}
+                              <QuickCheckoutItemCard
+                                label={`${UI_TEXT.parcels} (${sub.label})`}
+                                plannedCount={cat.parcelPlannedCount}
+                                servedCount={cat.parcelServedCount}
+                                remCount={cat.remParcelCount}
                                 value={catInputs.parcel}
-                                disabled={!isStillCurrent || isDone}
                                 onChange={(val) => handleParcelChange(cat.key, val)}
-                                accentColor={theme.colors.secondary}
-                                iconName="cube-outline"
+                                max={cat.remParcelCount}
+                                disabled={!isStillCurrent || isDone}
+                                theme={theme}
+                                s={(n: number) => n}
                               />
                             )}
                             {cat.remMealCount > 0 && (
-                              <SubsectionCounterWidget
-                                label={UI_TEXT.dineIn}
-                                max={cat.remMealCount}
+                              <QuickCheckoutItemCard
+                                label={`${UI_TEXT.dineIn} (${sub.label})`}
+                                plannedCount={cat.plannedCount}
+                                servedCount={cat.servedCount}
+                                remCount={cat.remMealCount}
                                 value={catInputs.dineIn}
-                                disabled={!isStillCurrent || isDone}
                                 onChange={(val) => handleDineInChange(cat.key, val)}
-                                accentColor={theme.colors.primary}
-                                iconName="restaurant-outline"
+                                max={cat.remMealCount}
+                                disabled={!isStillCurrent || isDone}
+                                theme={theme}
+                                s={(n: number) => n}
                               />
                             )}
                           </View>

@@ -602,6 +602,17 @@ export const UI_TEXT = {
   // Footer
   footerCopyright: "© 2026 Eternia Festival Committee",
 
+  // Additional Form & Component Strings
+  basicInformation: "Basic Information",
+  fullName: "Full Name",
+  enterFullName: "Enter full name",
+  phoneNumber: "Phone Number",
+  enterPhoneNumber: "Enter phone number",
+  enterFlatNo: "Enter flat no.",
+  paymentStatus: "Payment Status",
+  paid: "Paid",
+  remaining: "Remaining",
+
   // Common
   back: "Back",
   home: "Home",

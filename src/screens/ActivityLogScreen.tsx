@@ -3,233 +3,37 @@
  * Displays a historical list of system operations with filtering, search, and activity log analysis.
  * Connects directly to live WebSocket-streamed logs in DatabaseContext.
  */
-import React, { useState, useMemo, useCallback, memo } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import {
   View,
   Text,
-  Pressable,
   StatusBar,
   ActivityIndicator,
   FlatList,
-  TextInput,
   Share,
   Platform,
-  Switch,
   Modal,
   ScrollView,
   useWindowDimensions,
+  Pressable,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useStyles, useScaling } from "../styles";
 import { useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
-import { ActivityLog, ActivityModule, ActivityAction, AppThemeMode, AppScreen, CheckoutSource, GuestCheckoutSource } from "../domain";
+import { ActivityLog, ActivityModule, ActivityAction, AppThemeMode, AppScreen } from "../domain";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
 import { ThemeToggleButton } from "../components/common/ThemeToggleButton";
-import { Dropdown } from "../components/common/Dropdown";
 
 import { useAuth } from "../context/AuthContext";
 import { useCoreDatabase, useActivityLogs } from "../context/DatabaseContext";
 import { useUI } from "../context/UIContext";
 import { useAppNavigation } from "../context/NavigationContext";
-import { Subscription } from "../types";
 
-/**
- * Memoized individual log item for performance optimization.
- */
-const ActivityLogItem = memo(({
-  item,
-  index,
-  theme,
-  styles,
-  s,
-  subscriptions,
-  onNavigateToDetails,
-  expanded,
-  onToggleStack
-}: {
-  item: ActivityLog;
-  index: number;
-  theme: any;
-  styles: any;
-  s: (n: number) => number;
-  subscriptions: Subscription[];
-  onNavigateToDetails: (id: string) => void;
-  expanded: boolean;
-  onToggleStack: (id: string) => void;
-}) => {
-  const isError = item.action === ActivityAction.ERROR;
-  const colorScheme = theme.cardColors[index % theme.cardColors.length];
-
-  const clickableModules = [ActivityModule.SUBSCRIPTION, ActivityModule.CONTACT, ActivityModule.QR, ActivityModule.REPORT];
-  const isPassEvent = clickableModules.includes(item.module) && item.action !== ActivityAction.DELETE && item.action !== ActivityAction.ERROR;
-  const existingPass = isPassEvent && item.targetId ? (subscriptions || []).find(s => s.id === item.targetId) : null;
-  const isClickable = !!existingPass;
-
-  const formatTimestamp = (ts: number) => {
-    const date = new Date(ts);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ', ' + date.toLocaleDateString([], { month: 'short', day: 'numeric' });
-  };
-
-  const checkoutSource = useMemo(() => {
-    if (!item.description) return null;
-    const desc = item.description;
-    if (desc.includes(`via ${CheckoutSource.SCANNER}`) || desc.includes(`via QR Scanner`) || desc.includes(`via Scanner`)) {
-      return { label: CheckoutSource.SCANNER, icon: "qr-code-outline" };
-    }
-    if (desc.includes(`via ${CheckoutSource.DETAILS}`) || desc.includes(`via Pass Details`) || desc.includes(`via Details`)) {
-      return { label: CheckoutSource.DETAILS, icon: "card-outline" };
-    }
-    if (desc.includes(`via ${CheckoutSource.SUBSCRIPTION_LIST}`) || desc.includes(`via Pass Directory`)) {
-      return { label: CheckoutSource.SUBSCRIPTION_LIST, icon: "list-outline" };
-    }
-    return null;
-  }, [item.description]);
-
-  const guestSource = useMemo(() => {
-    if (!item.description || item.module !== ActivityModule.GUEST) return null;
-    const desc = item.description;
-    if (desc.includes(`via ${GuestCheckoutSource.GUEST_MODAL}`) || desc.includes(`via Quick Guest Modal`)) {
-      return { label: GuestCheckoutSource.GUEST_MODAL, icon: "people-circle-outline" };
-    }
-    if (desc.includes(`via ${GuestCheckoutSource.GUEST_SCREEN}`) || desc.includes(`via Guest Desk Screen`)) {
-      return { label: GuestCheckoutSource.GUEST_SCREEN, icon: "desktop-outline" };
-    }
-    return null;
-  }, [item.description, item.module]);
-
-  return (
-    <View
-      style={[
-        styles.card,
-        {
-          backgroundColor: isError ? theme.colors.error + "10" : colorScheme.bg,
-          borderColor: isError ? theme.colors.error : colorScheme.border,
-          marginBottom: s(12),
-          padding: s(16),
-          borderLeftWidth: isError ? 6 : (isClickable ? 4 : 1.5),
-          borderLeftColor: isClickable ? theme.colors.primary : (isError ? theme.colors.error : colorScheme.border),
-        }
-      ]}
-    >
-      <Pressable
-        onPress={() => item.targetId && onNavigateToDetails(item.targetId)}
-        disabled={!isClickable}
-        accessible={true}
-        accessibilityRole={isClickable ? "button" : "none"}
-        accessibilityLabel={`${item.module} - ${item.action}. ${item.description}`}
-        style={({ pressed }) => [
-          { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%' },
-          isClickable && pressed && { opacity: 0.7 }
-        ]}
-      >
-        <View style={{ flex: 1 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(8), marginBottom: s(8), flexWrap: 'wrap' }}>
-            <View style={{ backgroundColor: isError ? theme.colors.error + "20" : theme.colors.primary + "15", paddingHorizontal: s(10), paddingVertical: s(4), borderRadius: s(8) }}>
-              <Text style={{ fontSize: s(12), fontWeight: '900', color: isError ? theme.colors.error : theme.colors.primary }}>
-                {item.userName}{item.userRole ? ` (${String(item.userRole).toUpperCase()})` : ""}
-              </Text>
-            </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(4) }}>
-              <Ionicons name="time-outline" size={s(12)} color={theme.colors.textMuted} />
-              <Text style={{ fontSize: s(11), color: theme.colors.textMuted, fontWeight: '700' }}>{formatTimestamp(item.timestamp)}</Text>
-            </View>
-            {item.appVersion && (
-              <View style={{ backgroundColor: theme.colors.surfaceDark, paddingHorizontal: s(6), paddingVertical: s(2), borderRadius: s(4), borderWidth: 1, borderColor: theme.colors.border }}>
-                <Text style={{ fontSize: s(9), fontWeight: '800', color: theme.colors.textMuted }}>v{item.appVersion}</Text>
-              </View>
-            )}
-          </View>
-
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(8), marginBottom: s(12), flexWrap: 'wrap' }}>
-             <View style={{ backgroundColor: isError ? theme.colors.error + "10" : colorScheme.bg, paddingHorizontal: s(10), paddingVertical: s(4), borderRadius: s(8), borderWidth: 1, borderColor: isError ? theme.colors.error : colorScheme.border }}>
-                <Text style={{ fontSize: s(11), fontWeight: '900', color: isError ? theme.colors.error : colorScheme.accent }}>{item.module.toUpperCase()}</Text>
-             </View>
-             <Ionicons name="chevron-forward" size={s(14)} color={theme.colors.border} />
-             <Text style={{ fontSize: s(15), fontWeight: '800', color: isError ? theme.colors.error : theme.colors.textPrimary }}>{item.action}</Text>
-             {item.targetId && (
-               <View style={{ backgroundColor: theme.colors.surfaceDark, paddingHorizontal: s(8), paddingVertical: s(4), borderRadius: s(6), borderWidth: 1, borderColor: theme.colors.border }}>
-                 <Text style={{ fontSize: s(11), fontWeight: '900', color: theme.colors.secondary }}>{item.targetId}</Text>
-               </View>
-             )}
-             {checkoutSource && (
-               <View style={{ backgroundColor: theme.colors.primary + "18", paddingHorizontal: s(8), paddingVertical: s(4), borderRadius: s(6), borderWidth: 1, borderColor: theme.colors.primary + "40", flexDirection: 'row', alignItems: 'center', gap: s(4) }}>
-                 <Ionicons name={checkoutSource.icon as any} size={s(12)} color={theme.colors.primary} />
-                 <Text style={{ fontSize: s(10), fontWeight: '900', color: theme.colors.primary, textTransform: 'uppercase' }}>{checkoutSource.label}</Text>
-               </View>
-             )}
-             {guestSource && (
-               <View style={{ backgroundColor: theme.cardColors[2].accent + "18", paddingHorizontal: s(8), paddingVertical: s(4), borderRadius: s(6), borderWidth: 1, borderColor: theme.cardColors[2].accent + "40", flexDirection: 'row', alignItems: 'center', gap: s(4) }}>
-                 <Ionicons name={guestSource.icon as any} size={s(12)} color={theme.cardColors[2].accent} />
-                 <Text style={{ fontSize: s(10), fontWeight: '900', color: theme.cardColors[2].accent, textTransform: 'uppercase' }}>{guestSource.label}</Text>
-               </View>
-             )}
-             {isClickable && (
-               <Ionicons name="open-outline" size={s(14)} color={theme.colors.primary} />
-             )}
-          </View>
-
-          <View style={{ backgroundColor: theme.colors.surfaceDark, padding: s(12), borderRadius: s(12), marginBottom: s(12) }}>
-            <Text style={{ fontSize: s(14), color: isError ? theme.colors.error : theme.colors.textPrimary, lineHeight: s(20), fontWeight: '600' }}>{item.description}</Text>
-          </View>
-
-          {item.os && (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(6), opacity: 0.6 }}>
-              <Ionicons name={item.os.toLowerCase() === 'ios' ? 'logo-apple' : item.os.toLowerCase() === 'android' ? 'logo-android' : 'globe-outline'} size={s(14)} color={theme.colors.textMuted} />
-              <Text style={{ fontSize: s(11), color: theme.colors.textMuted, fontWeight: '800', textTransform: 'uppercase' }}>{item.os} {item.device}</Text>
-            </View>
-          )}
-        </View>
-
-        <View style={{ backgroundColor: isError ? theme.colors.error + "10" : theme.colors.surfaceDark, padding: s(10), borderRadius: s(14), borderWidth: 1, borderColor: isError ? theme.colors.error + "20" : theme.colors.border }}>
-          <Ionicons
-            name={
-              item.action === ActivityAction.CREATE ? "add-circle-outline" :
-              item.action === ActivityAction.DELETE ? "trash-outline" :
-              item.action === ActivityAction.SCAN ? "qr-code-outline" :
-              item.action === ActivityAction.CHAT ? "logo-whatsapp" :
-              item.action === ActivityAction.CALL ? "call-outline" :
-              item.action === ActivityAction.LOGIN ? "log-in-outline" :
-              item.action === ActivityAction.LOGOUT ? "log-out-outline" :
-              item.action === ActivityAction.ERROR ? "alert-circle-outline" :
-              item.action === ActivityAction.MISSED_PARCEL ? "cube-outline" :
-              item.action === ActivityAction.SMS ? "mail-outline" :
-              "pencil-outline"
-            }
-            size={s(22)}
-            color={
-              item.action === ActivityAction.DELETE || item.action === ActivityAction.ERROR ? theme.colors.error :
-              item.action === ActivityAction.CREATE ? theme.colors.success :
-              theme.colors.primary
-            }
-          />
-        </View>
-      </Pressable>
-
-      {isError && item.stack && (
-        <View style={{ marginTop: s(12), marginBottom: s(4) }}>
-          <Pressable
-            onPress={() => onToggleStack(item.id)}
-            style={({ pressed }) => [
-              { flexDirection: 'row', alignItems: 'center', gap: s(6), backgroundColor: theme.colors.error + "15", paddingHorizontal: s(10), paddingVertical: s(6), borderRadius: s(8), alignSelf: 'flex-start' },
-              pressed && { opacity: 0.7 }
-            ]}
-          >
-            <Ionicons name={expanded ? "eye-off-outline" : "eye-outline"} size={s(14)} color={theme.colors.error} />
-            <Text style={{ fontSize: s(11), fontWeight: '900', color: theme.colors.error }}>{expanded ? UI_TEXT.hideStackTrace.toUpperCase() : UI_TEXT.viewStackTrace.toUpperCase()}</Text>
-          </Pressable>
-          {expanded && (
-            <View style={{ backgroundColor: theme.colors.shadow + "10", padding: s(14), borderRadius: s(10), marginTop: s(8), borderWidth: 1, borderColor: theme.colors.error + "22" }}>
-              <Text style={{ fontSize: s(11), color: theme.colors.error, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', lineHeight: s(16) }}>{item.stack}</Text>
-            </View>
-          )}
-        </View>
-      )}
-    </View>
-  );
-});
+import { ActivityLogItem } from "../features/activity/components/ActivityLogItem";
+import { ActivityLogFilterBar } from "../features/activity/components/ActivityLogFilterBar";
 
 export function ActivityLogScreen() {
   const { handleLogout } = useAuth();
@@ -568,131 +372,34 @@ export function ActivityLogScreen() {
           maxToRenderPerBatch={10}
           windowSize={5}
           ListHeaderComponent={
-            <View style={[styles.card, { backgroundColor: theme.colors.surfaceDark + (theme.themeType === AppThemeMode.DARK ? "66" : "80"), marginBottom: 16, gap: 16 }]}>
-              <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-                <View style={[styles.searchBox, { flex: 1, minWidth: 160, marginBottom: 0, height: 52, borderRadius: 14, maxWidth: undefined }]}>
-                  <Ionicons name="search-outline" size={20} color={theme.colors.textMuted} />
-                  <TextInput
-                    style={[styles.searchInput, { fontSize: 15 }]}
-                    value={searchText}
-                    onChangeText={setSearchText}
-                    placeholder={UI_TEXT.searchActivities}
-                    placeholderTextColor={theme.colors.textMuted}
-                    accessible={true}
-                    accessibilityLabel={UI_TEXT.searchActivities}
-                  />
-                </View>
-                <Pressable
-                  onPress={() => setIsAscending(!isAscending)}
-                  accessible={true}
-                  accessibilityRole="button"
-                  accessibilityLabel={UI_TEXT.activityLog}
-                  style={({ pressed }) => [
-                    { width: 52, height: 52, borderRadius: 14, backgroundColor: theme.colors.surfaceDark, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: theme.colors.border },
-                    pressed && { opacity: 0.7 }
-                  ]}
-                >
-                  <Ionicons name={isAscending ? "arrow-up-outline" : "arrow-down-outline"} size={22} color={theme.colors.primary} />
-                </Pressable>
-                <Pressable
-                  onPress={() => setShowFilters(!showFilters)}
-                  accessible={true}
-                  accessibilityRole="button"
-                  accessibilityLabel={UI_TEXT.reportFilters}
-                  style={({ pressed }) => [
-                    { width: 52, height: 52, borderRadius: 14, backgroundColor: showFilters ? theme.colors.primary : theme.colors.surfaceDark, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: theme.colors.border },
-                    pressed && { opacity: 0.7 }
-                  ]}
-                >
-                  <Ionicons name="options-outline" size={22} color={showFilters ? theme.colors.white : theme.colors.textPrimary} />
-                </Pressable>
-              </View>
-
-              {showFilters && (
-                <View style={{ gap: 16, paddingTop: 4 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: theme.colors.surfaceDark, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 14, borderWidth: 1, borderColor: theme.colors.border }}>
-                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                        <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: theme.colors.error + "20", alignItems: 'center', justifyContent: 'center' }}>
-                          <Ionicons name="alert-circle" size={20} color={theme.colors.error} />
-                        </View>
-                        <Text style={{ fontSize: 14, fontWeight: '800', color: theme.colors.textPrimary }}>{UI_TEXT.filterErrors}</Text>
-                     </View>
-                     <Switch
-                       value={errorsOnly}
-                       onValueChange={setErrorsOnly}
-                       trackColor={{ true: theme.colors.error }}
-                       style={{ transform: [{ scale: 0.9 }] }}
-                     />
-                  </View>
-
-                  <View>
-                    <Text style={{ fontSize: 11, fontWeight: '800', color: theme.colors.textSecondary, marginBottom: 8, textTransform: 'uppercase', marginLeft: 4 }}>{UI_TEXT.filterByUser}</Text>
-                    <Dropdown value={selectedUser} options={userOptions} onChange={setSelectedUser} />
-                  </View>
-
-                  <View>
-                    <Text style={{ fontSize: 11, fontWeight: '800', color: theme.colors.textSecondary, marginBottom: 8, textTransform: 'uppercase', marginLeft: 4 }}>{UI_TEXT.filterByDate}</Text>
-                    <Dropdown value={selectedDate} options={dateOptions} onChange={setSelectedDate} />
-                  </View>
-
-                  <View style={{ flexDirection: 'row', gap: 12 }}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 11, fontWeight: '800', color: theme.colors.textSecondary, marginBottom: 8, textTransform: 'uppercase', marginLeft: 4 }}>{UI_TEXT.filterByEvent}</Text>
-                      <Dropdown value={selectedModule} options={moduleOptions} onChange={setSelectedModule} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 11, fontWeight: '800', color: theme.colors.textSecondary, marginBottom: 8, textTransform: 'uppercase', marginLeft: 4 }}>{UI_TEXT.filterByTarget}</Text>
-                      <Dropdown value={selectedTarget} options={targetOptions} onChange={setSelectedTarget} />
-                    </View>
-                  </View>
-                </View>
-              )}
-
-              <View style={{ flexDirection: 'row', gap: s(10), marginTop: s(4) }}>
-                <Pressable
-                  onPress={handleExport}
-                  style={({ pressed }) => [
-                    styles.primary,
-                    {
-                      flex: 1,
-                      height: s(48),
-                      marginTop: 0,
-                      flexDirection: 'row',
-                      gap: s(8),
-                      borderRadius: s(14),
-                      backgroundColor: theme.colors.secondary,
-                    },
-                    pressed && { opacity: 0.7 }
-                  ]}
-                >
-                  <Ionicons name="share-outline" size={20} color={theme.colors.white} />
-                  <Text style={[styles.primaryText, { fontSize: 14 }]}>{UI_TEXT.exportLog}</Text>
-                </Pressable>
-
-                <Pressable
-                  onPress={handleSummarizeLogs}
-                  disabled={filteredLogs.length === 0}
-                  style={({ pressed }) => [
-                    styles.primary,
-                    {
-                      flex: 1,
-                      height: s(48),
-                      marginTop: 0,
-                      flexDirection: 'row',
-                      gap: s(8),
-                      borderRadius: s(14),
-                      backgroundColor: filteredLogs.length === 0 ? theme.colors.border : theme.colors.primary,
-                    },
-                    pressed && filteredLogs.length > 0 && { opacity: 0.7 }
-                  ]}
-                >
-                  <Ionicons name="analytics-outline" size={20} color={theme.colors.white} />
-                  <Text style={[styles.primaryText, { fontSize: 14 }]}>
-                    {UI_TEXT.analyzeLogs}
-                  </Text>
-                </Pressable>
-              </View>
-            </View>
+            <ActivityLogFilterBar
+              searchText={searchText}
+              setSearchText={setSearchText}
+              isAscending={isAscending}
+              setIsAscending={setIsAscending}
+              showFilters={showFilters}
+              setShowFilters={setShowFilters}
+              errorsOnly={errorsOnly}
+              setErrorsOnly={setErrorsOnly}
+              selectedUser={selectedUser}
+              setSelectedUser={setSelectedUser}
+              userOptions={userOptions}
+              selectedDate={selectedDate}
+              setSelectedDate={setSelectedDate}
+              dateOptions={dateOptions}
+              selectedModule={selectedModule}
+              setSelectedModule={setSelectedModule}
+              moduleOptions={moduleOptions}
+              selectedTarget={selectedTarget}
+              setSelectedTarget={setSelectedTarget}
+              targetOptions={targetOptions}
+              handleExport={handleExport}
+              handleSummarizeLogs={handleSummarizeLogs}
+              filteredLogsCount={filteredLogs.length}
+              theme={theme}
+              styles={styles}
+              s={s}
+            />
           }
           ListEmptyComponent={
             <View style={{ alignItems: 'center', marginTop: 60 }}>
@@ -749,87 +456,50 @@ export function ActivityLogScreen() {
             maxWidth: Math.min(width * 0.94, 520),
             maxHeight: "85%",
             backgroundColor: theme.colors.surface,
-            borderRadius: 20,
-            padding: 16,
+            borderRadius: 24,
+            padding: 20,
             borderWidth: 1,
             borderColor: theme.colors.border,
-            ...Platform.select({
-              ios: {
-                shadowColor: theme.colors.shadow,
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.3,
-                shadowRadius: 8
-              },
-              android: { elevation: 8 },
-              web: { boxShadow: `0 4px 16px ${theme.colors.shadow}66` }
-            })
+            shadowColor: theme.colors.shadow,
+            shadowOffset: { width: 0, height: 10 },
+            shadowOpacity: 0.3,
+            shadowRadius: 20,
+            elevation: 10
           }}>
-            {/* Header */}
-            <View style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: 12,
-              paddingBottom: 10,
-              borderBottomWidth: 1,
-              borderBottomColor: theme.colors.border
-            }}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                <Ionicons name="analytics" size={20} color={theme.colors.primary} />
-                <Text style={{ fontSize: 16, fontWeight: "900", color: theme.colors.textPrimary }}>
-                  {UI_TEXT.aiSummaryTitle}
-                </Text>
-              </View>
-              <Pressable
-                onPress={() => setModalVisible(false)}
-                style={({ pressed }) => [
-                  { padding: 4, borderRadius: 12, backgroundColor: theme.colors.surfaceDark },
-                  pressed && { opacity: 0.7 }
-                ]}
-              >
-                <Ionicons name="close" size={20} color={theme.colors.textSecondary} />
-              </Pressable>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                 <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: theme.colors.primary + "20", alignItems: 'center', justifyContent: 'center' }}>
+                   <Ionicons name="analytics" size={20} color={theme.colors.primary} />
+                 </View>
+                 <Text style={{ fontSize: 18, fontWeight: '900', color: theme.colors.textPrimary }}>{UI_TEXT.operationalSummary}</Text>
+               </View>
+               <Pressable
+                 onPress={() => setModalVisible(false)}
+                 style={({ pressed }) => [
+                   { width: 36, height: 36, borderRadius: 18, backgroundColor: theme.colors.surfaceDark, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: theme.colors.border },
+                   pressed && { opacity: 0.7 }
+                 ]}
+               >
+                 <Ionicons name="close" size={20} color={theme.colors.textPrimary} />
+               </Pressable>
             </View>
 
-            {/* Content Viewport */}
-            <ScrollView
-              showsVerticalScrollIndicator={true}
-              contentContainerStyle={{ paddingVertical: 8, gap: 12 }}
-              keyboardShouldPersistTaps="handled"
-            >
-              <View style={{
-                backgroundColor: theme.colors.surfaceDark,
-                padding: 14,
-                borderRadius: 14,
-                borderWidth: 1,
-                borderColor: theme.colors.border
-              }}>
-                <Text style={{
-                  fontSize: 14,
-                  lineHeight: 22,
-                  color: theme.colors.textPrimary,
-                  fontWeight: "600"
-                }}>
-                  {summaryText}
-                </Text>
-              </View>
+            <ScrollView contentContainerStyle={{ paddingBottom: 16 }} showsVerticalScrollIndicator={false}>
+              <Text style={{ fontSize: 14, color: theme.colors.textPrimary, lineHeight: 22, fontWeight: '600' }}>
+                {summaryText}
+              </Text>
             </ScrollView>
 
-            {/* Footer Close Button */}
-            <View style={{ marginTop: 12 }}>
-              <Pressable
-                onPress={() => setModalVisible(false)}
-                style={({ pressed }) => [
-                  styles.primary,
-                  { height: 44, borderRadius: 12, backgroundColor: theme.colors.primary, marginTop: 0 },
-                  pressed && { opacity: 0.85 }
-                ]}
-              >
-                <Text style={[styles.primaryText, { fontSize: 14 }]}>
-                  {UI_TEXT.close}
-                </Text>
-              </Pressable>
-            </View>
+            <Pressable
+              onPress={() => setModalVisible(false)}
+              style={({ pressed }) => [
+                styles.primary,
+                { marginTop: 12, height: 48, borderRadius: 14 },
+                pressed && { opacity: 0.7 }
+              ]}
+            >
+              <Text style={styles.primaryText}>{UI_TEXT.close}</Text>
+            </Pressable>
           </View>
         </View>
       </Modal>

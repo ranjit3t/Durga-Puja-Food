@@ -170,4 +170,21 @@ Eternia Food Desk is a cross-platform mobile and web application built with **Re
 
 ---
 
+## 5. Feature-Based Modularization & Component Architecture
+
+To prevent monolithic God components and ensure maximum maintainability, testability, and scalability, the application follows a strict **Feature-Based Modular Architecture** under `src/features/`:
+
+### A. Feature Domain Structure (`src/features/`)
+- **`src/features/activity/`**: Houses decoupled audit log components (`ActivityLogItem`, `ActivityLogFilterBar`).
+- **`src/features/checkout/`**: Houses decoupled quick checkout components (`QuickCheckoutHeader`, `QuickCheckoutItemCard`).
+- **`src/features/subscriptions/`**: Houses decoupled pass registration and payment tracking sections (`SubscriptionBasicInfoSection`, `SubscriptionPaymentSection`).
+
+### B. Engineering Standards & Compliance
+- **Zero Hardcoding (`strings.ts`)**: All UI strings, placeholders, and announcements bind dynamically to `UI_TEXT`.
+- **Theme-Driven Styling (`theme/`)**: Colors and layout dimensions bind strictly to `theme.colors`, `theme.cardColors`, and responsive scaling hooks (`useScaling()`).
+- **WCAG 2.1 AA Accessibility**: All extracted components include full accessibility attributes (`accessible={true}`, `accessibilityRole`, `accessibilityLabel`, `accessibilityHint`, `accessibilityState`).
+- **Type Safety**: Fully typed with strict TypeScript contracts (`npx tsc --noEmit` verified with 0 errors).
+
+---
+
 © 2026 Eternia Festival Committee — Architecture Documentation

@@ -63,6 +63,8 @@ import { LogoutButton } from "../components/common/LogoutButton";
 import { ThemeToggleButton } from "../components/common/ThemeToggleButton";
 import { CounterInput } from "../components/common/CounterInput";
 import { Ionicons } from "@expo/vector-icons";
+import { SubscriptionBasicInfoSection } from "../features/subscriptions/components/SubscriptionBasicInfoSection";
+import { SubscriptionPaymentSection } from "../features/subscriptions/components/SubscriptionPaymentSection";
 
 import { useAuth } from "../context/AuthContext";
 import { useCoreDatabase, useActivityLogs } from "../context/DatabaseContext";
@@ -846,7 +848,7 @@ export function SubscriptionForm() {
       if (hasAmount) {
         updates.amount = String(scannedAmount);
         isManualAmount = true;
-        detailLines.push(`• ${UI_TEXT.amount || "Amount"}: ₹${scannedAmount.toLocaleString()}`);
+        detailLines.push(`• ${UI_TEXT.amount || "Amount"}: ${scannedAmount.toLocaleString()}`);
       }
 
       if (Object.keys(updates).length > 0) {
@@ -968,7 +970,7 @@ export function SubscriptionForm() {
       const msg = UI_TEXT.amountMismatchMsg
         .replaceAll("{entered}", formatAmount(currentTotalAmount))
         .replace("{calculated}", formatAmount(calculatedExpectedAmount));
-        
+
       showGlobalAlert(UI_TEXT.amountMismatchTitle, msg, [
         { text: UI_TEXT.no, style: "cancel" },
         { text: UI_TEXT.yes, onPress: () => proceedToSave() },
@@ -1035,125 +1037,57 @@ export function SubscriptionForm() {
         </View>
 
         {/* Identity Inputs */}
-        <View style={[styles.card, { marginTop: 8, backgroundColor: theme.cardColors[1].bg, borderColor: theme.cardColors[1].border }]}>
-           <Text style={[styles.sectionTitle, { fontSize: 18, marginBottom: 12, color: theme.cardColors[1].accent }]}>{UI_TEXT.blockAndFlat}</Text>
-           <View style={styles.row}>
-            <View style={styles.fieldHalf}>
-              <Text style={styles.label}>{UI_TEXT.blockNo}</Text>
-              <Dropdown
-                value={form.block}
-                options={blockOptions}
-                onChange={(block) => set("block", block)}
-                disabled={!isAdmin || lockIdentity}
-              />
-            </View>
-            <View style={styles.fieldHalf}>
-              <Text style={styles.label}>{UI_TEXT.flatNo}</Text>
-              <TextInput
-                value={form.flat}
-                onChangeText={(flat) => set("flat", flat.toUpperCase())}
-                placeholder={UI_TEXT.flatNoPlaceholder}
-                placeholderTextColor={theme.colors.textMuted}
-                keyboardType="default"
-                autoCapitalize="characters"
-                editable={isAdmin && !lockIdentity}
-                selectTextOnFocus={isAdmin && !lockIdentity}
-                accessible={true}
-                accessibilityLabel={UI_TEXT.flatNo}
-                style={[styles.input, (!isAdmin || lockIdentity) && { backgroundColor: theme.colors.surface }]}
-              />
-            </View>
-          </View>
-
-          {mobileEnabled && (
-            <>
-              <Text style={styles.label}>{UI_TEXT.mobileNo}</Text>
-              <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
-                <TextInput
-                  value={mobileInput}
-                  onChangeText={(text) => {
-                    const digits = text.replace(/[^0-9]/g, "").slice(0, 10);
-                    setMobileInput(digits);
-                  }}
-                  placeholder={UI_TEXT.mobileNoPlaceholder}
-                  placeholderTextColor={theme.colors.textMuted}
-                  keyboardType="phone-pad"
-                  editable={isAdmin && canEdit}
-                  selectTextOnFocus={isAdmin && canEdit}
-                  accessible={true}
-                  accessibilityLabel={UI_TEXT.mobileNo}
-                  style={[styles.input, { flex: 1 }, !isAdmin && { backgroundColor: theme.colors.surface }]}
-                />
-                {Platform.OS !== 'web' && isAdmin && canEdit && (
-                  <Pressable
-                    onPress={pickContact}
-                    accessible={true}
-                    accessibilityRole="button"
-                    accessibilityLabel={UI_TEXT.contacts}
-                    style={{
-                      backgroundColor: theme.colors.surfaceDark,
-                      height: 56,
-                      width: 56,
-                      borderRadius: 14,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      borderWidth: 1,
-                      borderColor: theme.colors.border
-                    }}
-                  >
-                    <Ionicons name="person-add-outline" size={24} color={theme.colors.primary} />
-                  </Pressable>
-                )}
-              </View>
-            </>
-          )}
-
-          <View style={{ marginTop: 12 }}>
-            <CounterInput
-              label={kidsEnabled ? UI_TEXT.adultCount : UI_TEXT.peopleCount}
-              value={form.peopleCount}
-              min={lockIdentity && hasAnyMealTaken ? value.peopleCount : 1}
-              onChange={(count) => {
-                const oldPeople = form.peopleCount;
-                const kids = form.kidsCount || 0;
-                setSelectedPerson((current) =>
-                  Math.min(current, Math.max(0, count + kids - 1))
-                );
-                setForm({
-                  ...form,
-                  peopleCount: count,
-                  mealSlots: resizeMealSlots(form.mealSlots, oldPeople, count, kids, kids, dayConfig),
-                  takenByPerson: resizeTaken(form.takenByPerson, oldPeople, count, kids, kids, dayConfig),
-                });
-                setIsManualAmount(false);
-              }}
-              disabled={!isAdmin || !canEdit}
-            />
-          </View>
-
-          {kidsEnabled && (
-            <CounterInput
-              label={UI_TEXT.kidsCount}
-              value={form.kidsCount || 0}
-              min={lockIdentity && hasAnyMealTaken ? (value.kidsCount || 0) : 0}
-              onChange={(count) => {
-                const adults = form.peopleCount;
-                const oldKids = form.kidsCount || 0;
-                setSelectedPerson((current) =>
-                  Math.min(current, Math.max(0, adults + count - 1))
-                );
-                setForm({
-                  ...form,
-                  kidsCount: count,
-                  mealSlots: resizeMealSlots(form.mealSlots, adults, adults, oldKids, count, dayConfig),
-                  takenByPerson: resizeTaken(form.takenByPerson, adults, adults, oldKids, count, dayConfig),
-                });
-                setIsManualAmount(false);
-              }}
-              disabled={!isAdmin || !canEdit}
-            />
-          )}
-        </View>
+        <SubscriptionBasicInfoSection
+          block={form.block}
+          setBlock={(block) => set("block", block)}
+          blockOptions={blockOptions}
+          flat={form.flat}
+          setFlat={(flat) => set("flat", flat.toUpperCase())}
+          phone={mobileInput}
+          setPhone={setMobileInput}
+          peopleCount={form.peopleCount}
+          setPeopleCount={(count) => {
+            const oldPeople = form.peopleCount;
+            const kids = form.kidsCount || 0;
+            setSelectedPerson((current) =>
+              Math.min(current, Math.max(0, count + kids - 1))
+            );
+            setForm({
+              ...form,
+              peopleCount: count,
+              mealSlots: resizeMealSlots(form.mealSlots, oldPeople, count, kids, kids, dayConfig),
+              takenByPerson: resizeTaken(form.takenByPerson, oldPeople, count, kids, kids, dayConfig),
+            });
+            setIsManualAmount(false);
+          }}
+          kidsCount={form.kidsCount || 0}
+          setKidsCount={(count) => {
+            const adults = form.peopleCount;
+            const oldKids = form.kidsCount || 0;
+            setSelectedPerson((current) =>
+              Math.min(current, Math.max(0, adults + count - 1))
+            );
+            setForm({
+              ...form,
+              kidsCount: count,
+              mealSlots: resizeMealSlots(form.mealSlots, adults, adults, oldKids, count, dayConfig),
+              takenByPerson: resizeTaken(form.takenByPerson, adults, adults, oldKids, count, dayConfig),
+            });
+            setIsManualAmount(false);
+          }}
+          kidsEnabled={kidsEnabled}
+          mobileEnabled={mobileEnabled}
+          isAdmin={isAdmin}
+          canEdit={canEdit}
+          lockIdentity={lockIdentity}
+          hasAnyMealTaken={hasAnyMealTaken}
+          minPeople={lockIdentity && hasAnyMealTaken ? value.peopleCount : 1}
+          minKids={lockIdentity && hasAnyMealTaken ? (value.kidsCount || 0) : 0}
+          pickContact={pickContact}
+          theme={theme}
+          styles={styles}
+          s={s}
+        />
 
         {/* Selection Matrix */}
         <View style={[styles.card, { backgroundColor: theme.cardColors[2].bg, borderColor: theme.cardColors[2].border }]}>
@@ -1514,169 +1448,22 @@ export function SubscriptionForm() {
 
         {/* Financials */}
         {paymentConfig.enabled && (
-          <View
-            accessible={true}
-            accessibilityRole="header"
-            accessibilityLabel={`${UI_TEXT.paymentDetails}, ${UI_TEXT.total}: ${totalAmount.toFixed(0)}`}
-            style={[styles.card, { backgroundColor: theme.cardColors[3].bg, borderColor: theme.cardColors[3].border }]}
-          >
-             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <Text style={[styles.sectionTitle, { fontSize: 18, marginBottom: 0, color: theme.cardColors[3].accent }]}>{UI_TEXT.paymentDetails}</Text>
-                <View style={[styles.pill, { backgroundColor: theme.cardColors[3].accentLight }]}>
-                   <Text style={[styles.pillText, { color: theme.cardColors[3].accent }]}>{totalAmount.toFixed(0)}</Text>
-                </View>
-             </View>
-
-             {payments.map((p, idx) => (
-               <View key={idx} style={{ marginBottom: idx === payments.length - 1 ? 0 : 24, borderTopWidth: idx === 0 ? 0 : 1, borderTopColor: theme.colors.border, paddingTop: idx === 0 ? 0 : 20 }}>
-                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                    <Text style={{ fontSize: 12, fontWeight: '800', color: theme.colors.textSecondary }}>{UI_TEXT.paymentNumber}{idx + 1}</Text>
-                    {idx > 0 && isAdmin && canEdit && (
-                      <Pressable
-                        onPress={() => removePayment(idx)}
-                        accessible={true}
-                        accessibilityRole="button"
-                        accessibilityLabel={`${UI_TEXT.deleteButton} ${UI_TEXT.paymentNumber}${idx + 1}`}
-                        accessibilityHint="Removes this payment entry"
-                      >
-                        <Ionicons name="trash-outline" size={18} color={theme.colors.error} />
-                      </Pressable>
-                    )}
-                 </View>
-
-                 <View style={styles.row}>
-                    <View style={styles.fieldHalf}>
-                      <Text style={styles.label}>{UI_TEXT.amount}</Text>
-                      <TextInput
-                        value={p.amount}
-                        onChangeText={(rawAmount) => updatePayment(idx, { amount: sanitizeAmountText(rawAmount) }, true)}
-                        onBlur={() => {
-                          if (!p.amount || p.amount.trim() === "" || isNaN(parseFloat(p.amount))) {
-                            updatePayment(idx, { amount: UI_TEXT.zero }, true);
-                          }
-                        }}
-                        keyboardType="decimal-pad"
-                        inputMode="decimal"
-                        editable={isAdmin && canEdit}
-                        returnKeyType="done"
-                        placeholder={UI_TEXT.zero}
-                        placeholderTextColor={theme.colors.textMuted}
-                        accessible={true}
-                        accessibilityLabel={`${UI_TEXT.paymentNumber}${idx + 1} ${UI_TEXT.amount}`}
-                        accessibilityHint="Enter payment amount in digits"
-                        style={[styles.input, !isAdmin && { backgroundColor: theme.colors.surface }]}
-                      />
-                    </View>
-                    <View style={styles.fieldHalf}>
-                      <Text style={styles.label}>{UI_TEXT.paymentMode}</Text>
-                      {isAdmin ? (
-                        <Dropdown
-                          value={p.mode}
-                          options={enabledMethods}
-                          onChange={(mode) => updatePayment(idx, { mode: mode as any })}
-                        />
-                      ) : (
-                        <View style={[styles.input, { backgroundColor: theme.colors.surface, justifyContent: "center" }]}>
-                          <Text style={{ fontSize: 16, fontWeight: "600", color: theme.colors.textPrimary }}>{p.mode}</Text>
-                        </View>
-                      )}
-                    </View>
-                  </View>
-
-                  {(p.mode === PaymentMode.UPI || p.mode === PaymentMode.BANK_TRANSFER) && (
-                    <View style={{ marginTop: 16 }}>
-                      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                        <Text style={[styles.label, { marginBottom: 0 }]}>{UI_TEXT.transactionIdLabel}</Text>
-                        {isAdmin && canEdit && (
-                          <Pressable
-                            onPress={() => handleScanTransactionId(idx)}
-                            disabled={scannerTargetIdx === idx}
-                            style={({ pressed }) => [
-                              {
-                                flexDirection: "row",
-                                alignItems: "center",
-                                gap: 4,
-                                backgroundColor: theme.colors.primary + "18",
-                                paddingHorizontal: 8,
-                                paddingVertical: 3,
-                                borderRadius: 6,
-                              },
-                              pressed && { opacity: 0.7 }
-                            ]}
-                          >
-                            <Ionicons name="camera" size={14} color={theme.colors.primary} />
-                            <Text style={{ fontSize: 11, fontWeight: "800", color: theme.colors.primary }}>
-                              {scannerTargetIdx === idx ? UI_TEXT.loading : UI_TEXT.scanTransactionId}
-                            </Text>
-                          </Pressable>
-                        )}
-                      </View>
-
-                      <View style={{ position: "relative", justifyContent: "center" }}>
-                        <TextInput
-                          value={p.transactionId || ""}
-                          onChangeText={(txnId) => updatePayment(idx, { transactionId: txnId })}
-                          placeholder={UI_TEXT.transactionIdPlaceholder}
-                          placeholderTextColor={theme.colors.textMuted}
-                          editable={isAdmin && canEdit && scannerTargetIdx !== idx}
-                          autoCapitalize="characters"
-                          style={[
-                            styles.input,
-                            { paddingRight: isAdmin && canEdit ? 44 : 16 },
-                            !isAdmin && { backgroundColor: theme.colors.surface }
-                          ]}
-                        />
-                        {isAdmin && canEdit && (
-                          <Pressable
-                            onPress={() => handleScanTransactionId(idx)}
-                            disabled={scannerTargetIdx === idx}
-                            style={({ pressed }) => [
-                              {
-                                position: "absolute",
-                                right: 10,
-                                padding: 6,
-                                borderRadius: 8,
-                                backgroundColor: theme.colors.primary + "15",
-                              },
-                              pressed && { opacity: 0.7 }
-                            ]}
-                          >
-                            <Ionicons name="camera-outline" size={18} color={theme.colors.primary} />
-                          </Pressable>
-                        )}
-                      </View>
-                    </View>
-                  )}
-
-                  {p.mode === PaymentMode.CASH && (
-                    <View style={{ marginTop: 16 }}>
-                      <Text style={styles.label}>{UI_TEXT.receivedByLabel}</Text>
-                      <TextInput
-                        value={p.receivedBy || ""}
-                        onChangeText={(name) => updatePayment(idx, { receivedBy: name })}
-                        placeholder={UI_TEXT.receivedByPlaceholder}
-                        placeholderTextColor={theme.colors.textMuted}
-                        editable={isAdmin && canEdit}
-                        style={[styles.input, !isAdmin && { backgroundColor: theme.colors.surface }]}
-                      />
-                    </View>
-                  )}
-               </View>
-             ))}
-
-             {isAdmin && canEdit && payments.length < 3 && (
-               <Pressable
-                 onPress={addPayment}
-                 accessible={true}
-                 accessibilityRole="button"
-                 accessibilityLabel={UI_TEXT.addAnotherPayment}
-                 accessibilityHint="Adds an additional payment entry row up to a maximum of 3"
-                 style={[styles.secondary, { borderStyle: 'dashed', marginTop: 20, height: 48, borderColor: theme.cardColors[3].accent }]}
-               >
-                 <ActionLabel icon="add-circle-outline" label={UI_TEXT.addAnotherPayment} color={theme.cardColors[3].accent} />
-               </Pressable>
-             )}
-          </View>
+          <SubscriptionPaymentSection
+            payments={payments}
+            totalAmount={totalAmount}
+            updatePayment={updatePayment}
+            removePayment={removePayment}
+            addPayment={addPayment}
+            isAdmin={isAdmin}
+            canEdit={canEdit}
+            enabledMethods={enabledMethods}
+            scannerTargetIdx={scannerTargetIdx}
+            handleScanTransactionId={handleScanTransactionId}
+            sanitizeAmountText={sanitizeAmountText}
+            theme={theme}
+            styles={styles}
+            s={s}
+          />
         )}
 
         {/* Actions */}
