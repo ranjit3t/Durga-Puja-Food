@@ -30,27 +30,34 @@ export const QuickCheckoutItemCard: React.FC<QuickCheckoutItemCardProps> = ({
 }) => {
   return (
     <View style={{
+      flex: 1,
+      minWidth: 130,
       backgroundColor: theme.colors.surfaceDark,
-      borderRadius: s(14),
-      padding: s(14),
+      borderRadius: 12,
+      padding: 10,
       borderWidth: 1,
       borderColor: theme.colors.border,
-      gap: s(10),
+      gap: 6,
     }}>
+      {/* Header: Label & Concise Rem Count */}
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: s(14), fontWeight: '800', color: theme.colors.textPrimary }}>{label}</Text>
-          <Text style={{ fontSize: s(11), color: theme.colors.textSecondary, fontWeight: '600', marginTop: s(2) }}>
-            {UI_TEXT.planned}: {plannedCount} | {UI_TEXT.served}: {servedCount} | {UI_TEXT.remaining}: {remCount}
-          </Text>
-        </View>
+        <Text
+          numberOfLines={1}
+          style={{ fontSize: 13, fontWeight: '800', color: theme.colors.textPrimary, flex: 1 }}
+        >
+          {label}
+        </Text>
+        <Text style={{ fontSize: 10, fontWeight: '700', color: theme.colors.textSecondary, marginLeft: 4 }}>
+          {UI_TEXT.remAbbr || "Rem"}: {remCount}
+        </Text>
       </View>
 
+      {/* Stepper Widget Row */}
       <View style={{
         flexDirection: 'row',
         alignItems: 'center',
-        height: s(40),
-        borderRadius: s(10),
+        height: 38,
+        borderRadius: 8,
         borderWidth: 1,
         borderColor: theme.colors.border,
         overflow: 'hidden',
@@ -61,8 +68,9 @@ export const QuickCheckoutItemCard: React.FC<QuickCheckoutItemCardProps> = ({
           disabled={disabled || value <= 0}
           style={({ pressed }) => [
             {
-              width: s(40),
+              width: 38,
               height: '100%',
+              flexShrink: 0,
               alignItems: 'center',
               justifyContent: 'center',
               backgroundColor: theme.colors.border + "22",
@@ -74,14 +82,15 @@ export const QuickCheckoutItemCard: React.FC<QuickCheckoutItemCardProps> = ({
           accessibilityRole="button"
           accessibilityLabel={`${UI_TEXT.decrease || "Decrease"} ${label}`}
         >
-          <Ionicons name="remove" size={s(16)} color={theme.colors.textPrimary} />
+          <Ionicons name="remove" size={16} color={theme.colors.textPrimary} />
         </Pressable>
 
         <TextInput
           style={{
             flex: 1,
+            minWidth: 32,
             textAlign: 'center',
-            fontSize: s(15),
+            fontSize: 14,
             fontWeight: '900',
             color: theme.colors.textPrimary,
             padding: 0,
@@ -108,8 +117,9 @@ export const QuickCheckoutItemCard: React.FC<QuickCheckoutItemCardProps> = ({
           disabled={disabled || value >= max}
           style={({ pressed }) => [
             {
-              width: s(40),
+              width: 38,
               height: '100%',
+              flexShrink: 0,
               alignItems: 'center',
               justifyContent: 'center',
               backgroundColor: theme.colors.border + "22",
@@ -121,7 +131,7 @@ export const QuickCheckoutItemCard: React.FC<QuickCheckoutItemCardProps> = ({
           accessibilityRole="button"
           accessibilityLabel={`${UI_TEXT.increase || "Increase"} ${label}`}
         >
-          <Ionicons name="add" size={s(16)} color={theme.colors.textPrimary} />
+          <Ionicons name="add" size={16} color={theme.colors.textPrimary} />
         </Pressable>
       </View>
     </View>

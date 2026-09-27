@@ -100,7 +100,7 @@ export function SingleMealReport({
           </View>
           <View style={[styles.pill, { backgroundColor: colorScheme.accentLight, alignSelf: "center", flexShrink: 0 }]}>
             <Text style={[styles.pillText, { color: colorScheme.accent, fontSize: 13, fontWeight: "800" }]}>
-              {totalDemand} {UI_TEXT.plates}
+              {totalDemand} {totalDemand === 1 ? UI_TEXT.plateSingular : UI_TEXT.plates}
             </Text>
           </View>
         </View>

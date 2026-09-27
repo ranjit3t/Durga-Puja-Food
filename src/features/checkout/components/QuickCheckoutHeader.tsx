@@ -20,26 +20,36 @@ export const QuickCheckoutHeader: React.FC<QuickCheckoutHeaderProps> = ({
   s,
 }) => {
   if (!subscription) return null;
-  const displayName = (subscription as any).name || `${UI_TEXT.flat} #${subscription.id} (${subscription.block || ""}-${subscription.flat})`;
+
+  const blockFlatStr = (subscription.block && subscription.flat)
+    ? `${UI_TEXT.block} ${subscription.block} - ${UI_TEXT.flatUpper} ${subscription.flat}`
+    : `${UI_TEXT.flatUpper} ${subscription.flat || subscription.id}`;
+
+  const titleText = (subscription as any).name || blockFlatStr;
+
   return (
     <View style={{
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      paddingHorizontal: s(20),
-      paddingVertical: s(16),
-      borderBottomWidth: 1,
-      borderBottomColor: theme.colors.border + "44",
+      paddingHorizontal: s(16),
+      paddingVertical: s(12),
     }}>
       <View style={{ flex: 1 }}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: s(8), marginBottom: s(4) }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: s(8), marginBottom: s(2) }}>
           <View style={{ backgroundColor: theme.colors.primary + "20", paddingHorizontal: s(8), paddingVertical: s(2), borderRadius: s(6) }}>
-            <Text style={{ fontSize: s(10), fontWeight: "900", color: theme.colors.primary }}>{subscription.id}</Text>
+            <Text style={{ fontSize: s(10), fontWeight: "900", color: theme.colors.primary }}>
+              {UI_TEXT.quickCheckout.toUpperCase()}
+            </Text>
           </View>
-          <Text style={{ fontSize: s(13), fontWeight: "800", color: theme.colors.textSecondary }}>{currentMealLabel}</Text>
+          {subscription.passcode ? (
+            <Text style={{ fontSize: s(11), fontWeight: "700", color: theme.colors.textSecondary }}>
+              {UI_TEXT.passCodeLabel}: {subscription.passcode}
+            </Text>
+          ) : null}
         </View>
         <Text style={{ fontSize: s(18), fontWeight: "900", color: theme.colors.textPrimary }} numberOfLines={1}>
-          {displayName}
+          {titleText}
         </Text>
       </View>
 

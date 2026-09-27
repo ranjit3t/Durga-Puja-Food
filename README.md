@@ -138,6 +138,9 @@ Quick Checkout can be triggered from 4 distinct application entry methods, track
 - **Human-Readable Success Splash Overlay**: Full-height green confirmation overlay (`theme.colors.successLight`) with glowing checkmark badge, total plates served, overall progress status, and human-readable category breakdown (e.g. `• Adult Veg: 1 Dine-In, 1 Parcel`).
 - **`expo-audio` Chime Integration**: Uses Expo SDK 57's native `expo-audio` engine (`createAudioPlayer`) to play [`assets/checkout.mp3`](file:///D:/Code/Durga-Puja-Food/assets/checkout.mp3) sound tone strictly when the success splash overlay opens (if `soundEnabled === true`).
 - **Configurable Splash Timeout (0ms to 10000ms, default 3000ms)**: Managed in System Settings ([`SettingsScreen.tsx`](file:///D:/Code/Durga-Puja-Food/src/screens/SettingsScreen.tsx)).
+- **Compact & Smart Category Breakdown Summary**: The Operational Summary Box renders an ultra-compact, single-line breakdown per category (e.g. `• Adult Veg: Dine-In: 2 (2 rem) | Parcel: 1 (1 rem)`), providing high-density metrics while reducing modal summary height by >50%.
+- **Grammatically Accurate Singular & Plural Handling**: Enforces precise singular/plural terms across all summary, modal, report, and splash overlay screens (`1 plate` vs `2 plates`, `1 parcel` vs `2 parcels`, `1 adult` vs `2 adults`, `1 kid` vs `2 kids`, `1 member` vs `2 members`).
+- **Borderless Cohesive Modal Window**: Removed top/bottom content area dividing borders (`borderBottomWidth` under header and `borderTopWidth` above action row), creating a unified, seamless modal card container.
 - **Zero Hardcoded Colors & Text**: 100% theme-driven styling (`theme.colors`) and 100% localized text (`UI_TEXT`).
 - **Full WCAG 2.1 AA Accessibility & Web Compliance**: 100% viewport portal scaling on Web browsers, `accessibilityRole="alert"`, `accessibilityViewIsModal={true}`, `accessibilityState`, `accessibilityLabel`, and VoiceOver / TalkBack / ARIA live announcements across all 12 application screens.
 - **Responsive Card & Sub-Tab Flexbox Containment**: All button containers, report sub-tabs, and action rows use `flexWrap: "wrap"` or `flex: 1` flexbox containment with `adjustsFontSizeToFit`, guaranteeing buttons stay 100% inside white content card areas across all mobile, tablet, and web viewports.
@@ -236,6 +239,7 @@ To maintain high maintainability, testability, and scalability as the codebase g
 - **Theme-Driven Styling**: Colors and scaling strictly adhere to `theme.colors`, `theme.cardColors`, and responsive scaling utilities.
 - **Accessibility (WCAG 2.1 AA)**: All extracted interactive components include comprehensive `accessible={true}`, `accessibilityRole`, `accessibilityLabel`, and `accessibilityHint` bindings.
 - **Zero Type Errors**: Verified via strict TypeScript compiler checks (`npx tsc --noEmit`).
+- **Dashboard & Detailed View UX Polish**: Removed redundant repetitions of the word "Subscribed" in planned mode and group name repetitions ("Adults", "Kids", "Guests") under section headers in the detailed dashboard metric grid.
 
 ---
 

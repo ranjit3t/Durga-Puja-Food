@@ -343,7 +343,7 @@ export function QuickCheckoutModal({
     }
 
     const totalFoodRemaining = totalFoodRegistered - totalFoodAlreadyServed;
-    const totalParcelMax = totalParcelPlanned - totalParcelTaken;
+    const totalParcelMax = Object.values(categories).reduce((acc, cat) => acc + cat.remParcelCount, 0);
     const isPartialCheckoutEarlier = totalFoodAlreadyServed > 0 && totalFoodRemaining > 0;
 
     return {
@@ -377,7 +377,7 @@ export function QuickCheckoutModal({
 
   const activePassIdRef = useRef<string | null>(null);
 
-  // Initialize inputs & snapshot initial partial checkout & parcel pickup status ONLY when modal first opens or pass ID changes
+  // Initialize inputs on modal open & dynamically update partial checkout & parcel pickup state on real-time data changes
   useEffect(() => {
     if (visible && activeSubscription && quickCheckoutDetails) {
       const passId = activeSubscription.id;
@@ -390,29 +390,29 @@ export function QuickCheckoutModal({
         });
         setSuccessData(null);
         activePassIdRef.current = passId;
+      }
 
-        // Snapshot initial partial checkout state on modal open
-        if (quickCheckoutDetails.isPartialCheckoutEarlier) {
-          setInitialPartialInfo({
-            isPartial: true,
-            served: quickCheckoutDetails.totalFoodAlreadyServed,
-            total: quickCheckoutDetails.totalFoodRegistered,
-            remaining: quickCheckoutDetails.totalFoodRemaining,
-          });
-        } else {
-          setInitialPartialInfo(null);
-        }
+      // Update partial checkout state dynamically on real-time data changes
+      if (quickCheckoutDetails.isPartialCheckoutEarlier) {
+        setInitialPartialInfo({
+          isPartial: true,
+          served: quickCheckoutDetails.totalFoodAlreadyServed,
+          total: quickCheckoutDetails.totalFoodRegistered,
+          remaining: quickCheckoutDetails.totalFoodRemaining,
+        });
+      } else {
+        setInitialPartialInfo(null);
+      }
 
-        // Snapshot initial parcel pickup state on modal open
-        if (quickCheckoutDetails.parcelSupported && quickCheckoutDetails.totalParcelMax > 0) {
-          setInitialParcelInfo({
-            hasParcelRemaining: true,
-            parcelMax: quickCheckoutDetails.totalParcelMax,
-            parcelPlanned: quickCheckoutDetails.totalParcelPlanned,
-          });
-        } else {
-          setInitialParcelInfo(null);
-        }
+      // Update parcel pickup state dynamically on real-time data changes
+      if (quickCheckoutDetails.parcelSupported && quickCheckoutDetails.totalParcelMax > 0) {
+        setInitialParcelInfo({
+          hasParcelRemaining: true,
+          parcelMax: quickCheckoutDetails.totalParcelMax,
+          parcelPlanned: quickCheckoutDetails.totalParcelPlanned,
+        });
+      } else {
+        setInitialParcelInfo(null);
       }
     } else if (!visible) {
       activePassIdRef.current = null;
@@ -420,7 +420,7 @@ export function QuickCheckoutModal({
       setInitialParcelInfo(null);
       setSuccessData(null);
     }
-  }, [visible, activeSubscription?.id, quickCheckoutDetails]);
+  }, [visible, activeSubscription, quickCheckoutDetails]);
 
   // Animated opacity value for blinking alert banners
   const opacityAnim = useRef(new Animated.Value(1)).current;
@@ -776,7 +776,9 @@ export function QuickCheckoutModal({
             if (!isSlotInCat(i)) continue;
 
             const isMealUnserved = !takenList[i]?.[mealKey];
-            if (isMealUnserved) {
+            const hasParcelOpted = updatedSub.mealSlots[dayId]?.[i]?.[parcelKey as keyof MealSlot] === true;
+
+            if (isMealUnserved && hasParcelOpted) {
               takenList[i] = {
                 ...takenList[i],
                 [mealKey]: true,
@@ -930,7 +932,7 @@ export function QuickCheckoutModal({
   };
 
   const isCheckoutDisabled = totalSelectedItems === 0 || !isStillCurrent || isDone;
-  const cardMaxWidth = Math.min(width * 0.94, 500);
+  const cardMaxWidth = Math.min(width * 0.94, Platform.OS === 'web' ? 580 : 500);
   const maxCardHeight = Math.min(height * 0.88, 620);
 
   // Full-Height Theme-Driven Success Overlay Window (Works on Mobile & Web)
@@ -1405,30 +1407,39 @@ export function QuickCheckoutModal({
 
                 <View style={{ height: 1, backgroundColor: theme.colors.white, opacity: 0.2, marginVertical: 1 }} />
 
-                {/* Food Demand & Serving Status */}
-                <View style={{ gap: 2 }}>
-                  <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                    <Text style={{ fontSize: 11, fontWeight: "800", color: theme.colors.white }}>
-                      {UI_TEXT.food}{UI_TEXT.colon}{UI_TEXT.space}
-                      {UI_TEXT.planned}{UI_TEXT.space}{quickCheckoutDetails.totalFoodRegistered}
-                    </Text>
-                    <Text style={{ fontSize: 11, fontWeight: "700", color: theme.colors.white, opacity: 0.85 }}>
-                      ({UI_TEXT.served}{UI_TEXT.colon}{UI_TEXT.space}{quickCheckoutDetails.totalFoodAlreadyServed}{UI_TEXT.comma}{UI_TEXT.space}{UI_TEXT.pending}{UI_TEXT.colon}{UI_TEXT.space}{quickCheckoutDetails.totalFoodRemaining})
-                    </Text>
-                  </View>
+                {/* Compact Category-Wise Breakdown */}
+                <View style={{ gap: 3, marginTop: 2 }}>
+                  {Object.values(quickCheckoutDetails.categories)
+                    .filter((cat) => cat.plannedCount > 0 || cat.parcelPlannedCount > 0)
+                    .map((cat) => {
+                      const parcelLabel = cat.parcelPlannedCount === 1 ? UI_TEXT.parcelSingular : UI_TEXT.parcels;
+                      const dineStr = `${UI_TEXT.dineIn}: ${cat.plannedCount} (${cat.remMealCount} ${UI_TEXT.remAbbr || "rem"})`;
+                      const parcelStr = (quickCheckoutDetails.parcelSupported && cat.parcelPlannedCount > 0)
+                        ? ` | ${parcelLabel}: ${cat.parcelPlannedCount} (${cat.remParcelCount} ${UI_TEXT.remAbbr || "rem"})`
+                        : "";
 
-                  {/* Parcel Demand & Serving Status */}
-                  {quickCheckoutDetails.parcelSupported && quickCheckoutDetails.totalParcelPlanned > 0 && (
-                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                      <Text style={{ fontSize: 11, fontWeight: "800", color: theme.colors.white }}>
-                        {UI_TEXT.parcels}{UI_TEXT.colon}{UI_TEXT.space}
-                        {UI_TEXT.planned}{UI_TEXT.space}{quickCheckoutDetails.totalParcelPlanned}
-                      </Text>
-                      <Text style={{ fontSize: 11, fontWeight: "700", color: theme.colors.white, opacity: 0.85 }}>
-                        ({UI_TEXT.served}{UI_TEXT.colon}{UI_TEXT.space}{quickCheckoutDetails.totalParcelTaken}{UI_TEXT.comma}{UI_TEXT.space}{UI_TEXT.pending}{UI_TEXT.colon}{UI_TEXT.space}{quickCheckoutDetails.totalParcelMax})
-                      </Text>
-                    </View>
-                  )}
+                      return (
+                        <View
+                          key={cat.key}
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            backgroundColor: theme.colors.white + "18",
+                            paddingHorizontal: 8,
+                            paddingVertical: 3,
+                            borderRadius: 6,
+                          }}
+                        >
+                          <Text style={{ fontSize: 10, fontWeight: "900", color: theme.colors.white }}>
+                            • {cat.label}
+                          </Text>
+                          <Text style={{ fontSize: 10, fontWeight: "700", color: theme.colors.white, opacity: 0.95 }}>
+                            {dineStr}{parcelStr}
+                          </Text>
+                        </View>
+                      );
+                    })}
                 </View>
               </View>
             )}
@@ -1498,15 +1509,15 @@ export function QuickCheckoutModal({
                               </Text>
                             </View>
                             <Text style={{ fontSize: 11, fontWeight: "700", color: theme.colors.textSecondary }}>
-                              ({UI_TEXT.pending}: {cat.remMealCount} {UI_TEXT.plates.toLowerCase()}
-                              {quickCheckoutDetails.parcelSupported && cat.remParcelCount > 0 ? `, ${cat.remParcelCount} ${UI_TEXT.parcels.toLowerCase()}` : ""})
+                              ({UI_TEXT.pending}: {cat.remMealCount} {cat.remMealCount === 1 ? UI_TEXT.plateSingular.toLowerCase() : UI_TEXT.plates.toLowerCase()}
+                              {quickCheckoutDetails.parcelSupported && cat.remParcelCount > 0 ? `, ${cat.remParcelCount} ${cat.remParcelCount === 1 ? UI_TEXT.parcelSingular.toLowerCase() : UI_TEXT.parcels.toLowerCase()}` : ""})
                             </Text>
                           </View>
 
-                          <View style={{ gap: 8, marginTop: 4, width: "100%" }}>
+                          <View style={{ flexDirection: "row", gap: 8, marginTop: 4, width: "100%", alignItems: "center" }}>
                             {quickCheckoutDetails.parcelSupported && cat.remParcelCount > 0 && (
                               <QuickCheckoutItemCard
-                                label={`${UI_TEXT.parcels} (${sub.label})`}
+                                label={UI_TEXT.parcels}
                                 plannedCount={cat.parcelPlannedCount}
                                 servedCount={cat.parcelServedCount}
                                 remCount={cat.remParcelCount}
@@ -1520,7 +1531,7 @@ export function QuickCheckoutModal({
                             )}
                             {cat.remMealCount > 0 && (
                               <QuickCheckoutItemCard
-                                label={`${UI_TEXT.dineIn} (${sub.label})`}
+                                label={UI_TEXT.dineIn}
                                 plannedCount={cat.plannedCount}
                                 servedCount={cat.servedCount}
                                 remCount={cat.remMealCount}

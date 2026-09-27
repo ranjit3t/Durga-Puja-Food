@@ -82,6 +82,7 @@ Eternia Food Desk is a cross-platform mobile and web application built with **Re
 - **`expo-audio` Chime Integration**: Uses Expo SDK 57's native `expo-audio` engine (`createAudioPlayer`) to play [`assets/checkout.mp3`](file:///D:/Code/Durga-Puja-Food/assets/checkout.mp3) sound tone strictly when the success splash overlay opens (if `soundEnabled === true`).
 - **Configurable Splash Timeout (0ms to 10000ms, default 3000ms)**: Managed in System Settings ([`SettingsScreen.tsx`](file:///D:/Code/Durga-Puja-Food/src/screens/SettingsScreen.tsx)).
 - **Zero Hardcoded Colors & Text**: 100% theme-driven styling (`theme.colors`) and 100% localized text (`UI_TEXT`).
+- **Compact Category Summary & Borderless Design**: The Operational Summary Box displays a single-line category breakdown (`• Adult Veg: Dine-In: 2 (2 rem) | Parcel: 1 (1 rem)`) with strict singular/plural grammar (`1 plate` vs `2 plates`, `1 parcel` vs `2 parcels`). Content dividing borders (`borderBottomWidth` under header and `borderTopWidth` above action bar) are removed for a seamless, unified modal container.
 - **Full WCAG 2.1 AA Accessibility Compliance Across All 12 Screens**: Full 100% viewport portal scaling on Web browsers, `accessibilityRole` (`button`, `tab`, `checkbox`, `combobox`), `accessibilityState`, `accessibilityLabel`, `accessibilityViewIsModal={true}`, and VoiceOver / TalkBack live speech announcements across all 12 application screens.
 - **Card & Sub-Tab Flexbox Containment**: Sub-tabs and action controls in report views and cards use `flexWrap: "wrap"` or `flex: 1` flexbox containment with `adjustsFontSizeToFit`, preventing buttons from spilling out of parent white card containers on mobile devices or narrow viewports.
 
@@ -184,6 +185,7 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
 - **Theme-Driven Styling (`theme/`)**: Colors and layout dimensions bind strictly to `theme.colors`, `theme.cardColors`, and responsive scaling hooks (`useScaling()`).
 - **WCAG 2.1 AA Accessibility**: All extracted components include full accessibility attributes (`accessible={true}`, `accessibilityRole`, `accessibilityLabel`, `accessibilityHint`, `accessibilityState`).
 - **Type Safety**: Fully typed with strict TypeScript contracts (`npx tsc --noEmit` verified with 0 errors).
+- **Dashboard & Detailed View UX Polish**: Automatically omits redundant "Subscribed" text in planned mode and group name repetitions ("Adults", "Kids", "Guests") under section headers in the detailed dashboard metric grid.
 
 ---
 

@@ -139,7 +139,7 @@ export function DayWiseReport({
           </View>
           <View style={[styles.pill, { backgroundColor: colorScheme.accentLight, alignSelf: "center", flexShrink: 0 }]}>
             <Text style={[styles.pillText, { color: colorScheme.accent, fontSize: 13, fontWeight: "800" }]}>
-              {mealTotalDemand} {UI_TEXT.plates}
+              {mealTotalDemand} {mealTotalDemand === 1 ? UI_TEXT.plateSingular : UI_TEXT.plates}
             </Text>
           </View>
         </View>

@@ -66,6 +66,7 @@ export const UI_TEXT = {
   flatUpper: "Flat",
   people: "Members",
   parcelAbbr: "P",
+  remAbbr: "rem",
   guestTaken: "Guest Served",
   parcelTaken: "Parcel Collected",
   paymentDetails: "Payment Information",
