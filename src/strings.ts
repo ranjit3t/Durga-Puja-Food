@@ -37,7 +37,7 @@ export const UI_TEXT = {
   demandSplit: "Dietary Split",
   mealTaken: "Meal Served",
   mealNotTaken: "Awaiting Service",
-  parcelsNeeded: "Parcels Demand",
+  parcelsNeeded: "Parcels",
   totalParcels: "Total Parcels",
   resSuffix: "Resident",
   guestSuffix: "Guest",
