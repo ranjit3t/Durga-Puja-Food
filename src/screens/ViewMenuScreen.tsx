@@ -2,7 +2,7 @@ import React, { useMemo, useRef, useEffect, useCallback } from "react";
 import { View, Text, ScrollView, Pressable, StatusBar, Platform, Share } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useStyles } from "../styles";
-import { StatusBarStyleMode, useAppTheme } from "../theme";
+import { useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
 import {
   getDayLabel,
@@ -11,7 +11,7 @@ import {
   isMealCurrent,
   getMealLabel,
 } from "../constants";
-import { UserRole, ConfigDay, MealType, AppScreen, AppThemeMode, ActivityModule, ActivityAction, Day, MealMenu } from "../types";
+import { UserRole, MealType, AppScreen, AppThemeMode, ActivityModule, ActivityAction, Day, MealMenu } from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
@@ -26,10 +26,10 @@ import { useAppNavigation } from "../context/NavigationContext";
 export function ViewMenuScreen() {
   const { userRole, handleLogout } = useAuth();
   const {
-    foodMenu, dayConfig, guestEnabled, seasonEnabled, foodPriceEnabled, paymentConfig, kidsEnabled
+    foodMenu, dayConfig, seasonEnabled, foodPriceEnabled, paymentConfig, kidsEnabled
   } = useCoreDatabase();
   const { addActivityLog } = useActivityLogs();
-  const { navigate, goBack, targetDay, setTargetDay, targetMeal, setTargetMeal } = useAppNavigation();
+  const { navigate, goBack, targetDay, setTargetDay, setTargetMeal } = useAppNavigation();
 
   const styles = useStyles();
   const { theme, themeType } = useAppTheme();
@@ -220,6 +220,9 @@ export function ViewMenuScreen() {
           {sortedActiveDays.length >= 1 && (
             <Pressable
               onPress={handleExportExcel}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={UI_TEXT.exportExcel}
               style={({ pressed }) => [
                 {
                   flexDirection: 'row',
@@ -276,6 +279,9 @@ export function ViewMenuScreen() {
                 {isAdmin && seasonEnabled && (
                   <Pressable
                     onPress={() => onEdit(day)}
+                    accessible={true}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${UI_TEXT.editPass} ${getDayLabel(day, dayConfig)}`}
                     style={({ pressed }) => [
                       {
                         padding: 6,

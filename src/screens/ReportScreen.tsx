@@ -7,20 +7,17 @@ import { View, Text, ScrollView, StatusBar, Pressable, Platform } from "react-na
 import { captureRef } from "react-native-view-shot";
 import { Ionicons } from "@expo/vector-icons";
 import { useStyles, useScaling } from "../styles";
-import { StatusBarStyleMode, useAppTheme } from "../theme";
+import { useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
 import {
-  getActiveDays,
   getDayLabel,
   getDayAbbr,
   isMealEnabled,
-  getSortedMealKeys,
   getMealLabel,
-  isParcelEnabled,
   isMealCurrent,
   isMealInFuture,
 } from "../constants";
-import { ReportType, MealType, AppScreen, UserRole, ActivityModule, ActivityAction, AppThemeMode, ConfigDay, AppConfig, PaymentConfig } from "../domain";
+import { ReportType, MealType, AppScreen, AppThemeMode } from "../domain";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
@@ -34,7 +31,6 @@ import { GuestWiseReport } from "../components/report/GuestWiseReport";
 import { ParcelWiseReport } from "../components/report/ParcelWiseReport";
 import { SingleMealReport } from "../components/report/SingleMealReport";
 import { PendingReport } from "../components/report/PendingReport";
-import { MissedParcelReport } from "../components/report/MissedParcelReport";
 import { FlatWiseReport } from "../components/report/FlatWiseReport";
 import { PaymentSummaryReport } from "../components/report/PaymentSummaryReport";
 import { KidsReport } from "../components/report/KidsReport";
@@ -48,7 +44,7 @@ import { useUI } from "../context/UIContext";
 import { useAppNavigation } from "../context/NavigationContext";
 
 export function ReportScreen() {
-  const { userRole, handleLogout } = useAuth();
+  const { handleLogout } = useAuth();
   const {
     subscriptions, foodMenu, dayConfig, seasonName, paymentConfig, guestEnabled, kidsEnabled
   } = useCoreDatabase();
@@ -59,7 +55,7 @@ export function ReportScreen() {
   } = useAppNavigation();
 
   const {
-    sortedActiveDays, activeDays, dayWiseData, mealWiseData, flatWiseData, paymentData, getNotTakenData, getKidsMealData, getMissedParcelData
+    activeDays, dayWiseData, mealWiseData, flatWiseData, paymentData, getNotTakenData, getKidsMealData, getMissedParcelData
   } = useReportData(subscriptions, foodMenu, dayConfig, guestEnabled, paymentConfig, !!kidsEnabled, reportType);
 
   const styles = useStyles();
@@ -178,11 +174,6 @@ export function ReportScreen() {
     if (reportType !== ReportType.NOT_TAKEN) return [];
     return getNotTakenData(selectedDayId, selectedMealType);
   }, [reportType, selectedDayId, selectedMealType, getNotTakenData]);
-
-  const missedParcelFlatsData = useMemo(() => {
-    if (reportType !== ReportType.MISSED_PARCEL) return [];
-    return getMissedParcelData(selectedDayId, selectedMealType);
-  }, [reportType, selectedDayId, selectedMealType, getMissedParcelData]);
 
   return (
     <View style={styles.root}>

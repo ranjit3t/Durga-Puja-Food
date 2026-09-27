@@ -301,10 +301,15 @@ export function NotesScreen() {
                 onChangeText={setSearchText}
                 placeholder={UI_TEXT.searchActivities}
                 placeholderTextColor={theme.colors.textMuted}
+                accessible={true}
+                accessibilityLabel={UI_TEXT.searchActivities}
               />
             </View>
             <Pressable
               onPress={() => setIsAscending(!isAscending)}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={UI_TEXT.activityLog}
               style={({ pressed }) => [
                 { width: 52, height: 52, borderRadius: 14, backgroundColor: theme.colors.surfaceDark, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: theme.colors.border },
                 pressed && { opacity: 0.7 }
@@ -314,6 +319,9 @@ export function NotesScreen() {
             </Pressable>
             <Pressable
               onPress={() => setShowFilters(!showFilters)}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={UI_TEXT.reportFilters}
               style={({ pressed }) => [
                 { width: 52, height: 52, borderRadius: 14, backgroundColor: showFilters ? theme.colors.primary : theme.colors.surfaceDark, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: theme.colors.border },
                 pressed && { opacity: 0.7 }

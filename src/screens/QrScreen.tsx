@@ -3,9 +3,9 @@ import { View, Text, Pressable, StatusBar, ScrollView, Platform, useWindowDimens
 import { captureRef } from "react-native-view-shot";
 import QRCode from "react-native-qrcode-svg";
 import { useStyles } from "../styles";
-import { StatusBarStyleMode, useAppTheme } from "../theme";
+import { useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
-import { qrValueFor, generatePasscode, generateUniquePasscode } from "../constants";
+import { qrValueFor, generateUniquePasscode } from "../constants";
 import { AppScreen, AppThemeMode, ActivityModule, ActivityAction } from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
@@ -21,7 +21,7 @@ import { useAppNavigation } from "../context/NavigationContext";
 export function QrScreen() {
   const { userRole, handleLogout } = useAuth();
   const {
-    dayConfig, seasonName, seasonEnabled, mobileEnabled, subscriptions, whatsappCountryCode, kidsEnabled
+    seasonName, seasonEnabled, mobileEnabled, subscriptions, whatsappCountryCode, kidsEnabled
   } = useCoreDatabase();
   const { addActivityLog } = useActivityLogs();
   const { shareQr } = useUI();

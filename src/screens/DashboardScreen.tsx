@@ -15,7 +15,7 @@ import {
 import { captureRef } from "react-native-view-shot";
 import { Ionicons } from "@expo/vector-icons";
 import { useStyles, useScaling } from "../styles";
-import { useAppTheme, StatusBarStyleMode } from "../theme";
+import { useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
 import {
   getDayLabel,
@@ -99,7 +99,6 @@ const DashboardMealSection = memo(
     nonVeg,
     parcel,
     parcelTaken,
-    taken,
     flatVegTaken,
     flatNonVegTaken,
     kidsTotal,
@@ -298,7 +297,10 @@ const DashboardMealSection = memo(
             {/* 1. PLANNED BUTTON */}
             <Pressable
               onPress={() => setViewMode("planned")}
+              accessible={true}
+              accessibilityRole="button"
               accessibilityLabel={UI_TEXT.plannedOnly}
+              accessibilityState={{ selected: viewMode === "planned" }}
               style={({ pressed }) => [
                 {
                   width: s(36),
@@ -320,7 +322,10 @@ const DashboardMealSection = memo(
             {!isFuture && (
               <Pressable
                 onPress={() => setViewMode("grid")}
+                accessible={true}
+                accessibilityRole="button"
                 accessibilityLabel={UI_TEXT.fullGrid}
+                accessibilityState={{ selected: viewMode === "grid" }}
                 style={({ pressed }) => [
                   {
                     width: s(36),
@@ -342,7 +347,10 @@ const DashboardMealSection = memo(
             {/* 3. CHART BUTTON */}
             <Pressable
               onPress={() => setViewMode("chart")}
+              accessible={true}
+              accessibilityRole="button"
               accessibilityLabel={UI_TEXT.chartView}
+              accessibilityState={{ selected: viewMode === "chart" }}
               style={({ pressed }) => [
                 {
                   width: s(36),
@@ -364,7 +372,9 @@ const DashboardMealSection = memo(
           {/* 4. SHARE BUTTON */}
           <Pressable
             onPress={handleShare}
-            accessibilityLabel="Share on WhatsApp"
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={UI_TEXT.shareWhatsApp}
             style={({ pressed }) => [
               {
                 width: s(36),
@@ -390,25 +400,17 @@ const DashboardMealSection = memo(
 export function DashboardScreen() {
   const { userRole, handleLogout } = useAuth();
   const {
-    foodMenu, dayConfig, seasonName, paymentConfig, guestEnabled, seasonEnabled,
-    dashboardData, collections, updateGuestCount, kidsEnabled
+    foodMenu, dayConfig, seasonName, guestEnabled, seasonEnabled,
+    dashboardData, kidsEnabled
   } = useCoreDatabase();
 
   const { navigate, goBack } = useAppNavigation();
-  const { showAlert } = useUI();
 
   const styles = useStyles();
   const { s } = useScaling();
   const { theme, themeType } = useAppTheme();
   const scrollRef = useRef<ScrollView>(null);
   const sectionRefs = useRef<Record<string, number>>({});
-
-  const focusSection = (key: string) => {
-    const y = sectionRefs.current[key];
-    if (y !== undefined && scrollRef.current) {
-      scrollRef.current.scrollTo({ y: y - s(20), animated: true });
-    }
-  };
 
   const sortedActiveDays = useMemo(() => {
     const active = dayConfig.filter((d) => d.enabled).map((d) => d.id);
@@ -554,21 +556,6 @@ export function DashboardScreen() {
     }
     return null;
   }, [dayConfig, dashboardData]);
-
-  const { isVegEnabledGlobally, isNonVegEnabledGlobally } = useMemo(() => {
-    return {
-      isVegEnabledGlobally: dayConfig.some(d => d.enabled && (
-        (d[MealType.BREAKFAST].enabled && d[MealType.BREAKFAST].veg) ||
-        (d[MealType.LUNCH].enabled && d[MealType.LUNCH].veg) ||
-        (d[MealType.DINNER].enabled && d[MealType.DINNER].veg)
-      )),
-      isNonVegEnabledGlobally: dayConfig.some(d => d.enabled && (
-        (d[MealType.BREAKFAST].enabled && d[MealType.BREAKFAST].nonVeg) ||
-        (d[MealType.LUNCH].enabled && d[MealType.LUNCH].nonVeg) ||
-        (d[MealType.DINNER].enabled && d[MealType.DINNER].nonVeg)
-      ))
-    };
-  }, [dayConfig]);
 
   const emptyMeal = {
     veg: [],
@@ -816,7 +803,6 @@ export function DashboardScreen() {
               {sortedMeals.map((mKey) => {
                 if (!isMealEnabled(day, mKey, dayConfig)) return null;
 
-                const mealKey = `${day}-${mKey}`;
                 const gTotal = (item[`${mKey}GuestVeg` as keyof typeof item] || 0) + (item[`${mKey}GuestNonVeg` as keyof typeof item] || 0);
                 const mealProps = mKey === MealType.BREAKFAST ? {
                   total: (item.breakfast || 0) + gTotal,

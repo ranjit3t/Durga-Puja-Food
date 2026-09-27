@@ -2,7 +2,7 @@ import React from "react";
 import { View, Text, ScrollView, Pressable, StatusBar, useWindowDimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useStyles, useScaling } from "../styles";
-import { useAppTheme, StatusBarStyleMode } from "../theme";
+import { useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
 import { useAuth } from "../context/AuthContext";
 import { useCoreDatabase } from "../context/DatabaseContext";
@@ -16,8 +16,8 @@ import { ThemeToggleButton } from "../components/common/ThemeToggleButton";
 
 export function HomeScreen() {
   const styles = useStyles();
-  const { s, v, isWeb } = useScaling();
-  const { theme, themeType, toggleTheme } = useAppTheme();
+  const { s, isWeb } = useScaling();
+  const { theme, themeType } = useAppTheme();
   const { userRole, handleLogout, versionAlertShown, markVersionAlertShown } = useAuth();
   const {
     subscriptions, dayConfig, seasonName, seasonEnabled, guestEnabled, totalPeople, firebaseError, paymentConfig, collections, kidsEnabled, foodMenu, remoteAppVersion, loading
@@ -50,7 +50,6 @@ export function HomeScreen() {
   const labelFontSize = isNarrow ? 10 : s(12);
   const rowGap = isNarrow ? 8 : s(10);
   const iconSize = s(18);
-  const actionIconSize = s(120);
   const actionIconSizeLarge = s(150);
 
   // Find if there is an active current meal going on right now
@@ -170,7 +169,13 @@ export function HomeScreen() {
           </Pressable>
         ) : null}
 
-        <Pressable onPress={navigate.bind(null, AppScreen.SUBSCRIPTION_LIST)} style={[styles.summary, { padding: cardPadding, marginBottom: s(16), overflow: 'hidden', minHeight: cardMinHeight }]}>
+        <Pressable
+          onPress={navigate.bind(null, AppScreen.SUBSCRIPTION_LIST)}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel={`${UI_TEXT.subscriptions}, ${UI_TEXT.activePasses}: ${subscriptions.length}`}
+          style={[styles.summary, { padding: cardPadding, marginBottom: s(16), overflow: 'hidden', minHeight: cardMinHeight }]}
+        >
           <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center', opacity: 0.08 }}>
             <Ionicons name="ticket-outline" size={isNarrow ? 120 : actionIconSizeLarge} color={theme.colors.white} />
           </View>
@@ -238,6 +243,9 @@ export function HomeScreen() {
             {currentMealInfo ? (
               <Pressable
                 onPress={() => navigate(AppScreen.DASHBOARD)}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={`${currentMealInfo.dayLabel} ${currentMealInfo.mealLabel}`}
                 style={{ flexDirection: "row", alignItems: "center", gap: s(4), backgroundColor: theme.colors.white + "33", paddingHorizontal: isNarrow ? 6 : s(8), paddingVertical: s(4), borderRadius: s(6) }}
               >
                 <View style={{ width: s(5), height: s(5), borderRadius: s(2.5), backgroundColor: theme.colors.success }} />
@@ -251,12 +259,14 @@ export function HomeScreen() {
 
         <View style={styles.compactActions}>
           {userRole === UserRole.ADMIN && seasonEnabled && !isSeasonDone(dayConfig) && (
-            <Pressable accessibilityLabel={UI_TEXT.addFlat} onPress={() => startNew(dayConfig, seasonName, paymentConfig, guestEnabled, true, seasonEnabled)} style={[styles.compactSecondary, { backgroundColor: theme.colors.success, borderColor: theme.colors.success }]} disabled={getActiveDays(dayConfig).length === 0}>
+            <Pressable accessible={true} accessibilityRole="button" accessibilityLabel={UI_TEXT.addFlat} onPress={() => startNew(dayConfig, seasonName, paymentConfig, guestEnabled, true, seasonEnabled)} style={[styles.compactSecondary, { backgroundColor: theme.colors.success, borderColor: theme.colors.success }]} disabled={getActiveDays(dayConfig).length === 0}>
               <ActionLabel icon="add-circle-outline" label={UI_TEXT.addFlat} color={theme.colors.white} size={iconSize} vertical />
             </Pressable>
           )}
           {guestEnabled && (
             <Pressable
+              accessible={true}
+              accessibilityRole="button"
               accessibilityLabel={UI_TEXT.guestButton}
               onPress={() => {
                 if (currentMealInfo) {
@@ -271,10 +281,12 @@ export function HomeScreen() {
               <ActionLabel icon="people-circle-outline" label={UI_TEXT.guestButton} color={theme.colors.white} size={iconSize} vertical />
             </Pressable>
           )}
-          <Pressable accessibilityLabel={UI_TEXT.subscriptions} onPress={() => navigate(AppScreen.SUBSCRIPTION_LIST)} style={[styles.compactSecondary, { backgroundColor: theme.cardColors[1].accent, borderColor: theme.cardColors[1].accent }]}>
+          <Pressable accessible={true} accessibilityRole="button" accessibilityLabel={UI_TEXT.subscriptions} onPress={() => navigate(AppScreen.SUBSCRIPTION_LIST)} style={[styles.compactSecondary, { backgroundColor: theme.cardColors[1].accent, borderColor: theme.cardColors[1].accent }]}>
             <ActionLabel icon="list-outline" label={UI_TEXT.subscriptions} color={theme.colors.white} size={iconSize} vertical />
           </Pressable>
           <Pressable
+            accessible={true}
+            accessibilityRole="button"
             accessibilityLabel={UI_TEXT.scanQr}
             onPress={() => {
               setIsQuickCheckout(false);
@@ -286,6 +298,8 @@ export function HomeScreen() {
           </Pressable>
           {currentMealInfo && (
             <Pressable
+              accessible={true}
+              accessibilityRole="button"
               accessibilityLabel={UI_TEXT.quickCheckout}
               onPress={() => {
                 setIsQuickCheckout(true);
@@ -296,27 +310,69 @@ export function HomeScreen() {
               <ActionLabel icon="flash-outline" label={UI_TEXT.quickCheckout} color={theme.colors.white} size={iconSize} vertical />
             </Pressable>
           )}
-          <Pressable accessibilityLabel={UI_TEXT.dashboard} onPress={() => navigate(AppScreen.DASHBOARD)} style={[styles.compactSecondary, { backgroundColor: theme.cardColors[3].accent, borderColor: theme.cardColors[3].accent }]}>
+          <Pressable
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={UI_TEXT.dashboard}
+            onPress={() => navigate(AppScreen.DASHBOARD)}
+            style={[styles.compactSecondary, { backgroundColor: theme.cardColors[3].accent, borderColor: theme.cardColors[3].accent }]}
+          >
             <ActionLabel icon="stats-chart-outline" label={UI_TEXT.dashboard} color={theme.colors.white} size={iconSize} vertical />
           </Pressable>
-          <Pressable accessibilityLabel={UI_TEXT.report} onPress={() => navigate(AppScreen.REPORT)} style={[styles.compactSecondary, { backgroundColor: theme.cardColors[5].accent, borderColor: theme.cardColors[5].accent }]}>
+          <Pressable
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={UI_TEXT.report}
+            onPress={() => navigate(AppScreen.REPORT)}
+            style={[styles.compactSecondary, { backgroundColor: theme.cardColors[5].accent, borderColor: theme.cardColors[5].accent }]}
+          >
             <ActionLabel icon="document-text-outline" label={UI_TEXT.report} color={theme.colors.white} size={iconSize} vertical />
           </Pressable>
-          <Pressable accessibilityLabel={UI_TEXT.viewMenu} onPress={() => navigate(AppScreen.VIEW_MENU)} style={[styles.compactSecondary, { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary }]}>
+          <Pressable
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={UI_TEXT.viewMenu}
+            onPress={() => navigate(AppScreen.VIEW_MENU)}
+            style={[styles.compactSecondary, { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary }]}
+          >
             <ActionLabel icon="restaurant-outline" label={UI_TEXT.viewMenu} color={theme.colors.white} size={iconSize} vertical />
           </Pressable>
-          <Pressable accessibilityLabel={UI_TEXT.notes} onPress={() => navigate(AppScreen.NOTES)} style={[styles.compactSecondary, { backgroundColor: theme.cardColors[0].accent, borderColor: theme.cardColors[0].accent }]}>
+          <Pressable
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={UI_TEXT.notes}
+            onPress={() => navigate(AppScreen.NOTES)}
+            style={[styles.compactSecondary, { backgroundColor: theme.cardColors[0].accent, borderColor: theme.cardColors[0].accent }]}
+          >
             <ActionLabel icon="document-text-outline" label={UI_TEXT.notes} color={theme.colors.white} size={iconSize} vertical />
           </Pressable>
           {userRole === UserRole.ADMIN && (
             <>
-              <Pressable accessibilityLabel={UI_TEXT.contacts} onPress={() => navigate(AppScreen.CONTACTS)} style={[styles.compactSecondary, { backgroundColor: theme.cardColors[2].accent, borderColor: theme.cardColors[2].accent }]}>
+              <Pressable
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={UI_TEXT.contacts}
+                onPress={() => navigate(AppScreen.CONTACTS)}
+                style={[styles.compactSecondary, { backgroundColor: theme.cardColors[2].accent, borderColor: theme.cardColors[2].accent }]}
+              >
                 <ActionLabel icon="people-outline" label={UI_TEXT.contacts} color={theme.colors.white} size={iconSize} vertical />
               </Pressable>
-              <Pressable accessibilityLabel={UI_TEXT.activityLog} onPress={() => navigate(AppScreen.ACTIVITY_LOG)} style={[styles.compactSecondary, { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary }]}>
+              <Pressable
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={UI_TEXT.activityLog}
+                onPress={() => navigate(AppScreen.ACTIVITY_LOG)}
+                style={[styles.compactSecondary, { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary }]}
+              >
                 <ActionLabel icon="time-outline" label={UI_TEXT.activityLog} color={theme.colors.white} size={iconSize} vertical />
               </Pressable>
-              <Pressable accessibilityLabel={UI_TEXT.settings} onPress={() => navigate(AppScreen.SETTINGS)} style={[styles.compactSecondary, { backgroundColor: theme.colors.textMuted, borderColor: theme.colors.textMuted }]}>
+              <Pressable
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={UI_TEXT.settings}
+                onPress={() => navigate(AppScreen.SETTINGS)}
+                style={[styles.compactSecondary, { backgroundColor: theme.colors.textMuted, borderColor: theme.colors.textMuted }]}
+              >
                 <ActionLabel icon="settings-outline" label={UI_TEXT.settings} color={theme.colors.white} size={iconSize} vertical />
               </Pressable>
             </>

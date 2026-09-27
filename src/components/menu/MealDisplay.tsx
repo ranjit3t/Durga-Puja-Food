@@ -3,7 +3,7 @@ import { View, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useStyles } from "../../styles";
 import { useAppTheme } from "../../theme";
-import { MealMenu, Day, ConfigDay, MealType, DietType, AppThemeMode } from "../../types";
+import { MealMenu, Day, ConfigDay, MealType, DietType } from "../../types";
 import { isDietaryEnabled, isMealCurrent } from "../../constants";
 import { UI_TEXT } from "../../strings";
 

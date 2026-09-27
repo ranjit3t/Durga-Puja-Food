@@ -340,7 +340,7 @@ export const mealChoicesFromMeals = (
  * Initializes meal slots (Breakfast/Lunch/Dinner) with 'None' choice.
  */
 export const mealSlotsFromChoices = (
-  mealByPerson: Subscription["mealByPerson"],
+  _mealByPerson: Subscription["mealByPerson"],
   count: number,
   config: ConfigDay[]
 ) =>

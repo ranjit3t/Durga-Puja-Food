@@ -120,6 +120,10 @@ export function SingleMealReport({
         >
           <Pressable
             onPress={() => setViewMode("complete")}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={UI_TEXT.completeView}
+            accessibilityState={{ selected: viewMode === "complete" }}
             style={({ pressed }) => [
               {
                 flex: 1,
@@ -166,6 +170,10 @@ export function SingleMealReport({
 
           <Pressable
             onPress={() => setViewMode("planned")}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={UI_TEXT.plannedView}
+            accessibilityState={{ selected: viewMode === "planned" }}
             style={({ pressed }) => [
               {
                 flex: 1,

@@ -59,7 +59,7 @@ export function MealMetricGrid(props: MealMetricProps) {
     totalVegTaken, totalNonVegTaken, guestVeg, guestNonVeg,
     guestVegTaken, guestNonVegTaken, totalMealTaken,
     kidsTotal, kidsTaken, kidsVeg, kidsNonVeg, kidsVegTaken, kidsNonVegTaken,
-    guestEnabled, kidsEnabled, isParcelEnabled, isBothEnabled, labels,
+    guestEnabled, kidsEnabled, isParcelEnabled, isBothEnabled,
     showPlannedOnly = false
   } = props;
 

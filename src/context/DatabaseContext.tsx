@@ -670,7 +670,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
   const upsertNote = useCallback(async (note: Note) => {
     try {
       const isEdit = !!note.id;
-      const result = await repository.upsertNote(note);
+      await repository.upsertNote(note);
       addActivityLog({
         module: ActivityModule.NOTE,
         action: isEdit ? ActivityAction.UPDATE : ActivityAction.CREATE,

@@ -17,7 +17,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useStyles, useScaling } from "../styles";
-import { StatusBarStyleMode, useAppTheme } from "../theme";
+import { useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
 import { useAuth } from "../context/AuthContext";
 import { useCoreDatabase, useActivityLogs } from "../context/DatabaseContext";
@@ -92,6 +92,9 @@ const SubscriptionCard = React.memo(({
   return (
     <Pressable
       onPress={() => onSelect(item)}
+      accessible={true}
+      accessibilityRole="button"
+      accessibilityLabel={`${UI_TEXT.flatUpper} ${item.flat}, ${UI_TEXT.block} ${item.block}`}
       style={[
         styles.card,
         {
@@ -109,7 +112,9 @@ const SubscriptionCard = React.memo(({
               onOpenQuickCheckout(item);
             }
           }}
-          accessibilityLabel={UI_TEXT.quickCheckout}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel={`${UI_TEXT.quickCheckout} (${missedCount})`}
           style={({ pressed }) => [
             {
               position: 'absolute',
@@ -1076,11 +1081,16 @@ export function SubscriptionListScreen() {
                 style={styles.searchInput}
                 autoCapitalize="characters"
                 clearButtonMode="while-editing"
+                accessible={true}
+                accessibilityLabel={UI_TEXT.searchPlaceholder}
               />
             </View>
             <View style={{ flexDirection: 'row', gap: s(8), alignItems: 'center', flexShrink: 0 }}>
               <Pressable
                 onPress={() => setIsAscending(!isAscending)}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={UI_TEXT.activePasses}
                 style={({ pressed }) => [
                   {
                     width: s(44),
@@ -1104,6 +1114,9 @@ export function SubscriptionListScreen() {
               {visibleSubscriptions.length >= 1 && (
                 <Pressable
                   onPress={handleExportExcel}
+                  accessible={true}
+                  accessibilityRole="button"
+                  accessibilityLabel={UI_TEXT.exportExcel}
                   style={({ pressed }) => [
                     {
                       flexDirection: 'row',

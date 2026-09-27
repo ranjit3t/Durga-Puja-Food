@@ -11,7 +11,7 @@ import {
   StatusBar,
 } from "react-native";
 import { useStyles } from "../styles";
-import { useAppTheme, StatusBarStyleMode } from "../theme";
+import { useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
 import { AppThemeMode } from "../types";
 import {
@@ -19,11 +19,10 @@ import {
   isMealEnabled,
   isMealDone,
   isMealCurrent,
-  getSortedMealKeys,
   getMealLabel,
   getDayAbbr,
 } from "../constants";
-import { Day, DayMenu, MealMenu, ConfigDay, MealType, AppScreen, ActivityModule, ActivityAction } from "../types";
+import { Day, MealMenu, MealType, AppScreen, ActivityModule, ActivityAction } from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
@@ -43,7 +42,7 @@ export function MenuEditorScreen() {
   } = useCoreDatabase();
   const { addActivityLog } = useActivityLogs();
   const { showAlert } = useUI();
-  const { navigate, goBack, targetDay, targetMeal, setTargetDay, setTargetMeal } = useAppNavigation();
+  const { navigate, goBack, targetDay, setTargetDay, setTargetMeal } = useAppNavigation();
 
   const scrollRef = useRef<ScrollView>(null);
   const layouts = useRef<Record<string, number>>({});
@@ -268,6 +267,10 @@ export function MenuEditorScreen() {
         {canEdit && (
           <Pressable
             onPress={handleSave}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={saving ? UI_TEXT.saving : UI_TEXT.saveMenu}
+            accessibilityState={{ disabled: saving || !hasAnyChanges }}
             style={[styles.primary, (saving || !hasAnyChanges) && { opacity: 0.5 }]}
             disabled={saving || !hasAnyChanges}
           >

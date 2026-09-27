@@ -13,7 +13,7 @@ import {
   Switch,
 } from "react-native";
 import { useStyles } from "../styles";
-import { useAppTheme, StatusBarStyleMode } from "../theme";
+import { useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
 import { ConfigDay, PaymentConfig, AppScreen, PaymentMode, AppThemeMode, ActivityModule, ActivityAction, DietaryOption } from "../types";
 import { BackButton } from "../components/common/BackButton";
@@ -181,8 +181,6 @@ export function SettingsScreen() {
     }
     setLocalGuestEnabled(val);
   };
-  const validateAndSetMobileEnabled = (val: boolean) => setLocalMobileEnabled(val);
-  const validateAndSetFoodPriceEnabled = (val: boolean) => setLocalFoodPriceEnabled(val);
 
   const validateAndSetPaymentEnabled = (val: boolean) => {
     if (!val) { // Switching OFF
@@ -210,7 +208,6 @@ export function SettingsScreen() {
     }
     setLocalPayment({ ...localPayment, options: { ...localPayment.options, [key]: val } });
   };
-
   const validateAndSetEnabled = (dayId: string, meal: MealType, val: boolean) => {
     if (!val) { // Switching OFF
       const hasSub = (subscriptions || []).some(sub =>
@@ -780,19 +777,10 @@ export function SettingsScreen() {
                              <Text style={{ fontWeight: "800", fontSize: 16, color: theme.colors.textPrimary, textTransform: "capitalize", flex: 1 }}>{getMealLabel(mKey as MealType)}</Text>
                           </View>
                           {(() => {
-                            const isMealSubscribed = (subscriptions || []).some(sub =>
-                              sub.mealSlots[day.id]?.some(slot => slot[mKey as MealType] !== DietaryOption.NONE)
-                            );
                             return (
                               <Switch
                                 value={m.enabled}
-                                onValueChange={(val) => {
-                                   if (!val && isMealSubscribed) {
-                                      showAlert(UI_TEXT.confirmDisableTitle, UI_TEXT.mealSubscribedError);
-                                      return;
-                                   }
-                                   updateMealConfig(day.id, mKey as any, { enabled: val });
-                                }}
+                                onValueChange={(val) => validateAndSetEnabled(day.id, mKey as MealType, val)}
                                 trackColor={{ true: theme.colors.primary }}
                                 style={{ flexShrink: 0 }}
                               />
@@ -881,6 +869,10 @@ export function SettingsScreen() {
                       <Pressable
                         disabled={isDaySubscribed}
                         onPress={() => removeDay(day.id)}
+                        accessible={true}
+                        accessibilityRole="button"
+                        accessibilityLabel={UI_TEXT.removeDayLabel}
+                        accessibilityState={{ disabled: isDaySubscribed }}
                         style={({ pressed }) => [
                           {
                             marginTop: 12,
@@ -903,10 +895,24 @@ export function SettingsScreen() {
             </View>
           );
         })}
-        <Pressable onPress={addNewDay} style={[styles.secondary, { borderStyle: "dashed", marginTop: 10, height: 64 }]}>
+        <Pressable
+          onPress={addNewDay}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel={UI_TEXT.addDayButton}
+          style={[styles.secondary, { borderStyle: "dashed", marginTop: 10, height: 64 }]}
+        >
           <ActionLabel icon="add-outline" label={UI_TEXT.addDayButton} />
         </Pressable>
-        <Pressable onPress={handleSave} style={[styles.primary, (saving || !hasChanged) && { opacity: 0.5 }, { marginTop: 32 }]} disabled={saving || !hasChanged}>
+        <Pressable
+          onPress={handleSave}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel={saving ? UI_TEXT.saving : UI_TEXT.updateSettingsButton}
+          accessibilityState={{ disabled: saving || !hasChanged }}
+          style={[styles.primary, (saving || !hasChanged) && { opacity: 0.5 }, { marginTop: 32 }]}
+          disabled={saving || !hasChanged}
+        >
           <ActionLabel icon="save-outline" label={saving ? UI_TEXT.saving : UI_TEXT.updateSettingsButton} color={theme.colors.white} size={22} />
         </Pressable>
         <View style={styles.footer}><Text style={styles.footerText}>{UI_TEXT.footerCopyright}</Text></View>

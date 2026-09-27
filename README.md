@@ -114,24 +114,33 @@ Each meal card section on the Analytics & Kitchen Operations Dashboard ([`Dashbo
 - **`Chart View`** ([`bar-chart-outline`](file:///D:/Code/Durga-Puja-Food/src/components/dashboard/MealBarChart.tsx)): Visual bar chart progress view.
 - **`WhatsApp Share`** ([`logo-whatsapp`](file:///D:/Code/Durga-Puja-Food/src/screens/DashboardScreen.tsx)): 1-tap card snapshot sharing in green accent.
 
-### 5. Multi-Source Quick Checkout, Height Management & Compact Inputs (`QuickCheckoutModal.tsx`, `CounterInput.tsx`, `SettingsScreen.tsx`)
+### 5. Multi-Source Quick Checkout, Category Parcel Controls & Atomic Meal Binding (`QuickCheckoutModal.tsx`, `CounterInput.tsx`, `SettingsScreen.tsx`)
 Quick Checkout can be triggered from 4 distinct application entry methods, tracked via `CheckoutSource` enum:
 - **`QR Code Scan`** ([`ScannerScreen.tsx`](file:///D:/Code/Durga-Puja-Food/src/screens/ScannerScreen.tsx)): Verified via live camera QR code scan.
 - **`Numeric Passcode Keypad`** ([`ScannerScreen.tsx`](file:///D:/Code/Durga-Puja-Food/src/screens/ScannerScreen.tsx)): Verified via 4-digit numeric passcode keypad entry.
 - **`Pass Details`** ([`DetailsScreen.tsx`](file:///D:/Code/Durga-Puja-Food/src/screens/DetailsScreen.tsx)): Triggered from the pass inspection view.
 - **`Pass Directory`** ([`SubscriptionListScreen.tsx`](file:///D:/Code/Durga-Puja-Food/src/screens/SubscriptionListScreen.tsx)): Interactive red missed meal badge tap.
 
-**Intelligent Quick Checkout Modal Height Management & Compact Controls**:
-- **Dynamic Viewport Height Cap (`maxHeight: Math.min(height * 0.88, 620)`)**: Restricts modal container height to 88% of the viewport with flexbox scroll containment, preventing dialog overflow on small mobile screens or narrow desktop windows.
-- **Consolidated Alert Banner Engine**: Merges Parcel Pickup Alerts and Partial Checkout Alerts into a single unified alert box with bulleted items when both are active, reducing alert banner vertical space by **> 50%**.
-- **Compact Horizontal Row Counter Inputs (`CounterInput.tsx`)**: Added `compact={true}` mode featuring Label & Max Limit on the Left and `[- 0 +]` counter controls on the Right, reducing input section height by **~45%**.
-- **Full-Height Festive Success Overlay & `expo-audio` Chime**: Replaced standard alert popups with a full-height, theme-enabled success overlay (`theme.colors.successLight`) with a large glowing green checkmark badge (`checkmark-done`), complete checkout details (Block, Flat, Day, Meal, Served counts, Total Plates, and Timestamp).
-- **`expo-audio` Integration**: Uses Expo SDK 57's native `expo-audio` engine (`createAudioPlayer`) to play [`assets/checkout.mp3`](file:///D:/Code/Durga-Puja-Food/assets/checkout.mp3) sound tone.
-- **Strict Splash Audio Triggering**: Sound triggers **ONLY when the success splash overlay window opens** AND **Audio Sound Feedback is explicitly enabled (`soundEnabled === true`)**. When sound is turned OFF in Settings, checkouts remain 100% silent.
-- **Global Audio Sound Feedback Setting**: Managed via accessible switch (`accessibilityRole="switch"`) in System Settings ([`SettingsScreen.tsx`](file:///D:/Code/Durga-Puja-Food/src/screens/SettingsScreen.tsx)) and persisted across app reloads via Firebase repository rules (`val.soundEnabled !== undefined ? Boolean(val.soundEnabled) : true`).
-- **Configurable Splash Timeout (0ms to 10000ms, default 3000ms)**: Configurable in System Settings ([`SettingsScreen.tsx`](file:///D:/Code/Durga-Puja-Food/src/screens/SettingsScreen.tsx)).
+**Category-Wise 4-Category Engine & Ordered Priority Allocation Algorithm**:
+- **Current Day & Meal Scope**: All limits and allocations strictly target the active current day and meal slot (`currentMealInfo.dayId`, `currentMealInfo.mealType`). Non-current meals cannot be modified via Quick Checkout.
+- **4-Category Classification & Strict Boundary Isolation**: Divides member slots into **Adult Veg**, **Adult Non-Veg**, **Kids Veg**, and **Kids Non-Veg** (or **Member Veg** / **Member Non-Veg** when `kidsEnabled = false`). Category matcher (`isSlotInCat`) guarantees zero cross-category meal leakage.
+- **Side-by-Side Interdependent Counter Inputs**: Each active subsection renders **Parcel** (shown first) and **Dine-In** side-by-side in horizontal rows. Enforces $P + D \le \text{remMealCount}$: increasing Parcel automatically decreases Dine-In if the sum exceeds remaining meals, and vice-versa.
+- **Dynamic Parcel Hiding**: When remaining parcel count for a subsection is `0` (`remParcelCount === 0`) or parcel service is disabled, the Parcel input field is omitted and the Dine-In input spans full width.
+- **Dynamic Subsection & Section Omission**: Empty subsections (`remMealCount === 0` and `remParcelCount === 0`) and empty sections are automatically omitted. On Veg-Only days (`isVegOnlyDay = true`), Non-Veg subsections are omitted. On Non-Veg only meals, Veg subsections are omitted.
+- **Ordered Priority Allocation Algorithm & Sequential UI Slot Matching**:
+  - **Sequential First-Available UI Slot Order**: Category processing (`categoryOrder`) strictly follows the top-to-bottom section rendering order (**Adult Veg** $\rightarrow$ **Adult Non-Veg** $\rightarrow$ **Kids Veg** $\rightarrow$ **Kids Non-Veg**). Member slot scanning ($i = 0..N-1$) strictly evaluates the first available unserved slot in sequential pass order matching the UI display without random shuffling.
+  - **Strict Parcel Allocation ($P$ times)**: Scans slots in order ($i = 0..N-1$) for the first unserved member belonging to the category who opted for parcel (`slot[parcelKey] === true` and `!taken[parcelKey]`), marking `foodTaken = true` and `parcelTaken = true`. Parcel is **never** allocated to Dine-In-only slots as fallback.
+  - **Prioritized Dine-In Allocation ($D$ times)**: Priority 1 scans for the first unserved member who did **not** opt for parcel (`!slot[parcelKey]`), marking `foodTaken = true`. Priority 2 (fallback) scans for parcel-opted unserved members, marking `foodTaken = true` while leaving `parcelTaken = false`. Dine-In expands up to total category subscribed meals (`remMealCount`).
+- **Unsubscribed Member Protection**: Unsubscribed member slots (`DietaryOption.NONE` or unconfigured) are strictly excluded from limit calculations and can **never** be marked `foodTaken = true` or `parcelTaken = true`.
+- **Parcel Discrepancy Detection**: If a parcel-opted member is served Dine-In when all meals for the category/pass are completed, automatically logs a Missed Parcel activity log (`ActivityAction.MISSED_PARCEL`).
+- **Slot Lockout & Immutability**: Once `foodTaken = true` is marked for any slot, that slot is locked and unavailable for subsequent selections.
+- **Compact Viewport Design & Pinned Action Row**: Action buttons (`Close` and `Checkout`) are pinned at the bottom of the card container, ensuring the **Checkout** button is 100% guaranteed to remain visible in the viewport.
+- **Human-Readable Success Splash Overlay**: Full-height green confirmation overlay (`theme.colors.successLight`) with glowing checkmark badge, total plates served, overall progress status, and human-readable category breakdown (e.g. `• Adult Veg: 1 Dine-In, 1 Parcel`).
+- **`expo-audio` Chime Integration**: Uses Expo SDK 57's native `expo-audio` engine (`createAudioPlayer`) to play [`assets/checkout.mp3`](file:///D:/Code/Durga-Puja-Food/assets/checkout.mp3) sound tone strictly when the success splash overlay opens (if `soundEnabled === true`).
+- **Configurable Splash Timeout (0ms to 10000ms, default 3000ms)**: Managed in System Settings ([`SettingsScreen.tsx`](file:///D:/Code/Durga-Puja-Food/src/screens/SettingsScreen.tsx)).
 - **Zero Hardcoded Colors & Text**: 100% theme-driven styling (`theme.colors`) and 100% localized text (`UI_TEXT`).
-- **Web & Accessibility Compliant**: 100% viewport scaling on Web browsers, `accessibilityRole="alert"`, and VoiceOver / TalkBack live speech announcements.
+- **Full WCAG 2.1 AA Accessibility & Web Compliance**: 100% viewport portal scaling on Web browsers, `accessibilityRole="alert"`, `accessibilityViewIsModal={true}`, `accessibilityState`, `accessibilityLabel`, and VoiceOver / TalkBack / ARIA live announcements across all 12 application screens.
+- **Responsive Card & Sub-Tab Flexbox Containment**: All button containers, report sub-tabs, and action rows use `flexWrap: "wrap"` or `flex: 1` flexbox containment with `adjustsFontSizeToFit`, guaranteeing buttons stay 100% inside white content card areas across all mobile, tablet, and web viewports.
 
 ### 6. Zero-App-Install QR Code Web Ordering & Free Firebase Realtime Status Engine
 - **Mobile Browser Execution**: Foodies and attendees scan a QR code at the stall to open the web application on Chrome or Safari **without downloading any native app**.
@@ -142,9 +151,18 @@ Quick Checkout can be triggered from 4 distinct application entry methods, track
 - **100% Duplicate Prevention**: Server-side atomic multi-path updates (`update(ref(db), multiPathUpdates)`) lock meal status and increment kitchen metrics in a single transaction.
 
 ### 7. Member Food Taken Date & Time Tracking
-- **Synchronized Batch Timestamps**: Checkouts assign a formatted timestamp string (`formatTakenTime()`, e.g. `"12 Oct, 1:15 PM"`) to all members served in that transaction.
-- **View Pass Time Badges (`DetailsScreen.tsx`)**: Displays member-level timestamps underneath service badges.
-- **Excel CSV Export Timestamps (`SubscriptionListScreen.tsx`)**: Directory exports include member-level meal taken date & time.
+- **Synchronized Unconditional Timestamps**: Checkouts assign an unconditionally updated timestamp string (`formatTakenTime()`, e.g. `"12 Oct, 1:15 PM"`) to all members served in that transaction, overwriting any stale or pre-existing timestamps.
+- **Conditional View Pass Time Badges (`DetailsScreen.tsx`)**: Displays member-level timestamps underneath service badges **strictly only when `foodTaken = true`**, hiding timestamp badges for unserved meal slots.
+- **Excel CSV Export Timestamps (`SubscriptionListScreen.tsx`)**: Directory exports include member-level meal taken date & time when meals are served.
+
+### 8. Subscription Amount Validation & Discrepancy Confirmation (`SubscriptionForm.tsx`)
+- **Automated Pricing Engine (`calculateSubscriptionAmount`)**: Calculates total subscription costs by summing meal prices and parcel prices across all active days for both adults and kids (`kidsVegPrice`, `kidsNonVegPrice`, `kidsVegParcelPrice`, `kidsNonVegParcelPrice`), falling back to adult menu prices and day config defaults when kid pricing is omitted or empty.
+- **Legacy Amount Normalization**: Legacy pass records with missing, `null`, or empty amount fields are normalized to `"0"` (`UI_TEXT.zero`) upon loading in Edit Pass, ensuring consistent rendering and calculations.
+- **Payment Input Sanitization**: Amount inputs strictly allow numeric digits and decimal numbers (`/[^0-9.]/g`), pre-populating newly added payment entries with `"0"` and setting empty/invalid inputs back to `"0"` on blur or save.
+- **Edit Pass Snapshot & Delta Trigger (`hasMealOrParcelChoicesChanged`)**: Captures initial meal and parcel choices on screen open. Discrepancy checks run only when meal choices, parcel options, or headcounts vary from initial loaded choices (or on new pass registration).
+- **Prioritized Confirmation Ordering**: When total entered payments do not match calculated subscription amounts, displays a "Subscription Amount Mismatch" confirmation dialog showing entered vs calculated totals. Save proceeds only if confirmed, and this alert always fires **before** any subsequent alerts (such as missed parcel warnings).
+- **Clean Numeric Formatting**: Completely omits currency symbols (`₹`) across payment displays, summary cards, pills, and alert messages in favor of clean numeric formatting.
+- **Full WCAG 2.1 AA Accessibility**: 100% WCAG compliant with explicit `accessible={true}`, `accessibilityRole`, `accessibilityLabel`, `accessibilityHint`, and `accessibilityState` across all preview cards, payment rows, inputs, and action controls.
 
 ---
 

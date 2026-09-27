@@ -16,20 +16,17 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
-  const [sessionStartTime, setSessionStartTime] = useState<number | null>(null);
   const [versionAlertShown, setVersionAlertShown] = useState(false);
 
   const handleLogin = useCallback((role: UserRole, name: string) => {
     setUserRole(role);
     setUserName(name);
-    setSessionStartTime(Date.now());
     setVersionAlertShown(false);
   }, []);
 
   const handleLogout = useCallback(() => {
     setUserRole(null);
     setUserName(null);
-    setSessionStartTime(null);
     setVersionAlertShown(false);
   }, []);
 

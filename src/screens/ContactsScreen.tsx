@@ -3,7 +3,7 @@
  * Displays a flat-wise sorted list of residents with registered mobile numbers.
  * Provides WhatsApp chat, WhatsApp call, and mobile call shortcuts.
  */
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo } from "react";
 import {
   View,
   Text,
@@ -112,6 +112,9 @@ export function ContactsScreen() {
           setSelectedRecord(item);
           navigate(AppScreen.DETAILS);
         }}
+        accessible={true}
+        accessibilityRole="button"
+        accessibilityLabel={`${UI_TEXT.flatUpper} ${item.flat}, ${UI_TEXT.block} ${item.block}`}
         style={({ pressed }) => [
           styles.card,
           {
@@ -145,6 +148,9 @@ export function ContactsScreen() {
                     e.stopPropagation();
                     handleWhatsAppChat(item);
                   }}
+                  accessible={true}
+                  accessibilityRole="button"
+                  accessibilityLabel={UI_TEXT.shareWhatsApp}
                   style={({ pressed }) => [
                     { width: s(44), height: s(44), borderRadius: s(12), backgroundColor: theme.colors.whatsapp + "15", alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: theme.colors.whatsapp + "40" },
                     pressed && { opacity: 0.7, backgroundColor: theme.colors.whatsapp + "30" }
@@ -157,6 +163,9 @@ export function ContactsScreen() {
                     e.stopPropagation();
                     handleSMS(item);
                   }}
+                  accessible={true}
+                  accessibilityRole="button"
+                  accessibilityLabel={UI_TEXT.logSms.replace("{id}", item.id)}
                   style={({ pressed }) => [
                     { width: s(44), height: s(44), borderRadius: s(12), backgroundColor: theme.colors.success + "15", alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: theme.colors.success + "40" },
                     pressed && { opacity: 0.7, backgroundColor: theme.colors.success + "30" }
@@ -169,6 +178,9 @@ export function ContactsScreen() {
                     e.stopPropagation();
                     handlePhoneCall(item);
                   }}
+                  accessible={true}
+                  accessibilityRole="button"
+                  accessibilityLabel={UI_TEXT.logCall.replace("{id}", item.id)}
                   style={({ pressed }) => [
                     { width: s(44), height: s(44), borderRadius: s(12), backgroundColor: theme.colors.primary + "15", alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: theme.colors.primary + "40" },
                     pressed && { opacity: 0.7, backgroundColor: theme.colors.primary + "30" }
@@ -215,10 +227,15 @@ export function ContactsScreen() {
                 onChangeText={setSearchText}
                 placeholder={UI_TEXT.searchPlaceholder}
                 placeholderTextColor={theme.colors.textMuted}
+                accessible={true}
+                accessibilityLabel={UI_TEXT.searchPlaceholder}
               />
             </View>
             <Pressable
               onPress={() => setIsAscending(!isAscending)}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={UI_TEXT.contacts}
               style={({ pressed }) => [
                 { width: 52, height: 52, borderRadius: 14, backgroundColor: theme.colors.surfaceDark, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: theme.colors.border },
                 pressed && { opacity: 0.7 }

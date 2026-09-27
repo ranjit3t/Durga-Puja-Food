@@ -362,6 +362,8 @@ export function ScannerScreen() {
               placeholderTextColor={theme.colors.white + "88"}
               keyboardType="number-pad"
               maxLength={4}
+              accessible={true}
+              accessibilityLabel={UI_TEXT.passCodeEntryHint}
               style={{
                 backgroundColor: theme.colors.shadow + "AA",
                 color: theme.colors.white,

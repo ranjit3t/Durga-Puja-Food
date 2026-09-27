@@ -12,7 +12,7 @@ export function MealBarChart(props: MealMetricProps) {
   const {
     total, veg, nonVeg, parcel, parcelTaken, totalVegTaken, totalNonVegTaken,
     guestVeg, guestNonVeg, guestVegTaken, guestNonVegTaken, kidsEnabled, guestEnabled, isBothEnabled,
-    kidsTotal, kidsTaken, kidsVeg, kidsNonVeg, kidsVegTaken, kidsNonVegTaken, totalMealTaken
+    kidsTotal, kidsTaken, kidsVegTaken, kidsNonVegTaken, totalMealTaken
   } = props;
 
   const chartHeight = 160;

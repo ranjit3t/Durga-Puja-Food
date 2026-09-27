@@ -12,8 +12,8 @@ import {
   Linking,
   Platform,
 } from "react-native";
-import { useStyles, useScaling } from "../styles";
-import { useAppTheme, StatusBarStyleMode } from "../theme";
+import { useStyles } from "../styles";
+import { useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
 import {
   getActiveDays,
@@ -26,7 +26,6 @@ import {
   getPaymentModeLabel,
   getMemberLegend,
   getMealLabel,
-  isParcelEnabled,
 } from "../constants";
 import { MealMenu, MealType, DietType, DietaryOption, AppScreen, UserRole, PaymentMode, ReportType, AppThemeMode, ActivityModule, ActivityAction, CheckoutSource } from "../types";
 import { BackButton } from "../components/common/BackButton";
@@ -528,7 +527,6 @@ export function DetailsScreen() {
             <View style={styles.personDays}>
               {activeDays.map((day) => {
                 const taken = subscription.takenByPerson[day]?.[personIndex];
-                const slots = subscription.mealSlots[day]?.[personIndex];
                 const isAnyTaken = taken && (taken[MealType.BREAKFAST] || taken[MealType.LUNCH] || taken[MealType.DINNER]);
 
                 const getTakenParts = () => {
@@ -606,6 +604,9 @@ export function DetailsScreen() {
           {hasUnservedFoodForCurrentMeal && (
             <Pressable
               onPress={handleQuickCheckoutClick}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={UI_TEXT.quickCheckout}
               style={[styles.primary, { backgroundColor: theme.colors.primary, marginTop: 0, height: 52, borderRadius: 16 }]}
             >
               <ActionLabel icon="flash-outline" label={UI_TEXT.quickCheckout} color={theme.colors.white} />
@@ -614,6 +615,10 @@ export function DetailsScreen() {
           {canEdit && (
             <Pressable
               onPress={onEdit}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={UI_TEXT.editPass}
+              accessibilityState={{ disabled: getActiveDays(dayConfig).length === 0 }}
               style={[styles.primary, getActiveDays(dayConfig).length === 0 && { opacity: 0.5 }]}
               disabled={getActiveDays(dayConfig).length === 0}
             >
@@ -623,6 +628,9 @@ export function DetailsScreen() {
           <View style={{ flexDirection: "row", gap: 12 }}>
             <Pressable
               onPress={onQr}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={UI_TEXT.showQr}
               style={[styles.primary, { flex: 1, backgroundColor: theme.colors.primary, marginTop: 0, height: 52, borderRadius: 16 }]}
             >
                <ActionLabel icon="qr-code-outline" label={UI_TEXT.showQr} color={theme.colors.white} />
@@ -630,6 +638,10 @@ export function DetailsScreen() {
             {isAdmin && canEdit && (
                <Pressable
                   disabled={!canDeletePass}
+                  accessible={true}
+                  accessibilityRole="button"
+                  accessibilityLabel={UI_TEXT.deleteButton}
+                  accessibilityState={{ disabled: !canDeletePass }}
                   onPress={() =>
                   showGlobalAlert(
                      UI_TEXT.deleteConfirmTitle,

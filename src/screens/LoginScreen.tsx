@@ -12,10 +12,9 @@ import {
   Platform,
   StatusBar,
   ScrollView,
-  useWindowDimensions,
 } from "react-native";
 import { useStyles } from "../styles";
-import { useAppTheme, StatusBarStyleMode } from "../theme";
+import { useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
 import { UserRole, AppThemeMode, ActivityModule, ActivityAction } from "../types";
 import { Ionicons } from "@expo/vector-icons";
@@ -30,7 +29,7 @@ export function LoginScreen() {
   const { getAuthConfig, addActivityLog } = useDatabase();
   const { showAlert } = useUI();
   const styles = useStyles();
-  const { theme, toggleTheme, themeType } = useAppTheme();
+  const { theme, themeType } = useAppTheme();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);

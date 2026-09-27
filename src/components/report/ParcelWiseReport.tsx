@@ -65,7 +65,7 @@ export function ParcelWiseReport({
   return (
     <View style={{ gap: 16 }}>
       {/* Sub-Tabs */}
-      <View style={{ flexDirection: 'row', gap: 12, marginBottom: 8, paddingHorizontal: 4 }}>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 8, paddingHorizontal: 2 }}>
         {[
           { id: ParcelTab.SUMMARY, label: UI_TEXT.dayWiseReport, icon: "list-outline" },
           { id: ParcelTab.MISSED, label: UI_TEXT.missedParcelReport, icon: "alert-circle-outline" },
@@ -73,13 +73,20 @@ export function ParcelWiseReport({
           <Pressable
             key={tab.id}
             onPress={() => setActiveTab(tab.id as ParcelTab)}
+            accessible={true}
+            accessibilityRole="tab"
+            accessibilityLabel={tab.label}
+            accessibilityState={{ selected: activeTab === tab.id }}
             style={({ pressed }) => [
               {
+                flex: 1,
+                minWidth: 140,
                 flexDirection: 'row',
                 alignItems: 'center',
-                gap: 8,
+                justifyContent: 'center',
+                gap: 6,
                 paddingVertical: 8,
-                paddingHorizontal: 16,
+                paddingHorizontal: 12,
                 borderRadius: 12,
                 backgroundColor: activeTab === tab.id ? theme.colors.primary : theme.colors.surfaceDark,
                 borderWidth: 1,
@@ -89,7 +96,13 @@ export function ParcelWiseReport({
             ]}
           >
             <Ionicons name={tab.icon as any} size={16} color={activeTab === tab.id ? theme.colors.white : theme.colors.textSecondary} />
-            <Text style={{ fontSize: 13, fontWeight: '800', color: activeTab === tab.id ? theme.colors.white : theme.colors.textSecondary }}>{tab.label}</Text>
+            <Text
+              numberOfLines={1}
+              adjustsFontSizeToFit={true}
+              style={{ fontSize: 12, fontWeight: '800', color: activeTab === tab.id ? theme.colors.white : theme.colors.textSecondary }}
+            >
+              {tab.label}
+            </Text>
           </Pressable>
         ))}
       </View>

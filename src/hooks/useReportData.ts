@@ -7,7 +7,6 @@ import {
   DietType,
   DietaryOption,
   PaymentMode,
-  PaymentEntry,
   TakenState,
   ReportType
 } from "../types";

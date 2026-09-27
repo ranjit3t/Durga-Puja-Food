@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { AppThemeMode } from "../../types";
 import { View, Text, TextInput, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useStyles } from "../../styles";

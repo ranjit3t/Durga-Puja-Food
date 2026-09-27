@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useStyles } from "../../styles";
 import { useAppTheme } from "../../theme";
 import { UI_TEXT } from "../../strings";
-import { getDayLabel, isMealEnabled, isDietaryEnabled, isParcelEnabled, isMealCurrent, getMealLabel } from "../../constants";
+import { getDayLabel, isMealEnabled, isDietaryEnabled, isParcelEnabled, getMealLabel } from "../../constants";
 import { ConfigDay, MealType, DietType } from "../../domain";
 
 interface DayWiseData {
@@ -101,7 +101,6 @@ export function DayWiseReport({
   const vegEnabled = isDietaryEnabled(currentDayId, currentMealType, DietType.VEG, dayConfig);
   const nonVegEnabled = isDietaryEnabled(currentDayId, currentMealType, DietType.NON_VEG, dayConfig);
   const parcelEnabled = isParcelEnabled(currentDayId, currentMealType, dayConfig);
-  const isCurrent = isMealCurrent(currentDayId, currentMealType, dayConfig);
 
   // Meal level calculations
   const mealVeg = m ? m.veg + (m.guestVeg || 0) + (m.kidsVeg || 0) : 0;
@@ -160,6 +159,10 @@ export function DayWiseReport({
         >
           <Pressable
             onPress={() => setViewMode("complete")}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={UI_TEXT.completeView}
+            accessibilityState={{ selected: viewMode === "complete" }}
             style={({ pressed }) => [
               {
                 flex: 1,
@@ -206,6 +209,10 @@ export function DayWiseReport({
 
           <Pressable
             onPress={() => setViewMode("planned")}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={UI_TEXT.plannedView}
+            accessibilityState={{ selected: viewMode === "planned" }}
             style={({ pressed }) => [
               {
                 flex: 1,

@@ -13,7 +13,6 @@ import {
   Platform,
   StyleSheet,
   useWindowDimensions,
-  AccessibilityInfo,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useDatabase } from "../../context/DatabaseContext";
@@ -26,7 +25,6 @@ import {
   MealType,
   DietType,
   UserRole,
-  AppThemeMode,
   AppScreen,
   GuestCheckoutSource,
 } from "../../types";

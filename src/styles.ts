@@ -23,7 +23,7 @@ export const useScaling = () => {
   return { s, v, scalingFactor, isWeb, isLargeScreen, isDesktop };
 };
 
-export const createStyles = (theme: AppTheme, width: number, height: number) => {
+export const createStyles = (theme: AppTheme, width: number, _height?: number) => {
   const COLORS = theme?.colors || defaultTheme.colors;
   const SIZES = theme?.sizes || defaultTheme.sizes;
   const TYPOGRAPHY = theme?.typography || defaultTheme.typography;
@@ -316,27 +316,6 @@ export const createStyles = (theme: AppTheme, width: number, height: number) => 
       fontSize: s(44),
       fontWeight: "900",
       marginTop: 4,
-    },
-
-    collectionMetric: {
-      backgroundColor: COLORS.surface,
-      borderRadius: s(16),
-      padding: s(12),
-      flex: 1,
-      alignItems: "center",
-      borderWidth: 1,
-      borderColor: COLORS.border,
-    },
-    collectionMetricLabel: {
-      color: COLORS.textSecondary,
-      fontSize: s(11),
-      fontWeight: "600",
-      marginTop: 4,
-    },
-    collectionMetricValue: {
-      color: COLORS.success,
-      fontSize: s(18),
-      fontWeight: "800",
     },
 
     // Section Management

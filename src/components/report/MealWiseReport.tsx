@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useStyles } from "../../styles";
 import { useAppTheme } from "../../theme";
 import { UI_TEXT } from "../../strings";
-import { getDayLabel, isMealEnabled, getSortedMealKeys, getMealLabel, isParcelEnabled } from "../../constants";
+import { getDayLabel, isMealEnabled, getMealLabel, isParcelEnabled } from "../../constants";
 import { AppThemeMode, ConfigDay, MealType } from "../../domain";
 
 interface MealStats {

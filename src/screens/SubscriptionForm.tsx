@@ -36,7 +36,6 @@ import {
   getMealLabel,
   getDietaryOptionLabel,
   getDayAbbr,
-  generatePasscode,
   generateUniquePasscode,
   formatTakenTime,
 } from "../constants";
@@ -70,6 +69,90 @@ import { useCoreDatabase, useActivityLogs } from "../context/DatabaseContext";
 import { useUI } from "../context/UIContext";
 import { useAppNavigation } from "../context/NavigationContext";
 import { Day, Subscription } from "../types";
+
+/**
+ * Calculates the total subscription amount based on meal choices, parcel options,
+ * food menu pricing, day configurations, and headcounts.
+ */
+export function calculateSubscriptionAmount(
+  mealSlots: Record<string, MealSlot[]>,
+  peopleCount: number,
+  _kidsCount: number,
+  foodMenu: Record<string, any>,
+  dayConfig: any[],
+  kidsEnabled: boolean
+): number {
+  let total = 0;
+  const dayIds = Object.keys(mealSlots || {});
+
+  dayIds.forEach((dayId) => {
+    const dayConf = dayConfig.find((d) => d.id === dayId);
+    if (!dayConf || !dayConf.enabled) return;
+
+    const dayMenu = foodMenu?.[dayId];
+    const slots = mealSlots[dayId] || [];
+
+    slots.forEach((personSlot, index) => {
+      const isKid = kidsEnabled && index >= peopleCount;
+
+      const mealTypes = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER];
+      mealTypes.forEach((mType) => {
+        const mealConf = dayConf[mType];
+        if (!mealConf || !mealConf.enabled) return;
+
+        const choice = personSlot[mType];
+        if (!choice || choice === DietaryOption.NONE) return;
+
+        const isParcel = !!personSlot[`${mType}Parcel` as keyof MealSlot];
+        const isParcelAllowed = isParcel && !!mealConf.parcel;
+
+        if (choice === DietaryOption.VEG) {
+          // Veg Meal Price
+          const kidVegPrice = dayMenu?.[mType]?.kidsVegPrice;
+          const adultVegPrice = dayMenu?.[mType]?.vegPrice;
+          const confVegPrice = mealConf.vegPrice;
+          const mealPrice = isKid
+            ? (kidVegPrice || adultVegPrice || confVegPrice || 0)
+            : (adultVegPrice || confVegPrice || 0);
+          total += Number(mealPrice) || 0;
+
+          // Veg Parcel Price
+          if (isParcelAllowed) {
+            const kidVegParcelPrice = dayMenu?.[mType]?.kidsVegParcelPrice;
+            const adultVegParcelPrice = dayMenu?.[mType]?.vegParcelPrice;
+            const confVegParcelPrice = mealConf.vegParcelPrice;
+            const parcelPrice = isKid
+              ? (kidVegParcelPrice || adultVegParcelPrice || confVegParcelPrice || 0)
+              : (adultVegParcelPrice || confVegParcelPrice || 0);
+            total += Number(parcelPrice) || 0;
+          }
+        } else if (choice === DietaryOption.NON_VEG) {
+          // Non-Veg Meal Price
+          const kidNonVegPrice = dayMenu?.[mType]?.kidsNonVegPrice;
+          const adultNonVegPrice = dayMenu?.[mType]?.nonVegPrice;
+          const confNonVegPrice = mealConf.nonVegPrice;
+          const mealPrice = isKid
+            ? (kidNonVegPrice || adultNonVegPrice || confNonVegPrice || 0)
+            : (adultNonVegPrice || confNonVegPrice || 0);
+          total += Number(mealPrice) || 0;
+
+          // Non-Veg Parcel Price
+          if (isParcelAllowed) {
+            const kidNonVegParcelPrice = dayMenu?.[mType]?.kidsNonVegParcelPrice;
+            const adultNonVegParcelPrice = dayMenu?.[mType]?.nonVegParcelPrice;
+            const confNonVegParcelPrice = mealConf.nonVegParcelPrice;
+            const parcelPrice = isKid
+              ? (kidNonVegParcelPrice || adultNonVegParcelPrice || confNonVegParcelPrice || 0)
+              : (adultNonVegParcelPrice || confNonVegParcelPrice || 0);
+            total += Number(parcelPrice) || 0;
+          }
+        }
+      });
+    });
+  });
+
+  return total;
+}
 
 export function SubscriptionForm() {
   const { userRole, handleLogout } = useAuth();
@@ -371,15 +454,76 @@ export function SubscriptionForm() {
 
   // Payment State (supporting up to 3 payments)
   const [payments, setPayments] = useState<PaymentEntry[]>(() => {
-    if (form.payments && form.payments.length > 0) return form.payments;
-    const fallback = [{ amount: form.amount || UI_TEXT.zero, mode: form.paymentMode || enabledMethods[0], transactionId: form.transactionId }];
+    if (form.payments && form.payments.length > 0) {
+      return form.payments.map((p) => ({
+        ...p,
+        amount: (p.amount !== undefined && p.amount !== null && String(p.amount).trim() !== "")
+          ? String(p.amount)
+          : UI_TEXT.zero,
+      }));
+    }
+    const rawAmt = form.amount !== undefined && form.amount !== null ? String(form.amount).trim() : "";
+    const fallback = [{
+      amount: rawAmt !== "" ? rawAmt : UI_TEXT.zero,
+      mode: form.paymentMode || enabledMethods[0],
+      transactionId: form.transactionId
+    }];
     return fallback;
   });
+
+  // Capture initial meal state snapshot for Edit Pass to detect meal/parcel choice variations
+  const initialMealSnapshot = useRef({
+    mealSlots: value.mealSlots,
+    peopleCount: value.peopleCount,
+    kidsCount: value.kidsCount || 0,
+  });
+
+  const hasMealOrParcelChoicesChanged = useMemo(() => {
+    if (!lockIdentity) return true;
+    if (form.peopleCount !== initialMealSnapshot.current.peopleCount) return true;
+    if ((form.kidsCount || 0) !== initialMealSnapshot.current.kidsCount) return true;
+
+    const initSlots = initialMealSnapshot.current.mealSlots || {};
+    const currSlots = form.mealSlots || {};
+
+    const allDayIds = new Set([...Object.keys(initSlots), ...Object.keys(currSlots)]);
+
+    for (const dayId of allDayIds) {
+      const initDayList = (initSlots[dayId] || []) as MealSlot[];
+      const currDayList = (currSlots[dayId] || []) as MealSlot[];
+
+      if (initDayList.length !== currDayList.length) return true;
+
+      for (let i = 0; i < currDayList.length; i++) {
+        const initSlot = initDayList[i] || {};
+        const currSlot = currDayList[i] || {};
+
+        if (currSlot[MealType.BREAKFAST] !== initSlot[MealType.BREAKFAST]) return true;
+        if (currSlot[MealType.LUNCH] !== initSlot[MealType.LUNCH]) return true;
+        if (currSlot[MealType.DINNER] !== initSlot[MealType.DINNER]) return true;
+
+        if (!!currSlot.breakfastParcel !== !!initSlot.breakfastParcel) return true;
+        if (!!currSlot.lunchParcel !== !!initSlot.lunchParcel) return true;
+        if (!!currSlot.dinnerParcel !== !!initSlot.dinnerParcel) return true;
+      }
+    }
+
+    return false;
+  }, [lockIdentity, form.peopleCount, form.kidsCount, form.mealSlots]);
+
+  const sanitizeAmountText = useCallback((text: string): string => {
+    let sanitized = text.replace(/[^0-9.]/g, "");
+    const parts = sanitized.split(".");
+    if (parts.length > 2) {
+      sanitized = parts[0] + "." + parts.slice(1).join("");
+    }
+    return sanitized;
+  }, []);
 
   // Helper to ensure stable and normalized JSON comparison.
   // This removes undefined/null values and trims strings.
   const normalizeForComparison = useCallback((obj: any) => {
-    return JSON.stringify(obj, (key, value) => {
+    return JSON.stringify(obj, (_key, value) => {
       if (value === undefined || value === null) return undefined;
       if (typeof value === 'string') return value.trim();
       return value;
@@ -721,70 +865,107 @@ export function SubscriptionForm() {
   useEffect(() => {
     if (!foodPriceEnabled || !paymentConfig.enabled) return;
 
-    let total = 0;
-    const dayIds = Object.keys(form.mealSlots);
-
-    dayIds.forEach((dayId) => {
-      const dayConf = dayConfig.find((d) => d.id === dayId);
-      if (!dayConf || !dayConf.enabled) return;
-
-      const dayMenu = foodMenu[dayId];
-
-      const slots = form.mealSlots[dayId] || [];
-      (slots as any[]).forEach((personSlot, index) => {
-        const isKid = kidsEnabled && index >= form.peopleCount;
-
-        // Breakfast
-        if (personSlot[MealType.BREAKFAST] === DietaryOption.VEG) {
-          total += Number((isKid ? dayMenu?.[MealType.BREAKFAST]?.kidsVegPrice : dayMenu?.[MealType.BREAKFAST]?.vegPrice) || dayConf[MealType.BREAKFAST]?.vegPrice || 0);
-          if (personSlot.breakfastParcel) {
-            total += Number((isKid ? dayMenu?.[MealType.BREAKFAST]?.kidsVegParcelPrice : dayMenu?.[MealType.BREAKFAST]?.vegParcelPrice) || dayConf[MealType.BREAKFAST]?.vegParcelPrice || 0);
-          }
-        } else if (personSlot[MealType.BREAKFAST] === DietaryOption.NON_VEG) {
-          total += Number((isKid ? dayMenu?.[MealType.BREAKFAST]?.kidsNonVegPrice : dayMenu?.[MealType.BREAKFAST]?.nonVegPrice) || dayConf[MealType.BREAKFAST]?.nonVegPrice || 0);
-          if (personSlot.breakfastParcel) {
-            total += Number((isKid ? dayMenu?.[MealType.BREAKFAST]?.kidsNonVegParcelPrice : dayMenu?.[MealType.BREAKFAST]?.nonVegParcelPrice) || dayConf[MealType.BREAKFAST]?.nonVegParcelPrice || 0);
-          }
-        }
-
-        // Lunch
-        if (personSlot[MealType.LUNCH] === DietaryOption.VEG) {
-          total += Number((isKid ? dayMenu?.[MealType.LUNCH]?.kidsVegPrice : dayMenu?.[MealType.LUNCH]?.vegPrice) || dayConf[MealType.LUNCH]?.vegPrice || 0);
-          if (personSlot.lunchParcel) {
-            total += Number((isKid ? dayMenu?.[MealType.LUNCH]?.kidsVegParcelPrice : dayMenu?.[MealType.LUNCH]?.vegParcelPrice) || dayConf[MealType.LUNCH]?.vegParcelPrice || 0);
-          }
-        } else if (personSlot[MealType.LUNCH] === DietaryOption.NON_VEG) {
-          total += Number((isKid ? dayMenu?.[MealType.LUNCH]?.kidsNonVegPrice : dayMenu?.[MealType.LUNCH]?.nonVegPrice) || dayConf[MealType.LUNCH]?.nonVegPrice || 0);
-          if (personSlot.lunchParcel) {
-            total += Number((isKid ? dayMenu?.[MealType.LUNCH]?.kidsNonVegParcelPrice : dayMenu?.[MealType.LUNCH]?.nonVegParcelPrice) || dayConf[MealType.LUNCH]?.nonVegParcelPrice || 0);
-          }
-        }
-
-        // Dinner
-        if (personSlot[MealType.DINNER] === DietaryOption.VEG) {
-          total += Number((isKid ? dayMenu?.[MealType.DINNER]?.kidsVegPrice : dayMenu?.[MealType.DINNER]?.vegPrice) || dayConf[MealType.DINNER]?.vegPrice || 0);
-          if (personSlot.dinnerParcel) {
-            total += Number((isKid ? dayMenu?.[MealType.DINNER]?.kidsVegParcelPrice : dayMenu?.[MealType.DINNER]?.vegParcelPrice) || dayConf[MealType.DINNER]?.vegParcelPrice || 0);
-          }
-        } else if (personSlot[MealType.DINNER] === DietaryOption.NON_VEG) {
-          total += Number((isKid ? dayMenu?.[MealType.DINNER]?.kidsNonVegPrice : dayMenu?.[MealType.DINNER]?.nonVegPrice) || dayConf[MealType.DINNER]?.nonVegPrice || 0);
-          if (personSlot.dinnerParcel) {
-            total += Number((isKid ? dayMenu?.[MealType.DINNER]?.kidsNonVegParcelPrice : dayMenu?.[MealType.DINNER]?.nonVegParcelPrice) || dayConf[MealType.DINNER]?.nonVegParcelPrice || 0);
-          }
-        }
-      });
-    });
+    const total = calculateSubscriptionAmount(
+      form.mealSlots,
+      form.peopleCount,
+      form.kidsCount || 0,
+      foodMenu,
+      dayConfig,
+      !!kidsEnabled
+    );
 
     // Only update if we have a single payment entry and it's either a new pass
     // or the user hasn't manually edited the price yet.
     if (payments.length === 1 && (!lockIdentity && !isManualAmount)) {
       const currentVal = payments[0].amount || UI_TEXT.zero;
       if (currentVal !== String(total)) {
-        // Direct set to ensure immediate UI update
         setPayments([{ ...payments[0], amount: String(total) }]);
       }
     }
-  }, [form.mealSlots, foodPriceEnabled, dayConfig, isManualAmount, paymentConfig.enabled, payments.length, foodMenu, kidsEnabled, form.peopleCount, lockIdentity, payments]);
+  }, [
+    form.mealSlots,
+    foodPriceEnabled,
+    dayConfig,
+    isManualAmount,
+    paymentConfig.enabled,
+    payments.length,
+    foodMenu,
+    kidsEnabled,
+    form.peopleCount,
+    form.kidsCount,
+    lockIdentity,
+    payments
+  ]);
+
+  const handleSaveWithValidation = (
+    saveAction: (next: Subscription, acknowledgedMissedParcel?: boolean) => void
+  ) => {
+    if (!prepared.flat.trim()) {
+      showGlobalAlert(UI_TEXT.error, UI_TEXT.flatNoRequired);
+      return;
+    }
+    if (mobileInput && mobileInput.trim().length !== 10) {
+      showGlobalAlert(UI_TEXT.error, UI_TEXT.mobileInvalid);
+      return;
+    }
+
+    // Sanitize payment amounts (fill empty/invalid amounts with "0")
+    const sanitizedPayments = payments.map((p) => {
+      const amtStr = p.amount !== undefined && p.amount !== null ? String(p.amount).trim() : "";
+      const validNum = parseFloat(amtStr);
+      return {
+        ...p,
+        amount: !isNaN(validNum) ? String(validNum) : UI_TEXT.zero,
+      };
+    });
+
+    const currentTotalAmount = sanitizedPayments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+
+    const updatedPrepared: Subscription = {
+      ...prepared,
+      payments: sanitizedPayments,
+      amount: currentTotalAmount.toFixed(0),
+      paymentMode: sanitizedPayments[0]?.mode || PaymentMode.CASH,
+      transactionId: sanitizedPayments[0]?.transactionId || "",
+    };
+
+    const calculatedExpectedAmount = calculateSubscriptionAmount(
+      form.mealSlots,
+      form.peopleCount,
+      form.kidsCount || 0,
+      foodMenu,
+      dayConfig,
+      !!kidsEnabled
+    );
+
+    const shouldCheckDiscrepancy = paymentConfig.enabled && (!lockIdentity || hasMealOrParcelChoicesChanged);
+    const isDiscrepancy = shouldCheckDiscrepancy && Math.abs(currentTotalAmount - calculatedExpectedAmount) > 0.01;
+
+    const proceedToSave = () => {
+      if (checkParcelInconsistency(updatedPrepared)) {
+        showGlobalAlert(UI_TEXT.confirmDisableTitle, UI_TEXT.parcelMissedConfirm, [
+          { text: UI_TEXT.no, style: "cancel" },
+          { text: UI_TEXT.yes, style: "destructive", onPress: () => saveAction(updatedPrepared, true) },
+        ]);
+      } else {
+        saveAction(updatedPrepared);
+      }
+    };
+
+    if (isDiscrepancy) {
+      const formatAmount = (num: number) => (num % 1 !== 0 ? num.toFixed(2) : num.toFixed(0));
+      const msg = UI_TEXT.amountMismatchMsg
+        .replace("{entered}", formatAmount(currentTotalAmount))
+        .replace("{calculated}", formatAmount(calculatedExpectedAmount));
+
+      showGlobalAlert(UI_TEXT.amountMismatchTitle, msg, [
+        { text: UI_TEXT.no, style: "cancel" },
+        { text: UI_TEXT.yes, onPress: () => proceedToSave() },
+      ]);
+    } else {
+      proceedToSave();
+    }
+  };
 
   return (
     <KeyboardAvoidingView
@@ -827,7 +1008,7 @@ export function SubscriptionForm() {
             </View>
             {paymentConfig.enabled && (
               <Text style={[styles.previewAmount, { color: theme.colors.white, fontSize: 22 }]}>
-                {`${UI_TEXT.rs}${UI_TEXT.space}${totalAmount.toFixed(0)}`}
+                {totalAmount.toFixed(0)}
               </Text>
             )}
           </View>
@@ -866,6 +1047,8 @@ export function SubscriptionForm() {
                 autoCapitalize="characters"
                 editable={isAdmin && !lockIdentity}
                 selectTextOnFocus={isAdmin && !lockIdentity}
+                accessible={true}
+                accessibilityLabel={UI_TEXT.flatNo}
                 style={[styles.input, (!isAdmin || lockIdentity) && { backgroundColor: theme.colors.surface }]}
               />
             </View>
@@ -886,11 +1069,16 @@ export function SubscriptionForm() {
                   keyboardType="phone-pad"
                   editable={isAdmin && canEdit}
                   selectTextOnFocus={isAdmin && canEdit}
+                  accessible={true}
+                  accessibilityLabel={UI_TEXT.mobileNo}
                   style={[styles.input, { flex: 1 }, !isAdmin && { backgroundColor: theme.colors.surface }]}
                 />
                 {Platform.OS !== 'web' && isAdmin && canEdit && (
                   <Pressable
                     onPress={pickContact}
+                    accessible={true}
+                    accessibilityRole="button"
+                    accessibilityLabel={UI_TEXT.contacts}
                     style={{
                       backgroundColor: theme.colors.surfaceDark,
                       height: 56,
@@ -968,6 +1156,10 @@ export function SubscriptionForm() {
                 <Pressable
                   key={index}
                   onPress={() => setSelectedPerson(index)}
+                  accessible={true}
+                  accessibilityRole="button"
+                  accessibilityLabel={getMemberLegend(index, form.peopleCount, kidsEnabled)}
+                  accessibilityState={{ selected: selectedPerson === index }}
                   style={[
                     styles.selector,
                     selectedPerson === index && styles.selectorOn,
@@ -1000,6 +1192,10 @@ export function SubscriptionForm() {
                   key={day}
                   onLayout={(e) => { dayOffsets.current[day] = e.nativeEvent.layout.x; }}
                   onPress={() => setSelectedDay(day)}
+                  accessible={true}
+                  accessibilityRole="button"
+                  accessibilityLabel={getDayLabel(day, dayConfig)}
+                  accessibilityState={{ selected: selectedDay === day }}
                   style={[
                     styles.selector,
                     selectedDay === day && styles.selectorOn,
@@ -1307,11 +1503,16 @@ export function SubscriptionForm() {
 
         {/* Financials */}
         {paymentConfig.enabled && (
-          <View style={[styles.card, { backgroundColor: theme.cardColors[3].bg, borderColor: theme.cardColors[3].border }]}>
+          <View
+            accessible={true}
+            accessibilityRole="header"
+            accessibilityLabel={`${UI_TEXT.paymentDetails}, ${UI_TEXT.total}: ${totalAmount.toFixed(0)}`}
+            style={[styles.card, { backgroundColor: theme.cardColors[3].bg, borderColor: theme.cardColors[3].border }]}
+          >
              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                 <Text style={[styles.sectionTitle, { fontSize: 18, marginBottom: 0, color: theme.cardColors[3].accent }]}>{UI_TEXT.paymentDetails}</Text>
                 <View style={[styles.pill, { backgroundColor: theme.cardColors[3].accentLight }]}>
-                   <Text style={[styles.pillText, { color: theme.cardColors[3].accent }]}>{UI_TEXT.rs} {totalAmount.toFixed(0)}</Text>
+                   <Text style={[styles.pillText, { color: theme.cardColors[3].accent }]}>{totalAmount.toFixed(0)}</Text>
                 </View>
              </View>
 
@@ -1320,7 +1521,13 @@ export function SubscriptionForm() {
                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                     <Text style={{ fontSize: 12, fontWeight: '800', color: theme.colors.textSecondary }}>{UI_TEXT.paymentNumber}{idx + 1}</Text>
                     {idx > 0 && isAdmin && canEdit && (
-                      <Pressable onPress={() => removePayment(idx)}>
+                      <Pressable
+                        onPress={() => removePayment(idx)}
+                        accessible={true}
+                        accessibilityRole="button"
+                        accessibilityLabel={`${UI_TEXT.deleteButton} ${UI_TEXT.paymentNumber}${idx + 1}`}
+                        accessibilityHint="Removes this payment entry"
+                      >
                         <Ionicons name="trash-outline" size={18} color={theme.colors.error} />
                       </Pressable>
                     )}
@@ -1331,13 +1538,21 @@ export function SubscriptionForm() {
                       <Text style={styles.label}>{UI_TEXT.amount}</Text>
                       <TextInput
                         value={p.amount}
-                        onChangeText={(amount) => updatePayment(idx, { amount }, true)}
+                        onChangeText={(rawAmount) => updatePayment(idx, { amount: sanitizeAmountText(rawAmount) }, true)}
+                        onBlur={() => {
+                          if (!p.amount || p.amount.trim() === "" || isNaN(parseFloat(p.amount))) {
+                            updatePayment(idx, { amount: UI_TEXT.zero }, true);
+                          }
+                        }}
                         keyboardType="decimal-pad"
                         inputMode="decimal"
                         editable={isAdmin && canEdit}
                         returnKeyType="done"
                         placeholder={UI_TEXT.zero}
                         placeholderTextColor={theme.colors.textMuted}
+                        accessible={true}
+                        accessibilityLabel={`${UI_TEXT.paymentNumber}${idx + 1} ${UI_TEXT.amount}`}
+                        accessibilityHint="Enter payment amount in digits"
                         style={[styles.input, !isAdmin && { backgroundColor: theme.colors.surface }]}
                       />
                     </View>
@@ -1441,6 +1656,10 @@ export function SubscriptionForm() {
              {isAdmin && canEdit && payments.length < 3 && (
                <Pressable
                  onPress={addPayment}
+                 accessible={true}
+                 accessibilityRole="button"
+                 accessibilityLabel={UI_TEXT.addAnotherPayment}
+                 accessibilityHint="Adds an additional payment entry row up to a maximum of 3"
                  style={[styles.secondary, { borderStyle: 'dashed', marginTop: 20, height: 48, borderColor: theme.cardColors[3].accent }]}
                >
                  <ActionLabel icon="add-circle-outline" label={UI_TEXT.addAnotherPayment} color={theme.cardColors[3].accent} />
@@ -1453,24 +1672,11 @@ export function SubscriptionForm() {
         <View style={{ marginBottom: 40 }}>
           {canEdit && (
             <Pressable
-              onPress={() => {
-                if (!prepared.flat.trim()) {
-                  showGlobalAlert(UI_TEXT.error, UI_TEXT.flatNoRequired);
-                  return;
-                }
-                if (mobileInput && mobileInput.length !== 10) {
-                  showGlobalAlert(UI_TEXT.error, UI_TEXT.mobileInvalid);
-                  return;
-                }
-                if (checkParcelInconsistency(prepared)) {
-                  showGlobalAlert(UI_TEXT.confirmDisableTitle, UI_TEXT.parcelMissedConfirm, [
-                    { text: UI_TEXT.no, style: "cancel" },
-                    { text: UI_TEXT.yes, style: "destructive", onPress: () => onSave(prepared, true) }
-                  ]);
-                } else {
-                  onSave(prepared);
-                }
-              }}
+              onPress={() => handleSaveWithValidation(onSave)}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={UI_TEXT.saveChanges}
+              accessibilityState={{ disabled: !canSave }}
               style={[styles.primary, !canSave && { opacity: 0.5 }]}
               disabled={!canSave}
             >
@@ -1485,25 +1691,11 @@ export function SubscriptionForm() {
 
           {isAdmin && canEdit && onSaveQr ? (
             <Pressable
+              accessible={true}
+              accessibilityRole="button"
               accessibilityLabel={UI_TEXT.saveGenerateQr}
-              onPress={() => {
-                if (!prepared.flat.trim()) {
-                  showGlobalAlert(UI_TEXT.error, UI_TEXT.flatNoRequired);
-                  return;
-                }
-                if (mobileInput && mobileInput.length !== 10) {
-                  showGlobalAlert(UI_TEXT.error, UI_TEXT.mobileInvalid);
-                  return;
-                }
-                if (checkParcelInconsistency(prepared)) {
-                  showGlobalAlert(UI_TEXT.confirmDisableTitle, UI_TEXT.parcelMissedConfirm, [
-                    { text: UI_TEXT.no, style: "cancel" },
-                    { text: UI_TEXT.yes, style: "destructive", onPress: () => onSaveQr(prepared, true) }
-                  ]);
-                } else {
-                  onSaveQr(prepared);
-                }
-              }}
+              accessibilityState={{ disabled: !canSave }}
+              onPress={() => handleSaveWithValidation(onSaveQr)}
               style={[
                 styles.primary,
                 {
@@ -1536,14 +1728,23 @@ export function SubscriptionForm() {
             </Pressable>
           ) : null}
 
-          <Pressable onPress={onCancel} style={[styles.secondary, { marginTop: 16, backgroundColor: theme.colors.surfaceDark, borderColor: theme.colors.textSecondary }]}>
+          <Pressable
+            onPress={onCancel}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={UI_TEXT.cancel}
+            style={[styles.secondary, { marginTop: 16, backgroundColor: theme.colors.surfaceDark, borderColor: theme.colors.textSecondary }]}
+          >
              <ActionLabel icon="close-outline" label={UI_TEXT.cancel} color={theme.colors.textSecondary} />
           </Pressable>
 
           {isAdmin && canEdit && onDelete ? (
             <Pressable
               disabled={!canDeletePass}
+              accessible={true}
+              accessibilityRole="button"
               accessibilityLabel={UI_TEXT.deleteFlatRecord}
+              accessibilityState={{ disabled: !canDeletePass }}
               onPress={onDelete}
               style={[styles.deleteButton, { marginTop: 24 }, !canDeletePass && { opacity: 0.4 }]}
             >
