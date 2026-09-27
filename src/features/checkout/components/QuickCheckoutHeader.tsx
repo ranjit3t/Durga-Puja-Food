@@ -5,7 +5,7 @@ import { UI_TEXT } from "../../../strings";
 import { Subscription } from "../../../types";
 
 interface QuickCheckoutHeaderProps {
-  subscription: Subscription;
+  subscription: Subscription | null;
   currentMealLabel: string;
   onClose: () => void;
   theme: any;
@@ -19,6 +19,7 @@ export const QuickCheckoutHeader: React.FC<QuickCheckoutHeaderProps> = ({
   theme,
   s,
 }) => {
+  if (!subscription) return null;
   const displayName = (subscription as any).name || `${UI_TEXT.flat} #${subscription.id} (${subscription.block || ""}-${subscription.flat})`;
   return (
     <View style={{
