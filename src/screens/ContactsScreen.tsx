@@ -106,16 +106,8 @@ export function ContactsScreen() {
     const colorScheme = theme.cardColors[index % theme.cardColors.length];
 
     return (
-      <Pressable
-        onPress={() => {
-          setSelectedId(item.id);
-          setSelectedRecord(item);
-          navigate(AppScreen.DETAILS);
-        }}
-        accessible={true}
-        accessibilityRole="button"
-        accessibilityLabel={`${UI_TEXT.flatUpper} ${item.flat}, ${UI_TEXT.block} ${item.block}`}
-        style={({ pressed }) => [
+      <View
+        style={[
           styles.card,
           {
             backgroundColor: colorScheme.bg,
@@ -124,77 +116,90 @@ export function ContactsScreen() {
             padding: s(16),
             borderLeftWidth: 4,
             borderLeftColor: colorScheme.accent,
-          },
-          pressed && { opacity: 0.8 }
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }
         ]}
       >
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.flatLabel, { color: colorScheme.accent, marginBottom: 2 }]}>{UI_TEXT.block} {item.block}</Text>
-            <Text style={{ fontSize: s(22), fontWeight: '900', color: theme.colors.textPrimary }}>{UI_TEXT.flatUpper} {item.flat}</Text>
-            <Text style={{ fontSize: s(14), color: theme.colors.textSecondary, fontWeight: '700', marginTop: 4 }}>
-              {kidsEnabled ? (
-                `${item.peopleCount}${UI_TEXT.space}${item.peopleCount === 1 ? UI_TEXT.adult : UI_TEXT.adults}${item.kidsCount ? `${UI_TEXT.plus}${item.kidsCount}${UI_TEXT.space}${item.kidsCount === 1 ? UI_TEXT.kid : UI_TEXT.kids}` : ""}`
-              ) : (
-                `${item.peopleCount + (item.kidsCount || 0)}${item.peopleCount + (item.kidsCount || 0) === 1 ? UI_TEXT.personSuffix : UI_TEXT.personsSuffix}`
-              )}
-            </Text>
-          </View>
+        <Pressable
+          onPress={() => {
+            setSelectedId(item.id);
+            setSelectedRecord(item);
+            navigate(AppScreen.DETAILS);
+          }}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel={`${UI_TEXT.flatUpper} ${item.flat}, ${UI_TEXT.block} ${item.block}`}
+          style={({ pressed }) => [
+            { flex: 1 },
+            pressed && { opacity: 0.8 }
+          ]}
+        >
+          <Text style={[styles.flatLabel, { color: colorScheme.accent, marginBottom: 2 }]}>{UI_TEXT.block} {item.block}</Text>
+          <Text style={{ fontSize: s(22), fontWeight: '900', color: theme.colors.textPrimary }}>{UI_TEXT.flatUpper} {item.flat}</Text>
+          <Text style={{ fontSize: s(14), color: theme.colors.textSecondary, fontWeight: '700', marginTop: 4 }}>
+            {kidsEnabled ? (
+              `${item.peopleCount}${UI_TEXT.space}${item.peopleCount === 1 ? UI_TEXT.adult : UI_TEXT.adults}${item.kidsCount ? `${UI_TEXT.plus}${item.kidsCount}${UI_TEXT.space}${item.kidsCount === 1 ? UI_TEXT.kid : UI_TEXT.kids}` : ""}`
+            ) : (
+              `${item.peopleCount + (item.kidsCount || 0)}${item.peopleCount + (item.kidsCount || 0) === 1 ? UI_TEXT.personSuffix : UI_TEXT.personsSuffix}`
+            )}
+          </Text>
+        </Pressable>
 
-          <View style={{ gap: s(8), alignItems: 'center' }}>
-             <View style={{ flexDirection: 'row', gap: s(10) }}>
-                <Pressable
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    handleWhatsAppChat(item);
-                  }}
-                  accessible={true}
-                  accessibilityRole="button"
-                  accessibilityLabel={UI_TEXT.shareWhatsApp}
-                  style={({ pressed }) => [
-                    { width: s(44), height: s(44), borderRadius: s(12), backgroundColor: theme.colors.whatsapp + "15", alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: theme.colors.whatsapp + "40" },
-                    pressed && { opacity: 0.7, backgroundColor: theme.colors.whatsapp + "30" }
-                  ]}
-                >
-                  <Ionicons name="logo-whatsapp" size={s(22)} color={theme.colors.whatsapp} />
-                </Pressable>
-                <Pressable
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    handleSMS(item);
-                  }}
-                  accessible={true}
-                  accessibilityRole="button"
-                  accessibilityLabel={UI_TEXT.logSms.replace("{id}", item.id)}
-                  style={({ pressed }) => [
-                    { width: s(44), height: s(44), borderRadius: s(12), backgroundColor: theme.colors.success + "15", alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: theme.colors.success + "40" },
-                    pressed && { opacity: 0.7, backgroundColor: theme.colors.success + "30" }
-                  ]}
-                >
-                  <Ionicons name="mail-outline" size={s(22)} color={theme.colors.success} />
-                </Pressable>
-                <Pressable
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    handlePhoneCall(item);
-                  }}
-                  accessible={true}
-                  accessibilityRole="button"
-                  accessibilityLabel={UI_TEXT.logCall.replace("{id}", item.id)}
-                  style={({ pressed }) => [
-                    { width: s(44), height: s(44), borderRadius: s(12), backgroundColor: theme.colors.primary + "15", alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: theme.colors.primary + "40" },
-                    pressed && { opacity: 0.7, backgroundColor: theme.colors.primary + "30" }
-                  ]}
-                >
-                  <Ionicons name="call-outline" size={s(22)} color={theme.colors.primary} />
-                </Pressable>
-             </View>
-             <View style={{ backgroundColor: theme.colors.surfaceDark, paddingHorizontal: s(12), paddingVertical: s(6), borderRadius: s(10), borderWidth: 1, borderColor: theme.colors.border, width: '100%', alignItems: 'center' }}>
-                <Text style={{ fontSize: s(14), fontWeight: '900', color: theme.colors.textPrimary, letterSpacing: 0.5 }}>{item.mobile}</Text>
-             </View>
-          </View>
+        <View style={{ gap: s(8), alignItems: 'center', marginLeft: s(12) }}>
+           <View style={{ flexDirection: 'row', gap: s(10) }}>
+              <Pressable
+                onPress={(e) => {
+                  e.stopPropagation();
+                  handleWhatsAppChat(item);
+                }}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={UI_TEXT.shareWhatsApp}
+                style={({ pressed }) => [
+                  { width: s(44), height: s(44), borderRadius: s(12), backgroundColor: theme.colors.whatsapp + "15", alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: theme.colors.whatsapp + "40" },
+                  pressed && { opacity: 0.7, backgroundColor: theme.colors.whatsapp + "30" }
+                ]}
+              >
+                <Ionicons name="logo-whatsapp" size={s(22)} color={theme.colors.whatsapp} />
+              </Pressable>
+              <Pressable
+                onPress={(e) => {
+                  e.stopPropagation();
+                  handleSMS(item);
+                }}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={UI_TEXT.logSms.replace("{id}", item.id)}
+                style={({ pressed }) => [
+                  { width: s(44), height: s(44), borderRadius: s(12), backgroundColor: theme.colors.success + "15", alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: theme.colors.success + "40" },
+                  pressed && { opacity: 0.7, backgroundColor: theme.colors.success + "30" }
+                ]}
+              >
+                <Ionicons name="mail-outline" size={s(22)} color={theme.colors.success} />
+              </Pressable>
+              <Pressable
+                onPress={(e) => {
+                  e.stopPropagation();
+                  handlePhoneCall(item);
+                }}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={UI_TEXT.logCall.replace("{id}", item.id)}
+                style={({ pressed }) => [
+                  { width: s(44), height: s(44), borderRadius: s(12), backgroundColor: theme.colors.primary + "15", alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: theme.colors.primary + "40" },
+                  pressed && { opacity: 0.7, backgroundColor: theme.colors.primary + "30" }
+                ]}
+              >
+                <Ionicons name="call-outline" size={s(22)} color={theme.colors.primary} />
+              </Pressable>
+           </View>
+           <View style={{ backgroundColor: theme.colors.surfaceDark, paddingHorizontal: s(12), paddingVertical: s(6), borderRadius: s(10), borderWidth: 1, borderColor: theme.colors.border, width: '100%', alignItems: 'center' }}>
+              <Text style={{ fontSize: s(14), fontWeight: '900', color: theme.colors.textPrimary, letterSpacing: 0.5 }}>{item.mobile}</Text>
+           </View>
         </View>
-      </Pressable>
+      </View>
     );
   };
 

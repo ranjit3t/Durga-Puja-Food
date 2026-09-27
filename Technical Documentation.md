@@ -98,6 +98,13 @@ The application follows a **Serverless Layered Architecture** built on the **Exp
 - **Sequential Alert Pipeline**: Ensures subscription amount discrepancy confirmation appears first before any subsequent checks (such as missed parcel alerts).
 - **Clean Numeric Display & Accessibility Layer**: Completely removes currency symbols (`₹`) across payment displays and alert messages, applying explicit WCAG 2.1 AA accessibility properties (`accessible={true}`, `accessibilityRole`, `accessibilityLabel`, `accessibilityHint`, `accessibilityState`) to all controls and summary views.
 
+### M. React DOM Hydration & Dynamic Singular/Plural Grammar Architecture (`HomeScreen.tsx`, `SubscriptionListScreen.tsx`, `ContactsScreen.tsx`, `ActivityLogScreen.tsx`, `QuickCheckoutModal.tsx`, `ReportScreen.tsx`, `strings.ts`)
+- **DOM Hydration Compliance**: Replaced nested `<Pressable>` elements (`<button>` inside `<button>` in React Native Web) across `HomeScreen`, `SubscriptionListScreen` (`SubscriptionCard`), `ContactsScreen`, and `ActivityLogScreen` (`ActivityLogItem`) with clean `View` containers + non-nested sibling `Pressable` layouts, eliminating React DOM hydration errors and ensuring valid HTML output.
+- **Deprecation-Free Web Shadows & Text Shadows**: Replaced legacy `shadow*` and `textShadow*` style properties with conditional `Platform.OS === 'web'` spreading for `boxShadow` and `textShadow`, entirely eliminating React Native Web preprocessor warnings across all viewports.
+- **Responsive Wrapping Report Navigation Tabs**: Converted report category navigation buttons on `ReportScreen` to a responsive wrapping flex layout (`flexWrap: 'wrap'`), guaranteeing 100% button visibility without horizontal clipping across Web and mobile viewports.
+- **Responsive Counter Widget Layout**: Added `width: "100%"`, `minWidth: 0`, and `flexShrink: 1` constraints to `SubsectionCounterWidget` and input text fields in `QuickCheckoutModal`, ensuring side-by-side parcel and dine-in inputs scale cleanly without overflowing on narrow viewports or mobile devices.
+- **Dynamic Singular/Plural Grammar (`plate` / `plates`, `parcel` / `parcels`)**: Added `plateSingular: "Plate"` to `strings.ts` and updated quick checkout transaction logs, success category breakdowns, total plate counts, and accessibility announcements (`successA11yLabel`) to dynamically format singular (`1 Plate`, `1 Parcel`) or plural (`2+ Plates`, `2+ Parcels`) forms based on exact numeric values.
+
 ---
 
 ## 3. Database Security & Indexing Configuration (`database.rules.json`)

@@ -241,18 +241,14 @@ export function HomeScreen() {
 
           <View style={{ position: 'absolute', top: cardPadding, right: cardPadding }}>
             {currentMealInfo ? (
-              <Pressable
-                onPress={() => navigate(AppScreen.DASHBOARD)}
-                accessible={true}
-                accessibilityRole="button"
-                accessibilityLabel={`${currentMealInfo.dayLabel} ${currentMealInfo.mealLabel}`}
+              <View
                 style={{ flexDirection: "row", alignItems: "center", gap: s(4), backgroundColor: theme.colors.white + "33", paddingHorizontal: isNarrow ? 6 : s(8), paddingVertical: s(4), borderRadius: s(6) }}
               >
                 <View style={{ width: s(5), height: s(5), borderRadius: s(2.5), backgroundColor: theme.colors.success }} />
                 <Text style={{ fontSize: isNarrow ? 9 : s(10), fontWeight: "900", color: theme.colors.white }}>
                   {currentMealInfo.dayLabel.toUpperCase()}{UI_TEXT.space}{currentMealInfo.mealLabel.toUpperCase()}
                 </Text>
-              </Pressable>
+              </View>
             ) : null}
           </View>
         </Pressable>

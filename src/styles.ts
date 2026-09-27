@@ -289,19 +289,14 @@ export const createStyles = (theme: AppTheme, width: number, _height?: number) =
       alignItems: "center",
       justifyContent: "space-between",
       marginBottom: v(s(28)),
-      ...Platform.select({
-        ios: {
-          shadowColor: COLORS.primary,
-          shadowOffset: { width: 0, height: 10 },
-          shadowOpacity: 0.3,
-          shadowRadius: 15,
-        },
-        android: {
-          elevation: 8,
-        },
-        web: {
-          boxShadow: `0 6px 12px ${COLORS.primary}33`,
-        }
+      ...(Platform.OS === 'web' ? {
+        boxShadow: `0 6px 12px ${COLORS.primary}33`,
+      } : {
+        shadowColor: COLORS.primary,
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.3,
+        shadowRadius: 15,
+        elevation: 8,
       }),
     },
     summaryLabel: {
@@ -429,21 +424,16 @@ export const createStyles = (theme: AppTheme, width: number, _height?: number) =
       justifyContent: "center",
       marginTop: s(24),
       paddingHorizontal: s(24),
-      ...Platform.select({
-        ios: {
-          shadowColor: COLORS.success,
-          shadowOffset: { width: 0, height: 6 },
-          shadowOpacity: 0.25,
-          shadowRadius: 10,
-        },
-        android: {
-          elevation: 4,
-        },
-        web: {
-          cursor: 'pointer',
-          transition: 'all 0.2s ease',
-          boxShadow: `0 4px 10px ${COLORS.success}40`,
-        }
+      ...(Platform.OS === 'web' ? {
+        cursor: 'pointer',
+        transition: 'all 0.2s ease',
+        boxShadow: `0 4px 10px ${COLORS.success}40`,
+      } : {
+        shadowColor: COLORS.success,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.25,
+        shadowRadius: 10,
+        elevation: 4,
       }),
     },
     primaryText: { color: COLORS.white, fontSize: s(TYPOGRAPHY.primaryButtonTextSize), fontWeight: "800" },
@@ -471,20 +461,15 @@ export const createStyles = (theme: AppTheme, width: number, _height?: number) =
       alignItems: "center",
       justifyContent: "center",
       marginTop: s(24),
-      ...Platform.select({
-        ios: {
-          shadowColor: COLORS.error,
-          shadowOffset: { width: 0, height: 6 },
-          shadowOpacity: 0.25,
-          shadowRadius: 10,
-        },
-        android: {
-          elevation: 4,
-        },
-        web: {
-          cursor: 'pointer',
-          boxShadow: `0 4px 10px ${COLORS.error}40`,
-        }
+      ...(Platform.OS === 'web' ? {
+        cursor: 'pointer',
+        boxShadow: `0 4px 10px ${COLORS.error}40`,
+      } : {
+        shadowColor: COLORS.error,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.25,
+        shadowRadius: 10,
+        elevation: 4,
       }),
     },
 
@@ -673,19 +658,14 @@ export const createStyles = (theme: AppTheme, width: number, _height?: number) =
       marginTop: s(20),
       alignItems: "center",
       justifyContent: "center",
-      ...Platform.select({
-        ios: {
-          shadowColor: COLORS.shadow,
-          shadowOffset: { width: 0, height: 10 },
-          shadowOpacity: 0.1,
-          shadowRadius: 20,
-        },
-        android: {
-          elevation: 10,
-        },
-        web: {
-          boxShadow: `0 10px 30px ${COLORS.shadow}1A`,
-        }
+      ...(Platform.OS === 'web' ? {
+        boxShadow: `0 10px 30px ${COLORS.shadow}1A`,
+      } : {
+        shadowColor: COLORS.shadow,
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.1,
+        shadowRadius: 20,
+        elevation: 10,
       }),
     },
     qrCaption: {
@@ -736,21 +716,16 @@ export const createStyles = (theme: AppTheme, width: number, _height?: number) =
       borderRadius: s(SIZES.fabRadius),
       alignItems: "center",
       justifyContent: "center",
-      ...Platform.select({
-        ios: {
-          shadowColor: COLORS.primary,
-          shadowOffset: { width: 0, height: 6 },
-          shadowOpacity: 0.4,
-          shadowRadius: 8,
-        },
-        android: {
-          elevation: 8,
-        },
-        web: {
-          cursor: 'pointer',
-          boxShadow: `0 6px 16px ${COLORS.shadow}33`,
-        }
-      })
+      ...(Platform.OS === 'web' ? {
+        cursor: 'pointer',
+        boxShadow: `0 6px 16px ${COLORS.shadow}33`,
+      } : {
+        shadowColor: COLORS.primary,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.4,
+        shadowRadius: 8,
+        elevation: 8,
+      }),
     },
 
     // Custom Components
@@ -777,20 +752,15 @@ export const createStyles = (theme: AppTheme, width: number, _height?: number) =
       height: v(s(64)),
       alignItems: "center",
       justifyContent: "center",
-      ...Platform.select({
-        ios: {
-          shadowColor: COLORS.shadow,
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.05,
-          shadowRadius: 8,
-        },
-        android: {
-          elevation: 2,
-        },
-        web: {
-          cursor: 'pointer',
-          boxShadow: `0 2px 8px ${COLORS.shadow}0D`,
-        }
+      ...(Platform.OS === 'web' ? {
+        cursor: 'pointer',
+        boxShadow: `0 2px 8px ${COLORS.shadow}0D`,
+      } : {
+        shadowColor: COLORS.shadow,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 2,
       }),
     },
     actionLabel: {

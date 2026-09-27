@@ -163,13 +163,13 @@ function SubsectionCounterWidget({
   return (
     <View style={{ flex: 1, minWidth: 0, flexShrink: 1 }}>
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 3 }}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 4, flex: 1, minWidth: 0 }}>
           {iconName && <Ionicons name={iconName} size={12} color={accentColor || theme.colors.textSecondary} />}
           <Text style={{ fontSize: 11, fontWeight: "800", color: theme.colors.textPrimary }} numberOfLines={1}>
             {label}
           </Text>
         </View>
-        <Text style={{ fontSize: 10, fontWeight: "700", color: theme.colors.primary }}>
+        <Text style={{ fontSize: 10, fontWeight: "700", color: theme.colors.primary, flexShrink: 0, marginLeft: 4 }}>
           {UI_TEXT.maxLimit}: {max}
         </Text>
       </View>
@@ -212,6 +212,7 @@ function SubsectionCounterWidget({
         <TextInput
           style={{
             flex: 1,
+            minWidth: 0,
             textAlign: "center",
             fontSize: 14,
             fontWeight: "800",
@@ -940,8 +941,14 @@ export function QuickCheckoutModal({
     const countsParts: string[] = [];
     categoryServedDetails.forEach((d) => {
       const items: string[] = [];
-      if (d.dineIn > 0) items.push(`${d.dineIn} ${UI_TEXT.dineIn}`);
-      if (d.parcel > 0) items.push(`${d.parcel} ${UI_TEXT.parcels}`);
+      if (d.dineIn > 0) {
+        const plateStr = d.dineIn === 1 ? UI_TEXT.plateSingular : UI_TEXT.plates;
+        items.push(`${d.dineIn} ${plateStr}`);
+      }
+      if (d.parcel > 0) {
+        const parcelStr = d.parcel === 1 ? UI_TEXT.parcelSingular : UI_TEXT.parcels;
+        items.push(`${d.parcel} ${parcelStr}`);
+      }
       countsParts.push(`${d.categoryLabel}: ${items.join(", ")}`);
     });
 
@@ -988,7 +995,8 @@ export function QuickCheckoutModal({
     }
 
     if (quickCheckoutDetails.parcelSupported && quickCheckoutDetails.totalParcelPlanned > 0) {
-      totalsParts.push(`${UI_TEXT.parcels}: ${newParcelsTaken}/${quickCheckoutDetails.totalParcelPlanned}`);
+      const parcelUnit = quickCheckoutDetails.totalParcelPlanned === 1 ? UI_TEXT.parcelSingular : UI_TEXT.parcels;
+      totalsParts.push(`${parcelUnit}: ${newParcelsTaken}/${quickCheckoutDetails.totalParcelPlanned}`);
     }
 
     addActivityLog({
@@ -1049,7 +1057,7 @@ export function QuickCheckoutModal({
 
   // Full-Height Theme-Driven Success Overlay Window (Works on Mobile & Web)
   if (visible && successData) {
-    const successA11yLabel = `${UI_TEXT.checkoutSuccessful}. ${UI_TEXT.block} ${successData.block} ${UI_TEXT.flatUpper} ${successData.flat}. ${successData.mealLabel}. ${UI_TEXT.served} ${successData.countsText}. ${UI_TEXT.total} ${successData.totalPlates} ${UI_TEXT.plates}. ${successData.timestamp}.`;
+    const successA11yLabel = `${UI_TEXT.checkoutSuccessful}. ${UI_TEXT.block} ${successData.block} ${UI_TEXT.flatUpper} ${successData.flat}. ${successData.mealLabel}. ${UI_TEXT.served} ${successData.countsText}. ${UI_TEXT.total} ${successData.totalPlates} ${successData.totalPlates === 1 ? UI_TEXT.plateSingular : UI_TEXT.plates}. ${successData.timestamp}.`;
 
     return (
       <Modal
@@ -1192,7 +1200,8 @@ export function QuickCheckoutModal({
                 {successData.categoryDetails.map((item, idx) => {
                   const parts: string[] = [];
                   if (item.dineIn > 0) {
-                    parts.push(`${item.dineIn} ${UI_TEXT.dineIn}`);
+                    const plateStr = item.dineIn === 1 ? UI_TEXT.plateSingular : UI_TEXT.plates;
+                    parts.push(`${item.dineIn} ${plateStr}`);
                   }
                   if (item.parcel > 0) {
                     const parcelStr = item.parcel === 1 ? UI_TEXT.parcelSingular : UI_TEXT.parcels;
@@ -1229,7 +1238,7 @@ export function QuickCheckoutModal({
                   {UI_TEXT.total}
                 </Text>
                 <Text style={{ fontSize: 18, fontWeight: "900", color: theme.colors.success }}>
-                  {successData.totalPlates} {UI_TEXT.plates.toUpperCase()}
+                  {successData.totalPlates} {(successData.totalPlates === 1 ? UI_TEXT.plateSingular : UI_TEXT.plates).toUpperCase()}
                 </Text>
               </View>
 
@@ -1641,7 +1650,7 @@ export function QuickCheckoutModal({
                           </View>
 
                           {/* Side-by-side Counter Input Row */}
-                          <View style={{ flexDirection: "row", gap: 8, marginTop: 2 }}>
+                          <View style={{ flexDirection: "row", gap: 8, marginTop: 2, width: "100%" }}>
                             {quickCheckoutDetails.parcelSupported && cat.remParcelCount > 0 && (
                               <SubsectionCounterWidget
                                 label={UI_TEXT.parcels}

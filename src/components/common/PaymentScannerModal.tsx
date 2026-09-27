@@ -95,9 +95,13 @@ export function PaymentScannerModal({
         fontSize: 16,
         fontWeight: "900",
         color: theme.colors.white,
-        textShadowColor: theme.colors.shadow,
-        textShadowOffset: { width: 0, height: 1 },
-        textShadowRadius: 3,
+        ...(Platform.OS === 'web' ? {
+          textShadow: `0 1px 3px ${theme.colors.shadow}`,
+        } : {
+          textShadowColor: theme.colors.shadow,
+          textShadowOffset: { width: 0, height: 1 },
+          textShadowRadius: 3,
+        }),
       },
       iconBtn: {
         width: 40,
@@ -167,9 +171,13 @@ export function PaymentScannerModal({
         fontWeight: "700",
         color: theme.colors.white,
         textAlign: "center",
-        textShadowColor: theme.colors.shadow,
-        textShadowOffset: { width: 0, height: 1 },
-        textShadowRadius: 3,
+        ...(Platform.OS === 'web' ? {
+          textShadow: `0 1px 3px ${theme.colors.shadow}`,
+        } : {
+          textShadowColor: theme.colors.shadow,
+          textShadowOffset: { width: 0, height: 1 },
+          textShadowRadius: 3,
+        }),
         paddingHorizontal: 10,
       },
       processingBox: {

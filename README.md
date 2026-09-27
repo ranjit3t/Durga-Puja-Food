@@ -164,6 +164,13 @@ Quick Checkout can be triggered from 4 distinct application entry methods, track
 - **Clean Numeric Formatting**: Completely omits currency symbols (`₹`) across payment displays, summary cards, pills, and alert messages in favor of clean numeric formatting.
 - **Full WCAG 2.1 AA Accessibility**: 100% WCAG compliant with explicit `accessible={true}`, `accessibilityRole`, `accessibilityLabel`, `accessibilityHint`, and `accessibilityState` across all preview cards, payment rows, inputs, and action controls.
 
+### 9. Recent Enhancements & Web Hydration Architecture
+- **React DOM Hydration & DOM Nesting Compliance**: Replaced nested `<Pressable>` elements (`<button>` inside `<button>` in React Native Web) across `HomeScreen`, `SubscriptionListScreen` (`SubscriptionCard`), `ContactsScreen`, and `ActivityLogScreen` (`ActivityLogItem`) with clean `View` containers + non-nested sibling `Pressable` layouts, eliminating React DOM hydration errors and ensuring valid HTML output.
+- **Deprecation-Free Web Shadows & Text Shadows**: Replaced legacy `shadow*` and `textShadow*` style properties with conditional `Platform.OS === 'web'` spreading for `boxShadow` and `textShadow`, entirely eliminating React Native Web preprocessor warnings across all viewports.
+- **Responsive Wrapping Report Navigation Tabs**: Converted report category navigation buttons on `ReportScreen` to a responsive wrapping flex layout (`flexWrap: 'wrap'`), guaranteeing 100% button visibility without horizontal clipping across Web and mobile viewports.
+- **Responsive Quick Checkout Counter Layout**: Added `width: "100%"`, `minWidth: 0`, and `flexShrink: 1` constraints to `SubsectionCounterWidget` and input text fields in `QuickCheckoutModal`, ensuring side-by-side parcel and dine-in inputs scale cleanly without overflowing on narrow viewports or mobile devices.
+- **Dynamic Singular/Plural Grammar (`plate` / `plates`, `parcel` / `parcels`)**: Added `plateSingular: "Plate"` to `strings.ts` and updated quick checkout transaction logs, success category breakdowns, total plate counts, and accessibility announcements (`successA11yLabel`) to dynamically format singular (`1 Plate`, `1 Parcel`) or plural (`2+ Plates`, `2+ Parcels`) forms based on exact numeric values.
+
 ---
 
 ## 📁 Directory Structure

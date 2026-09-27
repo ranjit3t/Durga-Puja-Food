@@ -48,19 +48,14 @@ export function CustomAlert({
         maxWidth: 360,
         maxHeight: "85%",
         padding: 20,
-        ...Platform.select({
-          ios: {
-            shadowColor: COLORS.shadow,
-            shadowOffset: { width: 0, height: 12 },
-            shadowOpacity: 0.15,
-            shadowRadius: 16,
-          },
-          android: {
-            elevation: 12,
-          },
-          web: {
-            boxShadow: `0 12px 32px ${COLORS.shadow}26`,
-          }
+        ...(Platform.OS === 'web' ? {
+          boxShadow: `0 12px 32px ${COLORS.shadow}26`,
+        } : {
+          shadowColor: COLORS.shadow,
+          shadowOffset: { width: 0, height: 12 },
+          shadowOpacity: 0.15,
+          shadowRadius: 16,
+          elevation: 12,
         }),
       },
       header: {

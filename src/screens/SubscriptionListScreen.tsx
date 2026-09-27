@@ -90,17 +90,14 @@ const SubscriptionCard = React.memo(({
   const colorScheme = theme.cardColors[index % theme.cardColors.length];
 
   return (
-    <Pressable
-      onPress={() => onSelect(item)}
-      accessible={true}
-      accessibilityRole="button"
-      accessibilityLabel={`${UI_TEXT.flatUpper} ${item.flat}, ${UI_TEXT.block} ${item.block}`}
+    <View
       style={[
         styles.card,
         {
           backgroundColor: colorScheme.bg,
           borderColor: colorScheme.border,
-          borderWidth: 1.5
+          borderWidth: 1.5,
+          position: 'relative'
         }
       ]}
     >
@@ -137,61 +134,69 @@ const SubscriptionCard = React.memo(({
            <Text style={{ color: theme.colors.white, fontSize: s(13), fontWeight: '900' }}>{missedCount}</Text>
         </Pressable>
       ) : null}
-      <View style={styles.cardTop}>
-        <View style={{ flex: 1 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <Text style={[styles.flatLabel, { color: colorScheme.accent, opacity: 0.8 }]}>{UI_TEXT.block} {item.block}</Text>
-            <View style={{ flexDirection: 'row', gap: s(6) }}>
-              {kidsEnabled && item.kidsCount ? (
-                <View style={{ backgroundColor: theme.colors.nonVeg + "20", padding: s(6), borderRadius: s(12), borderWidth: 1, borderColor: theme.colors.nonVeg + "40" }}>
-                  <Ionicons name="happy" size={s(14)} color={theme.colors.nonVeg} />
-                </View>
-              ) : null}
-              {hasParcel && (
-                <View style={{ backgroundColor: theme.colors.secondary + "20", padding: s(6), borderRadius: s(12), borderWidth: 1, borderColor: theme.colors.secondary + "40" }}>
-                  <Ionicons name="briefcase" size={s(14)} color={theme.colors.secondary} />
-                </View>
-              )}
-              {isVegOnly && (
-                <View style={{ backgroundColor: theme.colors.veg + "20", padding: s(6), borderRadius: s(12), borderWidth: 1, borderColor: theme.colors.veg + "40" }}>
-                  <Ionicons name="leaf" size={s(14)} color={theme.colors.veg} />
-                </View>
-              )}
-              {hasCurrentMeal && (
-                <View style={{ backgroundColor: theme.colors.successLight, padding: s(6), borderRadius: s(12), borderWidth: 1, borderColor: theme.colors.success + "40" }}>
-                  <Ionicons name="restaurant" size={s(14)} color={theme.colors.success} />
-                </View>
-              )}
+
+      <Pressable
+        onPress={() => onSelect(item)}
+        accessible={true}
+        accessibilityRole="button"
+        accessibilityLabel={`${UI_TEXT.flatUpper} ${item.flat}, ${UI_TEXT.block} ${item.block}`}
+      >
+        <View style={styles.cardTop}>
+          <View style={{ flex: 1 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <Text style={[styles.flatLabel, { color: colorScheme.accent, opacity: 0.8 }]}>{UI_TEXT.block} {item.block}</Text>
+              <View style={{ flexDirection: 'row', gap: s(6) }}>
+                {kidsEnabled && item.kidsCount ? (
+                  <View style={{ backgroundColor: theme.colors.nonVeg + "20", padding: s(6), borderRadius: s(12), borderWidth: 1, borderColor: theme.colors.nonVeg + "40" }}>
+                    <Ionicons name="happy" size={s(14)} color={theme.colors.nonVeg} />
+                  </View>
+                ) : null}
+                {hasParcel && (
+                  <View style={{ backgroundColor: theme.colors.secondary + "20", padding: s(6), borderRadius: s(12), borderWidth: 1, borderColor: theme.colors.secondary + "40" }}>
+                    <Ionicons name="briefcase" size={s(14)} color={theme.colors.secondary} />
+                  </View>
+                )}
+                {isVegOnly && (
+                  <View style={{ backgroundColor: theme.colors.veg + "20", padding: s(6), borderRadius: s(12), borderWidth: 1, borderColor: theme.colors.veg + "40" }}>
+                    <Ionicons name="leaf" size={s(14)} color={theme.colors.veg} />
+                  </View>
+                )}
+                {hasCurrentMeal && (
+                  <View style={{ backgroundColor: theme.colors.successLight, padding: s(6), borderRadius: s(12), borderWidth: 1, borderColor: theme.colors.success + "40" }}>
+                    <Ionicons name="restaurant" size={s(14)} color={theme.colors.success} />
+                  </View>
+                )}
+              </View>
             </View>
+            <Text style={[styles.flatTitle, { color: theme.colors.textPrimary }]}>{UI_TEXT.flatUpper} {item.flat}</Text>
+            <Text style={{ color: theme.colors.textSecondary, marginTop: s(4), fontWeight: "600", fontSize: s(14) }}>
+              {kidsEnabled ? (
+                `${item.peopleCount}${UI_TEXT.space}${item.peopleCount === 1 ? UI_TEXT.adult : UI_TEXT.adults}${item.kidsCount ? `${UI_TEXT.plus}${item.kidsCount}${UI_TEXT.space}${item.kidsCount === 1 ? UI_TEXT.kid : UI_TEXT.kids}` : ""}`
+              ) : (
+                `${item.peopleCount + (item.kidsCount || 0)}${item.peopleCount + (item.kidsCount || 0) === 1 ? UI_TEXT.personSuffix : UI_TEXT.personsSuffix}`
+              )}
+            </Text>
           </View>
-          <Text style={[styles.flatTitle, { color: theme.colors.textPrimary }]}>{UI_TEXT.flatUpper} {item.flat}</Text>
-          <Text style={{ color: theme.colors.textSecondary, marginTop: s(4), fontWeight: "600", fontSize: s(14) }}>
-            {kidsEnabled ? (
-              `${item.peopleCount}${UI_TEXT.space}${item.peopleCount === 1 ? UI_TEXT.adult : UI_TEXT.adults}${item.kidsCount ? `${UI_TEXT.plus}${item.kidsCount}${UI_TEXT.space}${item.kidsCount === 1 ? UI_TEXT.kid : UI_TEXT.kids}` : ""}`
-            ) : (
-              `${item.peopleCount + (item.kidsCount || 0)}${item.peopleCount + (item.kidsCount || 0) === 1 ? UI_TEXT.personSuffix : UI_TEXT.personsSuffix}`
-            )}
-          </Text>
         </View>
-      </View>
 
-      <View style={{ height: 1, backgroundColor: colorScheme.border, marginVertical: s(16) }} />
+        <View style={{ height: 1, backgroundColor: colorScheme.border, marginVertical: s(16) }} />
 
-      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: s(6) }}>
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: s(6) }}>
+            {paymentConfig.enabled && (
+              <>
+                <Ionicons name="card-outline" size={s(16)} color={colorScheme.accent} />
+                <Text style={{ fontWeight: "700", color: theme.colors.textPrimary, fontSize: s(14) }}>{getPaymentModeLabel(item.payments && item.payments.length > 0 ? item.payments[0].mode : (item.paymentMode as PaymentMode || PaymentMode.CASH))}</Text>
+              </>
+            )}
+          </View>
           {paymentConfig.enabled && (
-            <>
-              <Ionicons name="card-outline" size={s(16)} color={colorScheme.accent} />
-              <Text style={{ fontWeight: "700", color: theme.colors.textPrimary, fontSize: s(14) }}>{getPaymentModeLabel(item.payments && item.payments.length > 0 ? item.payments[0].mode : (item.paymentMode as PaymentMode || PaymentMode.CASH))}</Text>
-            </>
+            <Text style={{ fontSize: s(18), fontWeight: "900", color: colorScheme.accent }}>
+              {UI_TEXT.rs}{UI_TEXT.space}{item.amount || (item.payments && item.payments.reduce((sum: number, p: any) => sum + (parseFloat(p.amount) || 0), 0)) || UI_TEXT.zero}
+            </Text>
           )}
         </View>
-        {paymentConfig.enabled && (
-          <Text style={{ fontSize: s(18), fontWeight: "900", color: colorScheme.accent }}>
-            {UI_TEXT.rs}{UI_TEXT.space}{item.amount || (item.payments && item.payments.reduce((sum: number, p: any) => sum + (parseFloat(p.amount) || 0), 0)) || UI_TEXT.zero}
-          </Text>
-        )}
-      </View>
+      </Pressable>
 
       {item.mobile && (
         <>
@@ -235,7 +240,7 @@ const SubscriptionCard = React.memo(({
           </View>
         </>
       )}
-    </Pressable>
+    </View>
   );
 });
 

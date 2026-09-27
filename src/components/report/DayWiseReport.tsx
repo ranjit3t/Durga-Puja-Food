@@ -186,6 +186,9 @@ export function DayWiseReport({
                   android: {
                     elevation: viewMode === "complete" ? 2 : 0,
                   },
+                  web: {
+                    boxShadow: viewMode === "complete" ? `0px 1px 4px ${theme.colors.primary}40` : 'none',
+                  },
                 }),
               },
               pressed && { opacity: 0.8 },
@@ -235,6 +238,9 @@ export function DayWiseReport({
                   },
                   android: {
                     elevation: viewMode === "planned" ? 2 : 0,
+                  },
+                  web: {
+                    boxShadow: viewMode === "planned" ? `0px 1px 4px ${theme.colors.primary}40` : 'none',
                   },
                 }),
               },

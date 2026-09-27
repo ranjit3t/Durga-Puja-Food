@@ -101,10 +101,8 @@ const ActivityLogItem = memo(({
   }, [item.description, item.module]);
 
   return (
-    <Pressable
-      onPress={() => item.targetId && onNavigateToDetails(item.targetId)}
-      disabled={!isClickable}
-      style={({ pressed }) => [
+    <View
+      style={[
         styles.card,
         {
           backgroundColor: isError ? theme.colors.error + "10" : colorScheme.bg,
@@ -113,11 +111,20 @@ const ActivityLogItem = memo(({
           padding: s(16),
           borderLeftWidth: isError ? 6 : (isClickable ? 4 : 1.5),
           borderLeftColor: isClickable ? theme.colors.primary : (isError ? theme.colors.error : colorScheme.border),
-        },
-        isClickable && pressed && { opacity: 0.7, backgroundColor: theme.colors.surfaceDark }
+        }
       ]}
     >
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <Pressable
+        onPress={() => item.targetId && onNavigateToDetails(item.targetId)}
+        disabled={!isClickable}
+        accessible={true}
+        accessibilityRole={isClickable ? "button" : "none"}
+        accessibilityLabel={`${item.module} - ${item.action}. ${item.description}`}
+        style={({ pressed }) => [
+          { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%' },
+          isClickable && pressed && { opacity: 0.7 }
+        ]}
+      >
         <View style={{ flex: 1 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(8), marginBottom: s(8), flexWrap: 'wrap' }}>
             <View style={{ backgroundColor: isError ? theme.colors.error + "20" : theme.colors.primary + "15", paddingHorizontal: s(10), paddingVertical: s(4), borderRadius: s(8) }}>
@@ -168,26 +175,6 @@ const ActivityLogItem = memo(({
             <Text style={{ fontSize: s(14), color: isError ? theme.colors.error : theme.colors.textPrimary, lineHeight: s(20), fontWeight: '600' }}>{item.description}</Text>
           </View>
 
-          {isError && item.stack && (
-            <View style={{ marginBottom: s(12) }}>
-              <Pressable
-                onPress={() => onToggleStack(item.id)}
-                style={({ pressed }) => [
-                  { flexDirection: 'row', alignItems: 'center', gap: s(6), backgroundColor: theme.colors.error + "15", paddingHorizontal: s(10), paddingVertical: s(6), borderRadius: s(8), alignSelf: 'flex-start' },
-                  pressed && { opacity: 0.7 }
-                ]}
-              >
-                <Ionicons name={expanded ? "eye-off-outline" : "eye-outline"} size={s(14)} color={theme.colors.error} />
-                <Text style={{ fontSize: s(11), fontWeight: '900', color: theme.colors.error }}>{expanded ? UI_TEXT.hideStackTrace.toUpperCase() : UI_TEXT.viewStackTrace.toUpperCase()}</Text>
-              </Pressable>
-              {expanded && (
-                <View style={{ backgroundColor: theme.colors.shadow + "10", padding: s(14), borderRadius: s(10), marginTop: s(8), borderWidth: 1, borderColor: theme.colors.error + "22" }}>
-                  <Text style={{ fontSize: s(11), color: theme.colors.error, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', lineHeight: s(16) }}>{item.stack}</Text>
-                </View>
-              )}
-            </View>
-          )}
-
           {item.os && (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(6), opacity: 0.6 }}>
               <Ionicons name={item.os.toLowerCase() === 'ios' ? 'logo-apple' : item.os.toLowerCase() === 'android' ? 'logo-android' : 'globe-outline'} size={s(14)} color={theme.colors.textMuted} />
@@ -219,8 +206,28 @@ const ActivityLogItem = memo(({
             }
           />
         </View>
-      </View>
-    </Pressable>
+      </Pressable>
+
+      {isError && item.stack && (
+        <View style={{ marginTop: s(12), marginBottom: s(4) }}>
+          <Pressable
+            onPress={() => onToggleStack(item.id)}
+            style={({ pressed }) => [
+              { flexDirection: 'row', alignItems: 'center', gap: s(6), backgroundColor: theme.colors.error + "15", paddingHorizontal: s(10), paddingVertical: s(6), borderRadius: s(8), alignSelf: 'flex-start' },
+              pressed && { opacity: 0.7 }
+            ]}
+          >
+            <Ionicons name={expanded ? "eye-off-outline" : "eye-outline"} size={s(14)} color={theme.colors.error} />
+            <Text style={{ fontSize: s(11), fontWeight: '900', color: theme.colors.error }}>{expanded ? UI_TEXT.hideStackTrace.toUpperCase() : UI_TEXT.viewStackTrace.toUpperCase()}</Text>
+          </Pressable>
+          {expanded && (
+            <View style={{ backgroundColor: theme.colors.shadow + "10", padding: s(14), borderRadius: s(10), marginTop: s(8), borderWidth: 1, borderColor: theme.colors.error + "22" }}>
+              <Text style={{ fontSize: s(11), color: theme.colors.error, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', lineHeight: s(16) }}>{item.stack}</Text>
+            </View>
+          )}
+        </View>
+      )}
+    </View>
   );
 });
 
@@ -513,20 +520,30 @@ export function ActivityLogScreen() {
               <Text style={styles.title}>{UI_TEXT.activityLog}</Text>
               <Text style={styles.subtitle}>{UI_TEXT.activityLogSubtitle}</Text>
            </View>
-           <View style={{
-             backgroundColor: theme.colors.success,
-             paddingHorizontal: 12,
-             paddingVertical: 6,
-             borderRadius: 20,
-             flexDirection: 'row',
-             alignItems: 'center',
-             gap: 6,
-             elevation: 4,
-             shadowColor: theme.colors.success,
-             shadowOffset: { width: 0, height: 2 },
-             shadowOpacity: 0.3,
-             shadowRadius: 4
-           }}>
+           <View style={[
+             {
+               backgroundColor: theme.colors.success,
+               paddingHorizontal: 12,
+               paddingVertical: 6,
+               borderRadius: 20,
+               flexDirection: 'row',
+               alignItems: 'center',
+               gap: 6,
+               elevation: 4,
+             },
+             Platform.select({
+               ios: {
+                 shadowColor: theme.colors.success,
+                 shadowOffset: { width: 0, height: 2 },
+                 shadowOpacity: 0.3,
+                 shadowRadius: 4,
+               },
+               android: { elevation: 4 },
+               default: {
+                 boxShadow: `0px 2px 8px ${theme.colors.success}66`,
+               },
+             })
+           ]}>
               <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: theme.colors.white }} />
               <Text style={{ fontSize: 11, fontWeight: '900', color: theme.colors.white, letterSpacing: 1 }}>{UI_TEXT.live.toUpperCase()}</Text>
            </View>

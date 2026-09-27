@@ -228,12 +228,7 @@ export function ReportScreen() {
       </View>
 
       <View style={[styles.maxWidthWrapper, { marginTop: 12 }]}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={{ flexGrow: 0, marginBottom: 12 }}
-          contentContainerStyle={{ gap: 8 }}
-        >
+        <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginBottom: 12, width: '100%' }}>
           {[
             { id: ReportType.DAY, label: UI_TEXT.day, icon: "calendar-outline" },
             { id: ReportType.MEAL, label: UI_TEXT.meal, icon: "restaurant-outline" },
@@ -241,9 +236,9 @@ export function ReportScreen() {
             { id: ReportType.KIDS_MEAL, label: UI_TEXT.kids, icon: "happy-outline" },
             { id: ReportType.PARCEL, label: UI_TEXT.parcels, icon: "cube-outline" },
             { id: ReportType.SINGLE, label: UI_TEXT.split, icon: "fast-food-outline" },
-            {id: ReportType.NOT_TAKEN, label: UI_TEXT.pending, icon: "alert-circle-outline"},
-          {id: ReportType.FLAT, label: UI_TEXT.flat, icon: "business-outline"},
-          {id: ReportType.PAYMENT, label: UI_TEXT.payment, icon: "card-outline"},
+            { id: ReportType.NOT_TAKEN, label: UI_TEXT.pending, icon: "alert-circle-outline" },
+            { id: ReportType.FLAT, label: UI_TEXT.flat, icon: "business-outline" },
+            { id: ReportType.PAYMENT, label: UI_TEXT.payment, icon: "card-outline" },
           ].filter(tab =>
             (tab.id !== ReportType.PAYMENT || paymentConfig.enabled) &&
             (tab.id !== ReportType.GUEST || guestEnabled) &&
@@ -257,7 +252,7 @@ export function ReportScreen() {
                 backgroundColor: reportType === tab.id ? theme.colors.primary : theme.colors.surface,
                 borderRadius: 12,
                 height: 36,
-                paddingHorizontal: 16,
+                paddingHorizontal: 14,
                 justifyContent: 'center',
                 alignItems: 'center',
                 borderWidth: 1.5,
@@ -272,7 +267,7 @@ export function ReportScreen() {
               />
             </Pressable>
           ))}
-        </ScrollView>
+        </View>
       </View>
 
       <ScrollView
@@ -288,9 +283,10 @@ export function ReportScreen() {
               ref={dayScrollRef}
               horizontal
               showsHorizontalScrollIndicator={false}
-              style={{ marginBottom: 16 }}
+              style={{ marginBottom: 16, width: '100%' }}
+              contentContainerStyle={{ paddingRight: s(24) }}
             >
-              <View style={styles.selectorRow}>
+              <View style={[styles.selectorRow, { flexWrap: 'nowrap' }]}>
                 {activeDays
                   .filter((day) => {
                     if (reportType !== ReportType.NOT_TAKEN && reportType !== ReportType.PARCEL) return true;
@@ -306,7 +302,7 @@ export function ReportScreen() {
                     style={[
                       styles.selector,
                       selectedDayId === day && styles.selectorOn,
-                      { minWidth: 60, paddingHorizontal: 12 }
+                      { minWidth: 60, paddingHorizontal: 12, flexShrink: 0 }
                     ]}
                   >
                     <Text style={[styles.selectorText, selectedDayId === day && styles.selectorTextOn]}>

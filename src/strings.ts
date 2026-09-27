@@ -30,6 +30,7 @@ export const UI_TEXT = {
   plannedTotal: "Total Subscribed",
   noMealsSelected: "No pending meals for this selection.",
   platesDemand: "Kitchen Plates Demand",
+  plateSingular: "Plate",
   plates: "Plates",
   totalPlates: "Total Plates Demand",
   totalDemand: "Total Kitchen Demand",
