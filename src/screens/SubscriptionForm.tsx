@@ -955,9 +955,9 @@ export function SubscriptionForm() {
     if (isDiscrepancy) {
       const formatAmount = (num: number) => (num % 1 !== 0 ? num.toFixed(2) : num.toFixed(0));
       const msg = UI_TEXT.amountMismatchMsg
-        .replace("{entered}", formatAmount(currentTotalAmount))
+        .replaceAll("{entered}", formatAmount(currentTotalAmount))
         .replace("{calculated}", formatAmount(calculatedExpectedAmount));
-
+        
       showGlobalAlert(UI_TEXT.amountMismatchTitle, msg, [
         { text: UI_TEXT.no, style: "cancel" },
         { text: UI_TEXT.yes, onPress: () => proceedToSave() },
