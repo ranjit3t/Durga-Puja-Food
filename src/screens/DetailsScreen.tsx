@@ -26,6 +26,7 @@ import {
   getPaymentModeLabel,
   getMemberLegend,
   getMealLabel,
+  generateUniquePasscode,
 } from "../constants";
 import { MealMenu, MealType, DietType, DietaryOption, AppScreen, UserRole, PaymentMode, ReportType, AppThemeMode, ActivityModule, ActivityAction, CheckoutSource } from "../types";
 import { BackButton } from "../components/common/BackButton";
@@ -216,6 +217,9 @@ export function DetailsScreen() {
               <Text style={[styles.previewLabel, { color: theme.colors.white, opacity: 0.7 }]}>{UI_TEXT.passIdentity}</Text>
               <Text style={[styles.previewTitle, { color: theme.colors.white, fontSize: 28 }]}>
                 {subscription.id}
+              </Text>
+              <Text style={{ fontSize: 13, fontWeight: "700", color: theme.colors.white, opacity: 0.9, marginTop: 4 }}>
+                {UI_TEXT.passCodeLabel}: {subscription.passcode || generateUniquePasscode(subscriptions, subscription.id, subscription.id)}
               </Text>
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>

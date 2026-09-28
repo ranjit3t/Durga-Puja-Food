@@ -233,7 +233,7 @@ export function QuickGuestModal({
 
                 <View style={{ backgroundColor: theme.colors.white + "33", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
                   <Text style={{ fontSize: 9, fontWeight: "900", color: theme.colors.white }}>
-                    {(isStillCurrent && !isDone) ? UI_TEXT.live.toUpperCase() : (isDone ? UI_TEXT.mealDoneLabel.toUpperCase() : "INACTIVE")}
+                    {(isStillCurrent && !isDone) ? UI_TEXT.live.toUpperCase() : (isDone ? UI_TEXT.mealDoneLabel.toUpperCase() : UI_TEXT.inactive.toUpperCase())}
                   </Text>
                 </View>
               </View>
@@ -253,67 +253,101 @@ export function QuickGuestModal({
             </View>
 
             {/* Section 2: Guest Counter Inputs Card Container */}
-            <View style={{
-              padding: 10,
-              borderRadius: 14,
-              backgroundColor: theme.cardColors[2].accentLight,
-              borderColor: theme.cardColors[2].border,
-              borderWidth: 1.5,
-              gap: 8,
-            }}>
-              {showDetailed ? (
-                <View style={{ gap: 6 }}>
-                  {/* Veg Row: Planned & Served side-by-side */}
-                  <View style={{ flexDirection: isUltraNarrow ? "column" : "row", gap: 8 }}>
-                    <View style={{ flex: 1, minWidth: 0 }}>
-                      <CounterInput
-                        label={`${UI_TEXT.veg}${UI_TEXT.space}${UI_TEXT.planned}`}
-                        value={guestVeg}
-                        min={guestVegTaken}
-                        disabled={!isMealEditableForAdmin}
-                        onChange={(val) => updateGuestCountDebounced(dayId, mealType, "guestVeg", val, GuestCheckoutSource.GUEST_MODAL)}
-                      />
+            {showDetailed ? (
+              <View style={{ gap: 10 }}>
+                {/* VEG CATEGORY */}
+                {isVegEnabled && (
+                  <View style={{
+                    padding: 10,
+                    borderRadius: 14,
+                    backgroundColor: theme.colors.surface,
+                    borderColor: theme.colors.veg + "40",
+                    borderWidth: 1.5,
+                    gap: 8,
+                  }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Ionicons name="leaf" size={14} color={theme.colors.veg} />
+                      <Text style={{ fontSize: 12, fontWeight: '900', color: theme.colors.veg, letterSpacing: 0.5 }}>
+                        {UI_TEXT.veg.toUpperCase()}
+                      </Text>
                     </View>
-                    <View style={{ flex: 1, minWidth: 0 }}>
-                      <CounterInput
-                        label={`${UI_TEXT.veg}${UI_TEXT.space}${UI_TEXT.served}`}
-                        value={guestVegTaken}
-                        min={0}
-                        max={guestVeg}
-                        disabled={isServedDisabled}
-                        onChange={(val) => updateGuestCountDebounced(dayId, mealType, "guestVegTaken", val, GuestCheckoutSource.GUEST_MODAL)}
-                      />
+                    <View style={{ flexDirection: isUltraNarrow ? "column" : "row", gap: 8 }}>
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <CounterInput
+                          label={UI_TEXT.planned}
+                          value={guestVeg}
+                          min={guestVegTaken}
+                          disabled={!isMealEditableForAdmin}
+                          onChange={(val) => updateGuestCountDebounced(dayId, mealType, "guestVeg", val, GuestCheckoutSource.GUEST_MODAL)}
+                        />
+                      </View>
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <CounterInput
+                          label={UI_TEXT.served}
+                          value={guestVegTaken}
+                          min={0}
+                          max={guestVeg}
+                          disabled={isServedDisabled}
+                          onChange={(val) => updateGuestCountDebounced(dayId, mealType, "guestVegTaken", val, GuestCheckoutSource.GUEST_MODAL)}
+                        />
+                      </View>
                     </View>
                   </View>
+                )}
 
-                  {/* Non-Veg Row: Planned & Served side-by-side */}
-                  <View style={{ flexDirection: isUltraNarrow ? "column" : "row", gap: 8 }}>
-                    <View style={{ flex: 1, minWidth: 0 }}>
-                      <CounterInput
-                        label={`${UI_TEXT.nonVeg}${UI_TEXT.space}${UI_TEXT.planned}`}
-                        value={guestNonVeg}
-                        min={guestNonVegTaken}
-                        disabled={!isMealEditableForAdmin}
-                        onChange={(val) => updateGuestCountDebounced(dayId, mealType, "guestNonVeg", val, GuestCheckoutSource.GUEST_MODAL)}
-                      />
+                {/* NON-VEG CATEGORY */}
+                {isNonVegEnabled && (
+                  <View style={{
+                    padding: 10,
+                    borderRadius: 14,
+                    backgroundColor: theme.colors.surface,
+                    borderColor: theme.colors.nonVeg + "40",
+                    borderWidth: 1.5,
+                    gap: 8,
+                  }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Ionicons name="flame" size={14} color={theme.colors.nonVeg} />
+                      <Text style={{ fontSize: 12, fontWeight: '900', color: theme.colors.nonVeg, letterSpacing: 0.5 }}>
+                        {UI_TEXT.nonVeg.toUpperCase()}
+                      </Text>
                     </View>
-                    <View style={{ flex: 1, minWidth: 0 }}>
-                      <CounterInput
-                        label={`${UI_TEXT.nonVeg}${UI_TEXT.space}${UI_TEXT.served}`}
-                        value={guestNonVegTaken}
-                        min={0}
-                        max={guestNonVeg}
-                        disabled={isServedDisabled}
-                        onChange={(val) => updateGuestCountDebounced(dayId, mealType, "guestNonVegTaken", val, GuestCheckoutSource.GUEST_MODAL)}
-                      />
+                    <View style={{ flexDirection: isUltraNarrow ? "column" : "row", gap: 8 }}>
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <CounterInput
+                          label={UI_TEXT.planned}
+                          value={guestNonVeg}
+                          min={guestNonVegTaken}
+                          disabled={!isMealEditableForAdmin}
+                          onChange={(val) => updateGuestCountDebounced(dayId, mealType, "guestNonVeg", val, GuestCheckoutSource.GUEST_MODAL)}
+                        />
+                      </View>
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <CounterInput
+                          label={UI_TEXT.served}
+                          value={guestNonVegTaken}
+                          min={0}
+                          max={guestNonVeg}
+                          disabled={isServedDisabled}
+                          onChange={(val) => updateGuestCountDebounced(dayId, mealType, "guestNonVegTaken", val, GuestCheckoutSource.GUEST_MODAL)}
+                        />
+                      </View>
                     </View>
                   </View>
-                </View>
-              ) : (
+                )}
+              </View>
+            ) : (
+              <View style={{
+                padding: 10,
+                borderRadius: 14,
+                backgroundColor: theme.cardColors[2].accentLight,
+                borderColor: theme.cardColors[2].border,
+                borderWidth: 1.5,
+                gap: 8,
+              }}>
                 <View style={{ flexDirection: isUltraNarrow ? "column" : "row", gap: 8 }}>
                   <View style={{ flex: 1, minWidth: 0 }}>
                     <CounterInput
-                      label={UI_TEXT.plannedTotal}
+                      label={UI_TEXT.planned}
                       value={guestTotal}
                       min={guestTaken}
                       disabled={!isMealEditableForAdmin}
@@ -322,7 +356,7 @@ export function QuickGuestModal({
                   </View>
                   <View style={{ flex: 1, minWidth: 0 }}>
                     <CounterInput
-                      label={UI_TEXT.totalServed}
+                      label={UI_TEXT.served}
                       value={guestTaken}
                       min={0}
                       max={guestTotal}
@@ -331,8 +365,8 @@ export function QuickGuestModal({
                     />
                   </View>
                 </View>
-              )}
-            </View>
+              </View>
+            )}
 
             {/* Action Buttons */}
             <View style={modalStyles.actionRow}>

@@ -542,6 +542,8 @@ export const UI_TEXT = {
   currentMealClosed: "Service for this meal slot is closed. Thank you!",
   aiSummaryTitle: "Operations AI Summary",
   mealDoneLabel: "Completed",
+  inactive: "Inactive",
+  inactiveLabel: "Inactive",
   removeDayLabel: "Remove Day",
   addDayButton: "Add Festival Day",
   updateSettingsButton: "Save Configuration",

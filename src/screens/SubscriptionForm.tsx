@@ -848,7 +848,7 @@ export function SubscriptionForm() {
       if (hasAmount) {
         updates.amount = String(scannedAmount);
         isManualAmount = true;
-        detailLines.push(`• ${UI_TEXT.amount || "Amount"}: ${scannedAmount.toLocaleString()}`);
+        detailLines.push(`• ${UI_TEXT.amount}: ${scannedAmount.toLocaleString()}`);
       }
 
       if (Object.keys(updates).length > 0) {
@@ -980,6 +980,11 @@ export function SubscriptionForm() {
     }
   };
 
+  const summaryPassId = lockIdentity
+    ? value.id
+    : (form.flat ? `${form.block ? `${form.block}-` : ""}${form.flat}` : value?.id);
+  const summaryPasscode = form.passcode || (summaryPassId ? generateUniquePasscode(subscriptions, summaryPassId, summaryPassId) : undefined);
+
   return (
     <KeyboardAvoidingView
       style={styles.root}
@@ -1018,6 +1023,11 @@ export function SubscriptionForm() {
               <Text style={[styles.previewTitle, { color: theme.colors.white, fontSize: 28 }]}>
                 {form.block || UI_TEXT.hyphen}{UI_TEXT.hyphen}{form.flat || UI_TEXT.hyphen}
               </Text>
+              {summaryPasscode ? (
+                <Text style={{ fontSize: 13, fontWeight: "700", color: theme.colors.white, opacity: 0.9, marginTop: 4 }}>
+                  {UI_TEXT.passCodeLabel}: {summaryPasscode}
+                </Text>
+              ) : null}
             </View>
             {paymentConfig.enabled && (
               <Text style={[styles.previewAmount, { color: theme.colors.white, fontSize: 22 }]}>

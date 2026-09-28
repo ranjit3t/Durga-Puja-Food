@@ -316,6 +316,10 @@ export function MealMenuEditor({
           <Pressable
             onPress={() => !disabled && setType(type === DietType.VEG ? DietType.NON_VEG : DietType.VEG)}
             disabled={disabled}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={`${UI_TEXT.toggle} ${type === DietType.VEG ? UI_TEXT.veg : UI_TEXT.nonVeg}`}
+            accessibilityState={{ disabled }}
             style={[
               styles.typeToggle,
               type === DietType.VEG ? styles.vegChoice : styles.nonVegChoice,
@@ -330,6 +334,10 @@ export function MealMenuEditor({
         <Pressable
           onPress={() => !disabled && addItem()}
           disabled={disabled}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel={`${UI_TEXT.add} ${type === DietType.VEG ? UI_TEXT.veg : UI_TEXT.nonVeg} item`}
+          accessibilityState={{ disabled }}
           style={[
             styles.addSmall,
             type === DietType.VEG ? styles.vegChoice : styles.nonVegChoice,
@@ -345,7 +353,14 @@ export function MealMenuEditor({
           <View key={`v-${i}`} style={styles.itemBadge}>
             <View style={[styles.dot, styles.vegChoice]} />
             <Text style={styles.itemBadgeText}>{item}</Text>
-            <Pressable onPress={() => !disabled && removeItem(DietType.VEG, i)} disabled={disabled}>
+            <Pressable
+              onPress={() => !disabled && removeItem(DietType.VEG, i)}
+              disabled={disabled}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={`${UI_TEXT.remove} ${item}`}
+              accessibilityState={{ disabled }}
+            >
               <Ionicons name="close-circle" size={14} color={theme.colors.textSecondary} />
             </Pressable>
           </View>
@@ -355,7 +370,14 @@ export function MealMenuEditor({
           <View key={`n-${i}`} style={styles.itemBadge}>
             <View style={[styles.dot, styles.nonVegChoice]} />
             <Text style={styles.itemBadgeText}>{item}</Text>
-            <Pressable onPress={() => !disabled && removeItem(DietType.NON_VEG, i)} disabled={disabled}>
+            <Pressable
+              onPress={() => !disabled && removeItem(DietType.NON_VEG, i)}
+              disabled={disabled}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={`${UI_TEXT.remove} ${item}`}
+              accessibilityState={{ disabled }}
+            >
               <Ionicons name="close-circle" size={14} color={theme.colors.textSecondary} />
             </Pressable>
           </View>
