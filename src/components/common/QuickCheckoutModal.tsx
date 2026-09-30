@@ -795,9 +795,12 @@ export function QuickCheckoutModal({
       }
 
       // Step 3: Check Parcel Discrepancy rule for this category
-      // Rule: "If during checkout Dine-In + Parcel = remMealCount for category and still in some parcel opted meal parcel taken has not been marked true but food taken marked true - it mean less parcel has gone than expected"
+      const isKidCat = cat.section === SectionType.KIDS;
+      const isKidParcelOpt = isKidsParcelEnabled(dayId, mealType, dayConfig, kidsEnabled);
+      const isParcelCheckActive = isKidCat ? isKidParcelOpt : quickCheckoutDetails.parcelSupported;
+
       const catTotalCheckout = safeParcelInput + safeDineInInput;
-      if (catTotalCheckout === cat.remMealCount && cat.remMealCount > 0) {
+      if (isParcelCheckActive && catTotalCheckout === cat.remMealCount && cat.remMealCount > 0) {
         let hasUncollectedParcelForServedMeal = false;
         for (let i = 0; i < headcount; i++) {
           if (!isSlotInCat(i)) continue;
