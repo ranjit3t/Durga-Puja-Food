@@ -1,9 +1,8 @@
 /**
  * Shared Application Constants and Logic Helpers
  */
-import { FoodMenu, ConfigDay, AppConfig, MealType, DietType, DietaryOption, PaymentMode } from "./domain";
+import { FoodMenu, ConfigDay, AppConfig, MealType, DietType, DietaryOption, PaymentMode, MealAllocation } from "./domain";
 import { UI_TEXT } from "./strings";
-import { MealAllocation } from "./domain";
 import { Subscription } from "./types";
 
 /**
@@ -231,6 +230,26 @@ export const isParcelEnabled = (
   const dayConfig = (config || []).find((d) => d.id === dayId);
   if (!dayConfig || !dayConfig.enabled) return false;
   return (dayConfig[meal]?.enabled && dayConfig[meal]?.parcel) || false;
+};
+
+/**
+ * Checks if a specific kids parcel option (breakfast/lunch/dinner) is enabled for a day.
+ * Returns false if kids support is disabled, or if the day, meal, or main parcel support is disabled.
+ */
+export const isKidsParcelEnabled = (
+  dayId: string,
+  meal: MealType,
+  config: ConfigDay[],
+  kidsEnabled?: boolean
+) => {
+  if (!kidsEnabled) return false;
+  const dayConfig = (config || []).find((d) => d.id === dayId);
+  if (!dayConfig || !dayConfig.enabled) return false;
+  return (
+    dayConfig[meal]?.enabled &&
+    dayConfig[meal]?.parcel &&
+    Boolean(dayConfig[meal]?.kidsParcel)
+  );
 };
 
 export const blockOptions = Array.from({ length: 25 }, (_, index) =>

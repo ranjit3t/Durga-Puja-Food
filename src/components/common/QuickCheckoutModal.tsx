@@ -7,7 +7,7 @@ import { useDatabase } from "../../context/DatabaseContext";
 import { useUI } from "../../context/UIContext";
 import { useAppNavigation } from "../../context/NavigationContext";
 import { Subscription, MealType, DietaryOption, DietType, ActivityModule, ActivityAction, AppThemeMode, AppScreen, TakenState, CheckoutSource, MealSlot } from "../../types";
-import { isParcelEnabled, isMealCurrent, isMealDone, getMealLabel, formatTakenTime, isVegOnlyDay, isDietaryEnabled } from "../../constants";
+import { isParcelEnabled, isKidsParcelEnabled, isMealCurrent, isMealDone, getMealLabel, formatTakenTime, isVegOnlyDay, isDietaryEnabled } from "../../constants";
 import { QuickCheckoutHeader } from "../../features/checkout/components/QuickCheckoutHeader";
 import { QuickCheckoutItemCard } from "../../features/checkout/components/QuickCheckoutItemCard";
 
@@ -327,7 +327,10 @@ export function QuickCheckoutModal({
         cat.remMealCount++;
       }
 
-      if (parcelSupported && slot?.[parcelKey as keyof MealSlot]) {
+      const kidsParcelSupported = isKidsParcelEnabled(dayId, mealType, dayConfig, kidsEnabled);
+      const isParcelSupportedForSlot = isKid ? kidsParcelSupported : parcelSupported;
+
+      if (isParcelSupportedForSlot && slot?.[parcelKey as keyof MealSlot]) {
         cat.parcelPlannedCount++;
         totalParcelPlanned++;
 
@@ -1412,9 +1415,13 @@ export function QuickCheckoutModal({
                   {Object.values(quickCheckoutDetails.categories)
                     .filter((cat) => cat.plannedCount > 0 || cat.parcelPlannedCount > 0)
                     .map((cat) => {
+                      const isKidCat = cat.section === SectionType.KIDS;
+                      const isKidParcelOpt = isKidsParcelEnabled(quickCheckoutDetails.dayId, quickCheckoutDetails.mealType, dayConfig, kidsEnabled);
+                      const showCatParcel = quickCheckoutDetails.parcelSupported && (isKidCat ? isKidParcelOpt : true);
+
                       const parcelLabel = cat.parcelPlannedCount === 1 ? UI_TEXT.parcelSingular : UI_TEXT.parcels;
                       const dineStr = `${UI_TEXT.dineIn}: ${cat.plannedCount} (${cat.remMealCount} ${UI_TEXT.remAbbr || "rem"})`;
-                      const parcelStr = (quickCheckoutDetails.parcelSupported && cat.parcelPlannedCount > 0)
+                      const parcelStr = (showCatParcel && cat.parcelPlannedCount > 0)
                         ? ` | ${parcelLabel}: ${cat.parcelPlannedCount} (${cat.remParcelCount} ${UI_TEXT.remAbbr || "rem"})`
                         : "";
 

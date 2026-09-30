@@ -30,6 +30,7 @@ import {
   getEnabledPaymentMethods,
   isDietaryEnabled,
   isParcelEnabled,
+  isKidsParcelEnabled,
   isVegOnlyDay,
   isMealCurrent,
   getMemberLegend,
@@ -121,7 +122,9 @@ export function calculateSubscriptionAmount(
         if (!choice || choice === DietaryOption.NONE) return;
 
         const isParcel = !!personSlot[`${mType}Parcel` as keyof MealSlot];
-        const isParcelAllowed = isParcel && !!mealConf.parcel;
+        const isParcelAllowed = isParcel && (isKid
+          ? isKidsParcelEnabled(dayId, mType, dayConfig, kidsEnabled)
+          : isParcelEnabled(dayId, mType, dayConfig));
 
         if (choice === DietaryOption.VEG) {
           // Veg Meal Price
@@ -134,11 +137,9 @@ export function calculateSubscriptionAmount(
 
           // Veg Parcel Price
           if (isParcelAllowed) {
-            const parcelPrice = resolvePrice(
-              dayMenu?.[mType]?.kidsVegParcelPrice,
-              dayMenu?.[mType]?.vegParcelPrice,
-              mealConf.vegParcelPrice
-            );
+            const parcelPrice = isKid
+              ? Number(dayMenu?.[mType]?.kidsVegParcelPrice || 0)
+              : resolvePrice(undefined, dayMenu?.[mType]?.vegParcelPrice, mealConf.vegParcelPrice);
             total += parcelPrice;
           }
         } else if (choice === DietaryOption.NON_VEG) {
@@ -152,11 +153,9 @@ export function calculateSubscriptionAmount(
 
           // Non-Veg Parcel Price
           if (isParcelAllowed) {
-            const parcelPrice = resolvePrice(
-              dayMenu?.[mType]?.kidsNonVegParcelPrice,
-              dayMenu?.[mType]?.nonVegParcelPrice,
-              mealConf.nonVegParcelPrice
-            );
+            const parcelPrice = isKid
+              ? Number(dayMenu?.[mType]?.kidsNonVegParcelPrice || 0)
+              : resolvePrice(undefined, dayMenu?.[mType]?.nonVegParcelPrice, mealConf.nonVegParcelPrice);
             total += parcelPrice;
           }
         }
@@ -758,6 +757,10 @@ export function SubscriptionForm() {
    * Toggles a specific meal slot parcel for a person.
    */
   const setMealParcel = (slot: MealType, enabled: boolean) => {
+    const isSelectedPersonKid = kidsEnabled && selectedPerson >= form.peopleCount;
+    if (isSelectedPersonKid && !isKidsParcelEnabled(selectedDay, slot, dayConfig, kidsEnabled)) {
+      return;
+    }
     const parcelKey = `${slot}Parcel` as keyof MealSlot;
     const currentSlots = getEnsureSlots(selectedDay);
     setForm({
@@ -1271,9 +1274,14 @@ export function SubscriptionForm() {
 
           {/* SECTION 2: Parcels */}
           {(() => {
-            const parcelSlots = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].filter(
-              (slot) => isMealEnabled(selectedDay, slot, dayConfig) && isParcelEnabled(selectedDay, slot, dayConfig)
-            );
+            const isKidSlot = kidsEnabled && selectedPerson >= form.peopleCount;
+            const checkParcelActive = (slot: MealType) =>
+              isMealEnabled(selectedDay, slot, dayConfig) &&
+              (isKidSlot
+                ? isKidsParcelEnabled(selectedDay, slot, dayConfig, kidsEnabled)
+                : isParcelEnabled(selectedDay, slot, dayConfig));
+
+            const parcelSlots = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].filter(checkParcelActive);
 
             if (parcelSlots.length === 0) return null;
 
@@ -1285,7 +1293,7 @@ export function SubscriptionForm() {
 
                 <View style={styles.choiceRow}>
                   {[MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER]
-                    .filter((slot) => isMealEnabled(selectedDay, slot, dayConfig) && isParcelEnabled(selectedDay, slot, dayConfig))
+                    .filter(checkParcelActive)
                     .map((slot) => {
                       const currentChoice = form.mealSlots[selectedDay]?.[selectedPerson]?.[slot] || DietaryOption.NONE;
                     const isParcel = !!form.mealSlots[selectedDay]?.[selectedPerson]?.[`${slot}Parcel` as keyof MealSlot];
@@ -1391,12 +1399,19 @@ export function SubscriptionForm() {
 
               {/* SECTION 4: Parcel Collection */}
               {(() => {
+                const isKidSlot = kidsEnabled && selectedPerson >= form.peopleCount;
+                const checkParcelActive = (slot: MealType) =>
+                  isMealEnabled(selectedDay, slot, dayConfig) &&
+                  (isKidSlot
+                    ? isKidsParcelEnabled(selectedDay, slot, dayConfig, kidsEnabled)
+                    : isParcelEnabled(selectedDay, slot, dayConfig));
+
                 const parcelTakenSlots = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].filter(
                   (slot) => {
                     const choice = form.mealSlots[selectedDay]?.[selectedPerson]?.[slot];
                     const isParcelRegistered = !!form.mealSlots[selectedDay]?.[selectedPerson]?.[`${slot}Parcel` as keyof MealSlot];
                     const isFoodTaken = !!form.takenByPerson[selectedDay]?.[selectedPerson]?.[slot];
-                    return isMealEnabled(selectedDay, slot, dayConfig) && isParcelEnabled(selectedDay, slot, dayConfig) && choice !== DietaryOption.NONE && isParcelRegistered && isFoodTaken;
+                    return checkParcelActive(slot) && choice !== DietaryOption.NONE && isParcelRegistered && isFoodTaken;
                   }
                 );
 
@@ -1412,7 +1427,7 @@ export function SubscriptionForm() {
                         .filter((slot) => {
                            const isParcelRegistered = !!form.mealSlots[selectedDay]?.[selectedPerson]?.[`${slot}Parcel` as keyof MealSlot];
                            const isFoodTaken = !!form.takenByPerson[selectedDay]?.[selectedPerson]?.[slot];
-                           return isMealEnabled(selectedDay, slot, dayConfig) && isParcelEnabled(selectedDay, slot, dayConfig) && isParcelRegistered && isFoodTaken;
+                           return checkParcelActive(slot) && isParcelRegistered && isFoodTaken;
                         })
                         .map((slot) => {
                           const choice = form.mealSlots[selectedDay]?.[selectedPerson]?.[slot];

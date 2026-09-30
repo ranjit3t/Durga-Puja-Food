@@ -10,6 +10,7 @@ import {
   getSortedMealKeys,
   isMealCurrent,
   getMealLabel,
+  isKidsParcelEnabled,
 } from "../constants";
 import { UserRole, MealType, AppScreen, AppThemeMode, ActivityModule, ActivityAction, Day, MealMenu } from "../types";
 import { BackButton } from "../components/common/BackButton";
@@ -142,8 +143,10 @@ export function ViewMenuScreen() {
 
           const vegParcelPrice = mealMenu.vegParcelPrice || UI_TEXT.zero;
           const nonVegParcelPrice = mealMenu.nonVegParcelPrice || UI_TEXT.zero;
-          const kidsVegParcelPrice = mealMenu.kidsVegParcelPrice || UI_TEXT.zero;
-          const kidsNonVegParcelPrice = mealMenu.kidsNonVegParcelPrice || UI_TEXT.zero;
+
+          const isKidsParcelOpt = isKidsParcelEnabled(dayId, mKey, dayConfig, kidsEnabled);
+          const kidsVegParcelPrice = isKidsParcelOpt ? (mealMenu.kidsVegParcelPrice || UI_TEXT.zero) : UI_TEXT.zero;
+          const kidsNonVegParcelPrice = isKidsParcelOpt ? (mealMenu.kidsNonVegParcelPrice || UI_TEXT.zero) : UI_TEXT.zero;
 
           rows.push([
             dayLabel,

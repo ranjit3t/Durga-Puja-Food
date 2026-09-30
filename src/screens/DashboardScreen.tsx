@@ -654,7 +654,7 @@ export function DashboardScreen() {
                       </Text>
                    </View>
 
-                  {kidsEnabled && summaryTotals.kidsTotal > 0 && (
+                  {kidsEnabled && (
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(6) }}>
                       <Text style={{ fontSize: s(11), fontWeight: '800', color: theme.colors.white, opacity: 0.9 }}>{UI_TEXT.kids}:</Text>
                       <Text style={{ fontSize: s(11), fontWeight: '900', color: theme.colors.white, opacity: 0.9 }}>
@@ -740,7 +740,7 @@ export function DashboardScreen() {
                        </Text>
                     </View>
 
-                    {kidsEnabled && currentMealSummary.kidsTotal > 0 && (
+                    {kidsEnabled && (
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(6) }}>
                          <Text style={{ fontSize: s(12), fontWeight: '800', color: theme.colors.white, opacity: 0.9 }}>{UI_TEXT.kids}:</Text>
                          <Text style={{ fontSize: s(12), fontWeight: '900', color: theme.colors.white, opacity: 0.9 }}>

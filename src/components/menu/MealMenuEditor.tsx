@@ -5,7 +5,7 @@ import { useStyles } from "../../styles";
 import { useAppTheme } from "../../theme";
 import { UI_TEXT } from "../../strings";
 import { MealMenu, Day, ConfigDay, MealType, DietType } from "../../types";
-import { isDietaryEnabled, isMealCurrent } from "../../constants";
+import { isDietaryEnabled, isMealCurrent, isKidsParcelEnabled } from "../../constants";
 
 /**
  * Interactive editor for a single meal's items.
@@ -245,7 +245,7 @@ export function MealMenuEditor({
                 )}
               </View>
 
-              {kidsEnabled && (
+              {kidsEnabled && isKidsParcelEnabled(dayId, mealKey, config, kidsEnabled) && (
                 <View style={styles.row}>
                   {vegEnabled && (
                     <View style={styles.fieldHalf}>

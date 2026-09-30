@@ -557,6 +557,8 @@ export const UI_TEXT = {
   paymentDisabledError: "Payment integration cannot be disabled as payments are recorded.",
   paymentChannelDisabledError: "Payment channel cannot be disabled as records exist.",
   kidsDisabledError: "Kids support cannot be disabled while kid members are registered.",
+  kidsParcelLabel: "Enable Kids Parcel Service",
+  kidsParcelSubscribedError: "Kids parcel support cannot be disabled while active subscriptions have kids parcels opted.",
   seasonDisabledError: "Season operations cannot be stopped while active meals remain.",
   daySubscribedError: "Day cannot be disabled while active subscriptions exist.",
   guestDisabledError: "Guest tracking cannot be disabled while guest records exist.",

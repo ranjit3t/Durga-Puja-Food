@@ -72,7 +72,7 @@ export function MealMetricGrid(props: MealMetricProps) {
   const adultTotalTaken = adultVegTaken + adultNonVegTaken;
   const adultTotalPlanned = veg + nonVeg;
 
-  const showKids = kidsEnabled && kidsTotal > 0;
+  const showKids = kidsEnabled;
   const showGuests = guestEnabled && guestTotal > 0;
   const showParcels = (isParcelEnabled ?? true) && (parcel > 0 || parcelTaken > 0);
 

@@ -351,7 +351,7 @@ export function SingleMealReport({
               </View>
 
               {/* 2. KIDS BLOCK */}
-              {kidsEnabled && m && (m.kidsVeg + m.kidsNonVeg) > 0 && (
+              {kidsEnabled && m && (
                 <View style={{ backgroundColor: theme.colors.surface, borderRadius: 16, padding: 14, borderWidth: 1, borderColor: theme.colors.border, gap: 10 }}>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                     <Ionicons name="happy-outline" size={16} color={theme.colors.primary} />

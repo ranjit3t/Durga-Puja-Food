@@ -70,6 +70,8 @@ export type MealConfig = {
   nonVeg: boolean;
   parcel: boolean;
   parcelAlert?: boolean;
+  kidsParcel?: boolean;
+  kidsParcelAlert?: boolean;
   done?: boolean;
   current?: boolean;
   vegPrice?: string;

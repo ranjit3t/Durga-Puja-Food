@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useStyles } from "../../styles";
 import { useAppTheme } from "../../theme";
 import { MealMenu, Day, ConfigDay, MealType, DietType } from "../../types";
-import { isDietaryEnabled, isMealCurrent } from "../../constants";
+import { isDietaryEnabled, isMealCurrent, isKidsParcelEnabled } from "../../constants";
 import { UI_TEXT } from "../../strings";
 
 /**
@@ -95,7 +95,7 @@ export function MealDisplay({
                   {mConf?.parcel && (
                     <Text style={{ fontSize: 10, color: theme.colors.textSecondary, fontWeight: '700' }}>
                       {UI_TEXT.parcelLabel}{UI_TEXT.colon}{UI_TEXT.space}{UI_TEXT.rs}{UI_TEXT.space}{menu.vegParcelPrice || mConf?.vegParcelPrice || UI_TEXT.zero}
-                      {kidsEnabled && (menu.kidsVegParcelPrice || (mConf as any)?.kidsVegParcelPrice) ? `${UI_TEXT.space}${UI_TEXT.openParen}${UI_TEXT.kidsAbbrLabel}${UI_TEXT.colon}${UI_TEXT.space}${UI_TEXT.rs}${UI_TEXT.space}${menu.kidsVegParcelPrice || (mConf as any)?.kidsVegParcelPrice}${UI_TEXT.closeParen}` : ''}
+                      {kidsEnabled && isKidsParcelEnabled(dayId, mealKey, config, kidsEnabled) && (menu.kidsVegParcelPrice || (mConf as any)?.kidsVegParcelPrice) ? `${UI_TEXT.space}${UI_TEXT.openParen}${UI_TEXT.kidsAbbrLabel}${UI_TEXT.colon}${UI_TEXT.space}${UI_TEXT.rs}${UI_TEXT.space}${menu.kidsVegParcelPrice || (mConf as any)?.kidsVegParcelPrice}${UI_TEXT.closeParen}` : ''}
                     </Text>
                   )}
                 </View>
@@ -126,7 +126,7 @@ export function MealDisplay({
                   {mConf?.parcel && (
                     <Text style={{ fontSize: 10, color: theme.colors.textSecondary, fontWeight: '700' }}>
                       {UI_TEXT.parcelLabel}{UI_TEXT.colon}{UI_TEXT.space}{UI_TEXT.rs}{UI_TEXT.space}{menu.nonVegParcelPrice || mConf?.nonVegParcelPrice || UI_TEXT.zero}
-                      {kidsEnabled && (menu.kidsNonVegParcelPrice || (mConf as any)?.kidsNonVegParcelPrice) ? `${UI_TEXT.space}${UI_TEXT.openParen}${UI_TEXT.kidsAbbrLabel}${UI_TEXT.colon}${UI_TEXT.space}${UI_TEXT.rs}${UI_TEXT.space}${menu.kidsNonVegParcelPrice || (mConf as any)?.kidsNonVegParcelPrice}${UI_TEXT.closeParen}` : ''}
+                      {kidsEnabled && isKidsParcelEnabled(dayId, mealKey, config, kidsEnabled) && (menu.kidsNonVegParcelPrice || (mConf as any)?.kidsNonVegParcelPrice) ? `${UI_TEXT.space}${UI_TEXT.openParen}${UI_TEXT.kidsAbbrLabel}${UI_TEXT.colon}${UI_TEXT.space}${UI_TEXT.rs}${UI_TEXT.space}${menu.kidsNonVegParcelPrice || (mConf as any)?.kidsNonVegParcelPrice}${UI_TEXT.closeParen}` : ''}
                     </Text>
                   )}
                 </View>

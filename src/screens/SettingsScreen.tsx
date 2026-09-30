@@ -15,7 +15,7 @@ import {
 import { useStyles } from "../styles";
 import { useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
-import { ConfigDay, PaymentConfig, AppScreen, PaymentMode, AppThemeMode, ActivityModule, ActivityAction, DietaryOption } from "../types";
+import { ConfigDay, PaymentConfig, AppScreen, PaymentMode, AppThemeMode, ActivityModule, ActivityAction, DietaryOption, MealSlot } from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
@@ -221,6 +221,24 @@ export function SettingsScreen() {
     updateMealConfig(dayId, meal as any, { enabled: val });
   };
 
+  const validateAndSetKidsParcel = (dayId: string, meal: MealType, val: boolean) => {
+    if (!val) { // Switching OFF
+      const hasKidsParcelSub = (subscriptions || []).some(sub => {
+        const slots = sub.mealSlots[dayId] || [];
+        return slots.some((slot, idx) => {
+          const isKid = (sub.kidsCount || 0) > 0 && idx >= (sub.peopleCount || 0);
+          const parcelKey = `${meal}Parcel` as keyof MealSlot;
+          return isKid && slot[parcelKey];
+        });
+      });
+      if (hasKidsParcelSub) {
+        showAlert(UI_TEXT.confirmDisableTitle, UI_TEXT.kidsParcelSubscribedError);
+        return;
+      }
+    }
+    updateMealConfig(dayId, meal, { kidsParcel: val });
+  };
+
   const validateAndSetDone = (dayId: string, meal: MealType, val: boolean) => {
     const { canMarkDone, canUnmarkDone } = getMealConstraints(dayId, meal, localConfig);
     if (val && !canMarkDone) {
@@ -308,7 +326,7 @@ export function SettingsScreen() {
     }, 0);
 
     const id = `Day${maxSuffix + 1}`;
-    const emptyMeal: MealConfig = { enabled: false, veg: true, nonVeg: true, parcel: false, parcelAlert: false, vegParcelPrice: UI_TEXT.zero, nonVegParcelPrice: UI_TEXT.zero };
+    const emptyMeal: MealConfig = { enabled: false, veg: true, nonVeg: true, parcel: false, parcelAlert: false, kidsParcel: false, vegParcelPrice: UI_TEXT.zero, nonVegParcelPrice: UI_TEXT.zero };
     const newDay: ConfigDay = {
       id,
       label: UI_TEXT.newDayLabel,
@@ -380,6 +398,7 @@ export function SettingsScreen() {
               if (newM.veg !== oldM.veg) mChanges.push(`Veg:${newM.veg ? 'ON' : 'OFF'}`);
               if (newM.nonVeg !== oldM.nonVeg) mChanges.push(`NonVeg:${newM.nonVeg ? 'ON' : 'OFF'}`);
               if (newM.parcel !== oldM.parcel) mChanges.push(`Parcel:${newM.parcel ? 'ON' : 'OFF'}`);
+              if (newM.kidsParcel !== oldM.kidsParcel) mChanges.push(`KidsParcel:${newM.kidsParcel ? 'ON' : 'OFF'}`);
               if (newM.parcelAlert !== oldM.parcelAlert) mChanges.push(`ParcelAlert:${newM.parcelAlert ? 'ON' : 'OFF'}`);
               if (newM.done !== oldM.done) mChanges.push(`Done:${newM.done ? 'ON' : 'OFF'}`);
               if (newM.current !== oldM.current) mChanges.push(`Current:${newM.current ? 'ON' : 'OFF'}`);
@@ -807,13 +826,26 @@ export function SettingsScreen() {
                                  onValueChange={(val) => {
                                    updateMealConfig(day.id, mKey, {
                                      parcel: val,
-                                     parcelAlert: val ? m.parcelAlert : false
+                                     parcelAlert: val ? m.parcelAlert : false,
+                                     kidsParcel: val ? m.kidsParcel : false,
                                    });
                                  }}
                                  trackColor={{ true: theme.colors.primary }}
                                  style={{ transform: [{ scale: 0.8 }], flexShrink: 0 }}
                                />
                             </View>
+                            {m.parcel && localKidsEnabled && (
+                               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: theme.colors.background, padding: 10, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border }}>
+                                  <Text style={{ fontSize: 12, fontWeight: '800', color: theme.colors.textSecondary, flex: 1, marginRight: 10 }}>{UI_TEXT.kidsParcelLabel.toUpperCase()}</Text>
+                                  <Switch
+                                    value={!!m.kidsParcel}
+                                    disabled={m.done}
+                                    onValueChange={(val) => validateAndSetKidsParcel(day.id, mKey as MealType, val)}
+                                    trackColor={{ true: theme.colors.primary }}
+                                    style={{ transform: [{ scale: 0.8 }], flexShrink: 0 }}
+                                  />
+                               </View>
+                            )}
                             {m.parcel && (
                                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: theme.colors.background, padding: 10, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border }}>
                                   <Text style={{ fontSize: 12, fontWeight: '800', color: theme.colors.textSecondary, flex: 1, marginRight: 10 }}>{UI_TEXT.parcelAlertLabel.toUpperCase()}</Text>

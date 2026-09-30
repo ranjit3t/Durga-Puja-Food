@@ -27,6 +27,8 @@ import {
   getPaymentModeLabel,
   isMealCurrent,
   isMealEnabled,
+  isParcelEnabled,
+  isKidsParcelEnabled,
   getDayLabel,
   getMealLabel,
   getDietaryOptionLabel,
@@ -330,11 +332,19 @@ export function SubscriptionListScreen() {
 
   const passesWithParcelCount = useMemo(() => {
     return subscriptions.filter(sub =>
-      Object.values(sub.mealSlots || {}).some(daySlots =>
-        daySlots.some(slot => slot.breakfastParcel || slot.lunchParcel || slot.dinnerParcel)
-      )
+      Object.keys(sub.mealSlots || {}).some(dayId => {
+        const daySlots = sub.mealSlots[dayId] || [];
+        const adultCount = sub.peopleCount || 0;
+        return daySlots.some((slot, idx) => {
+          const isKid = kidsEnabled && idx >= adultCount;
+          const isB = slot.breakfastParcel && (isKid ? isKidsParcelEnabled(dayId, MealType.BREAKFAST, dayConfig, kidsEnabled) : isParcelEnabled(dayId, MealType.BREAKFAST, dayConfig));
+          const isL = slot.lunchParcel && (isKid ? isKidsParcelEnabled(dayId, MealType.LUNCH, dayConfig, kidsEnabled) : isParcelEnabled(dayId, MealType.LUNCH, dayConfig));
+          const isD = slot.dinnerParcel && (isKid ? isKidsParcelEnabled(dayId, MealType.DINNER, dayConfig, kidsEnabled) : isParcelEnabled(dayId, MealType.DINNER, dayConfig));
+          return isB || isL || isD;
+        });
+      })
     ).length;
-  }, [subscriptions]);
+  }, [subscriptions, dayConfig, kidsEnabled]);
 
   const hasAnyParcel = passesWithParcelCount > 0;
 
@@ -511,9 +521,17 @@ export function SubscriptionListScreen() {
         personSlots[currentMealInfo.type] === DietaryOption.VEG ||
         personSlots[currentMealInfo.type] === DietaryOption.NON_VEG
       );
-      const hasParcel = Object.values(item.mealSlots || {}).some(daySlots =>
-        daySlots.some(slot => slot.breakfastParcel || slot.lunchParcel || slot.dinnerParcel)
-      );
+      const hasParcel = Object.keys(item.mealSlots || {}).some(dayId => {
+        const daySlots = item.mealSlots[dayId] || [];
+        const adultCount = item.peopleCount || 0;
+        return daySlots.some((slot, idx) => {
+          const isKid = kidsEnabled && idx >= adultCount;
+          const isB = slot.breakfastParcel && (isKid ? isKidsParcelEnabled(dayId, MealType.BREAKFAST, dayConfig, kidsEnabled) : isParcelEnabled(dayId, MealType.BREAKFAST, dayConfig));
+          const isL = slot.lunchParcel && (isKid ? isKidsParcelEnabled(dayId, MealType.LUNCH, dayConfig, kidsEnabled) : isParcelEnabled(dayId, MealType.LUNCH, dayConfig));
+          const isD = slot.dinnerParcel && (isKid ? isKidsParcelEnabled(dayId, MealType.DINNER, dayConfig, kidsEnabled) : isParcelEnabled(dayId, MealType.DINNER, dayConfig));
+          return isB || isL || isD;
+        });
+      });
       let hasVeg = false;
       let hasNonVeg = false;
       Object.values(item.mealSlots || {}).forEach(daySlots => {
@@ -704,9 +722,14 @@ export function SubscriptionListScreen() {
               const parcelKey = `${mType}Parcel` as keyof MealSlot;
               const isParcelOpted = slot ? !!slot[parcelKey] : false;
 
+              const isKidMember = kidsEnabled && i >= adults;
+              const isParcelAllowed = isKidMember
+                ? isKidsParcelEnabled(dayId, mType, dayConfig, kidsEnabled)
+                : isParcelEnabled(dayId, mType, dayConfig);
+
               if (choice === DietaryOption.VEG) rowDayVeg++;
               else if (choice === DietaryOption.NON_VEG) rowDayNonVeg++;
-              if (isParcelOpted) rowDayParcels++;
+              if (isParcelOpted && isParcelAllowed) rowDayParcels++;
 
               if (choice === DietaryOption.NONE) {
                 choiceParts.push(`${memberLabel}: ${UI_TEXT.none}`);

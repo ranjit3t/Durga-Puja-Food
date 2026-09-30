@@ -36,6 +36,7 @@ import {
   isMealEnabled,
   isDietaryEnabled,
   isParcelEnabled,
+  isKidsParcelEnabled,
   getDayLabel,
   getMealLabel,
   formatTakenTime
@@ -909,7 +910,11 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
                    else totals.breakfastNonVeg += 1;
                 }
 
-                if (isParcelEnabled(day, MealType.BREAKFAST, dayConfig) && slots.breakfastParcel) {
+                const isB_ParcelOptEnabled = isKid
+                  ? isKidsParcelEnabled(day, MealType.BREAKFAST, dayConfig, kidsEnabled)
+                  : isParcelEnabled(day, MealType.BREAKFAST, dayConfig);
+
+                if (isB_ParcelOptEnabled && slots.breakfastParcel) {
                   totals.breakfastParcel += 1;
                   if (taken?.breakfastParcel) totals.breakfastParcelTaken += 1;
                 }
@@ -945,7 +950,11 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
                  if (isKid) totals.lunchKidsNonVeg += 1;
                  else totals.lunchNonVeg += 1;
               }
-              if (isParcelEnabled(day, MealType.LUNCH, dayConfig) && slots.lunchParcel) {
+              const isL_ParcelOptEnabled = isKid
+                ? isKidsParcelEnabled(day, MealType.LUNCH, dayConfig, kidsEnabled)
+                : isParcelEnabled(day, MealType.LUNCH, dayConfig);
+
+              if (isL_ParcelOptEnabled && slots.lunchParcel) {
                 totals.lunchParcel += 1;
                 if (taken?.lunchParcel) totals.lunchParcelTaken += 1;
               }
@@ -981,7 +990,11 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
                  if (isKid) totals.dinnerKidsNonVeg += 1;
                  else totals.dinnerNonVeg += 1;
               }
-              if (isParcelEnabled(day, MealType.DINNER, dayConfig) && slots.dinnerParcel) {
+              const isD_ParcelOptEnabled = isKid
+                ? isKidsParcelEnabled(day, MealType.DINNER, dayConfig, kidsEnabled)
+                : isParcelEnabled(day, MealType.DINNER, dayConfig);
+
+              if (isD_ParcelOptEnabled && slots.dinnerParcel) {
                 totals.dinnerParcel += 1;
                 if (taken?.dinnerParcel) totals.dinnerParcelTaken += 1;
               }
