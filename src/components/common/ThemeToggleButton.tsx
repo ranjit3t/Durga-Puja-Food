@@ -26,6 +26,7 @@ export function ThemeToggleButton() {
           justifyContent: "center",
           borderWidth: 1,
           borderColor: theme.colors.border,
+          flexShrink: 0,
         },
         pressed && { opacity: 0.7 },
       ]}

@@ -104,7 +104,7 @@ const ActivityLogsContext = createContext<ActivityLogsContextType | undefined>(u
 const NotesContext = createContext<NotesContextType | undefined>(undefined);
 
 export function DatabaseProvider({ children }: { children: React.ReactNode }) {
-  const { userRole, userName } = useAuth();
+  const { userRole, userName, userAccountName } = useAuth();
 
   const [loading, setLoading] = useState(false);
   const [firebaseError, setFirebaseError] = useState("");
@@ -133,8 +133,13 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
   const getAuthConfig = useCallback(() => repository.getAuthConfig(), []);
 
   const addActivityLog = useCallback((log: Omit<ActivityLog, "id" | "timestamp" | "userName" | "userRole" | "device" | "os">, manualUser?: string, manualRole?: UserRole | string) => {
-    const user = manualUser || userName;
+    let user = manualUser || userName;
     const role = manualRole || userRole;
+
+    if (!manualUser && userName && userAccountName && userName.toLowerCase() !== userAccountName.toLowerCase()) {
+      user = `${userName} (${userAccountName})`;
+    }
+
     if (!user) return;
     void repository.addActivityLog({
       ...log,
@@ -145,7 +150,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       device: Platform.Version ? String(Platform.Version) : undefined,
       appVersion: UI_TEXT.appVersion
     }).catch(err => console.error("Failed to add activity log:", err));
-  }, [userName, userRole]);
+  }, [userName, userAccountName, userRole]);
 
   const getActivityLogs = useCallback((limitCount?: number) => {
     return repository.getActivityLogs(limitCount);

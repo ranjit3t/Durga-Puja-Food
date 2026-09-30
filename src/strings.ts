@@ -580,6 +580,7 @@ export const UI_TEXT = {
   passwordPlaceholder: "Enter portal password",
   loginButton: "Sign In",
   logoutButton: "Sign Out",
+  userGreeting: "Welcome, {name}",
   notes: "Operational Notes",
   contacts: "Foodie's Directory",
   contactsSubtitle: "Resident directory for rapid communication and coordination.",

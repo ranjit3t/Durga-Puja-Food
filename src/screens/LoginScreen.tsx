@@ -53,12 +53,16 @@ export function LoginScreen() {
       if (user) {
         setVerifying(false);
         setLoading(true);
+        const displayName = user.name || user.username;
+        const formattedUser = user.name && user.name.toLowerCase() !== user.username.toLowerCase()
+          ? `${user.name} (${user.username})`
+          : user.username;
         addActivityLog({
           module: ActivityModule.AUTH,
           action: ActivityAction.LOGIN,
           description: UI_TEXT.logLogin.replace("{role}", user.role)
-        }, user.username, user.role as UserRole);
-        handleLogin(user.role as UserRole, user.username);
+        }, formattedUser, user.role as UserRole);
+        handleLogin(user.role as UserRole, displayName, user.username);
       } else {
         setVerifying(false);
         addActivityLog({

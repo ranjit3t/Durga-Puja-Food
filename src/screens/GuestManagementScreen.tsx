@@ -10,6 +10,7 @@ import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
 import { ThemeToggleButton } from "../components/common/ThemeToggleButton";
+import { UserGreeting } from "../components/common/UserGreeting";
 import { CounterInput } from "../components/common/CounterInput";
 import { QuickGuestModal } from "../components/common/QuickGuestModal";
 import { useAuth } from "../context/AuthContext";
@@ -465,16 +466,17 @@ export function GuestManagementScreen() {
     <View style={styles.root}>
       <StatusBar barStyle={themeType === AppThemeMode.DARK ? "light-content" : "dark-content"} />
       <View style={styles.header}>
-        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", height: 40, marginBottom: 8 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 0 }}>
             <BackButton onPress={goBack} />
             <HomeButton onPress={() => navigate(AppScreen.HOME)} />
           </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flexShrink: 0 }}>
             <ThemeToggleButton />
             <LogoutButton onLogout={handleLogout} />
           </View>
         </View>
+        <UserGreeting />
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
           <View style={{ flex: 1, minWidth: 160 }}>
             <Text style={styles.title}>{UI_TEXT.guestManagement}</Text>

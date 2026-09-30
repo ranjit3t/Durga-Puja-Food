@@ -64,9 +64,15 @@ The application follows a decoupled, context-driven component architecture with 
 - **Dark Theme Canvas**: Obsidian Slate (`#0F172A`) with elevated slate surface tiles (`#1E293B`).
 - **Standardized Dietary Indicators**: FSSAI standard Emerald Green (`#10B981`) for Vegetarian and Crimson Red (`#EF4444`) for Non-Vegetarian.
 
-### 2. Universal Theme Toggle Button (`ThemeToggleButton.tsx`)
-- Integrated in the top-right header control bar alongside `LogoutButton` on **every screen** across the app.
-- **Camera Viewfinder Exclusion**: Intentionally excluded from camera screens (`ScannerScreen` and `PaymentScannerModal`) to keep dark camera viewfinders undisturbed.
+### 2. Universal Theme Toggle Button (`ThemeToggleButton.tsx`) & Personalized Header Welcome Badge (`UserGreeting.tsx`)
+- **Universal Header Controls**: `ThemeToggleButton` and `LogoutButton` sit side-by-side in the top-right header control bar across all operational screens.
+- **Sleek Personalized Header Welcome Badge (`UserGreeting.tsx`)**: Placed in the upper header section directly below the top control buttons row on all 14 operational screens. Renders a theme-aware glassmorphic pill badge (`sparkles` icon + localized prefix + bold user name extracted from `auth_config/users`).
+- **Dynamic Layout & Overflow Protection**: Uses responsive `maxBadgeWidth`, `numberOfLines={1}`, and `ellipsizeMode="tail"` truncation to guarantee long names (e.g. `"Sri Satya Narayana Choudhary Mukhopadhyay"`) never overflow or deform header layouts on mobile or web viewports.
+- **Camera & Modal Exclusion**: Excluded from camera screens (`ScannerScreen`, `PaymentScannerModal`) and modal overlays to maintain clean viewfinders and dialog focus.
+
+### 3. Multi-Attribute Audit Trail Security Traceability
+- **Name, Username & User Type Logging**: `addActivityLog` records user identity as `Name (username)` (e.g. `"Rahul Sharma (admin)"`) alongside `userRole` (e.g. `"ADMIN"` or `"VENDOR"`).
+- **Comprehensive Audit Visibility**: Displays user badges as `Rahul Sharma (admin) (ADMIN)` across all system audit trail views, text exports, and local summaries, providing complete visibility into user Name, Username, and User Type (Role) for security compliance.
 
 ---
 

@@ -33,6 +33,7 @@ import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
 import { ThemeToggleButton } from "../components/common/ThemeToggleButton";
+import { UserGreeting } from "../components/common/UserGreeting";
 import { MealSummaryInline } from "../components/menu/MealSummaryInline";
 import { MealMetricGrid } from "../components/dashboard/MealMetricGrid";
 import { MealBarChart } from "../components/dashboard/MealBarChart";
@@ -575,16 +576,17 @@ export function DashboardScreen() {
     >
       <StatusBar barStyle={themeType === AppThemeMode.DARK ? "light-content" : "dark-content"} />
       <View style={styles.header}>
-        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: s(16) }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(8) }}>
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", height: 40, marginBottom: 8 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(8), flexShrink: 0 }}>
             <BackButton onPress={goBack} />
             <HomeButton onPress={() => navigate(AppScreen.HOME)} />
           </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flexShrink: 0 }}>
             <ThemeToggleButton />
             <LogoutButton onLogout={handleLogout} />
           </View>
         </View>
+        <UserGreeting />
         <Text style={styles.title}>{UI_TEXT.dashboardTitle}</Text>
         <Text style={styles.subtitle}>{UI_TEXT.dashboardSubtitle}</Text>
       </View>

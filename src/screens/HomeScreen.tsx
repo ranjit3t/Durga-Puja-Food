@@ -13,6 +13,7 @@ import { getActiveDays, isSeasonDone, isMealCurrent, getDayLabel, isMealEnabled,
 import { ActionLabel } from "../components/common/ActionLabel";
 import { LogoutButton } from "../components/common/LogoutButton";
 import { ThemeToggleButton } from "../components/common/ThemeToggleButton";
+import { UserGreeting } from "../components/common/UserGreeting";
 
 export function HomeScreen() {
   const styles = useStyles();
@@ -163,10 +164,14 @@ export function HomeScreen() {
     <View style={styles.root}>
       <StatusBar barStyle={themeType === AppThemeMode.DARK ? "light-content" : "dark-content"} />
       <View style={styles.header}>
-        <View style={{ flexDirection: "row", justifyContent: "flex-end", alignItems: "center", gap: 10, height: 40, marginBottom: 16 }}>
-          <ThemeToggleButton />
-          <LogoutButton onLogout={handleLogout} />
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", height: 40, marginBottom: 8 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 0 }} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+            <ThemeToggleButton />
+            <LogoutButton onLogout={handleLogout} />
+          </View>
         </View>
+        <UserGreeting />
         <Text style={styles.title}>{UI_TEXT.headerTitle}</Text>
       </View>
 
