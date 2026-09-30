@@ -91,8 +91,12 @@ export function HomeScreen() {
           if (!isMealEnabled(dayId, mType, dayConfig)) return;
           const meal = dayMenu[mType];
           if (meal) {
-            vegPlates += (meal.guestVeg || 0);
-            nonVegPlates += (meal.guestNonVeg || 0);
+            if (isDietaryEnabled(dayId, mType, DietType.VEG, dayConfig)) {
+              vegPlates += (meal.guestVeg || 0);
+            }
+            if (isDietaryEnabled(dayId, mType, DietType.NON_VEG, dayConfig)) {
+              nonVegPlates += (meal.guestNonVeg || 0);
+            }
           }
         });
       });
@@ -119,16 +123,21 @@ export function HomeScreen() {
   const guestSummary = React.useMemo(() => {
     let seasonTotal = 0;
     let currentMealTotal = 0;
+    const activeDays = getActiveDays(dayConfig);
 
     Object.keys(foodMenu).forEach(dayId => {
+      if (!activeDays.includes(dayId)) return;
       const dayMenu = foodMenu[dayId];
       [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].forEach(mType => {
+        if (!isMealEnabled(dayId, mType, dayConfig)) return;
         const meal = dayMenu[mType];
         if (meal) {
-          const mGuest = (meal.guestVeg || 0) + (meal.guestNonVeg || 0);
+          const gVeg = isDietaryEnabled(dayId, mType, DietType.VEG, dayConfig) ? (meal.guestVeg || 0) : 0;
+          const gNonVeg = isDietaryEnabled(dayId, mType, DietType.NON_VEG, dayConfig) ? (meal.guestNonVeg || 0) : 0;
+          const mGuest = gVeg + gNonVeg;
           seasonTotal += mGuest;
 
-          if (isMealCurrent(dayId, mType, dayConfig) && isMealEnabled(dayId, mType, dayConfig)) {
+          if (isMealCurrent(dayId, mType, dayConfig)) {
             currentMealTotal = mGuest;
           }
         }

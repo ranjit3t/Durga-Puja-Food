@@ -214,6 +214,7 @@ export type MealMenu = {
   kidsNonVegParcelPrice?: string;
   guestVeg?: number;
   guestNonVeg?: number;
+  guestTotal?: number;
   guestTaken?: number;
   guestVegTaken?: number;
   guestNonVegTaken?: number;

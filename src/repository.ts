@@ -53,6 +53,7 @@ export interface SubscriptionRepository {
   updateMenu(menu: FoodMenu): Promise<void>;
   updateMealMenu(dayId: string, mealKey: MealType, menu: MealMenu): Promise<void>;
   updateGuestCount(dayId: string, mealKey: MealType, field: string, value: number): Promise<void>;
+  updateGuestCounts(dayId: string, mealKey: MealType, data: Record<string, any>): Promise<void>;
   getConfig(): Promise<AppConfig>;
   updateConfig(config: AppConfig): Promise<void>;
   updateSubscriptionStatus(flatId: string, dayId: string, personIndex: number, slot: string, taken: boolean, timeStr?: string): Promise<void>;
@@ -479,6 +480,11 @@ export function createFirebaseRepository(): SubscriptionRepository {
       const services = await ensureFirebaseAuth();
       if (!services) return;
       await set(ref(services.db, `${menuPath}/${dayId}/${mealKey}/${field}`), value);
+    },
+    async updateGuestCounts(dayId, mealKey, data) {
+      const services = await ensureFirebaseAuth();
+      if (!services) return;
+      await update(ref(services.db, `${menuPath}/${dayId}/${mealKey}`), cleanUndefined(data));
     },
     async getConfig() {
       const services = await ensureFirebaseAuth();

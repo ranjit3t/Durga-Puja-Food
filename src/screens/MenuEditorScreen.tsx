@@ -53,6 +53,16 @@ export function MenuEditorScreen() {
   const [saving, setSaving] = useState(false);
   const canEdit = seasonEnabled;
 
+  const hasAnyChanges = useMemo(() => {
+    return JSON.stringify(menu) !== JSON.stringify(localMenu);
+  }, [menu, localMenu]);
+
+  useEffect(() => {
+    if (menu && !hasAnyChanges) {
+      setLocalMenu(menu);
+    }
+  }, [menu, hasAnyChanges]);
+
   const onSave = updateMenu;
 
   const emptyMeal = {
@@ -99,10 +109,6 @@ export function MenuEditorScreen() {
     return JSON.stringify(original) !== JSON.stringify(current);
   };
 
-  const hasAnyChanges = useMemo(() => {
-    return JSON.stringify(menu) !== JSON.stringify(localMenu);
-  }, [menu, localMenu]);
-
   const getMealChangeLog = (oldMeal: MealMenu, newMeal: MealMenu) => {
     const changes: string[] = [];
 
@@ -141,12 +147,19 @@ export function MenuEditorScreen() {
           .replace("{meal}", getMealLabel(meal))
           .replace("{changes}", changes || UI_TEXT.logUpdateMenu)
       });
+      setLocalMenu(prev => ({
+        ...prev,
+        [day]: {
+          ...(prev[day] || {
+            [MealType.BREAKFAST]: emptyMeal,
+            [MealType.LUNCH]: emptyMeal,
+            [MealType.DINNER]: emptyMeal,
+          }),
+          [meal]: newMeal
+        }
+      }));
       showAlert(UI_TEXT.success, UI_TEXT.menuUpdated, [
-        { text: UI_TEXT.ok, onPress: () => {
-          setTargetDay(day);
-          setTargetMeal(meal);
-          navigate(AppScreen.VIEW_MENU);
-        }}
+        { text: UI_TEXT.ok }
       ]);
     } catch (err) {
       showAlert(UI_TEXT.error, UI_TEXT.couldNotUpdateMenu);
@@ -170,15 +183,17 @@ export function MenuEditorScreen() {
       });
     });
 
-    await onSave(localMenu);
+    const menuToSave = JSON.parse(JSON.stringify(localMenu));
+    await onSave(menuToSave);
     addActivityLog({
       module: ActivityModule.MENU,
       action: ActivityAction.UPDATE,
       description: `${UI_TEXT.logUpdateMenuAll}: ${updatedMeals.join(', ')}`
     });
     setSaving(false);
+    setLocalMenu(menuToSave);
     showAlert(UI_TEXT.success, UI_TEXT.menuUpdated, [
-      { text: UI_TEXT.ok, onPress: () => navigate(AppScreen.VIEW_MENU) }
+      { text: UI_TEXT.ok }
     ]);
   };
 

@@ -532,14 +532,49 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
 
   const updateGuestCount = useCallback(async (dayId: string, mealKey: MealType, field: string, value: number) => {
     try {
-      setFoodMenu(prev => ({
-        ...prev,
-        [dayId]: {
-          ...prev[dayId],
-          [mealKey]: { ...prev[dayId][mealKey as keyof DayMenu], [field]: value }
-        }
-      }));
-      await repository.updateGuestCount(dayId, mealKey, field, value);
+      setFoodMenu(prev => {
+        const dayMenu = prev[dayId] || {
+          [MealType.BREAKFAST]: { veg: [], nonVeg: [] },
+          [MealType.LUNCH]: { veg: [], nonVeg: [] },
+          [MealType.DINNER]: { veg: [], nonVeg: [] },
+        };
+        const mealMenu = dayMenu[mealKey] || { veg: [], nonVeg: [] };
+        const updatedMeal = {
+          ...mealMenu,
+          [field]: value
+        };
+        const gVeg = updatedMeal.guestVeg || 0;
+        const gNonVeg = updatedMeal.guestNonVeg || 0;
+        const gVegTaken = updatedMeal.guestVegTaken || 0;
+        const gNonVegTaken = updatedMeal.guestNonVegTaken || 0;
+        updatedMeal.guestTotal = gVeg + gNonVeg;
+        updatedMeal.guestTaken = gVegTaken + gNonVegTaken;
+
+        return {
+          ...prev,
+          [dayId]: {
+            ...dayMenu,
+            [mealKey]: updatedMeal
+          }
+        };
+      });
+
+      setFoodMenu(currentMenu => {
+        const currentMeal = currentMenu[dayId]?.[mealKey] || {};
+        const gVeg = currentMeal.guestVeg || 0;
+        const gNonVeg = currentMeal.guestNonVeg || 0;
+        const gVegTaken = currentMeal.guestVegTaken || 0;
+        const gNonVegTaken = currentMeal.guestNonVegTaken || 0;
+        const guestTotal = gVeg + gNonVeg;
+        const guestTaken = gVegTaken + gNonVegTaken;
+
+        repository.updateGuestCounts(dayId, mealKey, {
+          [field]: value,
+          guestTotal,
+          guestTaken,
+        });
+        return currentMenu;
+      });
     } catch (err: any) {
       addActivityLog({
         module: ActivityModule.GUEST,
@@ -714,7 +749,18 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
   const updateGuestCountDebounced = useCallback((dayId: string, mealKey: MealType, field: string, value: number, source?: GuestCheckoutSource | string) => {
      setFoodMenu(prev => {
         const updatedDay = { ...(prev[dayId] || {}) };
-        const updatedMeal = { ...(updatedDay[mealKey] || { veg: [], nonVeg: [] }), [field]: value };
+        const mealMenu = updatedDay[mealKey] || { veg: [], nonVeg: [] };
+        const updatedMeal = {
+           ...mealMenu,
+           [field]: value
+        };
+        const gVeg = updatedMeal.guestVeg || 0;
+        const gNonVeg = updatedMeal.guestNonVeg || 0;
+        const gVegTaken = updatedMeal.guestVegTaken || 0;
+        const gNonVegTaken = updatedMeal.guestNonVegTaken || 0;
+        updatedMeal.guestTotal = gVeg + gNonVeg;
+        updatedMeal.guestTaken = gVegTaken + gNonVegTaken;
+
         return {
           ...prev,
           [dayId]: { ...updatedDay, [mealKey]: updatedMeal }
@@ -728,7 +774,22 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
 
      guestUpdateTimers.current[timerKey] = setTimeout(async () => {
         try {
-          await repository.updateGuestCount(dayId, mealKey, field, value);
+          setFoodMenu(currentMenu => {
+             const currentMeal = currentMenu[dayId]?.[mealKey] || {};
+             const gVeg = currentMeal.guestVeg || 0;
+             const gNonVeg = currentMeal.guestNonVeg || 0;
+             const gVegTaken = currentMeal.guestVegTaken || 0;
+             const gNonVegTaken = currentMeal.guestNonVegTaken || 0;
+             const guestTotal = gVeg + gNonVeg;
+             const guestTaken = gVegTaken + gNonVegTaken;
+
+             repository.updateGuestCounts(dayId, mealKey, {
+                [field]: value,
+                guestTotal,
+                guestTaken,
+             });
+             return currentMenu;
+          });
 
           addActivityLog({
             module: ActivityModule.GUEST,
@@ -770,11 +831,11 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
         breakfastParcel: 0,
         breakfastParcelTaken: 0,
         breakfastTaken: 0,
-        breakfastGuestVeg: guestEnabled ? (dayMenu?.breakfast?.guestVeg || 0) : 0,
-        breakfastGuestNonVeg: guestEnabled ? (dayMenu?.breakfast?.guestNonVeg || 0) : 0,
-        breakfastGuestTaken: guestEnabled ? (dayMenu?.breakfast?.guestTaken || 0) : 0,
-        breakfastGuestVegTaken: guestEnabled ? (dayMenu?.breakfast?.guestVegTaken || 0) : 0,
-        breakfastGuestNonVegTaken: guestEnabled ? (dayMenu?.breakfast?.guestNonVegTaken || 0) : 0,
+        breakfastGuestVeg: (guestEnabled && isMealEnabled(day, MealType.BREAKFAST, dayConfig) && isDietaryEnabled(day, MealType.BREAKFAST, DietType.VEG, dayConfig)) ? (dayMenu?.breakfast?.guestVeg || 0) : 0,
+        breakfastGuestNonVeg: (guestEnabled && isMealEnabled(day, MealType.BREAKFAST, dayConfig) && isDietaryEnabled(day, MealType.BREAKFAST, DietType.NON_VEG, dayConfig)) ? (dayMenu?.breakfast?.guestNonVeg || 0) : 0,
+        breakfastGuestTaken: (guestEnabled && isMealEnabled(day, MealType.BREAKFAST, dayConfig)) ? (dayMenu?.breakfast?.guestTaken || 0) : 0,
+        breakfastGuestVegTaken: (guestEnabled && isMealEnabled(day, MealType.BREAKFAST, dayConfig) && isDietaryEnabled(day, MealType.BREAKFAST, DietType.VEG, dayConfig)) ? (dayMenu?.breakfast?.guestVegTaken || 0) : 0,
+        breakfastGuestNonVegTaken: (guestEnabled && isMealEnabled(day, MealType.BREAKFAST, dayConfig) && isDietaryEnabled(day, MealType.BREAKFAST, DietType.NON_VEG, dayConfig)) ? (dayMenu?.breakfast?.guestNonVegTaken || 0) : 0,
         breakfastFlatVegTaken: 0,
         breakfastFlatNonVegTaken: 0,
         breakfastKidsTotal: 0,
@@ -790,11 +851,11 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
         lunchParcel: 0,
         lunchParcelTaken: 0,
         lunchTaken: 0,
-        lunchGuestVeg: guestEnabled ? (dayMenu?.lunch?.guestVeg || 0) : 0,
-        lunchGuestNonVeg: guestEnabled ? (dayMenu?.lunch?.guestNonVeg || 0) : 0,
-        lunchGuestTaken: guestEnabled ? (dayMenu?.lunch?.guestTaken || 0) : 0,
-        lunchGuestVegTaken: guestEnabled ? (dayMenu?.lunch?.guestVegTaken || 0) : 0,
-        lunchGuestNonVegTaken: guestEnabled ? (dayMenu?.lunch?.guestNonVegTaken || 0) : 0,
+        lunchGuestVeg: (guestEnabled && isMealEnabled(day, MealType.LUNCH, dayConfig) && isDietaryEnabled(day, MealType.LUNCH, DietType.VEG, dayConfig)) ? (dayMenu?.lunch?.guestVeg || 0) : 0,
+        lunchGuestNonVeg: (guestEnabled && isMealEnabled(day, MealType.LUNCH, dayConfig) && isDietaryEnabled(day, MealType.LUNCH, DietType.NON_VEG, dayConfig)) ? (dayMenu?.lunch?.guestNonVeg || 0) : 0,
+        lunchGuestTaken: (guestEnabled && isMealEnabled(day, MealType.LUNCH, dayConfig)) ? (dayMenu?.lunch?.guestTaken || 0) : 0,
+        lunchGuestVegTaken: (guestEnabled && isMealEnabled(day, MealType.LUNCH, dayConfig) && isDietaryEnabled(day, MealType.LUNCH, DietType.VEG, dayConfig)) ? (dayMenu?.lunch?.guestVegTaken || 0) : 0,
+        lunchGuestNonVegTaken: (guestEnabled && isMealEnabled(day, MealType.LUNCH, dayConfig) && isDietaryEnabled(day, MealType.LUNCH, DietType.NON_VEG, dayConfig)) ? (dayMenu?.lunch?.guestNonVegTaken || 0) : 0,
         lunchFlatVegTaken: 0,
         lunchFlatNonVegTaken: 0,
         lunchKidsTotal: 0,
@@ -810,11 +871,11 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
         dinnerParcel: 0,
         dinnerParcelTaken: 0,
         dinnerTaken: 0,
-        dinnerGuestVeg: guestEnabled ? (dayMenu?.dinner?.guestVeg || 0) : 0,
-        dinnerGuestNonVeg: guestEnabled ? (dayMenu?.dinner?.guestNonVeg || 0) : 0,
-        dinnerGuestTaken: guestEnabled ? (dayMenu?.dinner?.guestTaken || 0) : 0,
-        dinnerGuestVegTaken: guestEnabled ? (dayMenu?.dinner?.guestVegTaken || 0) : 0,
-        dinnerGuestNonVegTaken: guestEnabled ? (dayMenu?.dinner?.guestNonVegTaken || 0) : 0,
+        dinnerGuestVeg: (guestEnabled && isMealEnabled(day, MealType.DINNER, dayConfig) && isDietaryEnabled(day, MealType.DINNER, DietType.VEG, dayConfig)) ? (dayMenu?.dinner?.guestVeg || 0) : 0,
+        dinnerGuestNonVeg: (guestEnabled && isMealEnabled(day, MealType.DINNER, dayConfig) && isDietaryEnabled(day, MealType.DINNER, DietType.NON_VEG, dayConfig)) ? (dayMenu?.dinner?.guestNonVeg || 0) : 0,
+        dinnerGuestTaken: (guestEnabled && isMealEnabled(day, MealType.DINNER, dayConfig)) ? (dayMenu?.dinner?.guestTaken || 0) : 0,
+        dinnerGuestVegTaken: (guestEnabled && isMealEnabled(day, MealType.DINNER, dayConfig) && isDietaryEnabled(day, MealType.DINNER, DietType.VEG, dayConfig)) ? (dayMenu?.dinner?.guestVegTaken || 0) : 0,
+        dinnerGuestNonVegTaken: (guestEnabled && isMealEnabled(day, MealType.DINNER, dayConfig) && isDietaryEnabled(day, MealType.DINNER, DietType.NON_VEG, dayConfig)) ? (dayMenu?.dinner?.guestNonVegTaken || 0) : 0,
         dinnerFlatVegTaken: 0,
         dinnerFlatNonVegTaken: 0,
         dinnerKidsTotal: 0,

@@ -619,6 +619,9 @@ export const UI_TEXT = {
   // Common
   back: "Back",
   home: "Home",
+  toggle: "Toggle",
+  add: "Add",
+  remove: "Remove",
   colon: ":",
   comma: ",",
   hyphen: "-",

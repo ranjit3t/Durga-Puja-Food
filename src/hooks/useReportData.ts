@@ -141,12 +141,13 @@ export function useReportData(
       const dayMenu = foodMenu[day];
       if (guestEnabled && dayMenu) {
         [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].forEach((m) => {
+          if (!isMealEnabled(day, m, dayConfig)) return;
           const gm = dayMenu[m];
           if (gm) {
-            totals.guestVeg += gm.guestVeg || 0;
-            totals.guestNonVeg += gm.guestNonVeg || 0;
-            totals.guestVegTaken += gm.guestVegTaken || 0;
-            totals.guestNonVegTaken += gm.guestNonVegTaken || 0;
+            totals.guestVeg += isDietaryEnabled(day, m, DietType.VEG, dayConfig) ? (gm.guestVeg || 0) : 0;
+            totals.guestNonVeg += isDietaryEnabled(day, m, DietType.NON_VEG, dayConfig) ? (gm.guestNonVeg || 0) : 0;
+            totals.guestVegTaken += isDietaryEnabled(day, m, DietType.VEG, dayConfig) ? (gm.guestVegTaken || 0) : 0;
+            totals.guestNonVegTaken += isDietaryEnabled(day, m, DietType.NON_VEG, dayConfig) ? (gm.guestNonVegTaken || 0) : 0;
           }
         });
       }
@@ -298,12 +299,13 @@ export function useReportData(
       const dayMenu = foodMenu[day];
       if (guestEnabled && dayMenu) {
         [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].forEach((m) => {
+          if (!isMealEnabled(day, m, dayConfig)) return;
           const gm = dayMenu[m];
           if (gm) {
-            meals[m].guestVeg += gm.guestVeg || 0;
-            meals[m].guestNonVeg += gm.guestNonVeg || 0;
-            meals[m].guestVegTaken += gm.guestVegTaken || 0;
-            meals[m].guestNonVegTaken += gm.guestNonVegTaken || 0;
+            meals[m].guestVeg += isDietaryEnabled(day, m, DietType.VEG, dayConfig) ? (gm.guestVeg || 0) : 0;
+            meals[m].guestNonVeg += isDietaryEnabled(day, m, DietType.NON_VEG, dayConfig) ? (gm.guestNonVeg || 0) : 0;
+            meals[m].guestVegTaken += isDietaryEnabled(day, m, DietType.VEG, dayConfig) ? (gm.guestVegTaken || 0) : 0;
+            meals[m].guestNonVegTaken += isDietaryEnabled(day, m, DietType.NON_VEG, dayConfig) ? (gm.guestNonVegTaken || 0) : 0;
           }
         });
       }
