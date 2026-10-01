@@ -17,7 +17,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useStyles, useScaling } from "../styles";
 import { useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
-import { AppScreen, ActivityModule, ActivityAction, AppThemeMode, SubscriptionRecord } from "../domain";
+import { AppScreen, ActivityModule, ActivityAction, AppThemeMode, SubscriptionRecord, getPassDisplayLabel } from "../domain";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
@@ -66,39 +66,42 @@ export function ContactsScreen() {
 
   const handleWhatsAppChat = (item: SubscriptionRecord) => {
     if (!item.mobile) return;
+    const passLabel = getPassDisplayLabel(item);
     const url = `https://wa.me/${whatsappCountryCode}${item.mobile}`;
     void Linking.openURL(url).then(() => {
       addActivityLog({
         module: ActivityModule.CONTACT,
         action: ActivityAction.CHAT,
         targetId: item.id,
-        description: UI_TEXT.logChat.replace("{id}", item.id)
+        description: UI_TEXT.logChat.replace("{id}", passLabel)
       });
     });
   };
 
   const handlePhoneCall = (item: SubscriptionRecord) => {
     if (!item.mobile) return;
+    const passLabel = getPassDisplayLabel(item);
     const url = `tel:${item.mobile}`;
     void Linking.openURL(url).then(() => {
       addActivityLog({
         module: ActivityModule.CONTACT,
         action: ActivityAction.CALL,
         targetId: item.id,
-        description: UI_TEXT.logCall.replace("{id}", item.id)
+        description: UI_TEXT.logCall.replace("{id}", passLabel)
       });
     });
   };
 
   const handleSMS = (item: SubscriptionRecord) => {
     if (!item.mobile) return;
+    const passLabel = getPassDisplayLabel(item);
     const url = `sms:${item.mobile}`;
     void Linking.openURL(url).then(() => {
       addActivityLog({
         module: ActivityModule.CONTACT,
         action: ActivityAction.SMS,
         targetId: item.id,
-        description: UI_TEXT.logSms.replace("{id}", item.id)
+        description: UI_TEXT.logSms.replace("{id}", passLabel)
       });
     });
   };

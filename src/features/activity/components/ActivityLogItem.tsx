@@ -6,7 +6,7 @@ import {
   Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { ActivityLog, ActivityModule, ActivityAction, CheckoutSource, GuestCheckoutSource } from "../../../domain";
+import { ActivityLog, ActivityModule, ActivityAction, CheckoutSource, GuestCheckoutSource, getPassDisplayLabel } from "../../../domain";
 import { UI_TEXT } from "../../../strings";
 import { Subscription } from "../../../types";
 
@@ -36,13 +36,27 @@ export const ActivityLogItem = memo(({
 
   const clickableModules = [ActivityModule.SUBSCRIPTION, ActivityModule.CONTACT, ActivityModule.QR, ActivityModule.REPORT];
   const isPassEvent = clickableModules.includes(item.module) && item.action !== ActivityAction.DELETE && item.action !== ActivityAction.ERROR;
-  const existingPass = isPassEvent && item.targetId ? (subscriptions || []).find(s => s.id === item.targetId) : null;
+  const existingPass = isPassEvent && item.targetId ? (subscriptions || []).find(s => s.id === item.targetId || getPassDisplayLabel(s) === item.targetId) : null;
   const isClickable = !!existingPass;
 
   const formatTimestamp = (ts: number) => {
     const date = new Date(ts);
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ', ' + date.toLocaleDateString([], { month: 'short', day: 'numeric' });
   };
+
+  const formattedDescription = useMemo(() => {
+    let desc = item.description || "";
+    if (desc.includes("{subject}")) {
+      const fallback = item.targetId && !item.targetId.startsWith("-") ? item.targetId : "";
+      desc = fallback ? desc.replace("{subject}", fallback) : desc.replace(": {subject}", "").replace("{subject}", "").trim();
+    }
+    if (desc.includes("{id}")) {
+      const matchedSub = item.targetId ? (subscriptions || []).find(s => s.id === item.targetId) : null;
+      const fallbackId = matchedSub ? getPassDisplayLabel(matchedSub) : (item.targetId && !item.targetId.startsWith("-") ? item.targetId : "");
+      desc = fallbackId ? desc.replace("{id}", fallbackId) : desc.replace(" {id}", "").replace("{id}", "").trim();
+    }
+    return desc;
+  }, [item.description, item.targetId, subscriptions]);
 
   const checkoutSource = useMemo(() => {
     if (!item.description) return null;
@@ -86,11 +100,11 @@ export const ActivityLogItem = memo(({
       ]}
     >
       <Pressable
-        onPress={() => item.targetId && onNavigateToDetails(item.targetId)}
+        onPress={() => existingPass && onNavigateToDetails(existingPass.id)}
         disabled={!isClickable}
         accessible={true}
         accessibilityRole={isClickable ? "button" : "none"}
-        accessibilityLabel={`${item.module} - ${item.action}. ${item.description}`}
+        accessibilityLabel={`${item.module} - ${item.action}. ${formattedDescription}`}
         style={({ pressed }) => [
           { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%' },
           isClickable && pressed && { opacity: 0.7 }
@@ -120,11 +134,20 @@ export const ActivityLogItem = memo(({
              </View>
              <Ionicons name="chevron-forward" size={s(14)} color={theme.colors.border} />
              <Text style={{ fontSize: s(15), fontWeight: '800', color: isError ? theme.colors.error : theme.colors.textPrimary }}>{item.action}</Text>
-             {item.targetId && (
-               <View style={{ backgroundColor: theme.colors.surfaceDark, paddingHorizontal: s(8), paddingVertical: s(4), borderRadius: s(6), borderWidth: 1, borderColor: theme.colors.border }}>
-                 <Text style={{ fontSize: s(11), fontWeight: '900', color: theme.colors.secondary }}>{item.targetId}</Text>
-               </View>
-             )}
+             {item.targetId && (() => {
+               const matchedSub = (subscriptions || []).find(s => s.id === item.targetId);
+               const displayTargetId = matchedSub ? getPassDisplayLabel(matchedSub) : item.targetId;
+
+               if (displayTargetId.startsWith("-")) {
+                 return null;
+               }
+
+               return (
+                 <View style={{ backgroundColor: theme.colors.surfaceDark, paddingHorizontal: s(8), paddingVertical: s(4), borderRadius: s(6), borderWidth: 1, borderColor: theme.colors.border }}>
+                   <Text style={{ fontSize: s(11), fontWeight: '900', color: theme.colors.secondary }}>{displayTargetId}</Text>
+                 </View>
+               );
+             })()}
              {checkoutSource && (
                <View style={{ backgroundColor: theme.colors.primary + "18", paddingHorizontal: s(8), paddingVertical: s(4), borderRadius: s(6), borderWidth: 1, borderColor: theme.colors.primary + "40", flexDirection: 'row', alignItems: 'center', gap: s(4) }}>
                  <Ionicons name={checkoutSource.icon as any} size={s(12)} color={theme.colors.primary} />
@@ -143,7 +166,7 @@ export const ActivityLogItem = memo(({
           </View>
 
           <View style={{ backgroundColor: theme.colors.surfaceDark, padding: s(12), borderRadius: s(12), marginBottom: s(12) }}>
-            <Text style={{ fontSize: s(14), color: isError ? theme.colors.error : theme.colors.textPrimary, lineHeight: s(20), fontWeight: '600' }}>{item.description}</Text>
+            <Text style={{ fontSize: s(14), color: isError ? theme.colors.error : theme.colors.textPrimary, lineHeight: s(20), fontWeight: '600' }}>{formattedDescription}</Text>
           </View>
 
           {item.os && (

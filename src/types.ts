@@ -30,6 +30,8 @@ import {
   KitchenMetrics,
   CheckoutSource,
   GuestCheckoutSource,
+  getPassDisplayLabel,
+  AppVersionInfo,
 } from "./domain";
 
 export enum FilterMode {
@@ -67,6 +69,8 @@ export {
   ActivityModule,
   AppThemeMode,
   ConfigDay,
+  getPassDisplayLabel,
+  AppVersionInfo,
   AppConfig,
   PaymentConfig,
   Note,

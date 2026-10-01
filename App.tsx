@@ -48,6 +48,7 @@ function AppRoot() {
         title={alertConfig.title}
         message={alertConfig.message}
         buttons={alertConfig.buttons}
+        linkUrl={alertConfig.linkUrl}
         onClose={hideAlert}
       />
     </>

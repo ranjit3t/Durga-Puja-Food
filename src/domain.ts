@@ -273,3 +273,19 @@ export type Note = {
   subject: string;
   content: string;
 };
+
+export type AppVersionInfo = {
+  version: string;
+  androidAppLocation?: string;
+  iosAppLocation?: string;
+};
+
+export const getPassDisplayLabel = (sub?: { block?: string; flat?: string; id?: string } | null): string => {
+  if (!sub) return "";
+  const block = sub.block?.trim();
+  const flat = sub.flat?.trim();
+  if (block && flat) return `${block}-${flat}`;
+  if (flat) return flat;
+  if (block) return `Block ${block}`;
+  return sub.id || "";
+};

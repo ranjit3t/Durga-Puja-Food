@@ -54,6 +54,7 @@ import {
   ActivityModule,
   ActivityAction,
   TakenState,
+  getPassDisplayLabel,
 } from "../domain";
 import { ActionLabel } from "../components/common/ActionLabel";
 import { PaymentScannerModal } from "../components/common/PaymentScannerModal";
@@ -345,8 +346,9 @@ export function SubscriptionForm() {
     const oldCounts = getCounts(value);
     const newCounts = getCounts(sub);
 
+    const passLabel = getPassDisplayLabel(sub);
     let detailedDesc = (isEdit ? UI_TEXT.logEditPass : UI_TEXT.logAddPass)
-      .replace("{id}", sub.id)
+      .replace("{id}", passLabel)
       .replace("{adults}", String(sub.peopleCount))
       .replace("{kids}", String(sub.kidsCount || 0))
       .replace("{amount}", sub.amount);
@@ -370,11 +372,12 @@ export function SubscriptionForm() {
           description: getLogDetails(next, lockIdentity)
         });
         if (acknowledgedMissedParcel && currentMealInfo) {
+          const passLabel = getPassDisplayLabel(next);
           addActivityLog({
             module: ActivityModule.SUBSCRIPTION,
             action: ActivityAction.MISSED_PARCEL,
             targetId: next.id,
-            description: UI_TEXT.logMissedParcel.replace("{flatId}", next.id).replace("{meal}", getMealLabel(currentMealInfo.type))
+            description: UI_TEXT.logMissedParcel.replace("{flatId}", passLabel).replace("{meal}", getMealLabel(currentMealInfo.type))
           });
         }
         setSelectedId(next.id);
@@ -396,11 +399,12 @@ export function SubscriptionForm() {
           description: getLogDetails(next, lockIdentity) + " (QR)"
         });
         if (acknowledgedMissedParcel && currentMealInfo) {
+          const passLabel = getPassDisplayLabel(next);
           addActivityLog({
             module: ActivityModule.SUBSCRIPTION,
             action: ActivityAction.MISSED_PARCEL,
             targetId: next.id,
-            description: UI_TEXT.logMissedParcel.replace("{flatId}", next.id).replace("{meal}", getMealLabel(currentMealInfo.type))
+            description: UI_TEXT.logMissedParcel.replace("{flatId}", passLabel).replace("{meal}", getMealLabel(currentMealInfo.type))
           });
         }
         setSelectedId(next.id);
@@ -435,16 +439,17 @@ export function SubscriptionForm() {
 
   const canDeletePass = !hasNonZeroPayment && !hasAnyMealTaken;
 
-  const onDelete = lockIdentity ? () => showGlobalAlert(UI_TEXT.deleteConfirmTitle, `${UI_TEXT.deleteConfirmMessage}${value.id}${UI_TEXT.deleteConfirmMessageSuffix}`, [
+  const onDelete = lockIdentity ? () => showGlobalAlert(UI_TEXT.deleteConfirmTitle, `${UI_TEXT.deleteConfirmMessage}${getPassDisplayLabel(value) || value.id}${UI_TEXT.deleteConfirmMessageSuffix}`, [
     { text: UI_TEXT.cancel, style: "cancel" },
     { text: UI_TEXT.deleteButton, style: "destructive", onPress: () => {
         if (!canDeletePass) return;
+        const passLabel = getPassDisplayLabel(value);
         void deleteSubscription(value.id).then(() => {
           addActivityLog({
             module: ActivityModule.SUBSCRIPTION,
             action: ActivityAction.DELETE,
-            targetId: value.id,
-            description: UI_TEXT.logDeletePass.replace("{id}", value.id)
+            targetId: passLabel,
+            description: UI_TEXT.logDeletePass.replace("{id}", passLabel)
           });
           setSelectedId("");
           setSelectedRecord(null);

@@ -63,6 +63,8 @@ export interface CoreDatabaseContextType {
   quickCheckoutAutoCloseMs: number;
   soundEnabled: boolean;
   remoteAppVersion: string | null;
+  androidAppLocation?: string;
+  iosAppLocation?: string;
   kitchenMetrics: KitchenMetrics | null;
 
   // Derived Metrics
@@ -126,6 +128,8 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
   const [quickCheckoutAutoCloseMs, setQuickCheckoutAutoCloseMs] = useState<number>(3000);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
   const [remoteAppVersion, setRemoteAppVersion] = useState<string | null>(null);
+  const [androidAppLocation, setAndroidAppLocation] = useState<string | undefined>(undefined);
+  const [iosAppLocation, setIosAppLocation] = useState<string | undefined>(undefined);
   const [notes, setNotes] = useState<Note[]>([]);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [kitchenMetrics, setKitchenMetrics] = useState<KitchenMetrics | null>(null);
@@ -197,7 +201,9 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       ]);
 
       if (appVer) {
-        setRemoteAppVersion(appVer);
+        setRemoteAppVersion(appVer.version);
+        setAndroidAppLocation(appVer.androidAppLocation);
+        setIosAppLocation(appVer.iosAppLocation);
       } else {
         void repository.updateAppVersion(UI_TEXT.appVersion);
         setRemoteAppVersion(UI_TEXT.appVersion);
@@ -261,7 +267,11 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       setFoodMenu(menu);
       setNotes(notesData || []);
       setActivityLogs(logsData || []);
-      if (appVer) setRemoteAppVersion(appVer);
+      if (appVer) {
+        setRemoteAppVersion(appVer.version);
+        setAndroidAppLocation(appVer.androidAppLocation);
+        setIosAppLocation(appVer.iosAppLocation);
+      }
       setKitchenMetrics(metricsData);
 
       // Fast Release UI: App is usable NOW in <300ms!
@@ -405,8 +415,12 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       setKitchenMetrics(metrics);
     });
 
-    const unsubAppVersion = repository.onAppVersionChange((ver) => {
-      if (ver !== null) setRemoteAppVersion(ver);
+    const unsubAppVersion = repository.onAppVersionChange((info) => {
+      if (info) {
+        setRemoteAppVersion(info.version);
+        setAndroidAppLocation(info.androidAppLocation);
+        setIosAppLocation(info.iosAppLocation);
+      }
     });
 
     return () => {
@@ -715,6 +729,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       addActivityLog({
         module: ActivityModule.NOTE,
         action: isEdit ? ActivityAction.UPDATE : ActivityAction.CREATE,
+        targetId: note.subject,
         description: (isEdit ? UI_TEXT.logEditNote : UI_TEXT.logAddNote).replace("{subject}", note.subject)
       });
     } catch (err: any) {
@@ -730,13 +745,15 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
 
   const deleteNote = useCallback(async (id: string) => {
     try {
+      const noteToDelete = notes.find(n => n.id === id);
+      const noteSubject = noteToDelete?.subject || id;
       setNotes(prev => prev.filter(n => n.id !== id));
       await repository.removeNote(id);
       addActivityLog({
         module: ActivityModule.NOTE,
         action: ActivityAction.DELETE,
-        targetId: id,
-        description: UI_TEXT.logDeleteNote.replace("{id}", id)
+        targetId: noteSubject,
+        description: UI_TEXT.logDeleteNote.replace("{subject}", noteSubject)
       });
     } catch (err: any) {
       addActivityLog({
@@ -748,7 +765,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       });
       throw err;
     }
-  }, [addActivityLog]);
+  }, [notes, addActivityLog]);
 
   const guestUpdateTimers = useRef<Record<string, any>>({});
 
@@ -1055,7 +1072,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
   const coreValue = useMemo(() => ({
     loading, firebaseError, refreshAllData,
     subscriptions, foodMenu, dayConfig, seasonName, seasonEnabled, paymentConfig, guestEnabled, mobileEnabled, foodPriceEnabled,
-    kidsEnabled, whatsappCountryCode, quickCheckoutAutoCloseMs, soundEnabled, remoteAppVersion, kitchenMetrics,
+    kidsEnabled, whatsappCountryCode, quickCheckoutAutoCloseMs, soundEnabled, remoteAppVersion, androidAppLocation, iosAppLocation, kitchenMetrics,
     dashboardData, collections, totalPeople,
     upsertSubscription, deleteSubscription, updateConfig, updateMenu, updateGuestCount, updateMealMenu, updateSubscriptionStatus,
     checkInPassAtomic, getByPasscode,
@@ -1063,7 +1080,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
   }), [
     loading, firebaseError, refreshAllData,
     subscriptions, foodMenu, dayConfig, seasonName, seasonEnabled, paymentConfig, guestEnabled, mobileEnabled, foodPriceEnabled,
-    kidsEnabled, whatsappCountryCode, quickCheckoutAutoCloseMs, soundEnabled, remoteAppVersion, kitchenMetrics,
+    kidsEnabled, whatsappCountryCode, quickCheckoutAutoCloseMs, soundEnabled, remoteAppVersion, androidAppLocation, iosAppLocation, kitchenMetrics,
     dashboardData, collections, totalPeople,
     upsertSubscription, deleteSubscription, updateConfig, updateMenu, updateGuestCount, updateMealMenu, updateSubscriptionStatus,
     checkInPassAtomic, getByPasscode,

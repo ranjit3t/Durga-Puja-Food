@@ -36,7 +36,8 @@ import {
   ActivityLog,
   PaymentMode,
   Note,
-  KitchenMetrics
+  KitchenMetrics,
+  AppVersionInfo
 } from "./domain";
 import { ConfigDay, AppConfig } from "./types";
 import { generatePasscode } from "./constants";
@@ -64,7 +65,7 @@ export interface SubscriptionRepository {
   getNotes(): Promise<Note[]>;
   upsertNote(note: Note): Promise<Note>;
   removeNote(id: string): Promise<void>;
-  getAppVersion(): Promise<string | null>;
+  getAppVersion(): Promise<AppVersionInfo | null>;
   updateAppVersion(version: string): Promise<void>;
   getMetrics(): Promise<KitchenMetrics | null>;
   // Real-time Delta Listeners
@@ -83,7 +84,7 @@ export interface SubscriptionRepository {
   onMenuChange(callback: (menu: FoodMenu) => void): () => void;
   onConfigChange(callback: (config: AppConfig) => void): () => void;
   onMetricsChange(callback: (metrics: KitchenMetrics | null) => void): () => void;
-  onAppVersionChange(callback: (version: string | null) => void): () => void;
+  onAppVersionChange(callback: (info: AppVersionInfo | null) => void): () => void;
 }
 
 const subscriptionsPath = "subscriptions";
@@ -604,8 +605,18 @@ export function createFirebaseRepository(): SubscriptionRepository {
     async getAppVersion() {
       const services = await ensureFirebaseAuth();
       if (!services) return null;
-      const snapshot = await get(ref(services.db, appVersionPath));
-      return snapshot.exists() ? String(snapshot.val()) : null;
+      const [verSnap, androidSnap, iosSnap] = await Promise.all([
+        get(ref(services.db, appVersionPath)),
+        get(ref(services.db, "androidAppLocation")),
+        get(ref(services.db, "iosAppLocation")),
+      ]);
+      const version = verSnap.exists() ? String(verSnap.val()) : null;
+      if (!version) return null;
+      return {
+        version,
+        androidAppLocation: androidSnap.exists() && typeof androidSnap.val() === "string" ? String(androidSnap.val()).trim() : undefined,
+        iosAppLocation: iosSnap.exists() && typeof iosSnap.val() === "string" ? String(iosSnap.val()).trim() : undefined,
+      };
     },
     async updateAppVersion(version) {
       const services = await ensureFirebaseAuth();
@@ -776,16 +787,42 @@ export function createFirebaseRepository(): SubscriptionRepository {
     },
 
     onAppVersionChange(callback) {
-      let unsubscribeFn: (() => void) | null = null;
+      let unsubVersion: (() => void) | null = null;
+      let unsubAndroid: (() => void) | null = null;
+      let unsubIos: (() => void) | null = null;
+
+      let version: string | null = null;
+      let androidAppLocation: string | undefined = undefined;
+      let iosAppLocation: string | undefined = undefined;
+
+      const notify = () => {
+        if (version) {
+          callback({ version, androidAppLocation, iosAppLocation });
+        } else {
+          callback(null);
+        }
+      };
+
       ensureFirebaseAuth().then((services) => {
         if (!services?.db) return;
-        const versionRef = ref(services.db, appVersionPath);
-        unsubscribeFn = onValue(versionRef, (snapshot) => {
-          callback(snapshot.exists() ? String(snapshot.val()) : null);
+        unsubVersion = onValue(ref(services.db, appVersionPath), (snapshot) => {
+          version = snapshot.exists() ? String(snapshot.val()) : null;
+          notify();
+        });
+        unsubAndroid = onValue(ref(services.db, "androidAppLocation"), (snapshot) => {
+          androidAppLocation = snapshot.exists() && typeof snapshot.val() === "string" ? String(snapshot.val()).trim() : undefined;
+          notify();
+        });
+        unsubIos = onValue(ref(services.db, "iosAppLocation"), (snapshot) => {
+          iosAppLocation = snapshot.exists() && typeof snapshot.val() === "string" ? String(snapshot.val()).trim() : undefined;
+          notify();
         });
       }).catch(err => console.error("App version listener error:", err));
+
       return () => {
-        if (unsubscribeFn) unsubscribeFn();
+        if (unsubVersion) unsubVersion();
+        if (unsubAndroid) unsubAndroid();
+        if (unsubIos) unsubIos();
       };
     },
   };

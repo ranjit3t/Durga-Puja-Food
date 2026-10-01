@@ -21,7 +21,7 @@ The application follows a **Serverless Layered Architecture** built on the **Exp
 5. **Decoupled Context Provider Architecture**:
    - `DatabaseContext` is split into `CoreDatabaseContext`, `ActivityLogsContext`, and `NotesContext`.
    - Main operational screens (`DashboardScreen`, `SubscriptionListScreen`, `ScannerScreen`, `ReportScreen`, `HomeScreen`, etc.) consume `useCoreDatabase()`, making them **completely immune to re-renders from background activity logs or notes**.
-6. **App Version Sync**: `repository.onAppVersionChange()` listens to top-level `"appVersion"` path and triggers instant update alert modals if `remoteAppVersion !== UI_TEXT.appVersion`.
+6. **App Version Sync & Platform Update Links**: `repository.onAppVersionChange()` listens to top-level `"appVersion"`, `"androidAppLocation"`, and `"iosAppLocation"` paths. When local version differs from remote, mobile clients (`Platform.OS !== 'web'`) trigger update alerts featuring platform-specific hyperlinked `"Click Here to update."` (`androidAppLocation` for Android, `iosAppLocation` for iOS).
 7. **Cross-Platform Lifecycle Reconnection**: Reconnects WebSockets on mobile app resume (`AppState`) and web browser tab focus (`visibilitychange`).
 
 ---

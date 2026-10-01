@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { View, Text, Pressable, Modal, StyleSheet, Platform, ScrollView } from "react-native";
+import { View, Text, Pressable, Modal, StyleSheet, Platform, ScrollView, Linking } from "react-native";
 import { useAppTheme } from "../../theme";
 import { UI_TEXT } from "../../strings";
 import { AppThemeMode } from "../../domain";
@@ -15,6 +15,7 @@ export interface CustomAlertProps {
   title: string;
   message: string;
   buttons?: AlertButton[];
+  linkUrl?: string;
   onClose: () => void;
 }
 
@@ -23,6 +24,7 @@ export function CustomAlert({
   title,
   message,
   buttons = [{ text: UI_TEXT.ok }],
+  linkUrl,
   onClose,
 }: CustomAlertProps) {
   const { theme } = useAppTheme();
@@ -120,6 +122,11 @@ export function CustomAlert({
       cancelText: {
         color: COLORS.textPrimary,
       },
+      hyperlink: {
+        color: COLORS.primary,
+        textDecorationLine: "underline",
+        fontWeight: "800",
+      },
     });
   }, [theme]);
 
@@ -133,7 +140,30 @@ export function CustomAlert({
             <View style={styles.header}>
               <Text style={styles.title} accessibilityRole="header">{title}</Text>
             </View>
-            {!!message && <Text style={styles.message}>{message}</Text>}
+            {!!message && (
+              <Text style={styles.message}>
+                {message}
+                {!!linkUrl && (
+                  <>
+                    {"\n"}
+                    {UI_TEXT.clickHereToUpdatePrefix}
+                    <Text
+                      style={styles.hyperlink}
+                      onPress={async () => {
+                        try {
+                          await Linking.openURL(linkUrl);
+                        } catch (err) {
+                          console.error("Failed to open update link:", err);
+                        }
+                      }}
+                    >
+                      {UI_TEXT.clickHereToUpdateLink}
+                    </Text>
+                    {UI_TEXT.clickHereToUpdateSuffix}
+                  </>
+                )}
+              </Text>
+            )}
 
             <View style={isStacked ? styles.footerStacked : styles.footerRow}>
               {buttons.map((btn, index) => {

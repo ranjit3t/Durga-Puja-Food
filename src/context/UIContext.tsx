@@ -6,8 +6,8 @@ import { AlertButton } from "../components/common/CustomAlert";
 import { UI_TEXT } from "../strings";
 
 interface UIContextType {
-  alertConfig: { visible: boolean; title: string; message: string; buttons?: AlertButton[] };
-  showAlert: (title: string, message: string, buttons?: AlertButton[]) => void;
+  alertConfig: { visible: boolean; title: string; message: string; buttons?: AlertButton[]; linkUrl?: string };
+  showAlert: (title: string, message: string, buttons?: AlertButton[], linkUrl?: string) => void;
   showGlobalError: (message: string) => void;
   hideAlert: () => void;
   shareQr: (uri: string, message?: string) => Promise<void>;
@@ -22,14 +22,15 @@ export function UIProvider({ children }: { children: React.ReactNode }) {
     title: string;
     message: string;
     buttons?: AlertButton[];
+    linkUrl?: string;
   }>({
     visible: false,
     title: "",
     message: "",
   });
 
-  const showAlert = useCallback((title: string, message: string, buttons?: AlertButton[]) => {
-    setAlertConfig({ visible: true, title, message, buttons });
+  const showAlert = useCallback((title: string, message: string, buttons?: AlertButton[], linkUrl?: string) => {
+    setAlertConfig({ visible: true, title, message, buttons, linkUrl });
   }, []);
 
   const showGlobalError = useCallback((message: string) => {

@@ -49,6 +49,7 @@ import {
   TakenState,
   MealSlot,
   CheckoutSource,
+  getPassDisplayLabel,
 } from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
@@ -207,11 +208,12 @@ const SubscriptionCard = React.memo(({
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <Pressable
               onPress={() => {
+                const passLabel = getPassDisplayLabel(item);
                 addActivityLog({
                   module: ActivityModule.SUBSCRIPTION,
                   action: ActivityAction.CHAT,
                   targetId: item.id,
-                  description: UI_TEXT.logChat.replace("{id}", item.id)
+                  description: UI_TEXT.logChat.replace("{id}", passLabel)
                 });
                 Linking.openURL(`https://wa.me/${whatsappCountryCode || UI_TEXT.defaultCountryCode}${item.mobile}`);
               }}
@@ -225,11 +227,12 @@ const SubscriptionCard = React.memo(({
 
             <Pressable
               onPress={() => {
+                const passLabel = getPassDisplayLabel(item);
                 addActivityLog({
                   module: ActivityModule.SUBSCRIPTION,
                   action: ActivityAction.CALL,
                   targetId: item.id,
-                  description: UI_TEXT.logCall.replace("{id}", item.id)
+                  description: UI_TEXT.logCall.replace("{id}", passLabel)
                 });
                 Linking.openURL(`tel:${item.mobile}`);
               }}
@@ -295,11 +298,12 @@ export function SubscriptionListScreen() {
   const [quickCheckoutVisible, setQuickCheckoutVisible] = useState(false);
 
   const onOpenQuickCheckout = useCallback((sub: Subscription) => {
+    const passLabel = getPassDisplayLabel(sub);
     addActivityLog({
       module: ActivityModule.SCANNER,
       action: ActivityAction.UPDATE,
       targetId: sub.id,
-      description: UI_TEXT.logQuickCheckoutOpened.replace("{id}", sub.id).replace("{source}", CheckoutSource.SUBSCRIPTION_LIST)
+      description: UI_TEXT.logQuickCheckoutOpened.replace("{id}", passLabel).replace("{source}", CheckoutSource.SUBSCRIPTION_LIST)
     });
     setQuickCheckoutSub(sub);
     setQuickCheckoutVisible(true);

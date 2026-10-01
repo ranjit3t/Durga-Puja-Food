@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, ScrollView, Pressable, StatusBar, useWindowDimensions } from "react-native";
+import { View, Text, ScrollView, Pressable, StatusBar, useWindowDimensions, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useStyles, useScaling } from "../styles";
 import { useAppTheme } from "../theme";
@@ -21,7 +21,7 @@ export function HomeScreen() {
   const { theme, themeType } = useAppTheme();
   const { userRole, handleLogout, versionAlertShown, markVersionAlertShown } = useAuth();
   const {
-    subscriptions, dayConfig, seasonName, seasonEnabled, guestEnabled, totalPeople, firebaseError, paymentConfig, collections, kidsEnabled, foodMenu, remoteAppVersion, loading
+    subscriptions, dayConfig, seasonName, seasonEnabled, guestEnabled, totalPeople, firebaseError, paymentConfig, collections, kidsEnabled, foodMenu, remoteAppVersion, androidAppLocation, iosAppLocation, loading
   } = useCoreDatabase();
   const { navigate, startNew, setIsQuickCheckout, setIsQuickGuestMode } = useAppNavigation();
   const { showAlert, showGlobalError } = useUI();
@@ -29,19 +29,22 @@ export function HomeScreen() {
 
   React.useEffect(() => {
     if (
+      Platform.OS !== "web" &&
       !loading &&
       !versionAlertShown &&
       remoteAppVersion &&
       remoteAppVersion.trim() !== UI_TEXT.appVersion.trim()
     ) {
       markVersionAlertShown();
+      const appLocation = Platform.OS === "android" ? androidAppLocation : (Platform.OS === "ios" ? iosAppLocation : undefined);
       showAlert(
         UI_TEXT.appUpdateTitle,
         UI_TEXT.appUpdatedMessage,
-        [{ text: UI_TEXT.ok, style: "default" }]
+        [{ text: UI_TEXT.ok, style: "default" }],
+        appLocation
       );
     }
-  }, [remoteAppVersion, loading, versionAlertShown, markVersionAlertShown, showAlert]);
+  }, [remoteAppVersion, androidAppLocation, iosAppLocation, loading, versionAlertShown, markVersionAlertShown, showAlert]);
 
   const isNarrow = width < 400;
   const cardPadding = isNarrow ? 16 : s(20);

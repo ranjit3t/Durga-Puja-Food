@@ -6,7 +6,7 @@ import { useStyles } from "../styles";
 import { useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
 import { qrValueFor, generateUniquePasscode } from "../constants";
-import { AppScreen, AppThemeMode, ActivityModule, ActivityAction } from "../types";
+import { AppScreen, AppThemeMode, ActivityModule, ActivityAction, getPassDisplayLabel } from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
@@ -41,12 +41,13 @@ export function QrScreen() {
 
   const shareImage = async () => {
     if (qrRef.current && canShare) {
+      const passLabel = getPassDisplayLabel(subscription);
       const uri = await captureRef(qrRef, { format: "png", quality: 1 });
       addActivityLog({
         module: ActivityModule.QR,
         action: Platform.OS === "web" ? ActivityAction.DOWNLOAD : ActivityAction.SHARE,
         targetId: subscription.id,
-        description: (Platform.OS === "web" ? UI_TEXT.downloadPass : UI_TEXT.shareQrDialog) + " for " + subscription.id
+        description: (Platform.OS === "web" ? UI_TEXT.downloadPass : UI_TEXT.shareQrDialog) + " for " + passLabel
       });
       // Share only the image for the generic share button
       shareQr(uri);
@@ -128,11 +129,12 @@ export function QrScreen() {
                   const url = `https://wa.me/${whatsappCountryCode}${subscription.mobile}?text=${encodeURIComponent(message)}`;
 
                   try {
+                    const passLabel = getPassDisplayLabel(subscription);
                     addActivityLog({
                       module: ActivityModule.QR,
                       action: ActivityAction.CHAT,
                       targetId: subscription.id,
-                      description: UI_TEXT.logChat.replace("{id}", subscription.id) + " (QR)"
+                      description: UI_TEXT.logChat.replace("{id}", passLabel) + " (QR)"
                     });
                     await Linking.openURL(url);
                   } catch (err) {

@@ -73,6 +73,8 @@ The application follows a decoupled, context-driven component architecture with 
 ### 3. Multi-Attribute Audit Trail Security Traceability
 - **Name, Username & User Type Logging**: `addActivityLog` records user identity as `Name (username)` (e.g. `"Rahul Sharma (admin)"`) alongside `userRole` (e.g. `"ADMIN"` or `"VENDOR"`).
 - **Comprehensive Audit Visibility**: Displays user badges as `Rahul Sharma (admin) (ADMIN)` across all system audit trail views, text exports, and local summaries, providing complete visibility into user Name, Username, and User Type (Role) for security compliance.
+- **Clean Audit Trail Messages & Target IDs (`ActivityLogItem.tsx`, `DatabaseContext.tsx`)**: Note and pass deletion logs cleanly expand subject and pass names (e.g. `Deleted note: Kitchen Supplies`, `Removed pass record A-101`) without unexpanded placeholders or raw Firebase push keys (`-P2nIS5P_...`).
+- **Real-Time App Version Sync & Platform-Specific Update Links (`HomeScreen.tsx`, `DatabaseContext.tsx`, `repository.ts`)**: Real-time sync of `appVersion`, `androidAppLocation`, and `iosAppLocation` from Firebase DB. Triggers update alert modals on mobile (`Platform.OS !== 'web'`) when local version differs from server, featuring hyperlinked `"Click Here to update."` (`androidAppLocation` on Android, `iosAppLocation` on iOS), with web clients exempt.
 
 ---
 

@@ -28,7 +28,7 @@ import {
   getMealLabel,
   generateUniquePasscode,
 } from "../constants";
-import { MealMenu, MealType, DietType, DietaryOption, AppScreen, UserRole, PaymentMode, ReportType, AppThemeMode, ActivityModule, ActivityAction, CheckoutSource } from "../types";
+import { MealMenu, MealType, DietType, DietaryOption, AppScreen, UserRole, PaymentMode, ReportType, AppThemeMode, ActivityModule, ActivityAction, CheckoutSource, getPassDisplayLabel } from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
@@ -116,11 +116,12 @@ export function DetailsScreen() {
       return;
     }
     if (!hasUnservedFoodForCurrentMeal || !subscription) return;
+    const passLabel = getPassDisplayLabel(subscription);
     addActivityLog({
       module: ActivityModule.SCANNER,
       action: ActivityAction.UPDATE,
       targetId: subscription.id,
-      description: UI_TEXT.logQuickCheckoutOpened.replace("{id}", subscription.id).replace("{source}", CheckoutSource.DETAILS)
+      description: UI_TEXT.logQuickCheckoutOpened.replace("{id}", passLabel).replace("{source}", CheckoutSource.DETAILS)
     });
     setShowQuickCheckoutModal(true);
   };
@@ -140,11 +141,12 @@ export function DetailsScreen() {
   const onBack = () => goBack();
   const onHome = () => navigate(AppScreen.HOME);
   const onEdit = () => {
+    const passLabel = getPassDisplayLabel(subscription);
     addActivityLog({
       module: ActivityModule.SUBSCRIPTION,
       action: ActivityAction.VIEW,
       targetId: subscription.id,
-      description: UI_TEXT.logViewPass.replace("{id}", subscription.id)
+      description: UI_TEXT.logViewPass.replace("{id}", passLabel)
     });
     setEditing(subscription);
     navigate(AppScreen.FORM);
@@ -158,17 +160,20 @@ export function DetailsScreen() {
 
   const canDeletePass = !hasNonZeroPayment && !hasAnyMealTaken;
 
-  const onDelete = () => deleteSubscription(subscription.id).then(() => {
-    addActivityLog({
-      module: ActivityModule.SUBSCRIPTION,
-      action: ActivityAction.DELETE,
-      targetId: subscription.id,
-      description: UI_TEXT.logDeletePass.replace("{id}", subscription.id)
+  const onDelete = () => {
+    const passLabel = getPassDisplayLabel(subscription);
+    return deleteSubscription(subscription.id).then(() => {
+      addActivityLog({
+        module: ActivityModule.SUBSCRIPTION,
+        action: ActivityAction.DELETE,
+        targetId: passLabel,
+        description: UI_TEXT.logDeletePass.replace("{id}", passLabel)
+      });
+      setSelectedId("");
+      setSelectedRecord(null);
+      navigate(AppScreen.HOME);
     });
-    setSelectedId("");
-    setSelectedRecord(null);
-    navigate(AppScreen.HOME);
-  });
+  };
 
   return (
     <View style={styles.root}>
@@ -274,11 +279,12 @@ export function DetailsScreen() {
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Pressable
                   onPress={() => {
+                    const passLabel = getPassDisplayLabel(subscription);
                     addActivityLog({
                       module: ActivityModule.SUBSCRIPTION,
                       action: ActivityAction.CHAT,
                       targetId: subscription.id,
-                      description: UI_TEXT.logChat.replace("{id}", subscription.id)
+                      description: UI_TEXT.logChat.replace("{id}", passLabel)
                     });
                     Linking.openURL(`https://wa.me/${whatsappCountryCode || UI_TEXT.defaultCountryCode}${subscription.mobile}`);
                   }}
@@ -292,11 +298,12 @@ export function DetailsScreen() {
 
                 <Pressable
                   onPress={() => {
+                    const passLabel = getPassDisplayLabel(subscription);
                     addActivityLog({
                       module: ActivityModule.SUBSCRIPTION,
                       action: ActivityAction.CALL,
                       targetId: subscription.id,
-                      description: UI_TEXT.logCall.replace("{id}", subscription.id)
+                      description: UI_TEXT.logCall.replace("{id}", passLabel)
                     });
                     Linking.openURL(`tel:${subscription.mobile}`);
                   }}
