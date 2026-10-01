@@ -65,13 +65,6 @@ export function ViewMenuScreen() {
   const sortedActiveDays = useMemo(() => {
     const active = dayConfig
       .filter((d) => d.enabled)
-      .filter((d) => {
-        const dayMenu = foodMenu[d.id];
-        if (!dayMenu) return false;
-        return Object.values(dayMenu).some(
-          (m: any) => (m?.veg?.length || 0) > 0 || (m?.nonVeg?.length || 0) > 0
-        );
-      })
       .map((d) => d.id);
 
     return [...active].sort((a, b) => {
@@ -81,7 +74,7 @@ export function ViewMenuScreen() {
       if (!aHasCurrent && bHasCurrent) return 1;
       return 0;
     });
-  }, [dayConfig, foodMenu]);
+  }, [dayConfig]);
 
   useEffect(() => {
     if (targetDay && layouts.current[targetDay] !== undefined) {
@@ -303,10 +296,6 @@ export function ViewMenuScreen() {
               <View style={styles.menuDayBody}>
                 {[MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER]
                   .filter((mKey) => isMealEnabled(day, mKey, dayConfig))
-                  .filter((mKey) => {
-                    const meal = dayMenu[mKey];
-                    return (meal?.veg?.length || 0) > 0 || (meal?.nonVeg?.length || 0) > 0;
-                  })
                   .map((mKey) => (
                     <MealDisplay
                       key={mKey}

@@ -6,8 +6,8 @@ import { UI_TEXT } from "../../strings";
 import { useDatabase } from "../../context/DatabaseContext";
 import { useUI } from "../../context/UIContext";
 import { useAppNavigation } from "../../context/NavigationContext";
-import { Subscription, MealType, DietaryOption, DietType, ActivityModule, ActivityAction, AppThemeMode, AppScreen, TakenState, CheckoutSource, MealSlot } from "../../types";
-import { isParcelEnabled, isKidsParcelEnabled, isMealCurrent, isMealDone, getMealLabel, formatTakenTime, isVegOnlyDay, isDietaryEnabled } from "../../constants";
+import { Subscription, MealType, DietaryOption, DietType, normalizeChoice, toBool, ActivityModule, ActivityAction, AppThemeMode, AppScreen, TakenState, CheckoutSource, MealSlot } from "../../types";
+import { isParcelEnabled, isKidsParcelEnabled, isMealCurrent, isMealDone, getMealLabel, formatTakenTime, isVegOnlyDay, isDietaryEnabled, isMealEnabled, getValidSlotChoice, isParcelValidForSlot } from "../../constants";
 import { QuickCheckoutHeader } from "../../features/checkout/components/QuickCheckoutHeader";
 import { QuickCheckoutItemCard } from "../../features/checkout/components/QuickCheckoutItemCard";
 
@@ -140,8 +140,6 @@ interface SuccessData {
   totalsText: string;
 }
 
-/* SubsectionCounterWidget replaced by QuickCheckoutItemCard */
-
 export function QuickCheckoutModal({
   visible,
   subscription,
@@ -225,6 +223,8 @@ export function QuickCheckoutModal({
     if (!activeSubscription || !currentMealInfo) return null;
 
     const { dayId, mealType } = currentMealInfo;
+    if (!isMealEnabled(dayId, mealType, dayConfig)) return null;
+
     const mealKey = mealType;
     const parcelKey = `${mealType}Parcel`;
 
@@ -293,22 +293,13 @@ export function QuickCheckoutModal({
     let totalParcelPlanned = 0;
     let totalParcelTaken = 0;
 
-    const isVegOnly = isVegOnlyDay(dayId, dayConfig) || !isDietaryEnabled(dayId, mealType, DietType.NON_VEG, dayConfig);
-    const isNonVegOnly = !isDietaryEnabled(dayId, mealType, DietType.VEG, dayConfig);
-
     for (let i = 0; i < headcount; i++) {
       const isKid = kidsEnabled && i >= peopleCount;
       const slot = slots[i];
       const takenRecord = taken[i];
 
-      let choice = slot?.[mealKey];
-      if (!choice || choice === DietaryOption.NONE) continue;
-
-      if (isVegOnly) {
-        choice = DietaryOption.VEG;
-      } else if (isNonVegOnly) {
-        choice = DietaryOption.NON_VEG;
-      }
+      const choice = getValidSlotChoice(dayId, mealType, slot?.[mealKey], dayConfig);
+      if (choice === DietaryOption.NONE) continue;
 
       const isVeg = choice === DietaryOption.VEG;
       const catKey = isKid
@@ -319,7 +310,7 @@ export function QuickCheckoutModal({
       cat.plannedCount++;
       totalFoodRegistered++;
 
-      const isMealTaken = !!takenRecord?.[mealKey];
+      const isMealTaken = toBool(takenRecord?.[mealKey]);
       if (isMealTaken) {
         cat.servedCount++;
         totalFoodAlreadyServed++;
@@ -327,15 +318,14 @@ export function QuickCheckoutModal({
         cat.remMealCount++;
       }
 
-      const kidsParcelSupported = isKidsParcelEnabled(dayId, mealType, dayConfig, kidsEnabled);
-      const isParcelSupportedForSlot = isKid ? kidsParcelSupported : parcelSupported;
+      const hasParcelOpted = isParcelValidForSlot(dayId, mealType, choice, slot?.[parcelKey as keyof MealSlot], dayConfig, isKid, !!kidsEnabled);
 
-      if (isParcelSupportedForSlot && slot?.[parcelKey as keyof MealSlot]) {
+      if (hasParcelOpted) {
         cat.parcelPlannedCount++;
         totalParcelPlanned++;
 
         // A parcel is a meal, so parcel can only be taken if meal itself was taken
-        const isParcelTaken = isMealTaken && !!takenRecord?.[parcelKey as keyof TakenState];
+        const isParcelTaken = isMealTaken && toBool(takenRecord?.[parcelKey as keyof TakenState]);
         if (isParcelTaken) {
           cat.parcelServedCount++;
           totalParcelTaken++;
@@ -648,6 +638,8 @@ export function QuickCheckoutModal({
     }
 
     const { dayId, mealType } = currentMealInfo;
+    if (!isMealEnabled(dayId, mealType, dayConfig)) return;
+
     const mealKey = mealType;
     const parcelKey = `${mealType}Parcel`;
 
@@ -677,9 +669,6 @@ export function QuickCheckoutModal({
       CategoryKey.KIDS_VEG,
       CategoryKey.KIDS_NON_VEG,
     ];
-
-    const isVegOnly = isVegOnlyDay(dayId, dayConfig) || !isDietaryEnabled(dayId, mealType, DietType.NON_VEG, dayConfig);
-    const isNonVegOnly = !isDietaryEnabled(dayId, mealType, DietType.VEG, dayConfig);
 
     for (const catKey of categoryOrder) {
       const cat = quickCheckoutDetails.categories[catKey];
@@ -712,20 +701,22 @@ export function QuickCheckoutModal({
 
       // Helper to test if slot index i belongs to this category
       const isSlotInCat = (i: number) => {
+        if (!isMealEnabled(dayId, mealType, dayConfig)) return false;
+
         const isKidSlot = kidsEnabled && i >= peopleCount;
         if (isKidCategory !== isKidSlot) return false;
 
-        let choice = updatedSub.mealSlots[dayId]?.[i]?.[mealKey];
-        if (!choice || choice === DietaryOption.NONE) return false;
-
-        if (isVegOnly) {
-          choice = DietaryOption.VEG;
-        } else if (isNonVegOnly) {
-          choice = DietaryOption.NON_VEG;
-        }
+        const choice = getValidSlotChoice(dayId, mealType, updatedSub.mealSlots[dayId]?.[i]?.[mealKey], dayConfig);
+        if (choice === DietaryOption.NONE) return false;
 
         const isVegSlot = choice === DietaryOption.VEG;
         return isVegSlot === isVegCategory;
+      };
+
+      const checkParcelOptedForSlot = (i: number) => {
+        const isKidSlot = kidsEnabled && i >= peopleCount;
+        const choice = getValidSlotChoice(dayId, mealType, updatedSub.mealSlots[dayId]?.[i]?.[mealKey], dayConfig);
+        return isParcelValidForSlot(dayId, mealType, choice, updatedSub.mealSlots[dayId]?.[i]?.[parcelKey as keyof MealSlot], dayConfig, isKidSlot, !!kidsEnabled);
       };
 
       // Step 1: Allocate Parcel inputs ONLY to slots in this category where slot opted for parcel & parcel/meal pending
@@ -734,9 +725,9 @@ export function QuickCheckoutModal({
           if (remParcelToAllocate <= 0) break;
           if (!isSlotInCat(i)) continue;
 
-          const isMealUnserved = !takenList[i]?.[mealKey];
-          const hasParcelOpted = updatedSub.mealSlots[dayId]?.[i]?.[parcelKey as keyof MealSlot] === true;
-          const isParcelUnserved = !takenList[i]?.[parcelKey as keyof TakenState];
+          const isMealUnserved = !toBool(takenList[i]?.[mealKey]);
+          const hasParcelOpted = checkParcelOptedForSlot(i);
+          const isParcelUnserved = !toBool(takenList[i]?.[parcelKey as keyof TakenState]);
 
           if (isMealUnserved && hasParcelOpted && isParcelUnserved) {
             takenList[i] = {
@@ -758,8 +749,8 @@ export function QuickCheckoutModal({
           if (remDineInToAllocate <= 0) break;
           if (!isSlotInCat(i)) continue;
 
-          const isMealUnserved = !takenList[i]?.[mealKey];
-          const hasParcelOpted = updatedSub.mealSlots[dayId]?.[i]?.[parcelKey as keyof MealSlot] === true;
+          const isMealUnserved = !toBool(takenList[i]?.[mealKey]);
+          const hasParcelOpted = checkParcelOptedForSlot(i);
 
           if (isMealUnserved && !hasParcelOpted) {
             takenList[i] = {
@@ -778,8 +769,8 @@ export function QuickCheckoutModal({
             if (remDineInToAllocate <= 0) break;
             if (!isSlotInCat(i)) continue;
 
-            const isMealUnserved = !takenList[i]?.[mealKey];
-            const hasParcelOpted = updatedSub.mealSlots[dayId]?.[i]?.[parcelKey as keyof MealSlot] === true;
+            const isMealUnserved = !toBool(takenList[i]?.[mealKey]);
+            const hasParcelOpted = checkParcelOptedForSlot(i);
 
             if (isMealUnserved && hasParcelOpted) {
               takenList[i] = {
@@ -804,9 +795,9 @@ export function QuickCheckoutModal({
         let hasUncollectedParcelForServedMeal = false;
         for (let i = 0; i < headcount; i++) {
           if (!isSlotInCat(i)) continue;
-          const isFoodTaken = !!takenList[i]?.[mealKey];
-          const hasParcelOpted = updatedSub.mealSlots[dayId]?.[i]?.[parcelKey as keyof MealSlot] === true;
-          const isParcelTaken = !!takenList[i]?.[parcelKey as keyof TakenState];
+          const isFoodTaken = toBool(takenList[i]?.[mealKey]);
+          const hasParcelOpted = checkParcelOptedForSlot(i);
+          const isParcelTaken = toBool(takenList[i]?.[parcelKey as keyof TakenState]);
 
           if (isFoodTaken && hasParcelOpted && !isParcelTaken) {
             hasUncollectedParcelForServedMeal = true;
@@ -844,20 +835,23 @@ export function QuickCheckoutModal({
 
     for (let i = 0; i < headcount; i++) {
       const isKid = kidsEnabled && i >= peopleCount;
-      const isSubscribed = updatedSub.mealSlots[dayId]?.[i]?.[mealKey] !== DietaryOption.NONE;
-      const isFoodTaken = !!takenList[i]?.[mealKey];
+      const choice = getValidSlotChoice(dayId, mealType, updatedSub.mealSlots[dayId]?.[i]?.[mealKey], dayConfig);
+      const isSubscribed = choice !== DietaryOption.NONE;
 
-      if (isSubscribed && isFoodTaken) {
-        if (!isKid) newAdultsTaken++;
-        else newKidsTaken++;
-      }
+      if (isSubscribed) {
+        const isFoodTaken = toBool(takenList[i]?.[mealKey]);
 
-      if (
-        quickCheckoutDetails.parcelSupported &&
-        updatedSub.mealSlots[dayId]?.[i]?.[parcelKey as keyof MealSlot] === true
-      ) {
-        if (takenList[i]?.[mealKey as keyof TakenState] === true && takenList[i]?.[parcelKey as keyof TakenState] === true) {
-          newParcelsTaken++;
+        if (isFoodTaken) {
+          if (!isKid) newAdultsTaken++;
+          else newKidsTaken++;
+        }
+
+        const isParcelSupportedForSlot = isParcelValidForSlot(dayId, mealType, choice, updatedSub.mealSlots[dayId]?.[i]?.[parcelKey as keyof MealSlot], dayConfig, isKid, !!kidsEnabled);
+
+        if (isParcelSupportedForSlot) {
+          if (toBool(takenList[i]?.[mealKey as keyof TakenState]) && toBool(takenList[i]?.[parcelKey as keyof TakenState])) {
+            newParcelsTaken++;
+          }
         }
       }
     }

@@ -28,6 +28,46 @@ export enum DietaryOption {
   NONE = "None",
 }
 
+export function normalizeChoice(choice: any): DietaryOption {
+  if (!choice) return DietaryOption.NONE;
+  if (choice === DietaryOption.VEG || choice === DietaryOption.NON_VEG || choice === DietaryOption.NONE) {
+    return choice;
+  }
+  const str = String(choice).trim().toLowerCase();
+  if (str === "veg" || str === "v") return DietaryOption.VEG;
+  if (str === "non-veg" || str === "nonveg" || str === "non_veg" || str === "nv" || str === "n") return DietaryOption.NON_VEG;
+  return DietaryOption.NONE;
+}
+
+export function toBool(val: any): boolean {
+  if (val === true || val === "true" || val === 1 || val === "1") return true;
+  return false;
+}
+
+/**
+ * Normalizes a meal slot object:
+ * - Maps dietary choices via normalizeChoice
+ * - Enforces domain invariant: Parcel option CAN ONLY be true if the corresponding meal choice is NOT DietaryOption.NONE.
+ */
+export function normalizeSlot(slot: any): MealSlot {
+  const bChoice = normalizeChoice(slot?.[MealType.BREAKFAST] ?? slot?.breakfast);
+  const lChoice = normalizeChoice(slot?.[MealType.LUNCH] ?? slot?.lunch);
+  const dChoice = normalizeChoice(slot?.[MealType.DINNER] ?? slot?.dinner);
+
+  const bParcel = bChoice !== DietaryOption.NONE && toBool(slot?.breakfastParcel);
+  const lParcel = lChoice !== DietaryOption.NONE && toBool(slot?.lunchParcel);
+  const dParcel = dChoice !== DietaryOption.NONE && toBool(slot?.dinnerParcel);
+
+  return {
+    [MealType.BREAKFAST]: bChoice,
+    [MealType.LUNCH]: lChoice,
+    [MealType.DINNER]: dChoice,
+    breakfastParcel: bParcel,
+    lunchParcel: lParcel,
+    dinnerParcel: dParcel,
+  };
+}
+
 export enum CheckoutSource {
   SCANNER = "QR Code Scan",
   PASSCODE = "Numeric Passcode",

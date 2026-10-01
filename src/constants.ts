@@ -1,7 +1,7 @@
 /**
  * Shared Application Constants and Logic Helpers
  */
-import { FoodMenu, ConfigDay, AppConfig, MealType, DietType, DietaryOption, PaymentMode, MealAllocation } from "./domain";
+import { FoodMenu, ConfigDay, AppConfig, MealType, DietType, DietaryOption, normalizeChoice, toBool, PaymentMode, MealAllocation } from "./domain";
 import { UI_TEXT } from "./strings";
 import { Subscription } from "./types";
 
@@ -198,6 +198,65 @@ export const isDietaryEnabled = (
   const dayConfig = (config || []).find((d) => d.id === dayId);
   if (!dayConfig || !dayConfig.enabled) return false;
   return (dayConfig[meal]?.enabled && dayConfig[meal]?.[diet]) || false;
+};
+
+/**
+ * Returns the valid DietaryOption for a meal slot given the system day configuration.
+ * Strictly obeys config: If the chosen dietary option is disabled in config, returns DietaryOption.NONE (no forceful choice or fallback!).
+ */
+export const getValidSlotChoice = (
+  dayId: string,
+  meal: MealType,
+  rawChoice: any,
+  config: ConfigDay[]
+): DietaryOption => {
+  if (!isMealEnabled(dayId, meal, config)) {
+    return DietaryOption.NONE;
+  }
+
+  const choice = normalizeChoice(rawChoice);
+  if (choice === DietaryOption.NONE) {
+    return DietaryOption.NONE;
+  }
+
+  const diet = choice === DietaryOption.VEG ? DietType.VEG : DietType.NON_VEG;
+
+  // Strict check: Is the chosen dietary option (Veg or Non-Veg) enabled in system config?
+  if (!isDietaryEnabled(dayId, meal, diet, config)) {
+    return DietaryOption.NONE; // NO FORCEFUL FALLBACK! Strictly resolves to NONE if disabled in config.
+  }
+
+  return choice;
+};
+
+/**
+ * Checks if a parcel option is valid for a meal slot:
+ * - Checks if a valid enabled meal choice is selected (not DietaryOption.NONE)
+ * - Checks if parcel service is enabled in config for this meal slot and headcount category
+ */
+export const isParcelValidForSlot = (
+  dayId: string,
+  meal: MealType,
+  rawChoice: any,
+  rawParcel: any,
+  config: ConfigDay[],
+  isKid: boolean = false,
+  kidsEnabled: boolean = false
+): boolean => {
+  const validChoice = getValidSlotChoice(dayId, meal, rawChoice, config);
+  if (validChoice === DietaryOption.NONE) {
+    return false; // Parcel CANNOT be selected if no valid meal choice is selected!
+  }
+
+  const parcelConfigActive = isKid
+    ? isKidsParcelEnabled(dayId, meal, config, kidsEnabled)
+    : isParcelEnabled(dayId, meal, config);
+
+  if (!parcelConfigActive) {
+    return false; // Parcel CANNOT be selected if parcel is disabled in config!
+  }
+
+  return toBool(rawParcel);
 };
 
 /**
@@ -404,11 +463,12 @@ export const mealsFromChoices = (
 
         meals.forEach((m) => {
           if (!isMealEnabled(day, m, config)) return;
+          const choice = normalizeChoice(s[m]);
 
-          if (s[m] === DietaryOption.VEG && isDietaryEnabled(day, m, DietType.VEG, config)) {
+          if (choice === DietaryOption.VEG && isDietaryEnabled(day, m, DietType.VEG, config)) {
             if (isKid) kidsVegCount++;
             else vegCount++;
-          } else if (s[m] === DietaryOption.NON_VEG && isDietaryEnabled(day, m, DietType.NON_VEG, config)) {
+          } else if (choice === DietaryOption.NON_VEG && isDietaryEnabled(day, m, DietType.NON_VEG, config)) {
             if (isKid) kidsNonVegCount++;
             else nonVegCount++;
           }

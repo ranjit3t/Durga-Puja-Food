@@ -470,7 +470,11 @@ export function ReportScreen() {
           )}
 
           {reportType === ReportType.PAYMENT && (
-            <PaymentSummaryReport data={paymentData} onSelectFlat={onSelectFlat} />
+            <PaymentSummaryReport
+              data={paymentData}
+              onSelectFlat={onSelectFlat}
+              kidsEnabled={!!kidsEnabled}
+            />
           )}
         </View>
         <View style={styles.footer}>

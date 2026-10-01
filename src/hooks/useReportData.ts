@@ -18,6 +18,7 @@ import {
   isKidsParcelEnabled,
   isMealCurrent
 } from "../constants";
+import { getAmountDiscrepancyData, resolvePrice, DiscrepancyItem } from "../utils/paymentUtils";
 
 export function useReportData(
   subscriptions: Subscription[],
@@ -425,7 +426,7 @@ export function useReportData(
   // 4. Payment Report Calculation (Lazy targeted if activeReportType is PAYMENT)
   const paymentData = useMemo(() => {
     if (activeReportType && activeReportType !== ReportType.PAYMENT) {
-      return { summary: [], details: [], totalFood: 0, totalParcel: 0 };
+      return { summary: [], details: [], totalFood: 0, totalParcel: 0, discrepancies: [] };
     }
     const summary: Record<string, { count: number; total: number }> = {
       [PaymentMode.UPI]: { count: 0, total: 0 },
@@ -462,41 +463,57 @@ export function useReportData(
           slots.forEach((personSlot, idx) => {
             const isKid = kidsEnabled && idx >= sub.peopleCount;
 
-            if (personSlot[MealType.BREAKFAST] === DietaryOption.VEG) {
-              subFood += Number((isKid ? dayMenu?.[MealType.BREAKFAST]?.kidsVegPrice : dayMenu?.[MealType.BREAKFAST]?.vegPrice) || dayConf[MealType.BREAKFAST]?.vegPrice || 0);
-              if (personSlot.breakfastParcel && (isKid ? isKidsParcelEnabled(dayId, MealType.BREAKFAST, dayConfig, kidsEnabled) : isParcelEnabled(dayId, MealType.BREAKFAST, dayConfig))) {
-                subParcel += Number((isKid ? dayMenu?.[MealType.BREAKFAST]?.kidsVegParcelPrice : dayMenu?.[MealType.BREAKFAST]?.vegParcelPrice) || dayConf[MealType.BREAKFAST]?.vegParcelPrice || 0);
-              }
-            } else if (personSlot[MealType.BREAKFAST] === DietaryOption.NON_VEG) {
-              subFood += Number((isKid ? dayMenu?.[MealType.BREAKFAST]?.kidsNonVegPrice : dayMenu?.[MealType.BREAKFAST]?.nonVegPrice) || dayConf[MealType.BREAKFAST]?.nonVegPrice || 0);
-              if (personSlot.breakfastParcel && (isKid ? isKidsParcelEnabled(dayId, MealType.BREAKFAST, dayConfig, kidsEnabled) : isParcelEnabled(dayId, MealType.BREAKFAST, dayConfig))) {
-                subParcel += Number((isKid ? dayMenu?.[MealType.BREAKFAST]?.kidsNonVegParcelPrice : dayMenu?.[MealType.BREAKFAST]?.nonVegParcelPrice) || dayConf[MealType.BREAKFAST]?.nonVegParcelPrice || 0);
-              }
-            }
+            const mealTypes = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER];
+            mealTypes.forEach((mType) => {
+              const mealConf = dayConf[mType];
+              if (!mealConf || !mealConf.enabled) return;
 
-            if (personSlot[MealType.LUNCH] === DietaryOption.VEG) {
-              subFood += Number((isKid ? dayMenu?.[MealType.LUNCH]?.kidsVegPrice : dayMenu?.[MealType.LUNCH]?.vegPrice) || dayConf[MealType.LUNCH]?.vegPrice || 0);
-              if (personSlot.lunchParcel && (isKid ? isKidsParcelEnabled(dayId, MealType.LUNCH, dayConfig, kidsEnabled) : isParcelEnabled(dayId, MealType.LUNCH, dayConfig))) {
-                subParcel += Number((isKid ? dayMenu?.[MealType.LUNCH]?.kidsVegParcelPrice : dayMenu?.[MealType.LUNCH]?.vegParcelPrice) || dayConf[MealType.LUNCH]?.vegParcelPrice || 0);
-              }
-            } else if (personSlot[MealType.LUNCH] === DietaryOption.NON_VEG) {
-              subFood += Number((isKid ? dayMenu?.[MealType.LUNCH]?.kidsNonVegPrice : dayMenu?.[MealType.LUNCH]?.nonVegPrice) || dayConf[MealType.LUNCH]?.nonVegPrice || 0);
-              if (personSlot.lunchParcel && (isKid ? isKidsParcelEnabled(dayId, MealType.LUNCH, dayConfig, kidsEnabled) : isParcelEnabled(dayId, MealType.LUNCH, dayConfig))) {
-                subParcel += Number((isKid ? dayMenu?.[MealType.LUNCH]?.kidsNonVegParcelPrice : dayMenu?.[MealType.LUNCH]?.nonVegParcelPrice) || dayConf[MealType.LUNCH]?.nonVegParcelPrice || 0);
-              }
-            }
+              const choice = personSlot[mType];
+              if (!choice || choice === DietaryOption.NONE) return;
 
-            if (personSlot[MealType.DINNER] === DietaryOption.VEG) {
-              subFood += Number((isKid ? dayMenu?.[MealType.DINNER]?.kidsVegPrice : dayMenu?.[MealType.DINNER]?.vegPrice) || dayConf[MealType.DINNER]?.vegPrice || 0);
-              if (personSlot.dinnerParcel && (isKid ? isKidsParcelEnabled(dayId, MealType.DINNER, dayConfig, kidsEnabled) : isParcelEnabled(dayId, MealType.DINNER, dayConfig))) {
-                subParcel += Number((isKid ? dayMenu?.[MealType.DINNER]?.kidsVegParcelPrice : dayMenu?.[MealType.DINNER]?.vegParcelPrice) || dayConf[MealType.DINNER]?.vegParcelPrice || 0);
+              const isParcel = !!personSlot[`${mType}Parcel` as keyof typeof personSlot];
+              const isParcelAllowed = isParcel && (isKid
+                ? isKidsParcelEnabled(dayId, mType, dayConfig, kidsEnabled)
+                : isParcelEnabled(dayId, mType, dayConfig));
+
+              if (choice === DietaryOption.VEG) {
+                const foodPrice = resolvePrice(
+                  isKid,
+                  dayMenu?.[mType]?.kidsVegPrice,
+                  dayMenu?.[mType]?.vegPrice,
+                  mealConf.vegPrice
+                );
+                subFood += foodPrice;
+
+                if (isParcelAllowed) {
+                  const parcelPrice = resolvePrice(
+                    isKid,
+                    dayMenu?.[mType]?.kidsVegParcelPrice,
+                    dayMenu?.[mType]?.vegParcelPrice,
+                    mealConf.vegParcelPrice
+                  );
+                  subParcel += parcelPrice;
+                }
+              } else if (choice === DietaryOption.NON_VEG) {
+                const foodPrice = resolvePrice(
+                  isKid,
+                  dayMenu?.[mType]?.kidsNonVegPrice,
+                  dayMenu?.[mType]?.nonVegPrice,
+                  mealConf.nonVegPrice
+                );
+                subFood += foodPrice;
+
+                if (isParcelAllowed) {
+                  const parcelPrice = resolvePrice(
+                    isKid,
+                    dayMenu?.[mType]?.kidsNonVegParcelPrice,
+                    dayMenu?.[mType]?.nonVegParcelPrice,
+                    mealConf.nonVegParcelPrice
+                  );
+                  subParcel += parcelPrice;
+                }
               }
-            } else if (personSlot[MealType.DINNER] === DietaryOption.NON_VEG) {
-              subFood += Number((isKid ? dayMenu?.[MealType.DINNER]?.kidsNonVegPrice : dayMenu?.[MealType.DINNER]?.nonVegPrice) || dayConf[MealType.DINNER]?.nonVegPrice || 0);
-              if (personSlot.dinnerParcel && (isKid ? isKidsParcelEnabled(dayId, MealType.DINNER, dayConfig, kidsEnabled) : isParcelEnabled(dayId, MealType.DINNER, dayConfig))) {
-                subParcel += Number((isKid ? dayMenu?.[MealType.DINNER]?.kidsNonVegParcelPrice : dayMenu?.[MealType.DINNER]?.nonVegParcelPrice) || dayConf[MealType.DINNER]?.nonVegParcelPrice || 0);
-              }
-            }
+            });
           });
         });
 
@@ -527,7 +544,9 @@ export function useReportData(
     if (paymentConfig?.options?.cash) summaryList.push({ mode: PaymentMode.CASH, ...summary[PaymentMode.CASH] });
     if (paymentConfig?.options?.bankTransfer) summaryList.push({ mode: PaymentMode.BANK_TRANSFER, ...summary[PaymentMode.BANK_TRANSFER] });
 
-    return { summary: summaryList, details, totalFood, totalParcel };
+    const discrepancies = getAmountDiscrepancyData(subscriptions, foodMenu, dayConfig, kidsEnabled);
+
+    return { summary: summaryList, details, totalFood, totalParcel, discrepancies };
   }, [subscriptions, paymentConfig, dayConfig, foodMenu, kidsEnabled, activeReportType]);
 
   const getNotTakenData = useCallback((selectedDayId: string, selectedMealType: MealType) => {

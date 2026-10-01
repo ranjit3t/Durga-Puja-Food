@@ -25,6 +25,8 @@ import {
   resizeTaken,
   getDayLabel,
   isMealEnabled,
+  getValidSlotChoice,
+  isParcelValidForSlot,
   isMealDone,
   isMealInFuture,
   getEnabledPaymentMethods,
@@ -47,6 +49,9 @@ import {
   MealType,
   DietType,
   DietaryOption,
+  normalizeChoice,
+  normalizeSlot,
+  toBool,
   PaymentEntry,
   AppScreen,
   PaymentMode,
@@ -74,99 +79,9 @@ import { useCoreDatabase, useActivityLogs } from "../context/DatabaseContext";
 import { useUI } from "../context/UIContext";
 import { useAppNavigation } from "../context/NavigationContext";
 import { Day, Subscription } from "../types";
+import { calculateSubscriptionAmount } from "../utils/paymentUtils";
 
-/**
- * Calculates the total subscription amount based on meal choices, parcel options,
- * food menu pricing, day configurations, and headcounts.
- */
-export function calculateSubscriptionAmount(
-  mealSlots: Record<string, MealSlot[]>,
-  peopleCount: number,
-  _kidsCount: number,
-  foodMenu: Record<string, any>,
-  dayConfig: any[],
-  kidsEnabled: boolean
-): number {
-  let total = 0;
-  const dayIds = Object.keys(mealSlots || {});
-
-  dayIds.forEach((dayId) => {
-    const dayConf = dayConfig.find((d) => d.id === dayId);
-    if (!dayConf || !dayConf.enabled) return;
-
-    const dayMenu = foodMenu?.[dayId];
-    const slots = mealSlots[dayId] || [];
-
-    slots.forEach((personSlot, index) => {
-      const isKid = kidsEnabled && index >= peopleCount;
-
-      const resolvePrice = (kidVal: any, adultVal: any, confVal: any): number => {
-        if (isKid) {
-          if (kidVal !== undefined && kidVal !== null && kidVal !== '' && !isNaN(Number(kidVal))) {
-            return Number(kidVal);
-          }
-        }
-        if (adultVal !== undefined && adultVal !== null && adultVal !== '' && !isNaN(Number(adultVal))) {
-          return Number(adultVal);
-        }
-        if (confVal !== undefined && confVal !== null && confVal !== '' && !isNaN(Number(confVal))) {
-          return Number(confVal);
-        }
-        return 0;
-      };
-
-      const mealTypes = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER];
-      mealTypes.forEach((mType) => {
-        const mealConf = dayConf[mType];
-        if (!mealConf || !mealConf.enabled) return;
-
-        const choice = personSlot[mType];
-        if (!choice || choice === DietaryOption.NONE) return;
-
-        const isParcel = !!personSlot[`${mType}Parcel` as keyof MealSlot];
-        const isParcelAllowed = isParcel && (isKid
-          ? isKidsParcelEnabled(dayId, mType, dayConfig, kidsEnabled)
-          : isParcelEnabled(dayId, mType, dayConfig));
-
-        if (choice === DietaryOption.VEG) {
-          // Veg Meal Price
-          const mealPrice = resolvePrice(
-            dayMenu?.[mType]?.kidsVegPrice,
-            dayMenu?.[mType]?.vegPrice,
-            mealConf.vegPrice
-          );
-          total += mealPrice;
-
-          // Veg Parcel Price
-          if (isParcelAllowed) {
-            const parcelPrice = isKid
-              ? Number(dayMenu?.[mType]?.kidsVegParcelPrice || 0)
-              : resolvePrice(undefined, dayMenu?.[mType]?.vegParcelPrice, mealConf.vegParcelPrice);
-            total += parcelPrice;
-          }
-        } else if (choice === DietaryOption.NON_VEG) {
-          // Non-Veg Meal Price
-          const mealPrice = resolvePrice(
-            dayMenu?.[mType]?.kidsNonVegPrice,
-            dayMenu?.[mType]?.nonVegPrice,
-            mealConf.nonVegPrice
-          );
-          total += mealPrice;
-
-          // Non-Veg Parcel Price
-          if (isParcelAllowed) {
-            const parcelPrice = isKid
-              ? Number(dayMenu?.[mType]?.kidsNonVegParcelPrice || 0)
-              : resolvePrice(undefined, dayMenu?.[mType]?.nonVegParcelPrice, mealConf.nonVegParcelPrice);
-            total += parcelPrice;
-          }
-        }
-      });
-    });
-  });
-
-  return total;
-}
+export { calculateSubscriptionAmount };
 
 export function SubscriptionForm() {
   const { userRole, handleLogout } = useAuth();
@@ -230,6 +145,42 @@ export function SubscriptionForm() {
       initialValue.peopleCount = initialValue.peopleCount + (initialValue.kidsCount ?? 0);
       initialValue.kidsCount = 0;
     }
+
+    const totalPeople = initialValue.peopleCount + (initialValue.kidsCount || 0);
+
+    // Normalize mealSlots & takenByPerson matrix for all active days
+    const normalizedSlots: Record<string, MealSlot[]> = {};
+    const normalizedTaken: Record<string, TakenState[]> = {};
+
+    activeDays.forEach((dayId) => {
+      const existingSlots = (initialValue.mealSlots?.[dayId] || []) as MealSlot[];
+      const existingTaken = (initialValue.takenByPerson?.[dayId] || []) as TakenState[];
+
+      normalizedSlots[dayId] = Array.from({ length: totalPeople }, (_, i) =>
+        normalizeSlot(existingSlots[i])
+      );
+
+      normalizedTaken[dayId] = Array.from({ length: totalPeople }, (_, i) => {
+        const t = existingTaken[i];
+        return {
+          [MealType.BREAKFAST]: toBool(t?.[MealType.BREAKFAST]),
+          [MealType.LUNCH]: toBool(t?.[MealType.LUNCH]),
+          [MealType.DINNER]: toBool(t?.[MealType.DINNER]),
+          breakfastParcel: toBool(t?.breakfastParcel),
+          lunchParcel: toBool(t?.lunchParcel),
+          dinnerParcel: toBool(t?.dinnerParcel),
+          breakfastTime: t?.breakfastTime ? String(t.breakfastTime) : undefined,
+          lunchTime: t?.lunchTime ? String(t.lunchTime) : undefined,
+          dinnerTime: t?.dinnerTime ? String(t.dinnerTime) : undefined,
+          breakfastParcelTime: t?.breakfastParcelTime ? String(t.breakfastParcelTime) : undefined,
+          lunchParcelTime: t?.lunchParcelTime ? String(t.lunchParcelTime) : undefined,
+          dinnerParcelTime: t?.dinnerParcelTime ? String(t.dinnerParcelTime) : undefined,
+        };
+      });
+    });
+
+    initialValue.mealSlots = normalizedSlots;
+    initialValue.takenByPerson = normalizedTaken;
 
     // If we're editing an existing record, ensure the payment mode is still valid/enabled
     if (enabledMethods.length > 0 && !enabledMethods.includes(initialValue.paymentMode)) {
@@ -682,13 +633,49 @@ export function SubscriptionForm() {
     }
   });
 
+  const sanitizedMealSlots: Record<string, MealSlot[]> = {};
+  Object.keys(form.mealSlots || {}).forEach((dayId) => {
+    const slots = form.mealSlots[dayId] || [];
+    sanitizedMealSlots[dayId] = slots.map((personSlot, pIdx) => {
+      const isKid = kidsEnabled && pIdx >= form.peopleCount;
+      const cleanSlot: MealSlot = {
+        [MealType.BREAKFAST]: DietaryOption.NONE,
+        [MealType.LUNCH]: DietaryOption.NONE,
+        [MealType.DINNER]: DietaryOption.NONE,
+        breakfastParcel: false,
+        lunchParcel: false,
+        dinnerParcel: false,
+      };
+
+      const meals = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER];
+      meals.forEach((m) => {
+        if (!isMealEnabled(dayId, m, dayConfig)) return;
+
+        const choice = getValidSlotChoice(dayId, m, personSlot[m], dayConfig);
+        if (choice === DietaryOption.NONE) return;
+
+        cleanSlot[m] = choice;
+
+        const parcelKey = `${m}Parcel` as const;
+        const parcelValid = isParcelValidForSlot(dayId, m, choice, personSlot[parcelKey], dayConfig, isKid, !!kidsEnabled);
+
+        if (parcelValid) {
+          cleanSlot[parcelKey] = true;
+        }
+      });
+
+      return cleanSlot;
+    });
+  });
+
   const prepared: Subscription = {
     ...form,
+    mealSlots: sanitizedMealSlots,
     takenByPerson: stampedTakenByPerson,
     mobile: mobileInput ? Number(mobileInput) : undefined,
     flat: form.flat.trim().toUpperCase(),
     id: passId,
-    meals: mealsFromChoices(form.mealSlots, dayConfig, form.peopleCount, !!kidsEnabled),
+    meals: mealsFromChoices(sanitizedMealSlots, dayConfig, form.peopleCount, !!kidsEnabled),
     payments: payments,
     amount: totalAmount.toFixed(0),
     paymentMode: payments[0]?.mode || PaymentMode.CASH,
@@ -741,19 +728,28 @@ export function SubscriptionForm() {
 
   /**
    * Sets the dietary choice for a specific meal slot.
+   * Domain Invariant: If choice is set to NONE, parcel option MUST be forced to false!
    */
   const setMealSlotChoice = (
     slot: MealType,
     choice: MealChoice
   ) => {
     const currentSlots = getEnsureSlots(selectedDay);
+    const isNone = choice === DietaryOption.NONE;
+    const parcelKey = `${slot}Parcel` as keyof MealSlot;
+
     setForm({
       ...form,
       mealSlots: {
         ...form.mealSlots,
-        [selectedDay]: currentSlots.map((item, index) =>
-          index === selectedPerson ? { ...item, [slot]: choice } : item
-        ),
+        [selectedDay]: currentSlots.map((item, index) => {
+          if (index !== selectedPerson) return item;
+          return {
+            ...item,
+            [slot]: choice,
+            [parcelKey]: isNone ? false : item[parcelKey],
+          };
+        }),
       },
     });
     setIsManualAmount(false);
@@ -761,14 +757,23 @@ export function SubscriptionForm() {
 
   /**
    * Toggles a specific meal slot parcel for a person.
+   * Domain Invariant: Parcel option CAN ONLY be enabled if a meal is selected (not DietaryOption.NONE).
    */
   const setMealParcel = (slot: MealType, enabled: boolean) => {
     const isSelectedPersonKid = kidsEnabled && selectedPerson >= form.peopleCount;
     if (isSelectedPersonKid && !isKidsParcelEnabled(selectedDay, slot, dayConfig, kidsEnabled)) {
       return;
     }
-    const parcelKey = `${slot}Parcel` as keyof MealSlot;
+
     const currentSlots = getEnsureSlots(selectedDay);
+    const currentChoice = normalizeChoice(currentSlots[selectedPerson]?.[slot]);
+
+    // Domain Invariant: Parcel CAN ONLY be enabled if meal choice is NOT DietaryOption.NONE!
+    if (currentChoice === DietaryOption.NONE) {
+      return;
+    }
+
+    const parcelKey = `${slot}Parcel` as keyof MealSlot;
     setForm({
       ...form,
       mealSlots: {
@@ -1190,7 +1195,7 @@ export function SubscriptionForm() {
               .map((slot) => {
                 const label = getMealLabel(slot);
                 const currentSlotChoice =
-                  form.mealSlots[selectedDay]?.[selectedPerson]?.[slot] || DietaryOption.NONE;
+                  getValidSlotChoice(selectedDay, slot, form.mealSlots[selectedDay]?.[selectedPerson]?.[slot], dayConfig);
                 const isVegOnly = isVegOnlyDay(selectedDay, dayConfig);
                 const isDone = isMealDone(selectedDay, slot, dayConfig);
                 const isCurrent = isMealCurrent(selectedDay, slot, dayConfig);
@@ -1209,7 +1214,9 @@ export function SubscriptionForm() {
                         onPress={() => isAdmin && canEdit && !isLocked && setMealSlotChoice(slot, DietaryOption.NONE)}
                         style={[
                           styles.choice,
-                          currentSlotChoice === DietaryOption.NONE ? styles.slotSelected : styles.noneChoice,
+                          currentSlotChoice === DietaryOption.NONE
+                            ? { backgroundColor: theme.colors.surfaceDark, borderColor: theme.colors.primary, borderWidth: 2 }
+                            : styles.noneChoice,
                           (!isAdmin || isLocked) && { opacity: currentSlotChoice === DietaryOption.NONE ? 1 : 0.3 },
                           { paddingVertical: 12, paddingHorizontal: 4 }
                         ]}
@@ -1218,7 +1225,7 @@ export function SubscriptionForm() {
                         <Text
                           style={[
                             styles.choiceText,
-                            currentSlotChoice === DietaryOption.NONE && styles.choiceTextOn,
+                            currentSlotChoice === DietaryOption.NONE && { color: theme.colors.textPrimary, fontWeight: "900" },
                             { fontSize: 12 }
                           ]}
                         >
@@ -1302,8 +1309,9 @@ export function SubscriptionForm() {
                   {[MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER]
                     .filter(checkParcelActive)
                     .map((slot) => {
-                      const currentChoice = form.mealSlots[selectedDay]?.[selectedPerson]?.[slot] || DietaryOption.NONE;
-                    const isParcel = !!form.mealSlots[selectedDay]?.[selectedPerson]?.[`${slot}Parcel` as keyof MealSlot];
+                      const isKidSlot = kidsEnabled && selectedPerson >= form.peopleCount;
+                      const currentChoice = getValidSlotChoice(selectedDay, slot, form.mealSlots[selectedDay]?.[selectedPerson]?.[slot], dayConfig);
+                      const isParcel = isParcelValidForSlot(selectedDay, slot, currentChoice, form.mealSlots[selectedDay]?.[selectedPerson]?.[`${slot}Parcel` as keyof MealSlot], dayConfig, isKidSlot, !!kidsEnabled);
                     const label = getMealLabel(slot);
                     const isDone = isMealDone(selectedDay, slot, dayConfig);
                     const isCurrent = isMealCurrent(selectedDay, slot, dayConfig);

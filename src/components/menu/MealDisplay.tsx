@@ -43,11 +43,6 @@ export function MealDisplay({
   const isBothEnabled = vegEnabled && nonVegEnabled;
   const isCurrent = isMealCurrent(dayId, mealKey, config);
 
-  const hasItems =
-    (vegEnabled && veg.length > 0) || (nonVegEnabled && nonVeg.length > 0);
-
-  if (!hasItems) return null;
-
   return (
     <View style={styles.mealDisplayRow}>
       <View style={[styles.mealDisplayHeader, { flexWrap: 'wrap', gap: 8, justifyContent: 'space-between' }]}>
@@ -73,7 +68,7 @@ export function MealDisplay({
       </View>
 
       <View style={styles.mealItemsContainer}>
-        {vegEnabled && veg.length > 0 && (
+        {vegEnabled && (
           <View style={{ marginBottom: 16 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6, flexWrap: 'wrap', gap: 8 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -101,10 +96,12 @@ export function MealDisplay({
                 </View>
               )}
             </View>
-            <Text style={[styles.mealItemsText, { marginTop: 2 }]}>{veg.join(", ")}</Text>
+            <Text style={[styles.mealItemsText, { marginTop: 2 }, veg.length === 0 && { fontStyle: 'italic', color: theme.colors.textMuted }]}>
+              {veg.length > 0 ? veg.join(", ") : UI_TEXT.noItemsListed}
+            </Text>
           </View>
         )}
-        {nonVegEnabled && nonVeg.length > 0 && (
+        {nonVegEnabled && (
           <View style={{ marginBottom: 4 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6, flexWrap: 'wrap', gap: 8 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -132,7 +129,9 @@ export function MealDisplay({
                 </View>
               )}
             </View>
-            <Text style={[styles.mealItemsText, { marginTop: 2 }]}>{nonVeg.join(", ")}</Text>
+            <Text style={[styles.mealItemsText, { marginTop: 2 }, nonVeg.length === 0 && { fontStyle: 'italic', color: theme.colors.textMuted }]}>
+              {nonVeg.length > 0 ? nonVeg.join(", ") : UI_TEXT.noItemsListed}
+            </Text>
           </View>
         )}
       </View>

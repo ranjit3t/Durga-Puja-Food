@@ -59,7 +59,7 @@ export function PendingReport({
                 <Text style={[styles.dashboardDay, { color: colorScheme.accent }]}>{item.block}{UI_TEXT.hyphen}{item.flat}</Text>
                 <View style={{ alignItems: 'flex-end' }}>
                   <Text style={[styles.amount, { color: colorScheme.accent, fontWeight: '900' }]}>
-                    {item.count}{UI_TEXT.space}{item.count === 1 ? UI_TEXT.personNotTaken : UI_TEXT.personsNotTaken}
+                    {(item.count === 1 ? UI_TEXT.personNotTaken : UI_TEXT.personsNotTaken).replace("{count}", String(item.count))}
                   </Text>
                   {kidsEnabled && item.kids > 0 && <Text style={{ fontSize: 10, fontWeight: '800', color: theme.colors.textMuted, marginBottom: 2 }}>{(item.kids === 1 ? UI_TEXT.kidIncluded : UI_TEXT.kidsIncluded).replace("{count}", String(item.kids))}</Text>}
                   <Text style={[styles.helper, { fontSize: 11, fontWeight: "700", color: theme.colors.textSecondary }]}>

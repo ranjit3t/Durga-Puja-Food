@@ -1,6 +1,6 @@
 /**
  * Food Desk - App Entry Point
- * Initializes Context Providers and the App Navigator.
+ * Initializes Context Providers, Error Boundary, and the App Navigator.
  */
 import React from "react";
 import { LogBox } from "react-native";
@@ -11,6 +11,7 @@ import { NavigationProvider } from "./src/context/NavigationContext";
 import { UIProvider, useUI } from "./src/context/UIContext";
 import { AppNavigator } from "./src/navigation/AppNavigator";
 import { CustomAlert } from "./src/components/common/CustomAlert";
+import { ErrorBoundary } from "./src/components/common/ErrorBoundary";
 
 // Suppress framework noise from older libraries used in Expo Go / peer dependencies
 LogBox.ignoreLogs([
@@ -23,17 +24,19 @@ LogBox.ignoreLogs([
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <DatabaseProvider>
-          <UIProvider>
-            <NavigationProvider>
-              <AppRoot />
-            </NavigationProvider>
-          </UIProvider>
-        </DatabaseProvider>
-      </AuthProvider>
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <AuthProvider>
+          <DatabaseProvider>
+            <UIProvider>
+              <NavigationProvider>
+                <AppRoot />
+              </NavigationProvider>
+            </UIProvider>
+          </DatabaseProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }
 

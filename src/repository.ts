@@ -33,6 +33,9 @@ import {
   MealType,
   DietType,
   DietaryOption,
+  normalizeChoice,
+  normalizeSlot,
+  toBool,
   ActivityLog,
   PaymentMode,
   Note,
@@ -247,28 +250,11 @@ export function normalizeRecord(
     ];
     result[day] =
       current && Array.isArray(current)
-        ? current.map((s) => {
-            let b = typeof s?.breakfast === "boolean" ? (s.breakfast ? mealByPerson[day]?.[0] || DietaryOption.VEG : DietaryOption.NONE) : s?.breakfast || DietaryOption.NONE;
-            let l = typeof s?.lunch === "boolean" ? (s.lunch ? mealByPerson[day]?.[0] || DietaryOption.VEG : DietaryOption.NONE) : s?.lunch || DietaryOption.NONE;
-            let d = typeof s?.dinner === "boolean" ? (s.dinner ? mealByPerson[day]?.[0] || DietaryOption.VEG : DietaryOption.NONE) : s?.dinner || DietaryOption.NONE;
-
-            if (b === "Non-veg") b = DietaryOption.NON_VEG;
-            if (l === "Non-veg") l = DietaryOption.NON_VEG;
-            if (d === "Non-veg") d = DietaryOption.NON_VEG;
-
-            return {
-              [MealType.BREAKFAST]: b as MealChoice,
-              [MealType.LUNCH]: l as MealChoice,
-              [MealType.DINNER]: d as MealChoice,
-              breakfastParcel: Boolean(s?.breakfastParcel),
-              lunchParcel: Boolean(s?.lunchParcel),
-              dinnerParcel: Boolean(s?.dinnerParcel),
-            };
-          })
-        : (mealByPerson[day] || []).map((choice) => ({
-            [MealType.BREAKFAST]: choice !== DietaryOption.NONE ? choice : DietaryOption.NONE,
-            [MealType.LUNCH]: choice !== DietaryOption.NONE ? choice : DietaryOption.NONE,
-            [MealType.DINNER]: choice !== DietaryOption.NONE ? choice : DietaryOption.NONE,
+        ? current.map((s) => normalizeSlot(s))
+        : (mealByPerson[day] || []).map((choice) => normalizeSlot({
+            breakfast: choice,
+            lunch: choice,
+            dinner: choice,
             breakfastParcel: false,
             lunchParcel: false,
             dinnerParcel: false,
@@ -285,12 +271,12 @@ export function normalizeRecord(
     result[day] =
       current && Array.isArray(current)
         ? current.map((t) => ({
-            [MealType.BREAKFAST]: Boolean(t?.breakfast),
-            [MealType.LUNCH]: Boolean(t?.lunch),
-            [MealType.DINNER]: Boolean(t?.dinner),
-            breakfastParcel: Boolean(t?.breakfastParcel),
-            lunchParcel: Boolean(t?.lunchParcel),
-            dinnerParcel: Boolean(t?.dinnerParcel),
+            [MealType.BREAKFAST]: toBool(t?.breakfast),
+            [MealType.LUNCH]: toBool(t?.lunch),
+            [MealType.DINNER]: toBool(t?.dinner),
+            breakfastParcel: toBool(t?.breakfastParcel),
+            lunchParcel: toBool(t?.lunchParcel),
+            dinnerParcel: toBool(t?.dinnerParcel),
             breakfastTime: t?.breakfastTime ? String(t.breakfastTime) : undefined,
             lunchTime: t?.lunchTime ? String(t.lunchTime) : undefined,
             dinnerTime: t?.dinnerTime ? String(t.dinnerTime) : undefined,

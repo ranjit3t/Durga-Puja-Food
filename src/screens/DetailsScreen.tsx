@@ -21,6 +21,10 @@ import {
   getDayLabel,
   getDayAbbr,
   isMealEnabled,
+  getValidSlotChoice,
+  isDietaryEnabled,
+  isParcelEnabled,
+  isKidsParcelEnabled,
   isMealCurrent,
   isDietaryEnabledForDay,
   getPaymentModeLabel,
@@ -28,7 +32,7 @@ import {
   getMealLabel,
   generateUniquePasscode,
 } from "../constants";
-import { MealMenu, MealType, DietType, DietaryOption, AppScreen, UserRole, PaymentMode, ReportType, AppThemeMode, ActivityModule, ActivityAction, CheckoutSource, getPassDisplayLabel } from "../types";
+import { MealMenu, MealType, DietType, DietaryOption, normalizeChoice, toBool, AppScreen, UserRole, PaymentMode, ReportType, AppThemeMode, ActivityModule, ActivityAction, CheckoutSource, getPassDisplayLabel } from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
@@ -394,10 +398,27 @@ export function DetailsScreen() {
 
             // Calculate aggregate parcel count for this day
             let pCount = 0;
-            (subscription.mealSlots[day] || []).forEach(slot => {
-              if (slot.breakfastParcel) pCount++;
-              if (slot.lunchParcel) pCount++;
-              if (slot.dinnerParcel) pCount++;
+            (subscription.mealSlots[day] || []).forEach((slot, pIdx) => {
+              const isKid = kidsEnabled && pIdx >= subscription.peopleCount;
+              const meals = [
+                { key: MealType.BREAKFAST, parcelKey: 'breakfastParcel' as const },
+                { key: MealType.LUNCH, parcelKey: 'lunchParcel' as const },
+                { key: MealType.DINNER, parcelKey: 'dinnerParcel' as const },
+              ];
+
+              meals.forEach((m) => {
+                if (!isMealEnabled(day, m.key, dayConfig)) return;
+                const choice = getValidSlotChoice(day, m.key, slot[m.key], dayConfig);
+                if (choice === DietaryOption.NONE) return;
+
+                const parcelActive = isKid
+                  ? isKidsParcelEnabled(day, m.key, dayConfig, kidsEnabled)
+                  : isParcelEnabled(day, m.key, dayConfig);
+
+                if (parcelActive && toBool(slot[m.parcelKey])) {
+                  pCount++;
+                }
+              });
             });
 
             if (vegEnabled && vCount > 0)
@@ -483,18 +504,35 @@ export function DetailsScreen() {
             <View style={styles.personDays}>
               {activeDays.map((day) => {
                 const slots = subscription.mealSlots[day]?.[personIndex];
-                const isAnyMeal = slots && (slots[MealType.BREAKFAST] !== DietaryOption.NONE || slots[MealType.LUNCH] !== DietaryOption.NONE || slots[MealType.DINNER] !== DietaryOption.NONE);
+                const isKid = kidsEnabled && personIndex >= subscription.peopleCount;
 
                 const getMealParts = () => {
                    if (!slots) return [];
-                   const res = [];
-                   if (slots[MealType.BREAKFAST] !== DietaryOption.NONE) res.push({ label: UI_TEXT.breakfastAbbr, parcel: slots.breakfastParcel });
-                   if (slots[MealType.LUNCH] !== DietaryOption.NONE) res.push({ label: UI_TEXT.lunchAbbr, parcel: slots.lunchParcel });
-                   if (slots[MealType.DINNER] !== DietaryOption.NONE) res.push({ label: UI_TEXT.dinnerAbbr, parcel: slots.dinnerParcel });
+                   const res: Array<{ label: string; parcel: boolean }> = [];
+                   const meals = [
+                     { key: MealType.BREAKFAST, abbr: UI_TEXT.breakfastAbbr, parcelKey: 'breakfastParcel' as const },
+                     { key: MealType.LUNCH, abbr: UI_TEXT.lunchAbbr, parcelKey: 'lunchParcel' as const },
+                     { key: MealType.DINNER, abbr: UI_TEXT.dinnerAbbr, parcelKey: 'dinnerParcel' as const },
+                   ];
+
+                   meals.forEach((m) => {
+                     if (!isMealEnabled(day, m.key, dayConfig)) return;
+                     const choice = getValidSlotChoice(day, m.key, slots[m.key], dayConfig);
+                     if (choice === DietaryOption.NONE) return;
+
+                     const parcelActive = isKid
+                       ? isKidsParcelEnabled(day, m.key, dayConfig, kidsEnabled)
+                       : isParcelEnabled(day, m.key, dayConfig);
+                     const hasParcel = parcelActive && toBool(slots[m.parcelKey]);
+
+                     res.push({ label: m.abbr, parcel: hasParcel });
+                   });
+
                    return res;
                 };
 
                 const mealParts = getMealParts();
+                const isAnyMeal = mealParts.length > 0;
 
                 return (
                   <View
@@ -540,14 +578,14 @@ export function DetailsScreen() {
             <View style={styles.personDays}>
               {activeDays.map((day) => {
                 const taken = subscription.takenByPerson[day]?.[personIndex];
-                const isAnyTaken = taken && (taken[MealType.BREAKFAST] || taken[MealType.LUNCH] || taken[MealType.DINNER]);
+                const isAnyTaken = taken && (toBool(taken[MealType.BREAKFAST]) || toBool(taken[MealType.LUNCH]) || toBool(taken[MealType.DINNER]));
 
                 const getTakenParts = () => {
                    if (!taken) return [];
-                   const res = [];
-                   if (taken[MealType.BREAKFAST]) res.push({ label: UI_TEXT.breakfastAbbr, parcel: taken?.breakfastParcel, time: taken?.breakfastTime });
-                   if (taken[MealType.LUNCH]) res.push({ label: UI_TEXT.lunchAbbr, parcel: taken?.lunchParcel, time: taken?.lunchTime });
-                   if (taken[MealType.DINNER]) res.push({ label: UI_TEXT.dinnerAbbr, parcel: taken?.dinnerParcel, time: taken?.dinnerTime });
+                   const res: Array<{ label: string; parcel: boolean; time?: string }> = [];
+                   if (toBool(taken[MealType.BREAKFAST])) res.push({ label: UI_TEXT.breakfastAbbr, parcel: toBool(taken?.breakfastParcel), time: taken?.breakfastTime });
+                   if (toBool(taken[MealType.LUNCH])) res.push({ label: UI_TEXT.lunchAbbr, parcel: toBool(taken?.lunchParcel), time: taken?.lunchTime });
+                   if (toBool(taken[MealType.DINNER])) res.push({ label: UI_TEXT.dinnerAbbr, parcel: toBool(taken?.dinnerParcel), time: taken?.dinnerTime });
                    return res;
                 };
 
