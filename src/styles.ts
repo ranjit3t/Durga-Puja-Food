@@ -412,6 +412,7 @@ export const createStyles = (theme: AppTheme, width: number, _height?: number) =
     dot: { width: s(8), height: s(8), borderRadius: s(4) },
     vegChoice: { backgroundColor: COLORS.veg, borderColor: COLORS.veg },
     nonVegChoice: { backgroundColor: COLORS.nonVeg, borderColor: COLORS.nonVeg },
+    noneChoice: { backgroundColor: COLORS.surface, borderColor: COLORS.border },
     slotSelected: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
     checkOn: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
 
