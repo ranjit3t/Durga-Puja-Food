@@ -6,6 +6,14 @@
       ".read": true,
       ".write": "auth != null"
     },
+    "androidAppLocation": {
+      ".read": true,
+      ".write": "auth != null"
+    },
+    "iosAppLocation": {
+      ".read": true,
+      ".write": "auth != null"
+    },
     "subscriptions": {
       ".read": "auth != null",
       ".indexOn": ["passcode", "block", "flat"],
