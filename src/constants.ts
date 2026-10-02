@@ -776,6 +776,33 @@ export const generatePasscode = (seed?: string) => {
 };
 
 /**
+ * Compares two semantic version strings (e.g. "1.0.0", "1.0.2").
+ * Returns true if local version is strictly behind remote version.
+ */
+export function isVersionBehind(local: string, remote: string): boolean {
+  if (!local || !remote) return false;
+  const parseSemver = (v: string) => {
+    const clean = String(v).replace(/^v/, "").split("-")[0];
+    const parts = clean.split(".").map((n) => parseInt(n, 10) || 0);
+    return [parts[0] || 0, parts[1] || 0, parts[2] || 0];
+  };
+
+  const [lMaj, lMin, lPat] = parseSemver(local);
+  const [rMaj, rMin, rPat] = parseSemver(remote);
+
+  if (lMaj < rMaj) return true;
+  if (lMaj > rMaj) return false;
+
+  if (lMin < rMin) return true;
+  if (lMin > rMin) return false;
+
+  if (lPat < rPat) return true;
+  if (lPat > rPat) return false;
+
+  return false;
+}
+
+/**
  * Returns a short summary of meal counts across days for the subscription list.
  */
 export const mealSummary = (subscription: Subscription, config: ConfigDay[], kidsEnabled: boolean) =>

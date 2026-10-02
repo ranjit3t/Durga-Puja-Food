@@ -9,7 +9,7 @@ import { useCoreDatabase } from "../context/DatabaseContext";
 import { useUI } from "../context/UIContext";
 import { useAppNavigation } from "../context/NavigationContext";
 import { AppScreen, UserRole, MealType, AppThemeMode, DietaryOption, DietType } from "../types";
-import { getActiveDays, isSeasonDone, isMealCurrent, getDayLabel, isMealEnabled, isDietaryEnabled, getMealLabel, getDietTypeForChoice, getMealVarieties, getMealGuestCounts } from "../constants";
+import { getActiveDays, isSeasonDone, isMealCurrent, getDayLabel, isMealEnabled, isDietaryEnabled, getMealLabel, getDietTypeForChoice, getMealVarieties, getMealGuestCounts, isVersionBehind } from "../constants";
 import { ActionLabel } from "../components/common/ActionLabel";
 import { LogoutButton } from "../components/common/LogoutButton";
 import { ThemeToggleButton } from "../components/common/ThemeToggleButton";
@@ -33,7 +33,7 @@ export function HomeScreen() {
       !loading &&
       !versionAlertShown &&
       remoteAppVersion &&
-      remoteAppVersion.trim() !== UI_TEXT.appVersion.trim()
+      isVersionBehind(UI_TEXT.appVersion, remoteAppVersion)
     ) {
       markVersionAlertShown();
       const appLocation = Platform.OS === "android" ? androidAppLocation : (Platform.OS === "ios" ? iosAppLocation : undefined);
