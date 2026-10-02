@@ -4,13 +4,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { useStyles } from "../../styles";
 import { useAppTheme } from "../../theme";
 import { UI_TEXT } from "../../strings";
-import { MealMenu, Day, ConfigDay, MealType, DietType } from "../../types";
-import { isDietaryEnabled, isMealCurrent, isKidsParcelEnabled } from "../../constants";
+import { MealMenu, Day, ConfigDay, MealType, DietType, DietaryVariety, VarietyMenu } from "../../types";
+import { isDietaryEnabled, isMealCurrent, isKidsParcelEnabled, getMealVarieties } from "../../constants";
 
-/**
- * Interactive editor for a single meal's items.
- * Allows adding and removing Veg/Non-veg tags.
- */
 export function MealMenuEditor({
   title,
   mealKey,
@@ -38,351 +34,316 @@ export function MealMenuEditor({
 }) {
   const styles = useStyles();
   const { theme } = useAppTheme();
-  const vegEnabled = isDietaryEnabled(dayId, mealKey, DietType.VEG, config);
-  const nonVegEnabled = isDietaryEnabled(dayId, mealKey, DietType.NON_VEG, config);
-  const isBothEnabled = vegEnabled && nonVegEnabled;
   const isCurrent = isMealCurrent(dayId, mealKey, config);
 
-  const dayConf = config.find(d => d.id === dayId);
+  const dayConf = config.find((d) => d.id === dayId);
   const mConf = dayConf ? dayConf[mealKey] : null;
+  const varieties = getMealVarieties(mConf || undefined);
 
-  const [newItem, setNewItem] = useState("");
-  const [type, setType] = useState<DietType>(
-    vegEnabled ? DietType.VEG : DietType.NON_VEG
-  );
+  const [newItemText, setNewItemText] = useState<Record<string, string>>({});
 
-  const veg = value?.veg || [];
-  const nonVeg = value?.nonVeg || [];
+  const getVarietyItems = (v: DietaryVariety): string[] => {
+    let raw: any = [];
+    if (v.id === "veg_default") raw = value?.veg;
+    else if (v.id === "nonVeg_default") raw = value?.nonVeg;
+    else raw = value?.varieties?.[v.id]?.items;
 
-  const addItem = () => {
-    if (!newItem.trim()) return;
-    const currentList = type === DietType.VEG ? veg : nonVeg;
-    onChange({ ...value, [type]: [...currentList, newItem.trim()] });
-    setNewItem("");
+    if (Array.isArray(raw)) {
+      return raw.filter((i) => typeof i === "string" || typeof i === "number").map(String);
+    }
+    if (raw && typeof raw === "object") {
+      return Object.values(raw).filter((i) => typeof i === "string" || typeof i === "number").map(String);
+    }
+    if (typeof raw === "string" && raw.trim().length > 0) {
+      return [raw.trim()];
+    }
+    return [];
   };
 
-  const removeItem = (targetType: DietType, index: number) => {
-    const currentList = targetType === DietType.VEG ? veg : nonVeg;
-    onChange({
-      ...value,
-      [targetType]: currentList.filter((_, i) => i !== index),
-    });
+  const getVarietyPrice = (v: DietaryVariety, field: 'adultPrice' | 'kidsPrice' | 'parcelPrice' | 'kidsParcelPrice'): string => {
+    if (v.id === "veg_default") {
+      if (field === "adultPrice") return value?.vegPrice ?? "";
+      if (field === "kidsPrice") return value?.kidsVegPrice ?? "";
+      if (field === "parcelPrice") return value?.vegParcelPrice ?? "";
+      if (field === "kidsParcelPrice") return value?.kidsVegParcelPrice ?? "";
+    }
+    if (v.id === "nonVeg_default") {
+      if (field === "adultPrice") return value?.nonVegPrice ?? "";
+      if (field === "kidsPrice") return value?.kidsNonVegPrice ?? "";
+      if (field === "parcelPrice") return value?.nonVegParcelPrice ?? "";
+      if (field === "kidsParcelPrice") return value?.kidsNonVegParcelPrice ?? "";
+    }
+    const val = value?.varieties?.[v.id]?.[field];
+    return typeof val === 'string' ? val : "";
+  };
+
+  const updateVarietyField = (
+    v: DietaryVariety,
+    field: keyof VarietyMenu,
+    val: string
+  ) => {
+    const nextMenu = { ...value };
+    const nextVarieties = { ...(nextMenu.varieties || {}) };
+    const currentVar = { ...(nextVarieties[v.id] || { items: getVarietyItems(v) }) };
+
+    (currentVar as any)[field] = val;
+    nextVarieties[v.id] = currentVar;
+    nextMenu.varieties = nextVarieties;
+
+    // Legacy sync
+    if (v.id === "veg_default") {
+      if (field === "adultPrice") nextMenu.vegPrice = val;
+      if (field === "kidsPrice") nextMenu.kidsVegPrice = val;
+      if (field === "parcelPrice") nextMenu.vegParcelPrice = val;
+      if (field === "kidsParcelPrice") nextMenu.kidsVegParcelPrice = val;
+    } else if (v.id === "nonVeg_default") {
+      if (field === "adultPrice") nextMenu.nonVegPrice = val;
+      if (field === "kidsPrice") nextMenu.kidsNonVegPrice = val;
+      if (field === "parcelPrice") nextMenu.nonVegParcelPrice = val;
+      if (field === "kidsParcelPrice") nextMenu.kidsNonVegParcelPrice = val;
+    }
+
+    onChange(nextMenu);
+  };
+
+  const addItemForVariety = (v: DietaryVariety) => {
+    const text = (newItemText[v.id] || "").trim();
+    if (!text) return;
+
+    const currentItems = getVarietyItems(v);
+    const nextItems = [...currentItems, text];
+
+    const nextMenu = { ...value };
+    const nextVarieties = { ...(nextMenu.varieties || {}) };
+    const currentVar = { ...(nextVarieties[v.id] || {}), items: [...nextItems] };
+    nextVarieties[v.id] = currentVar;
+    nextMenu.varieties = nextVarieties;
+
+    if (v.id === "veg_default") nextMenu.veg = [...nextItems];
+    if (v.id === "nonVeg_default") nextMenu.nonVeg = [...nextItems];
+
+    onChange(nextMenu);
+    setNewItemText((prev) => ({ ...prev, [v.id]: "" }));
+  };
+
+  const removeItemForVariety = (v: DietaryVariety, index: number) => {
+    const currentItems = getVarietyItems(v);
+    const nextItems = currentItems.filter((_, i) => i !== index);
+
+    const nextMenu = { ...value };
+    const nextVarieties = { ...(nextMenu.varieties || {}) };
+    const currentVar = { ...(nextVarieties[v.id] || {}), items: [...nextItems] };
+    nextVarieties[v.id] = currentVar;
+    nextMenu.varieties = nextVarieties;
+
+    if (v.id === "veg_default") nextMenu.veg = [...nextItems];
+    if (v.id === "nonVeg_default") nextMenu.nonVeg = [...nextItems];
+
+    onChange(nextMenu);
   };
 
   return (
     <View style={[styles.mealEditor, disabled && { opacity: 0.6 }]}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap', flex: 1 }}>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap", flex: 1 }}>
           <Text style={[styles.mealEditorTitle, { marginBottom: 0, color: isCurrent ? theme.colors.primary : theme.colors.textSecondary }]}>{title}</Text>
           {isCurrent && (
             <View style={{ backgroundColor: theme.colors.primary, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
               <Text style={{ color: theme.colors.white, fontSize: 10, fontWeight: "900" }}>{UI_TEXT.live.toUpperCase()}</Text>
             </View>
           )}
-          {!isBothEnabled && (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: vegEnabled ? theme.colors.successLight : theme.colors.errorLight, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: 0.5, borderColor: vegEnabled ? theme.colors.veg : theme.colors.nonVeg }}>
-              <Ionicons name={vegEnabled ? "leaf" : "flame"} size={10} color={vegEnabled ? theme.colors.veg : theme.colors.nonVeg} />
-              <Text style={{ color: vegEnabled ? theme.colors.veg : theme.colors.nonVeg, fontSize: 10, fontWeight: "800" }}>
-                {(vegEnabled ? UI_TEXT.vegOnly : UI_TEXT.nonVegOnly).toUpperCase()}
-              </Text>
-            </View>
-          )}
         </View>
       </View>
 
-      {foodPriceEnabled && (
-        <View style={{ gap: 8, marginBottom: 16 }}>
-          <View style={styles.row}>
-            {vegEnabled && (
-              <View style={styles.fieldHalf}>
-                <Text style={{ fontSize: 10, fontWeight: '700', color: theme.colors.textSecondary, marginBottom: 4 }}>{UI_TEXT.vegPriceLabel.toUpperCase()}</Text>
-                <TextInput
-                  style={{
-                    backgroundColor: theme.colors.surfaceDark,
-                    borderWidth: 1,
-                    borderColor: theme.colors.border,
-                    borderRadius: 8,
-                    paddingHorizontal: 10,
-                    paddingVertical: 8,
-                    fontSize: 14,
-                    color: theme.colors.textPrimary,
-                    fontWeight: "700"
-                  }}
-                  value={value.vegPrice ?? ""}
-                  onChangeText={(val) => onChange({ ...value, vegPrice: val.replace(/[^0-9]/g, "") })}
-                  keyboardType="numeric"
-                  placeholder={UI_TEXT.zero}
-                  editable={!disabled}
-                />
-              </View>
-            )}
-            {nonVegEnabled && (
-              <View style={styles.fieldHalf}>
-                <Text style={{ fontSize: 10, fontWeight: '700', color: theme.colors.textSecondary, marginBottom: 4 }}>{UI_TEXT.nonVegPriceLabel.toUpperCase()}</Text>
-                <TextInput
-                  style={{
-                    backgroundColor: theme.colors.surfaceDark,
-                    borderWidth: 1,
-                    borderColor: theme.colors.border,
-                    borderRadius: 8,
-                    paddingHorizontal: 10,
-                    paddingVertical: 8,
-                    fontSize: 14,
-                    color: theme.colors.textPrimary,
-                    fontWeight: "700"
-                  }}
-                  value={value.nonVegPrice ?? ""}
-                  onChangeText={(val) => onChange({ ...value, nonVegPrice: val.replace(/[^0-9]/g, "") })}
-                  keyboardType="numeric"
-                  placeholder={UI_TEXT.zero}
-                  editable={!disabled}
-                />
-              </View>
-            )}
-          </View>
+      {/* Render dedicated input block for each dietary sub-category */}
+      {varieties.map((v) => {
+        const vItems = getVarietyItems(v);
+        const vColor = v.color || (v.type === DietType.VEG ? theme.colors.veg : theme.colors.nonVeg);
 
-          {/* Kids Prices */}
-          {kidsEnabled && (
-            <View style={styles.row}>
-              {vegEnabled && (
-                <View style={styles.fieldHalf}>
-                  <Text style={{ fontSize: 10, fontWeight: '700', color: theme.colors.textSecondary, marginBottom: 4 }}>{UI_TEXT.kidsVegPriceLabel.toUpperCase()}</Text>
-                  <TextInput
-                    style={{
-                      backgroundColor: theme.colors.surfaceDark,
-                      borderWidth: 1,
-                      borderColor: theme.colors.border,
-                      borderRadius: 8,
-                      paddingHorizontal: 10,
-                      paddingVertical: 8,
-                      fontSize: 14,
-                      color: theme.colors.textPrimary,
-                      fontWeight: "700"
-                    }}
-                    value={value.kidsVegPrice ?? ""}
-                    onChangeText={(val) => onChange({ ...value, kidsVegPrice: val.replace(/[^0-9]/g, "") })}
-                    keyboardType="numeric"
-                    placeholder={UI_TEXT.zero}
-                    editable={!disabled}
-                  />
-                </View>
-              )}
-              {nonVegEnabled && (
-                <View style={styles.fieldHalf}>
-                  <Text style={{ fontSize: 10, fontWeight: '700', color: theme.colors.textSecondary, marginBottom: 4 }}>{UI_TEXT.kidsNonVegPriceLabel.toUpperCase()}</Text>
-                  <TextInput
-                    style={{
-                      backgroundColor: theme.colors.surfaceDark,
-                      borderWidth: 1,
-                      borderColor: theme.colors.border,
-                      borderRadius: 8,
-                      paddingHorizontal: 10,
-                      paddingVertical: 8,
-                      fontSize: 14,
-                      color: theme.colors.textPrimary,
-                      fontWeight: "700"
-                    }}
-                    value={value.kidsNonVegPrice ?? ""}
-                    onChangeText={(val) => onChange({ ...value, kidsNonVegPrice: val.replace(/[^0-9]/g, "") })}
-                    keyboardType="numeric"
-                    placeholder={UI_TEXT.zero}
-                    editable={!disabled}
-                  />
-                </View>
-              )}
-            </View>
-          )}
-
-          {/* Parcel Prices */}
-          {mConf?.parcel && (
-            <View style={{ gap: 8 }}>
-              <View style={styles.row}>
-                {vegEnabled && (
-                  <View style={styles.fieldHalf}>
-                    <Text style={{ fontSize: 10, fontWeight: '700', color: theme.colors.textSecondary, marginBottom: 4 }}>{UI_TEXT.vegParcelPriceLabel.toUpperCase()}</Text>
-                    <TextInput
-                      style={{
-                        backgroundColor: theme.colors.surfaceDark,
-                        borderWidth: 1,
-                        borderColor: theme.colors.border,
-                        borderRadius: 8,
-                        paddingHorizontal: 10,
-                        paddingVertical: 8,
-                        fontSize: 14,
-                        color: theme.colors.textPrimary,
-                        fontWeight: "700"
-                      }}
-                      value={value.vegParcelPrice ?? ""}
-                      onChangeText={(val) => onChange({ ...value, vegParcelPrice: val.replace(/[^0-9]/g, "") })}
-                      keyboardType="numeric"
-                      placeholder={UI_TEXT.zero}
-                      editable={!disabled}
-                    />
-                  </View>
-                )}
-                {nonVegEnabled && (
-                  <View style={styles.fieldHalf}>
-                    <Text style={{ fontSize: 10, fontWeight: '700', color: theme.colors.textSecondary, marginBottom: 4 }}>{UI_TEXT.nonVegParcelPriceLabel.toUpperCase()}</Text>
-                    <TextInput
-                      style={{
-                        backgroundColor: theme.colors.surfaceDark,
-                        borderWidth: 1,
-                        borderColor: theme.colors.border,
-                        borderRadius: 8,
-                        paddingHorizontal: 10,
-                        paddingVertical: 8,
-                        fontSize: 14,
-                        color: theme.colors.textPrimary,
-                        fontWeight: "700"
-                      }}
-                      value={value.nonVegParcelPrice ?? ""}
-                      onChangeText={(val) => onChange({ ...value, nonVegParcelPrice: val.replace(/[^0-9]/g, "") })}
-                      keyboardType="numeric"
-                      placeholder={UI_TEXT.zero}
-                      editable={!disabled}
-                    />
-                  </View>
-                )}
-              </View>
-
-              {kidsEnabled && isKidsParcelEnabled(dayId, mealKey, config, kidsEnabled) && (
-                <View style={styles.row}>
-                  {vegEnabled && (
-                    <View style={styles.fieldHalf}>
-                      <Text style={{ fontSize: 10, fontWeight: '700', color: theme.colors.textSecondary, marginBottom: 4 }}>{UI_TEXT.kidsVegParcelPriceLabel.toUpperCase()}</Text>
-                      <TextInput
-                        style={{
-                          backgroundColor: theme.colors.surfaceDark,
-                          borderWidth: 1,
-                          borderColor: theme.colors.border,
-                          borderRadius: 8,
-                          paddingHorizontal: 10,
-                          paddingVertical: 8,
-                          fontSize: 14,
-                          color: theme.colors.textPrimary,
-                          fontWeight: "700"
-                        }}
-                        value={value.kidsVegParcelPrice ?? ""}
-                        onChangeText={(val) => onChange({ ...value, kidsVegParcelPrice: val.replace(/[^0-9]/g, "") })}
-                        keyboardType="numeric"
-                        placeholder={UI_TEXT.zero}
-                        editable={!disabled}
-                      />
-                    </View>
-                  )}
-                  {nonVegEnabled && (
-                    <View style={styles.fieldHalf}>
-                      <Text style={{ fontSize: 10, fontWeight: '700', color: theme.colors.textSecondary, marginBottom: 4 }}>{UI_TEXT.kidsNonVegParcelPriceLabel.toUpperCase()}</Text>
-                      <TextInput
-                        style={{
-                          backgroundColor: theme.colors.surfaceDark,
-                          borderWidth: 1,
-                          borderColor: theme.colors.border,
-                          borderRadius: 8,
-                          paddingHorizontal: 10,
-                          paddingVertical: 8,
-                          fontSize: 14,
-                          color: theme.colors.textPrimary,
-                          fontWeight: "700"
-                        }}
-                        value={value.kidsNonVegParcelPrice ?? ""}
-                        onChangeText={(val) => onChange({ ...value, kidsNonVegParcelPrice: val.replace(/[^0-9]/g, "") })}
-                        keyboardType="numeric"
-                        placeholder={UI_TEXT.zero}
-                        editable={!disabled}
-                      />
-                    </View>
-                  )}
-                </View>
-              )}
-            </View>
-          )}
-        </View>
-      )}
-
-      <View style={styles.mealEditorInputs}>
-        <TextInput
-          style={styles.mealInput}
-          value={newItem}
-          onChangeText={setNewItem}
-          placeholder={
-            type === DietType.VEG ? UI_TEXT.addVegItem : UI_TEXT.addNonVegItem
-          }
-          placeholderTextColor={theme.colors.textMuted}
-          editable={!disabled}
-        />
-
-        {vegEnabled && nonVegEnabled && (
-          <Pressable
-            onPress={() => !disabled && setType(type === DietType.VEG ? DietType.NON_VEG : DietType.VEG)}
-            disabled={disabled}
-            accessible={true}
-            accessibilityRole="button"
-            accessibilityLabel={`${UI_TEXT.toggle} ${type === DietType.VEG ? UI_TEXT.veg : UI_TEXT.nonVeg}`}
-            accessibilityState={{ disabled }}
-            style={[
-              styles.typeToggle,
-              type === DietType.VEG ? styles.vegChoice : styles.nonVegChoice,
-            ]}
+        return (
+          <View
+            key={v.id}
+            style={{
+              backgroundColor: theme.colors.surface,
+              borderRadius: 14,
+              padding: 12,
+              marginBottom: 16,
+              borderWidth: 1.5,
+              borderColor: vColor,
+              gap: 12,
+            }}
           >
-            <Text style={styles.typeToggleText}>
-              {type === DietType.VEG ? UI_TEXT.veg : UI_TEXT.nonVeg}
-            </Text>
-          </Pressable>
-        )}
+            {/* Variety Sub-Category Header */}
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: vColor }} />
+                <Text style={{ fontSize: 15, fontWeight: "900", color: theme.colors.textPrimary }}>
+                  {v.name}
+                </Text>
+                <View style={{ backgroundColor: theme.colors.surfaceDark, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                  <Text style={{ fontSize: 10, fontWeight: "800", color: theme.colors.textSecondary, textTransform: "uppercase" }}>
+                    {v.type}
+                  </Text>
+                </View>
+              </View>
+            </View>
 
-        <Pressable
-          onPress={() => !disabled && addItem()}
-          disabled={disabled}
-          accessible={true}
-          accessibilityRole="button"
-          accessibilityLabel={`${UI_TEXT.add} ${type === DietType.VEG ? UI_TEXT.veg : UI_TEXT.nonVeg} item`}
-          accessibilityState={{ disabled }}
-          style={[
-            styles.addSmall,
-            type === DietType.VEG ? styles.vegChoice : styles.nonVegChoice,
-            { borderWidth: 0 } // Ensure no border conflict with choice styles
-          ]}
-        >
-          <Ionicons name="add" size={20} color={theme.colors.white} />
-        </Pressable>
-      </View>
+            {/* Pricing Section per Sub-Category */}
+            {foodPriceEnabled && (
+              <View style={{ gap: 8 }}>
+                <View style={styles.row}>
+                  <View style={styles.fieldHalf}>
+                    <Text style={{ fontSize: 10, fontWeight: "700", color: theme.colors.textSecondary, marginBottom: 4 }}>
+                      {UI_TEXT.adultPriceLabel.toUpperCase()}
+                    </Text>
+                    <TextInput
+                      style={{
+                        backgroundColor: theme.colors.surfaceDark,
+                        borderWidth: 1,
+                        borderColor: theme.colors.border,
+                        borderRadius: 8,
+                        paddingHorizontal: 10,
+                        paddingVertical: 8,
+                        fontSize: 14,
+                        color: theme.colors.textPrimary,
+                        fontWeight: "700",
+                      }}
+                      value={getVarietyPrice(v, "adultPrice")}
+                      onChangeText={(val) => updateVarietyField(v, "adultPrice", val.replace(/[^0-9]/g, ""))}
+                      keyboardType="numeric"
+                      placeholder={UI_TEXT.zero}
+                      editable={!disabled}
+                    />
+                  </View>
 
-      <View style={styles.itemList}>
-        {veg.map((item, i) => (
-          <View key={`v-${i}`} style={styles.itemBadge}>
-            <View style={[styles.dot, styles.vegChoice]} />
-            <Text style={styles.itemBadgeText}>{item}</Text>
-            <Pressable
-              onPress={() => !disabled && removeItem(DietType.VEG, i)}
-              disabled={disabled}
-              accessible={true}
-              accessibilityRole="button"
-              accessibilityLabel={`${UI_TEXT.remove} ${item}`}
-              accessibilityState={{ disabled }}
-            >
-              <Ionicons name="close-circle" size={14} color={theme.colors.textSecondary} />
-            </Pressable>
+                  {kidsEnabled && (
+                    <View style={styles.fieldHalf}>
+                      <Text style={{ fontSize: 10, fontWeight: "700", color: theme.colors.textSecondary, marginBottom: 4 }}>
+                        {UI_TEXT.kidsPriceLabel.toUpperCase()}
+                      </Text>
+                      <TextInput
+                        style={{
+                          backgroundColor: theme.colors.surfaceDark,
+                          borderWidth: 1,
+                          borderColor: theme.colors.border,
+                          borderRadius: 8,
+                          paddingHorizontal: 10,
+                          paddingVertical: 8,
+                          fontSize: 14,
+                          color: theme.colors.textPrimary,
+                          fontWeight: "700",
+                        }}
+                        value={getVarietyPrice(v, "kidsPrice")}
+                        onChangeText={(val) => updateVarietyField(v, "kidsPrice", val.replace(/[^0-9]/g, ""))}
+                        keyboardType="numeric"
+                        placeholder={UI_TEXT.zero}
+                        editable={!disabled}
+                      />
+                    </View>
+                  )}
+                </View>
+
+                {mConf?.parcel && (
+                  <View style={styles.row}>
+                    <View style={styles.fieldHalf}>
+                      <Text style={{ fontSize: 10, fontWeight: "700", color: theme.colors.textSecondary, marginBottom: 4 }}>
+                        {UI_TEXT.parcelPriceLabel.toUpperCase()}
+                      </Text>
+                      <TextInput
+                        style={{
+                          backgroundColor: theme.colors.surfaceDark,
+                          borderWidth: 1,
+                          borderColor: theme.colors.border,
+                          borderRadius: 8,
+                          paddingHorizontal: 10,
+                          paddingVertical: 8,
+                          fontSize: 14,
+                          color: theme.colors.textPrimary,
+                          fontWeight: "700",
+                        }}
+                        value={getVarietyPrice(v, "parcelPrice")}
+                        onChangeText={(val) => updateVarietyField(v, "parcelPrice", val.replace(/[^0-9]/g, ""))}
+                        keyboardType="numeric"
+                        placeholder={UI_TEXT.zero}
+                        editable={!disabled}
+                      />
+                    </View>
+
+                    {kidsEnabled && isKidsParcelEnabled(dayId, mealKey, config, kidsEnabled) && (
+                      <View style={styles.fieldHalf}>
+                        <Text style={{ fontSize: 10, fontWeight: "700", color: theme.colors.textSecondary, marginBottom: 4 }}>
+                          {UI_TEXT.kidsParcelPriceLabel.toUpperCase()}
+                        </Text>
+                        <TextInput
+                          style={{
+                            backgroundColor: theme.colors.surfaceDark,
+                            borderWidth: 1,
+                            borderColor: theme.colors.border,
+                            borderRadius: 8,
+                            paddingHorizontal: 10,
+                            paddingVertical: 8,
+                            fontSize: 14,
+                            color: theme.colors.textPrimary,
+                            fontWeight: "700",
+                          }}
+                          value={getVarietyPrice(v, "kidsParcelPrice")}
+                          onChangeText={(val) => updateVarietyField(v, "kidsParcelPrice", val.replace(/[^0-9]/g, ""))}
+                          keyboardType="numeric"
+                          placeholder={UI_TEXT.zero}
+                          editable={!disabled}
+                        />
+                      </View>
+                    )}
+                  </View>
+                )}
+              </View>
+            )}
+
+            {/* Menu Items Input Row */}
+            <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
+              <TextInput
+                style={[styles.mealInput, { flex: 1 }]}
+                value={newItemText[v.id] || ""}
+                onChangeText={(txt) => setNewItemText((prev) => ({ ...prev, [v.id]: txt }))}
+                placeholder={`Add item to ${v.name}...`}
+                placeholderTextColor={theme.colors.textMuted}
+                editable={!disabled}
+              />
+              <Pressable
+                onPress={() => !disabled && addItemForVariety(v)}
+                disabled={disabled}
+                style={[
+                  styles.addSmall,
+                  { backgroundColor: vColor, borderWidth: 0 },
+                ]}
+              >
+                <Ionicons name="add" size={20} color={theme.colors.white} />
+              </Pressable>
+            </View>
+
+            {/* Food Items Badges */}
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+              {vItems.map((item, i) => (
+                <View key={`${v.id}-${i}`} style={styles.itemBadge}>
+                  <View style={[styles.dot, { backgroundColor: vColor }]} />
+                  <Text style={styles.itemBadgeText}>{item}</Text>
+                  <Pressable
+                    onPress={() => !disabled && removeItemForVariety(v, i)}
+                    disabled={disabled}
+                  >
+                    <Ionicons name="close-circle" size={14} color={theme.colors.textSecondary} />
+                  </Pressable>
+                </View>
+              ))}
+              {vItems.length === 0 && (
+                <Text style={{ fontSize: 12, fontStyle: "italic", color: theme.colors.textMuted }}>
+                  {UI_TEXT.noItemsListed}
+                </Text>
+              )}
+            </View>
           </View>
-        ))}
-
-        {nonVeg.map((item, i) => (
-          <View key={`n-${i}`} style={styles.itemBadge}>
-            <View style={[styles.dot, styles.nonVegChoice]} />
-            <Text style={styles.itemBadgeText}>{item}</Text>
-            <Pressable
-              onPress={() => !disabled && removeItem(DietType.NON_VEG, i)}
-              disabled={disabled}
-              accessible={true}
-              accessibilityRole="button"
-              accessibilityLabel={`${UI_TEXT.remove} ${item}`}
-              accessibilityState={{ disabled }}
-            >
-              <Ionicons name="close-circle" size={14} color={theme.colors.textSecondary} />
-            </Pressable>
-          </View>
-        ))}
-      </View>
+        );
+      })}
 
       {onSave && (
         <Pressable
@@ -390,14 +351,14 @@ export function MealMenuEditor({
           disabled={!isDirty || disabled}
           style={({ pressed }) => [
             styles.primary,
-            { height: 40, marginTop: 20 },
+            { height: 40, marginTop: 12 },
             !isDirty && { backgroundColor: theme.colors.surfaceDark, opacity: 0.5 },
-            pressed && { opacity: 0.7 }
+            pressed && { opacity: 0.7 },
           ]}
         >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <Ionicons name="save-outline" size={18} color={isDirty ? theme.colors.white : theme.colors.textMuted} />
-            <Text style={{ color: isDirty ? theme.colors.white : theme.colors.textMuted, fontWeight: '800', fontSize: 14 }}>
+            <Text style={{ color: isDirty ? theme.colors.white : theme.colors.textMuted, fontWeight: "800", fontSize: 14 }}>
               {UI_TEXT.saveChanges.toUpperCase()}
             </Text>
           </View>

@@ -8,8 +8,9 @@ import {
   SubscriptionRecord,
   normalizeChoice,
   toBool,
+  DietaryVariety,
 } from "../domain";
-import { isParcelEnabled, isKidsParcelEnabled, isDietaryEnabled, isMealEnabled } from "../constants";
+import { isParcelEnabled, isKidsParcelEnabled, isDietaryEnabled, isMealEnabled, getMealVarieties, getDietTypeForChoice, getVarietyForChoice } from "../constants";
 
 export interface DiscrepancyItem {
   id: string;
@@ -79,58 +80,62 @@ export function calculateSubscriptionAmount(
       mealTypes.forEach((mType) => {
         if (!isMealEnabled(dayId, mType, dayConfig)) return;
         const mealConf = dayConf[mType];
+        const varieties = getMealVarieties(mealConf);
 
         const choice = normalizeChoice(personSlot[mType]);
         if (choice === DietaryOption.NONE) return;
 
-        const diet = choice === DietaryOption.VEG ? DietType.VEG : DietType.NON_VEG;
-        if (!isDietaryEnabled(dayId, mType, diet, dayConfig)) return;
+        const diet = getDietTypeForChoice(choice, varieties);
+        if (!diet || !isDietaryEnabled(dayId, mType, diet, dayConfig)) return;
 
+        const variety = getVarietyForChoice(choice, varieties);
         const isParcel = toBool(personSlot[`${mType}Parcel` as keyof MealSlot]);
         const isParcelAllowed = isParcel && (isKid
           ? isKidsParcelEnabled(dayId, mType, dayConfig, kidsEnabled)
           : isParcelEnabled(dayId, mType, dayConfig));
 
-        if (choice === DietaryOption.VEG) {
-          // Veg Meal Price
-          const mealPrice = resolvePrice(
-            isKid,
-            dayMenu?.[mType]?.kidsVegPrice,
-            dayMenu?.[mType]?.vegPrice,
-            mealConf.vegPrice
-          );
-          total += mealPrice;
+        let adultMealPrice: any;
+        let kidsMealPrice: any;
+        let adultParcelPrice: any;
+        let kidsParcelPrice: any;
 
-          // Veg Parcel Price
-          if (isParcelAllowed) {
-            const parcelPrice = resolvePrice(
-              isKid,
-              dayMenu?.[mType]?.kidsVegParcelPrice,
-              dayMenu?.[mType]?.vegParcelPrice,
-              mealConf.vegParcelPrice
-            );
-            total += parcelPrice;
-          }
-        } else if (choice === DietaryOption.NON_VEG) {
-          // Non-Veg Meal Price
-          const mealPrice = resolvePrice(
-            isKid,
-            dayMenu?.[mType]?.kidsNonVegPrice,
-            dayMenu?.[mType]?.nonVegPrice,
-            mealConf.nonVegPrice
-          );
-          total += mealPrice;
+        if (variety?.id === "veg_default") {
+          adultMealPrice = dayMenu?.[mType]?.vegPrice ?? mealConf.vegPrice;
+          kidsMealPrice = dayMenu?.[mType]?.kidsVegPrice;
+          adultParcelPrice = dayMenu?.[mType]?.vegParcelPrice ?? mealConf.vegParcelPrice;
+          kidsParcelPrice = dayMenu?.[mType]?.kidsVegParcelPrice;
+        } else if (variety?.id === "nonVeg_default") {
+          adultMealPrice = dayMenu?.[mType]?.nonVegPrice ?? mealConf.nonVegPrice;
+          kidsMealPrice = dayMenu?.[mType]?.kidsNonVegPrice;
+          adultParcelPrice = dayMenu?.[mType]?.nonVegParcelPrice ?? mealConf.nonVegParcelPrice;
+          kidsParcelPrice = dayMenu?.[mType]?.kidsNonVegParcelPrice;
+        } else if (variety) {
+          const varMenu = dayMenu?.[mType]?.varieties?.[variety.id];
+          const isVeg = variety.type === DietType.VEG;
+          const defaultAdultMeal = isVeg ? (dayMenu?.[mType]?.vegPrice ?? mealConf.vegPrice) : (dayMenu?.[mType]?.nonVegPrice ?? mealConf.nonVegPrice);
+          const defaultKidsMeal = isVeg ? dayMenu?.[mType]?.kidsVegPrice : dayMenu?.[mType]?.kidsNonVegPrice;
+          const defaultAdultParcel = isVeg ? (dayMenu?.[mType]?.vegParcelPrice ?? mealConf.vegParcelPrice) : (dayMenu?.[mType]?.nonVegParcelPrice ?? mealConf.nonVegParcelPrice);
+          const defaultKidsParcel = isVeg ? dayMenu?.[mType]?.kidsVegParcelPrice : dayMenu?.[mType]?.kidsNonVegParcelPrice;
 
-          // Non-Veg Parcel Price
-          if (isParcelAllowed) {
-            const parcelPrice = resolvePrice(
-              isKid,
-              dayMenu?.[mType]?.kidsNonVegParcelPrice,
-              dayMenu?.[mType]?.nonVegParcelPrice,
-              mealConf.nonVegParcelPrice
-            );
-            total += parcelPrice;
-          }
+          adultMealPrice = (varMenu?.adultPrice !== undefined && varMenu?.adultPrice !== "") ? varMenu.adultPrice : defaultAdultMeal;
+          kidsMealPrice = (varMenu?.kidsPrice !== undefined && varMenu?.kidsPrice !== "") ? varMenu.kidsPrice : defaultKidsMeal;
+          adultParcelPrice = (varMenu?.parcelPrice !== undefined && varMenu?.parcelPrice !== "") ? varMenu.parcelPrice : defaultAdultParcel;
+          kidsParcelPrice = (varMenu?.kidsParcelPrice !== undefined && varMenu?.kidsParcelPrice !== "") ? varMenu.kidsParcelPrice : defaultKidsParcel;
+        } else {
+          // Fallback
+          const isVeg = diet === DietType.VEG;
+          adultMealPrice = isVeg ? (dayMenu?.[mType]?.vegPrice ?? mealConf.vegPrice) : (dayMenu?.[mType]?.nonVegPrice ?? mealConf.nonVegPrice);
+          kidsMealPrice = isVeg ? dayMenu?.[mType]?.kidsVegPrice : dayMenu?.[mType]?.kidsNonVegPrice;
+          adultParcelPrice = isVeg ? (dayMenu?.[mType]?.vegParcelPrice ?? mealConf.vegParcelPrice) : (dayMenu?.[mType]?.nonVegParcelPrice ?? mealConf.nonVegParcelPrice);
+          kidsParcelPrice = isVeg ? dayMenu?.[mType]?.kidsVegParcelPrice : dayMenu?.[mType]?.kidsNonVegParcelPrice;
+        }
+
+        const mealPrice = resolvePrice(isKid, kidsMealPrice, adultMealPrice, undefined);
+        total += mealPrice;
+
+        if (isParcelAllowed) {
+          const parcelPrice = resolvePrice(isKid, kidsParcelPrice, adultParcelPrice, undefined);
+          total += parcelPrice;
         }
       });
     });

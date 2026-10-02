@@ -168,6 +168,23 @@ Eternia Food Desk is a cross-platform mobile and web application built with **Re
 - **Clean Audit Trail Target & Message Expansion (`ActivityLogItem.tsx`, `DatabaseContext.tsx`)**: Automatically expands note subjects and pass labels (e.g. `Deleted note: Kitchen Supplies`, `Removed pass record A-101`) without unexpanded placeholders or raw Firebase push keys (`-P2nIS5P_...`).
 - **Real-Time App Version Sync & Platform-Specific Update Links (`HomeScreen.tsx`, `DatabaseContext.tsx`, `repository.ts`)**: Real-time sync of `appVersion`, `androidAppLocation`, and `iosAppLocation` from Firebase DB. Triggers update alert modals on mobile (`Platform.OS !== 'web'`) when local version differs from server, featuring hyperlinked `"Click Here to update."` (`androidAppLocation` on Android, `iosAppLocation` on iOS), with web clients exempt.
 
+### T. Dietary Sub-Categorization Architecture (`domain.ts`, `constants.ts`, `SettingsScreen.tsx`, `MealMenuEditor.tsx`, `MealDisplay.tsx`, `SubscriptionForm.tsx`, `QuickCheckoutModal.tsx`, `GuestManagementScreen.tsx`, `DashboardScreen.tsx`, `useReportData.ts`)
+- **Flexible Multi-Option Menu Model**: Shifts from a binary (1 Veg / 1 Non-Veg) model to a flexible dietary variety system (`DietaryVariety`), enabling multiple sub-categories per meal (e.g. Jain Veg, Standard Veg, Chicken Meal, Mutton Meal).
+- **Global Aggregation Principle**: Every sub-category strictly belongs to a primary category (`Veg` or `Non-Veg`). All top-level counts, filters, home summary plates, and macro reports roll up and aggregate into primary global Veg or Non-Veg totals using `getDietTypeForChoice()`.
+- **Custom Name & Color Identity**: Every dietary variety supports a custom name (max 15 characters) and assigned color code (`variety.color`).
+- **Settings Page Variety Management & Category Restriction Rules**:
+  - Enforces a combined maximum limit of 10 total dietary varieties (Veg + Non-Veg combined) per meal slot.
+  - **Direct UI Category Restriction (Zero Alerts)**: Disallows wrong category types directly in the UI without alert dialogs. When a day/meal is Veg-Only, only `VEG` is enabled/selectable (`allowedDietTypes = [DietType.VEG]`); when Non-Veg-Only, only `NON-VEG` is selectable; when both are enabled, both are selectable.
+  - **Active Pass Deletion Protection Rules**: If a sub-category is currently subscribed in active passes, deletion is blocked with an explanatory alert dialog.
+- **100% Theme Tokens, Zero Hardcoded Text & WCAG AA Compliance**: 100% of user-facing UI labels and hints bind to `UI_TEXT` in `strings.ts`. Colors bind strictly to `theme.colors` and `theme.cardColors`. Features full accessibility role, state, and hint bindings across all sub-category UI elements.
+- **Granular Sub-Category Audit Trail**: `getSettingsChangeLog()` explicitly compares previous and updated meal varieties, logging exact sub-category changes (e.g. `Added Varieties: Jain Veg(VEG)`, `Edited Varieties: Jain Veg -> Strict Jain Veg(VEG)`, `Deleted Varieties: Mutton`).
+- **Universal RTDB Object/Array Normalization**: `getMealVarieties` and `normalizeDayConfig` safely parse variety lists whether stored as JS Arrays or Firebase RTDB Objects (`{ "0": {...}, "1": {...} }`), guaranteeing full multi-variety persistence across all app screens.
+- **Responsive Flex-Wrapping Layout**: Variety chips, badges, and labels use `flexWrap: "wrap"`, `flexShrink: 1`, and `numberOfLines={1}` to guarantee long names render without layout clipping across mobile and web viewports.
+- **Sub-Category Pricing & Menu Editing**: `MealMenuEditor` and `MealDisplay` support separate Adult, Kids, Member, and Parcel prices and food item lists per sub-category while maintaining backward compatibility with legacy single-price fields.
+- **Dynamic Quick Checkout & Itemized Splash Screen**: `QuickCheckoutModal` categorizes inputs under broad Veg and Non-Veg headers with dynamic sub-category cards. Extends dine-in and parcel allocation routines to the sub-category level and renders checkout completion splash screens itemized by sub-category name and color badge.
+- **Guest Management Sub-Category Tracking**: `GuestManagementScreen` and `QuickGuestModal` provide sub-category counter inputs and global category totals.
+- **Analytics Dashboard Demographics Grid**: `DashboardScreen` renders a dedicated sub-category demographics breakdown grid (Adults, Kids, Guests) for each meal slot.
+
 ---
 
 ## 4. Core Architecture & Layers

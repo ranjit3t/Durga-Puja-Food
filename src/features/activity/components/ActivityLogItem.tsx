@@ -34,7 +34,7 @@ export const ActivityLogItem = memo(({
   const isError = item.action === ActivityAction.ERROR;
   const colorScheme = theme.cardColors[index % theme.cardColors.length];
 
-  const clickableModules = [ActivityModule.SUBSCRIPTION, ActivityModule.CONTACT, ActivityModule.QR, ActivityModule.REPORT];
+  const clickableModules = [ActivityModule.SUBSCRIPTION, ActivityModule.CONTACT, ActivityModule.QR, ActivityModule.REPORT, ActivityModule.SCANNER];
   const isPassEvent = clickableModules.includes(item.module) && item.action !== ActivityAction.DELETE && item.action !== ActivityAction.ERROR;
   const existingPass = isPassEvent && item.targetId ? (subscriptions || []).find(s => s.id === item.targetId || getPassDisplayLabel(s) === item.targetId) : null;
   const isClickable = !!existingPass;

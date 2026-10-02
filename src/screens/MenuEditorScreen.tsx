@@ -113,15 +113,30 @@ export function MenuEditorScreen() {
   const getMealChangeLog = (oldMeal: MealMenu, newMeal: MealMenu) => {
     const changes: string[] = [];
 
-    const diffList = (oldList: string[], newList: string[], label: string) => {
-      const added = newList.filter(i => !oldList.includes(i));
-      const removed = oldList.filter(i => !newList.includes(i));
+    const toArray = (raw: any): string[] => {
+      if (Array.isArray(raw)) {
+        return raw.filter(Boolean).map(String);
+      }
+      if (raw && typeof raw === "object") {
+        return Object.values(raw).filter(Boolean).map(String);
+      }
+      if (typeof raw === "string" && raw.trim().length > 0) {
+        return [raw.trim()];
+      }
+      return [];
+    };
+
+    const diffList = (oldList: any, newList: any, label: string) => {
+      const oldArr = toArray(oldList);
+      const newArr = toArray(newList);
+      const added = newArr.filter(i => !oldArr.includes(i));
+      const removed = oldArr.filter(i => !newArr.includes(i));
       if (added.length > 0) changes.push(`+${label}:[${added.join(',')}]`);
       if (removed.length > 0) changes.push(`-${label}:[${removed.join(',')}]`);
     };
 
-    diffList(oldMeal.veg || [], newMeal.veg || [], UI_TEXT.vegAbbr);
-    diffList(oldMeal.nonVeg || [], newMeal.nonVeg || [], UI_TEXT.nonVegAbbr);
+    diffList(oldMeal.veg, newMeal.veg, UI_TEXT.vegAbbr);
+    diffList(oldMeal.nonVeg, newMeal.nonVeg, UI_TEXT.nonVegAbbr);
 
     if (newMeal.vegPrice !== oldMeal.vegPrice) changes.push(`Price(V): ${oldMeal.vegPrice || '0'}->${newMeal.vegPrice}`);
     if (newMeal.nonVegPrice !== oldMeal.nonVegPrice) changes.push(`Price(N): ${oldMeal.nonVegPrice || '0'}->${newMeal.nonVegPrice}`);
@@ -163,6 +178,7 @@ export function MenuEditorScreen() {
         { text: UI_TEXT.ok }
       ]);
     } catch (err) {
+      console.log(err)
       showAlert(UI_TEXT.error, UI_TEXT.couldNotUpdateMenu);
     } finally {
       setSaving(false);

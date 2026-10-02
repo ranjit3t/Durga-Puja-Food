@@ -33,6 +33,9 @@ import {
   getMealLabel,
   getDietaryOptionLabel,
   getMemberLegend,
+  getDietTypeForChoice,
+  getMealVarieties,
+  getVarietyForChoice,
 } from "../constants";
 import {
   AppScreen,
@@ -40,6 +43,7 @@ import {
   PaymentMode,
   UserRole,
   MealType,
+  DietType,
   DietaryOption,
   FilterMode,
   AppThemeMode,
@@ -370,12 +374,15 @@ export function SubscriptionListScreen() {
       let hasNonVeg = false;
       Object.values(sub.mealSlots || {}).forEach(daySlots => {
         daySlots.forEach(slot => {
-          if (slot[MealType.BREAKFAST] === DietaryOption.VEG) hasVeg = true;
-          if (slot[MealType.LUNCH] === DietaryOption.VEG) hasVeg = true;
-          if (slot[MealType.DINNER] === DietaryOption.VEG) hasVeg = true;
-          if (slot[MealType.BREAKFAST] === DietaryOption.NON_VEG) hasNonVeg = true;
-          if (slot[MealType.LUNCH] === DietaryOption.NON_VEG) hasNonVeg = true;
-          if (slot[MealType.DINNER] === DietaryOption.NON_VEG) hasNonVeg = true;
+          const bDiet = getDietTypeForChoice(slot[MealType.BREAKFAST]);
+          const lDiet = getDietTypeForChoice(slot[MealType.LUNCH]);
+          const dDiet = getDietTypeForChoice(slot[MealType.DINNER]);
+          if (bDiet === DietType.VEG) hasVeg = true;
+          if (lDiet === DietType.VEG) hasVeg = true;
+          if (dDiet === DietType.VEG) hasVeg = true;
+          if (bDiet === DietType.NON_VEG) hasNonVeg = true;
+          if (lDiet === DietType.NON_VEG) hasNonVeg = true;
+          if (dDiet === DietType.NON_VEG) hasNonVeg = true;
         });
       });
       return hasVeg && !hasNonVeg;
@@ -388,9 +395,7 @@ export function SubscriptionListScreen() {
     if (!currentMealInfo) return 0;
     return subscriptions.filter((sub) =>
       (sub.mealSlots?.[currentMealInfo.dayId] || []).some(
-        (slot) =>
-          slot[currentMealInfo.type] === DietaryOption.VEG ||
-          slot[currentMealInfo.type] === DietaryOption.NON_VEG
+        (slot) => getDietTypeForChoice(slot[currentMealInfo.type]) !== undefined
       )
     ).length;
   }, [subscriptions, currentMealInfo]);
@@ -405,7 +410,7 @@ export function SubscriptionListScreen() {
       const taken = sub.takenByPerson[currentMealInfo.dayId] || [];
 
       slots.forEach((s, idx) => {
-        const hasChoice = s[currentMealInfo.type] !== DietaryOption.NONE;
+        const hasChoice = getDietTypeForChoice(s[currentMealInfo.type]) !== undefined;
         const isTaken = !!taken[idx]?.[currentMealInfo.type] || !!taken[idx]?.[`${currentMealInfo.type}Parcel` as keyof TakenState];
 
         if (hasChoice && !isTaken) {
@@ -457,9 +462,7 @@ export function SubscriptionListScreen() {
       if (activeFilters.includes(FilterMode.SUBSCRIBED) && currentMealInfo) {
         filtered = filtered.filter((sub) =>
           (sub.mealSlots?.[currentMealInfo.dayId] || []).some(
-            (slot) =>
-              slot[currentMealInfo.type] === DietaryOption.VEG ||
-              slot[currentMealInfo.type] === DietaryOption.NON_VEG
+            (slot) => getDietTypeForChoice(slot[currentMealInfo.type]) !== undefined
           )
         );
       }
@@ -487,12 +490,15 @@ export function SubscriptionListScreen() {
           let hasNonVeg = false;
           Object.values(sub.mealSlots || {}).forEach(daySlots => {
             daySlots.forEach(slot => {
-              if (slot[MealType.BREAKFAST] === DietaryOption.VEG) hasVeg = true;
-              if (slot[MealType.LUNCH] === DietaryOption.VEG) hasVeg = true;
-              if (slot[MealType.DINNER] === DietaryOption.VEG) hasVeg = true;
-              if (slot[MealType.BREAKFAST] === DietaryOption.NON_VEG) hasNonVeg = true;
-              if (slot[MealType.LUNCH] === DietaryOption.NON_VEG) hasNonVeg = true;
-              if (slot[MealType.DINNER] === DietaryOption.NON_VEG) hasNonVeg = true;
+              const bDiet = getDietTypeForChoice(slot[MealType.BREAKFAST]);
+              const lDiet = getDietTypeForChoice(slot[MealType.LUNCH]);
+              const dDiet = getDietTypeForChoice(slot[MealType.DINNER]);
+              if (bDiet === DietType.VEG) hasVeg = true;
+              if (lDiet === DietType.VEG) hasVeg = true;
+              if (dDiet === DietType.VEG) hasVeg = true;
+              if (bDiet === DietType.NON_VEG) hasNonVeg = true;
+              if (lDiet === DietType.NON_VEG) hasNonVeg = true;
+              if (dDiet === DietType.NON_VEG) hasNonVeg = true;
             });
           });
           return hasVeg && !hasNonVeg;
@@ -523,8 +529,7 @@ export function SubscriptionListScreen() {
 
     return sorted.map(item => {
       const hasCurrentMeal = !!currentMealInfo && (item.mealSlots?.[currentMealInfo.dayId] || []).some(personSlots =>
-        personSlots[currentMealInfo.type] === DietaryOption.VEG ||
-        personSlots[currentMealInfo.type] === DietaryOption.NON_VEG
+        getDietTypeForChoice(personSlots[currentMealInfo.type]) !== undefined
       );
       const hasParcel = Object.keys(item.mealSlots || {}).some(dayId => {
         const daySlots = item.mealSlots[dayId] || [];
@@ -541,12 +546,15 @@ export function SubscriptionListScreen() {
       let hasNonVeg = false;
       Object.values(item.mealSlots || {}).forEach(daySlots => {
         daySlots.forEach(slot => {
-          if (slot[MealType.BREAKFAST] === DietaryOption.VEG) hasVeg = true;
-          if (slot[MealType.LUNCH] === DietaryOption.VEG) hasVeg = true;
-          if (slot[MealType.DINNER] === DietaryOption.VEG) hasVeg = true;
-          if (slot[MealType.BREAKFAST] === DietaryOption.NON_VEG) hasNonVeg = true;
-          if (slot[MealType.LUNCH] === DietaryOption.NON_VEG) hasNonVeg = true;
-          if (slot[MealType.DINNER] === DietaryOption.NON_VEG) hasNonVeg = true;
+          const bDiet = getDietTypeForChoice(slot[MealType.BREAKFAST]);
+          const lDiet = getDietTypeForChoice(slot[MealType.LUNCH]);
+          const dDiet = getDietTypeForChoice(slot[MealType.DINNER]);
+          if (bDiet === DietType.VEG) hasVeg = true;
+          if (lDiet === DietType.VEG) hasVeg = true;
+          if (dDiet === DietType.VEG) hasVeg = true;
+          if (bDiet === DietType.NON_VEG) hasNonVeg = true;
+          if (lDiet === DietType.NON_VEG) hasNonVeg = true;
+          if (dDiet === DietType.NON_VEG) hasNonVeg = true;
         });
       });
       const isVegOnly = hasVeg && !hasNonVeg;
@@ -723,7 +731,13 @@ export function SubscriptionListScreen() {
               const slot = slots[i];
               const takenItem = takenList[i];
 
-              const choice: DietaryOption = slot ? slot[mType] : DietaryOption.NONE;
+              const choice = slot ? slot[mType] : DietaryOption.NONE;
+              const dayConf = (dayConfig || []).find((d) => d.id === dayId);
+              const mConf = dayConf ? dayConf[mType] : undefined;
+              const varieties = getMealVarieties(mConf);
+              const diet = getDietTypeForChoice(choice, varieties);
+              const variety = getVarietyForChoice(choice, varieties);
+
               const parcelKey = `${mType}Parcel` as keyof MealSlot;
               const isParcelOpted = slot ? !!slot[parcelKey] : false;
 
@@ -732,15 +746,16 @@ export function SubscriptionListScreen() {
                 ? isKidsParcelEnabled(dayId, mType, dayConfig, kidsEnabled)
                 : isParcelEnabled(dayId, mType, dayConfig);
 
-              if (choice === DietaryOption.VEG) rowDayVeg++;
-              else if (choice === DietaryOption.NON_VEG) rowDayNonVeg++;
+              if (diet === DietType.VEG) rowDayVeg++;
+              else if (diet === DietType.NON_VEG) rowDayNonVeg++;
               if (isParcelOpted && isParcelAllowed) rowDayParcels++;
 
               if (choice === DietaryOption.NONE) {
                 choiceParts.push(`${memberLabel}: ${UI_TEXT.none}`);
                 takenParts.push(`${memberLabel}: ${UI_TEXT.notApplicable}`);
               } else {
-                choiceParts.push(`${memberLabel}: ${getDietaryOptionLabel(choice)}${isParcelOpted ? ` (${UI_TEXT.parcels})` : ""}`);
+                const choiceLabel = variety ? variety.name : getDietaryOptionLabel(choice as DietaryOption);
+                choiceParts.push(`${memberLabel}: ${choiceLabel}${isParcelOpted ? ` (${UI_TEXT.parcels})` : ""}`);
 
                 const isMealTaken = takenItem ? !!takenItem[mType] : false;
                 const takenParcelKey = `${mType}Parcel` as keyof TakenState;

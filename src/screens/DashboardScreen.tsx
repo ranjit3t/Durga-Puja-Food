@@ -27,8 +27,11 @@ import {
   isMealInFuture,
   getSortedMealKeys,
   getMealLabel,
+  getMealVarieties,
+  getVarietyForChoice,
+  getDietTypeForChoice,
 } from "../constants";
-import { MealMenu, UserRole, ConfigDay, MealType, DietType, AppScreen, AppThemeMode } from "../types";
+import { MealMenu, UserRole, ConfigDay, MealType, DietType, AppScreen, AppThemeMode, DietaryOption, DietaryVariety, Subscription, FoodMenu } from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
@@ -123,6 +126,7 @@ const DashboardMealSection = memo(
     const { s, v } = useScaling();
     const { theme } = useAppTheme();
     const { shareQr } = useUI();
+    const { subscriptions, foodMenu } = useCoreDatabase();
     const mealRef = useRef<View>(null);
 
     const mealLabel = getMealLabel(type);
@@ -210,35 +214,138 @@ const DashboardMealSection = memo(
             </View>
           </View>
 
-          {/* Menu Quick-View */}
-          {(vegItems.length > 0 || nonVegItems.length > 0) ? (
-            <View style={{ gap: s(8), marginBottom: s(16) }}>
-              {isVegEnabled && vegItems.length > 0 ? (
-                <View style={[styles.menuBox, { borderLeftWidth: s(4), borderLeftColor: theme.colors.veg, paddingVertical: s(8) }]}>
-                  <MealSummaryInline
-                    label={UI_TEXT.veg}
-                    dayId={day}
-                    mealKey={type}
-                    config={config}
-                    menu={{ veg: vegItems, nonVeg: [] }}
-                  />
+          {/* Menu Quick-View for all active varieties (Default & Custom) */}
+          {(() => {
+            const mealMenu = foodMenu?.[day]?.[type] || { veg: [], nonVeg: [] };
+            const dayConf = config.find((d) => d.id === day);
+            const mConf = dayConf ? dayConf[type] : undefined;
+            const varieties = getMealVarieties(mConf, dayConf?.vegOnly);
+
+            return (
+              <View style={{ gap: s(8), marginBottom: s(16) }}>
+                {varieties.map((v) => {
+                  let rawItems: any = [];
+                  if (v.id === "veg_default") rawItems = mealMenu.veg;
+                  else if (v.id === "nonVeg_default") rawItems = mealMenu.nonVeg;
+                  else rawItems = mealMenu.varieties?.[v.id]?.items;
+
+                  let items: string[] = [];
+                  if (Array.isArray(rawItems)) {
+                    items = rawItems.filter((i) => typeof i === "string" || typeof i === "number").map(String);
+                  } else if (rawItems && typeof rawItems === "object") {
+                    items = Object.values(rawItems).filter((i) => typeof i === "string" || typeof i === "number").map(String);
+                  } else if (typeof rawItems === "string" && rawItems.trim().length > 0) {
+                    items = [rawItems.trim()];
+                  }
+
+                  if (items.length === 0) return null;
+                  if (!isDietaryEnabled(day, type, v.type, config)) return null;
+
+                  const vColor = v.color || (v.type === DietType.VEG ? theme.colors.veg : theme.colors.nonVeg);
+
+                  return (
+                    <View
+                      key={v.id}
+                      style={[styles.menuBox, { borderLeftWidth: s(4), borderLeftColor: vColor, paddingVertical: s(8) }]}
+                    >
+                      <MealSummaryInline
+                        label={v.name}
+                        dayId={day}
+                        mealKey={type}
+                        config={config}
+                        menu={mealMenu}
+                      />
+                    </View>
+                  );
+                })}
+              </View>
+            );
+          })()}
+
+          {/* Sub-Category Granular Breakdown */}
+          {(() => {
+            const dayConf = config.find((d) => d.id === day);
+            const mConf = dayConf ? dayConf[type] : undefined;
+            const varieties = getMealVarieties(mConf, dayConf?.vegOnly);
+            const vegVarieties = varieties.filter((v) => v.type === DietType.VEG);
+            const nonVegVarieties = varieties.filter((v) => v.type === DietType.NON_VEG);
+            const showSubCategorization = vegVarieties.length > 1 || nonVegVarieties.length > 1;
+
+            if (!showSubCategorization) return null;
+
+            return (
+              <View style={{ marginBottom: s(16), gap: s(8) }}>
+                <Text style={{ fontSize: s(11), fontWeight: "800", color: theme.colors.textSecondary, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                  {UI_TEXT.subCategoryBreakdown}
+                </Text>
+
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: s(8) }}>
+                  {varieties.map((v) => {
+                    let adultP = 0, kidsP = 0, guestP = 0;
+                    subscriptions.forEach((sub) => {
+                      const slots = sub.mealSlots?.[day] || [];
+                      const adultCount = sub.peopleCount || 0;
+                      slots.forEach((sSlot, idx) => {
+                        const choice = sSlot[type];
+                        if (choice === DietaryOption.NONE) return;
+                        const isKid = kidsEnabled && idx >= adultCount;
+                        const isMatch =
+                          choice === v.id ||
+                          ((v.id === "veg_default" || v.isDefault) && v.type === DietType.VEG && (choice === DietaryOption.VEG || choice === "veg")) ||
+                          ((v.id === "nonVeg_default" || v.isDefault) && v.type === DietType.NON_VEG && (choice === DietaryOption.NON_VEG || choice === "nonVeg"));
+
+                        if (isMatch) {
+                          if (isKid) kidsP++;
+                          else adultP++;
+                        }
+                      });
+                    });
+
+                    const mealMenu = foodMenu?.[day]?.[type];
+                    if (mealMenu) {
+                      if (v.id === "veg_default") guestP = mealMenu.guestVeg || 0;
+                      else if (v.id === "nonVeg_default") guestP = mealMenu.guestNonVeg || 0;
+                      else guestP = mealMenu.guestCounts?.[v.id] || 0;
+                    }
+
+                    const subTotal = adultP + kidsP + guestP;
+                    const vColor = v.color || (v.type === DietType.VEG ? theme.colors.veg : theme.colors.nonVeg);
+
+                    return (
+                      <View
+                        key={v.id}
+                        style={{
+                          flex: 1,
+                          minWidth: s(140),
+                          backgroundColor: theme.colors.surfaceDark,
+                          borderRadius: s(10),
+                          padding: s(10),
+                          borderWidth: 1,
+                          borderColor: vColor + "66",
+                          gap: s(4),
+                        }}
+                      >
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: s(6) }}>
+                          <View style={{ width: s(8), height: s(8), borderRadius: s(4), backgroundColor: vColor }} />
+                          <Text style={{ fontSize: s(12), fontWeight: "900", color: theme.colors.textPrimary, flex: 1 }} numberOfLines={1}>
+                            {v.name}
+                          </Text>
+                          <Text style={{ fontSize: s(12), fontWeight: "900", color: vColor }}>
+                            {subTotal}
+                          </Text>
+                        </View>
+
+                        <Text style={{ fontSize: s(10), fontWeight: "700", color: theme.colors.textSecondary }}>
+                          {kidsEnabled ? `${adultP} Adult${adultP === 1 ? "" : "s"}, ${kidsP} Kid${kidsP === 1 ? "" : "s"}` : `${adultP} Member${adultP === 1 ? "" : "s"}`}
+                          {guestEnabled && guestP > 0 ? `, ${guestP} Guest${guestP === 1 ? "" : "s"}` : ""}
+                        </Text>
+                      </View>
+                    );
+                  })}
                 </View>
-              ) : null}
-              {isNonVegEnabled && nonVegItems.length > 0 ? (
-                  <View
-                    style={[styles.menuBox, { borderLeftWidth: s(4), borderLeftColor: theme.colors.nonVeg, paddingVertical: s(8) }]}
-                  >
-                    <MealSummaryInline
-                      label={UI_TEXT.nonVeg}
-                      dayId={day}
-                      mealKey={type}
-                      config={config}
-                      menu={{ veg: [], nonVeg: nonVegItems }}
-                    />
-                  </View>
-                ) : null}
-            </View>
-          ) : null}
+              </View>
+            );
+          })()}
 
           {/* Aggregated Demand Metrics / Chart */}
           <View

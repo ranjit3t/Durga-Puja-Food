@@ -4,8 +4,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useStyles } from "../styles";
 import { useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
-import { getDayLabel, isMealEnabled, isMealDone, getSortedMealKeys, isDietaryEnabled, isMealCurrent, getMealLabel, isMealInFuture } from "../constants";
-import { MealMenu, ConfigDay, MealType, DietType, AppThemeMode, ActivityModule, ActivityAction, AppScreen, UserRole, GuestCheckoutSource } from "../types";
+import { getDayLabel, isMealEnabled, isMealDone, getSortedMealKeys, isDietaryEnabled, isMealCurrent, getMealLabel, isMealInFuture, getMealVarieties, getMealGuestCounts } from "../constants";
+import { MealMenu, ConfigDay, MealType, DietType, AppThemeMode, ActivityModule, ActivityAction, AppScreen, UserRole, GuestCheckoutSource, DietaryVariety } from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
@@ -40,29 +40,48 @@ const GuestMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, onUp
   const { width } = useWindowDimensions();
   const isUltraNarrow = width < 360;
 
-  const isVegEnabled = isDietaryEnabled(dayId, type, DietType.VEG, config);
-  const isNonVegEnabled = isDietaryEnabled(dayId, type, DietType.NON_VEG, config);
+  const dayConf = config.find((d) => d.id === dayId);
+  const mConf = dayConf ? dayConf[type] : undefined;
+  const varieties = getMealVarieties(mConf);
+
   const isDone = isMealDone(dayId, type, config);
   const isCurrent = isMealCurrent(dayId, type, config);
   const isFuture = isMealInFuture(dayId, type, config);
-  const showDetailed = isVegEnabled && isNonVegEnabled;
 
   const mealLabel = getMealLabel(type);
   const icon = type === MealType.BREAKFAST ? "sunny-outline" : type === MealType.LUNCH ? "restaurant-outline" : "moon-outline";
 
-  const guestVeg = menu.guestVeg || 0;
-  const guestNonVeg = menu.guestNonVeg || 0;
-  const guestVegTaken = menu.guestVegTaken || 0;
-  const guestNonVegTaken = menu.guestNonVegTaken || 0;
-
-  // Administrative editability rules:
-  // 1. Planning Mode (No Current Meal): Edit any meal not marked as Done.
-  // 2. Live Mode (Current Meal exists): Edit the Current meal or any Future meal.
-  // For Admin, we always allow editing unless it's a past completed meal.
   const isMealEditableForAdmin = isAdmin && (!anyCurrentMealEnabled ? !isDone : (isCurrent || isFuture));
 
-  const guestTotal = showDetailed ? (guestVeg + guestNonVeg) : (isVegEnabled ? guestVeg : guestNonVeg);
-  const guestTaken = showDetailed ? (guestVegTaken + guestNonVegTaken) : (isVegEnabled ? guestVegTaken : guestNonVegTaken);
+  const getGuestCount = (vId: string, kind: "planned" | "served"): number => {
+    if (kind === "planned") {
+      if (vId === "veg_default") return menu.guestVeg || 0;
+      if (vId === "nonVeg_default") return menu.guestNonVeg || 0;
+      return menu.guestCounts?.[vId] || 0;
+    } else {
+      if (vId === "veg_default") return menu.guestVegTaken || 0;
+      if (vId === "nonVeg_default") return menu.guestNonVegTaken || 0;
+      return menu.guestTakenCounts?.[vId] || 0;
+    }
+  };
+
+  let vegTotalPlanned = 0, vegTotalServed = 0;
+  let nonVegTotalPlanned = 0, nonVegTotalServed = 0;
+
+  varieties.forEach((v) => {
+    const p = getGuestCount(v.id, "planned");
+    const s = getGuestCount(v.id, "served");
+    if (v.type === DietType.VEG) {
+      vegTotalPlanned += p;
+      vegTotalServed += s;
+    } else {
+      nonVegTotalPlanned += p;
+      nonVegTotalServed += s;
+    }
+  });
+
+  const overallTotalPlanned = vegTotalPlanned + nonVegTotalPlanned;
+  const overallTotalServed = vegTotalServed + nonVegTotalServed;
 
   return (
     <View style={[
@@ -81,14 +100,6 @@ const GuestMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, onUp
                   <Text style={{ color: theme.colors.white, fontSize: 10, fontWeight: "900" }}>{UI_TEXT.live.toUpperCase()}</Text>
                </View>
             )}
-            {!showDetailed && (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: isVegEnabled ? theme.colors.successLight : theme.colors.errorLight, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: 0.5, borderColor: isVegEnabled ? theme.colors.veg : theme.colors.nonVeg }}>
-                <Ionicons name={isVegEnabled ? "leaf" : "flame"} size={10} color={isVegEnabled ? theme.colors.veg : theme.colors.nonVeg} />
-                <Text style={{ color: isVegEnabled ? theme.colors.veg : theme.colors.nonVeg, fontSize: 10, fontWeight: "800" }}>
-                  {(isVegEnabled ? UI_TEXT.vegOnly : UI_TEXT.nonVegOnly).toUpperCase()}
-                </Text>
-              </View>
-            )}
           </View>
         </View>
         {isDone && (
@@ -99,25 +110,53 @@ const GuestMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, onUp
       </View>
 
       <View style={{ gap: 14 }}>
-        {showDetailed ? (
-          <>
-            {/* 1. VEG GROUP */}
-            <View style={{ gap: 10, padding: 12, backgroundColor: theme.colors.surface, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.veg + "35" }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Ionicons name="leaf" size={14} color={theme.colors.veg} />
-                <Text style={{ fontSize: 12, fontWeight: '800', color: theme.colors.veg, letterSpacing: 0.5 }}>
-                  {UI_TEXT.veg.toUpperCase()}
-                </Text>
+        {/* Render Granular Sub-Category Entry Cards */}
+        {varieties.map((v) => {
+          if (!isDietaryEnabled(dayId, type, v.type, config)) return null;
+
+          const pCount = getGuestCount(v.id, "planned");
+          const sCount = getGuestCount(v.id, "served");
+          const vColor = v.color || (v.type === DietType.VEG ? theme.colors.veg : theme.colors.nonVeg);
+
+          const plannedField = v.id === "veg_default" ? "guestVeg" : v.id === "nonVeg_default" ? "guestNonVeg" : `gc_${v.id}`;
+          const servedField = v.id === "veg_default" ? "guestVegTaken" : v.id === "nonVeg_default" ? "guestNonVegTaken" : `gt_${v.id}`;
+
+          return (
+            <View
+              key={v.id}
+              style={{
+                gap: 10,
+                padding: 12,
+                backgroundColor: theme.colors.surface,
+                borderRadius: 12,
+                borderWidth: 1.5,
+                borderColor: vColor + "40",
+              }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: vColor }} />
+                  <Ionicons name={v.type === DietType.VEG ? "leaf" : "flame"} size={14} color={vColor} />
+                  <Text style={{ fontSize: 13, fontWeight: '800', color: theme.colors.textPrimary, letterSpacing: 0.5 }}>
+                    {v.name.toUpperCase()}
+                  </Text>
+                  <View style={{ backgroundColor: theme.colors.surfaceDark, paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 }}>
+                    <Text style={{ fontSize: 9, fontWeight: '800', color: theme.colors.textMuted, textTransform: 'uppercase' }}>
+                      {v.type}
+                    </Text>
+                  </View>
+                </View>
               </View>
+
               {isDone ? (
                 <View style={{ flexDirection: isUltraNarrow ? "column" : "row", gap: 10 }}>
                   <View style={{ flex: 1, backgroundColor: theme.colors.surfaceDark, padding: 10, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.border }}>
                     <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.textSecondary }}>{UI_TEXT.planned.toUpperCase()}</Text>
-                    <Text style={{ fontSize: 18, fontWeight: '900', color: theme.colors.textPrimary, marginTop: 2 }}>{guestVeg}</Text>
+                    <Text style={{ fontSize: 18, fontWeight: '900', color: theme.colors.textPrimary, marginTop: 2 }}>{pCount}</Text>
                   </View>
                   <View style={{ flex: 1, backgroundColor: theme.colors.surfaceDark, padding: 10, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.border }}>
                     <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.textSecondary }}>{UI_TEXT.served.toUpperCase()}</Text>
-                    <Text style={{ fontSize: 18, fontWeight: '900', color: theme.colors.veg, marginTop: 2 }}>{guestVegTaken}</Text>
+                    <Text style={{ fontSize: 18, fontWeight: '900', color: theme.colors.veg, marginTop: 2 }}>{sCount}</Text>
                   </View>
                 </View>
               ) : (
@@ -125,118 +164,61 @@ const GuestMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, onUp
                   <View style={{ flex: 1, minWidth: 0 }}>
                     <CounterInput
                       label={UI_TEXT.planned}
-                      value={guestVeg}
-                      min={guestVegTaken}
-                      onChange={(val) => onUpdate(dayId, type, "guestVeg", val)}
+                      value={pCount}
+                      min={sCount}
+                      onChange={(val) => onUpdate(dayId, type, plannedField, val)}
                       disabled={disabled || !isMealEditableForAdmin}
                     />
                   </View>
                   <View style={{ flex: 1, minWidth: 0 }}>
                     <CounterInput
                       label={UI_TEXT.served}
-                      value={guestVegTaken}
-                      max={guestVeg}
-                      onChange={(val) => onUpdate(dayId, type, "guestVegTaken", val)}
+                      value={sCount}
+                      max={pCount}
+                      onChange={(val) => onUpdate(dayId, type, servedField, val)}
                       disabled={disabled || isDone || isFuture}
                     />
                   </View>
                 </View>
               )}
             </View>
+          );
+        })}
 
-            {/* 2. NON-VEG GROUP */}
-            <View style={{ gap: 10, padding: 12, backgroundColor: theme.colors.surface, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.nonVeg + "35" }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Ionicons name="flame" size={14} color={theme.colors.nonVeg} />
-                <Text style={{ fontSize: 12, fontWeight: '800', color: theme.colors.nonVeg, letterSpacing: 0.5 }}>
-                  {UI_TEXT.nonVeg.toUpperCase()}
+        {/* Global Summary Totals Row */}
+        <View style={{ width: '100%', gap: 8, marginTop: 4 }}>
+          <Text style={{ fontSize: 11, fontWeight: '800', color: theme.colors.textSecondary, letterSpacing: 0.5, textTransform: 'uppercase' }}>
+            {UI_TEXT.globalCategoryTotals}
+          </Text>
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            {vegTotalPlanned > 0 && (
+              <View style={{ flex: 1, backgroundColor: theme.colors.successLight, padding: 10, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.veg }}>
+                <Text style={{ fontSize: 11, fontWeight: '800', color: theme.colors.veg }}>{UI_TEXT.vegGlobal}</Text>
+                <Text style={{ fontSize: 15, fontWeight: '900', color: theme.colors.textPrimary, marginTop: 2 }}>
+                  {vegTotalPlanned} P | {vegTotalServed} S
                 </Text>
               </View>
-              {isDone ? (
-                <View style={{ flexDirection: isUltraNarrow ? "column" : "row", gap: 10 }}>
-                  <View style={{ flex: 1, backgroundColor: theme.colors.surfaceDark, padding: 10, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.border }}>
-                    <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.textSecondary }}>{UI_TEXT.planned.toUpperCase()}</Text>
-                    <Text style={{ fontSize: 18, fontWeight: '900', color: theme.colors.textPrimary, marginTop: 2 }}>{guestNonVeg}</Text>
-                  </View>
-                  <View style={{ flex: 1, backgroundColor: theme.colors.surfaceDark, padding: 10, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.border }}>
-                    <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.textSecondary }}>{UI_TEXT.served.toUpperCase()}</Text>
-                    <Text style={{ fontSize: 18, fontWeight: '900', color: theme.colors.veg, marginTop: 2 }}>{guestNonVegTaken}</Text>
-                  </View>
-                </View>
-              ) : (
-                <View style={{ flexDirection: isUltraNarrow ? "column" : "row", gap: 10 }}>
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <CounterInput
-                      label={UI_TEXT.planned}
-                      value={guestNonVeg}
-                      min={guestNonVegTaken}
-                      onChange={(val) => onUpdate(dayId, type, "guestNonVeg", val)}
-                      disabled={disabled || !isMealEditableForAdmin}
-                    />
-                  </View>
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <CounterInput
-                      label={UI_TEXT.served}
-                      value={guestNonVegTaken}
-                      max={guestNonVeg}
-                      onChange={(val) => onUpdate(dayId, type, "guestNonVegTaken", val)}
-                      disabled={disabled || isDone || isFuture}
-                    />
-                  </View>
-                </View>
-              )}
-            </View>
-
-            {/* 3. TOTAL SUMMARY ROW */}
-            <View style={{ width: '100%', flexDirection: 'row', gap: 12, marginTop: 2 }}>
-              <View style={{ flex: 1, backgroundColor: theme.colors.surface, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border }}>
-                <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.textSecondary }}>{UI_TEXT.planned.toUpperCase()}</Text>
-                <Text style={{ fontSize: 20, fontWeight: '900', color: theme.colors.textPrimary, marginTop: 4 }}>{guestTotal}</Text>
-              </View>
-              <View style={{ flex: 1, backgroundColor: theme.colors.surface, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border }}>
-                <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.textSecondary }}>{UI_TEXT.served.toUpperCase()}</Text>
-                <Text style={{ fontSize: 20, fontWeight: '900', color: theme.colors.veg, marginTop: 4 }}>{guestTaken}</Text>
-              </View>
-            </View>
-          </>
-        ) : (
-          <View style={{ gap: 10, padding: 12, backgroundColor: theme.colors.surface, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border }}>
-            {isDone ? (
-              <View style={{ flexDirection: isUltraNarrow ? "column" : "row", gap: 10 }}>
-                <View style={{ flex: 1, backgroundColor: theme.colors.surfaceDark, padding: 10, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.border }}>
-                  <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.textSecondary }}>{UI_TEXT.planned.toUpperCase()}</Text>
-                  <Text style={{ fontSize: 18, fontWeight: '900', color: theme.colors.textPrimary, marginTop: 2 }}>{guestTotal}</Text>
-                </View>
-                <View style={{ flex: 1, backgroundColor: theme.colors.surfaceDark, padding: 10, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.border }}>
-                  <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.textSecondary }}>{UI_TEXT.served.toUpperCase()}</Text>
-                  <Text style={{ fontSize: 18, fontWeight: '900', color: theme.colors.veg, marginTop: 2 }}>{guestTaken}</Text>
-                </View>
-              </View>
-            ) : (
-              <View style={{ flexDirection: isUltraNarrow ? "column" : "row", gap: 10 }}>
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  <CounterInput
-                    label={UI_TEXT.planned}
-                    value={guestTotal}
-                    min={guestTaken}
-                    onChange={(val) => onUpdate(dayId, type, isVegEnabled ? "guestVeg" : "guestNonVeg", val)}
-                    disabled={disabled || !isMealEditableForAdmin}
-                  />
-                </View>
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  <CounterInput
-                    label={UI_TEXT.served}
-                    value={guestTaken}
-                    min={0}
-                    max={guestTotal}
-                    onChange={(val) => onUpdate(dayId, type, isVegEnabled ? "guestVegTaken" : "guestNonVegTaken", val)}
-                    disabled={disabled || isDone || isFuture}
-                  />
-                </View>
+            )}
+            {nonVegTotalPlanned > 0 && (
+              <View style={{ flex: 1, backgroundColor: theme.colors.errorLight, padding: 10, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.nonVeg }}>
+                <Text style={{ fontSize: 11, fontWeight: '800', color: theme.colors.nonVeg }}>{UI_TEXT.nonVegGlobal}</Text>
+                <Text style={{ fontSize: 15, fontWeight: '900', color: theme.colors.textPrimary, marginTop: 2 }}>
+                  {nonVegTotalPlanned} P | {nonVegTotalServed} S
+                </Text>
               </View>
             )}
           </View>
-        )}
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <View style={{ flex: 1, backgroundColor: theme.colors.surface, padding: 10, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border }}>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.textSecondary }}>{UI_TEXT.overallPlanned}</Text>
+              <Text style={{ fontSize: 18, fontWeight: '900', color: theme.colors.textPrimary, marginTop: 2 }}>{overallTotalPlanned}</Text>
+            </View>
+            <View style={{ flex: 1, backgroundColor: theme.colors.surface, padding: 10, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border }}>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.textSecondary }}>{UI_TEXT.overallServed}</Text>
+              <Text style={{ fontSize: 18, fontWeight: '900', color: theme.colors.veg, marginTop: 2 }}>{overallTotalServed}</Text>
+            </View>
+          </View>
+        </View>
       </View>
     </View>
   );
@@ -373,12 +355,17 @@ export function GuestManagementScreen() {
           const mealMenu: MealMenu = dayMenu[mKey] || { veg: [], nonVeg: [] };
           const mealLabel = getMealLabel(mKey);
 
-          const vegPlanned = mealMenu.guestVeg || 0;
-          const vegServed = mealMenu.guestVegTaken || 0;
+          const dayConf = dayConfig.find((d) => d.id === dayId);
+          const mConf = dayConf ? dayConf[mKey] : undefined;
+          const varieties = getMealVarieties(mConf, dayConf?.vegOnly);
+          const gCounts = getMealGuestCounts(mealMenu, varieties);
+
+          const vegPlanned = gCounts.guestVeg;
+          const vegServed = gCounts.guestVegTaken;
           const vegPending = Math.max(0, vegPlanned - vegServed);
 
-          const nonVegPlanned = mealMenu.guestNonVeg || 0;
-          const nonVegServed = mealMenu.guestNonVegTaken || 0;
+          const nonVegPlanned = gCounts.guestNonVeg;
+          const nonVegServed = gCounts.guestNonVegTaken;
           const nonVegPending = Math.max(0, nonVegPlanned - nonVegServed);
 
           const totalPlanned = vegPlanned + nonVegPlanned;

@@ -1,7 +1,7 @@
 /**
  * Shared Application Constants and Logic Helpers
  */
-import { FoodMenu, ConfigDay, AppConfig, MealType, DietType, DietaryOption, normalizeChoice, toBool, PaymentMode, MealAllocation } from "./domain";
+import { FoodMenu, ConfigDay, AppConfig, MealType, DietType, DietaryOption, normalizeChoice, toBool, PaymentMode, MealAllocation, DietaryVariety, MealConfig, MealMenu } from "./domain";
 import { UI_TEXT } from "./strings";
 import { Subscription } from "./types";
 
@@ -177,6 +177,147 @@ export const getMealConstraints = (dayId: string, meal: MealType, config: Config
   };
 };
 
+export const DEFAULT_VEG_VARIETY: DietaryVariety = {
+  id: "veg_default",
+  name: "Veg",
+  type: DietType.VEG,
+  color: "#16a34a",
+  isDefault: true,
+};
+
+export const DEFAULT_NON_VEG_VARIETY: DietaryVariety = {
+  id: "nonVeg_default",
+  name: "Non-Veg",
+  type: DietType.NON_VEG,
+  color: "#dc2626",
+  isDefault: true,
+};
+
+export function getMealVarieties(mealConfig?: MealConfig, vegOnly?: boolean): DietaryVariety[] {
+  if (!mealConfig) return [DEFAULT_VEG_VARIETY, DEFAULT_NON_VEG_VARIETY];
+
+  const vegAllowed = mealConfig.veg !== false && mealConfig.veg !== "[Circular]" as any;
+  const nonVegAllowed = !vegOnly && mealConfig.nonVeg !== false && mealConfig.nonVeg !== "[Circular]" as any;
+
+  let rawVarieties: DietaryVariety[] = [];
+  if (mealConfig.varieties) {
+    if (Array.isArray(mealConfig.varieties)) {
+      rawVarieties = mealConfig.varieties.filter(v => v && typeof v === 'object' && v.id);
+    } else if (typeof mealConfig.varieties === 'object') {
+      rawVarieties = Object.values(mealConfig.varieties).filter(v => v && typeof v === 'object' && (v as any).id) as DietaryVariety[];
+    }
+  }
+
+  let baseVarieties: DietaryVariety[] = [];
+  if (vegAllowed) baseVarieties.push({ ...DEFAULT_VEG_VARIETY });
+  if (nonVegAllowed) baseVarieties.push({ ...DEFAULT_NON_VEG_VARIETY });
+
+  rawVarieties.forEach((cv) => {
+    const existingIdx = baseVarieties.findIndex((bv) => bv.id === cv.id);
+    if (existingIdx >= 0) {
+      baseVarieties[existingIdx] = {
+        ...baseVarieties[existingIdx],
+        ...cv,
+        name: cv.name || baseVarieties[existingIdx].name,
+        color: cv.color || baseVarieties[existingIdx].color,
+      };
+    } else {
+      baseVarieties.push(cv);
+    }
+  });
+
+  const filtered = baseVarieties.filter((v) => {
+    if (v.type === DietType.VEG) return vegAllowed;
+    if (v.type === DietType.NON_VEG) return nonVegAllowed;
+    return true;
+  });
+
+  return filtered;
+}
+
+export function getVarietyForChoice(choice: string | undefined, varieties: DietaryVariety[]): DietaryVariety | undefined {
+  if (!choice || choice === DietaryOption.NONE) return undefined;
+  const match = varieties.find((v) => v.id === choice);
+  if (match) return match;
+  if (choice === DietaryOption.VEG || choice === "veg" || choice === "veg_default") {
+    return varieties.find((v) => v.type === DietType.VEG) || DEFAULT_VEG_VARIETY;
+  }
+  if (choice === DietaryOption.NON_VEG || choice === "nonVeg" || choice === "non_veg" || choice === "nonVeg_default") {
+    return varieties.find((v) => v.type === DietType.NON_VEG) || DEFAULT_NON_VEG_VARIETY;
+  }
+  return undefined;
+}
+
+export function getMealGuestCounts(
+  mealMenu?: MealMenu,
+  varieties?: DietaryVariety[]
+) {
+  if (!mealMenu) {
+    return { guestVeg: 0, guestNonVeg: 0, guestVegTaken: 0, guestNonVegTaken: 0, guestTaken: 0 };
+  }
+
+  let vegP = 0;
+  let nonVegP = 0;
+  let vegS = 0;
+  let nonVegS = 0;
+
+  if (varieties && varieties.length > 0) {
+    varieties.forEach((v) => {
+      let p = 0;
+      let s = 0;
+      if (v.id === "veg_default") {
+        p = mealMenu.guestVeg || 0;
+        s = mealMenu.guestVegTaken || 0;
+      } else if (v.id === "nonVeg_default") {
+        p = mealMenu.guestNonVeg || 0;
+        s = mealMenu.guestNonVegTaken || 0;
+      } else {
+        p = Number(mealMenu.guestCounts?.[v.id]) || 0;
+        s = Number(mealMenu.guestTakenCounts?.[v.id]) || 0;
+      }
+
+      if (v.type === DietType.VEG) {
+        vegP += p;
+        vegS += s;
+      } else {
+        nonVegP += p;
+        nonVegS += s;
+      }
+    });
+  } else {
+    vegP = mealMenu.guestVeg || 0;
+    nonVegP = mealMenu.guestNonVeg || 0;
+    vegS = mealMenu.guestVegTaken || 0;
+    nonVegS = mealMenu.guestNonVegTaken || 0;
+  }
+
+  return {
+    guestVeg: vegP,
+    guestNonVeg: nonVegP,
+    guestVegTaken: vegS,
+    guestNonVegTaken: nonVegS,
+    guestTaken: vegS + nonVegS,
+  };
+}
+
+export function getDietTypeForChoice(choice: string | undefined, varieties?: DietaryVariety[]): DietType | undefined {
+  if (!choice || choice === DietaryOption.NONE || choice === "None") return undefined;
+
+  if (varieties && varieties.length > 0) {
+    const match = varieties.find((v) => v.id === choice);
+    if (match) return match.type;
+  }
+
+  if (choice === "veg_default" || choice === DietaryOption.VEG || choice === "veg" || choice === "v") {
+    return DietType.VEG;
+  }
+  if (choice === "nonVeg_default" || choice === DietaryOption.NON_VEG || choice === "nonVeg" || choice === "non_veg" || choice === "nv") {
+    return DietType.NON_VEG;
+  }
+
+  return undefined;
+}
+
 /**
  * Checks if a day is configured as Veg Only.
  */
@@ -201,15 +342,14 @@ export const isDietaryEnabled = (
 };
 
 /**
- * Returns the valid DietaryOption for a meal slot given the system day configuration.
- * Strictly obeys config: If the chosen dietary option is disabled in config, returns DietaryOption.NONE (no forceful choice or fallback!).
+ * Returns the valid DietaryOption / variety choice for a meal slot given system config.
  */
 export const getValidSlotChoice = (
   dayId: string,
   meal: MealType,
   rawChoice: any,
   config: ConfigDay[]
-): DietaryOption => {
+): DietaryOption | string => {
   if (!isMealEnabled(dayId, meal, config)) {
     return DietaryOption.NONE;
   }
@@ -219,11 +359,15 @@ export const getValidSlotChoice = (
     return DietaryOption.NONE;
   }
 
-  const diet = choice === DietaryOption.VEG ? DietType.VEG : DietType.NON_VEG;
+  const dayConf = (config || []).find((d) => d.id === dayId);
+  const mConf = dayConf ? dayConf[meal] : undefined;
+  const varieties = getMealVarieties(mConf);
 
-  // Strict check: Is the chosen dietary option (Veg or Non-Veg) enabled in system config?
+  const diet = getDietTypeForChoice(choice, varieties);
+  if (!diet) return DietaryOption.NONE;
+
   if (!isDietaryEnabled(dayId, meal, diet, config)) {
-    return DietaryOption.NONE; // NO FORCEFUL FALLBACK! Strictly resolves to NONE if disabled in config.
+    return DietaryOption.NONE;
   }
 
   return choice;
@@ -450,6 +594,7 @@ export const mealsFromChoices = (
 ) =>
   Object.fromEntries(
     getActiveDays(config).map((day) => {
+      const dayConf = (config || []).find((d) => d.id === day);
       const slots = mealSlots[day] || [];
       const meals = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER];
 
@@ -464,11 +609,14 @@ export const mealsFromChoices = (
         meals.forEach((m) => {
           if (!isMealEnabled(day, m, config)) return;
           const choice = normalizeChoice(s[m]);
+          const mConf = dayConf ? dayConf[m] : undefined;
+          const varieties = getMealVarieties(mConf);
+          const diet = getDietTypeForChoice(choice, varieties);
 
-          if (choice === DietaryOption.VEG && isDietaryEnabled(day, m, DietType.VEG, config)) {
+          if (diet === DietType.VEG && isDietaryEnabled(day, m, DietType.VEG, config)) {
             if (isKid) kidsVegCount++;
             else vegCount++;
-          } else if (choice === DietaryOption.NON_VEG && isDietaryEnabled(day, m, DietType.NON_VEG, config)) {
+          } else if (diet === DietType.NON_VEG && isDietaryEnabled(day, m, DietType.NON_VEG, config)) {
             if (isKid) kidsNonVegCount++;
             else nonVegCount++;
           }

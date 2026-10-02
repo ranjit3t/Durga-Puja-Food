@@ -43,7 +43,7 @@ import {
   AppVersionInfo
 } from "./domain";
 import { ConfigDay, AppConfig } from "./types";
-import { generatePasscode } from "./constants";
+import { generatePasscode, getDietTypeForChoice } from "./constants";
 
 // --- Repository Interface ---
 
@@ -107,27 +107,35 @@ const metricsPath = "metrics";
  */
 function cleanUndefined(obj: any, seen = new WeakSet()): any {
   if (obj === null || typeof obj !== "object") return obj;
-  if (seen.has(obj)) return "[Circular]";
-
-  if (obj.constructor && obj.constructor.name !== 'Object' && !Array.isArray(obj)) {
-    return String(obj);
-  }
-
-  seen.add(obj);
+  if (typeof obj === "function") return undefined;
+  if (obj instanceof Date) return obj.toISOString();
 
   if (Array.isArray(obj)) {
     return obj
       .map(v => cleanUndefined(v, seen))
       .filter((v) => v !== undefined && v !== null);
-  } else {
-    return Object.keys(obj).reduce((acc: any, key) => {
-      const val = obj[key];
-      if (val !== undefined && val !== null) {
-        acc[key] = cleanUndefined(val, seen);
-      }
-      return acc;
-    }, {});
   }
+
+  if (seen.has(obj)) return undefined;
+
+  if (obj.$$typeof || (obj.constructor && obj.constructor.name !== 'Object' && obj.constructor.name !== 'Array')) {
+    if (Object.prototype.toString.call(obj) !== '[object Object]') {
+      return undefined;
+    }
+  }
+
+  seen.add(obj);
+
+  return Object.keys(obj).reduce((acc: any, key) => {
+    const val = obj[key];
+    if (val !== undefined && val !== null && typeof val !== 'function') {
+      const cleaned = cleanUndefined(val, seen);
+      if (cleaned !== undefined) {
+        acc[key] = cleaned;
+      }
+    }
+    return acc;
+  }, {});
 }
 
 /**
@@ -311,10 +319,11 @@ export function normalizeRecord(
       const isKid = index >= peopleCount;
       [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].forEach((mKey) => {
         const choice = s[mKey];
-        if (choice === DietaryOption.VEG) {
+        const diet = getDietTypeForChoice(choice);
+        if (diet === DietType.VEG) {
           if (isKid) kidsVegCount++;
           else dVegCount++;
-        } else if (choice === DietaryOption.NON_VEG) {
+        } else if (diet === DietType.NON_VEG) {
           if (isKid) kidsNonVegCount++;
           else dNonVegCount++;
         }
@@ -322,16 +331,20 @@ export function normalizeRecord(
     });
 
     finalMealByPerson[day] = slots.map((s) => {
+      const bDiet = getDietTypeForChoice(s[MealType.BREAKFAST]);
+      const lDiet = getDietTypeForChoice(s[MealType.LUNCH]);
+      const dDiet = getDietTypeForChoice(s[MealType.DINNER]);
+
       if (
-        s[MealType.BREAKFAST] === DietaryOption.NON_VEG ||
-        s[MealType.LUNCH] === DietaryOption.NON_VEG ||
-        s[MealType.DINNER] === DietaryOption.NON_VEG
+        bDiet === DietType.NON_VEG ||
+        lDiet === DietType.NON_VEG ||
+        dDiet === DietType.NON_VEG
       )
         return DietaryOption.NON_VEG;
       if (
-        s[MealType.BREAKFAST] === DietaryOption.VEG ||
-        s[MealType.LUNCH] === DietaryOption.VEG ||
-        s[MealType.DINNER] === DietaryOption.VEG
+        bDiet === DietType.VEG ||
+        lDiet === DietType.VEG ||
+        dDiet === DietType.VEG
       )
         return DietaryOption.VEG;
       return DietaryOption.NONE;
@@ -369,6 +382,51 @@ export function normalizeRecord(
 // --- Implementation ---
 
 export const firebaseRepositoryConfigured = firebaseConfigured;
+
+function cleanCircularFields(obj: any): any {
+  if (obj === null || typeof obj !== "object") return obj;
+  if (Array.isArray(obj)) {
+    return obj.map(cleanCircularFields);
+  }
+  const cleaned: Record<string, any> = {};
+  Object.keys(obj).forEach((key) => {
+    const val = obj[key];
+    if (val === "[Circular]" || val === "[circular]") {
+      if (key === "veg" || key === "nonVeg" || key === "enabled" || key === "current" || key === "done" || key === "parcel") {
+        cleaned[key] = true;
+      } else {
+        cleaned[key] = undefined;
+      }
+    } else {
+      cleaned[key] = cleanCircularFields(val);
+    }
+  });
+  return cleaned;
+}
+
+function normalizeDayConfig(days: any[]): ConfigDay[] {
+  if (!Array.isArray(days)) return [];
+  return days.map((d) => {
+    if (!d || typeof d !== "object") return d;
+    const cleanDay = { ...d };
+    [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].forEach((mKey) => {
+      if (cleanDay[mKey]) {
+        const m = cleanDay[mKey];
+        let vars = m.varieties;
+        if (vars) {
+          if (!Array.isArray(vars) && typeof vars === "object") {
+            vars = Object.values(vars).filter((v) => v && typeof v === "object" && (v as any).id);
+          }
+        }
+        cleanDay[mKey] = {
+          ...m,
+          varieties: Array.isArray(vars) ? vars : undefined,
+        };
+      }
+    });
+    return cleanDay as ConfigDay;
+  });
+}
 
 export function createFirebaseRepository(): SubscriptionRepository {
   /**
@@ -450,7 +508,7 @@ export function createFirebaseRepository(): SubscriptionRepository {
       const eventDays = await getActiveDays(services);
       const snapshot = await get(ref(services.db, menuPath));
       return snapshot.exists()
-        ? (snapshot.val() as FoodMenu)
+        ? cleanCircularFields(snapshot.val() as FoodMenu)
         : emptyMenu(eventDays);
     },
     async updateMenu(menu) {
@@ -483,7 +541,7 @@ export function createFirebaseRepository(): SubscriptionRepository {
 
       if (snapshot.exists() && val) {
         if (Array.isArray(val)) {
-          return { seasonName: "", days: val as ConfigDay[], payment: defaultPayment, guestEnabled: true, mobileEnabled: true, foodPriceEnabled: false, seasonEnabled: true, kidsEnabled: false };
+          return { seasonName: "", days: normalizeDayConfig(val), payment: defaultPayment, guestEnabled: true, mobileEnabled: true, foodPriceEnabled: false, seasonEnabled: true, kidsEnabled: false };
         }
 
         const days = Array.isArray(val.days)
@@ -497,7 +555,7 @@ export function createFirebaseRepository(): SubscriptionRepository {
 
         return {
           seasonName: val.seasonName || "",
-          days: finalDays,
+          days: normalizeDayConfig(finalDays),
           payment: val.payment || defaultPayment,
           guestEnabled: val.guestEnabled !== false,
           mobileEnabled: val.mobileEnabled !== false,
@@ -712,7 +770,7 @@ export function createFirebaseRepository(): SubscriptionRepository {
       ensureFirebaseAuth().then((services) => {
         if (!services?.db) return;
         unsub = onValue(ref(services.db, menuPath), (snapshot) => {
-          callback(snapshot.exists() ? (snapshot.val() as FoodMenu) : {});
+          callback(snapshot.exists() ? cleanCircularFields(snapshot.val() as FoodMenu) : {});
         });
       }).catch(err => console.error("Menu listener error:", err));
 
@@ -730,7 +788,7 @@ export function createFirebaseRepository(): SubscriptionRepository {
           const val = snapshot.val();
           const defaultPayment = { enabled: true, options: { upi: true, cash: true, bankTransfer: true } };
           if (Array.isArray(val)) {
-            callback({ seasonName: "", days: val as ConfigDay[], payment: defaultPayment, guestEnabled: true, mobileEnabled: true, foodPriceEnabled: false, seasonEnabled: true, kidsEnabled: false });
+            callback({ seasonName: "", days: normalizeDayConfig(val), payment: defaultPayment, guestEnabled: true, mobileEnabled: true, foodPriceEnabled: false, seasonEnabled: true, kidsEnabled: false });
           } else {
             const days = Array.isArray(val.days) ? val.days : (val.days ? Object.values(val.days) : []);
             let finalDays = days as ConfigDay[];
@@ -739,7 +797,7 @@ export function createFirebaseRepository(): SubscriptionRepository {
             }
             callback({
               seasonName: val.seasonName || "",
-              days: finalDays,
+              days: normalizeDayConfig(finalDays),
               payment: val.payment || defaultPayment,
               guestEnabled: val.guestEnabled !== false,
               mobileEnabled: val.mobileEnabled !== false,

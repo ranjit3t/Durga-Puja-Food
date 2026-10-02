@@ -28,15 +28,16 @@ export enum DietaryOption {
   NONE = "None",
 }
 
-export function normalizeChoice(choice: any): DietaryOption {
-  if (!choice) return DietaryOption.NONE;
-  if (choice === DietaryOption.VEG || choice === DietaryOption.NON_VEG || choice === DietaryOption.NONE) {
+export function normalizeChoice(choice: any): DietaryOption | string {
+  if (!choice || choice === DietaryOption.NONE || choice === "None" || choice === "none") return DietaryOption.NONE;
+  if (choice === DietaryOption.VEG || choice === DietaryOption.NON_VEG) {
     return choice;
   }
-  const str = String(choice).trim().toLowerCase();
-  if (str === "veg" || str === "v") return DietaryOption.VEG;
-  if (str === "non-veg" || str === "nonveg" || str === "non_veg" || str === "nv" || str === "n") return DietaryOption.NON_VEG;
-  return DietaryOption.NONE;
+  const str = String(choice).trim();
+  const lower = str.toLowerCase();
+  if (lower === "veg" || lower === "v") return DietaryOption.VEG;
+  if (lower === "non-veg" || lower === "nonveg" || lower === "non_veg" || lower === "nv" || lower === "n") return DietaryOption.NON_VEG;
+  return str;
 }
 
 export function toBool(val: any): boolean {
@@ -104,6 +105,23 @@ export enum AppThemeMode {
   DARK = "dark",
 }
 
+export type DietaryVariety = {
+  id: string;
+  name: string;
+  type: DietType;
+  color: string;
+  isDefault?: boolean;
+};
+
+export type VarietyMenu = {
+  items: string[];
+  adultPrice?: string;
+  kidsPrice?: string;
+  memberPrice?: string;
+  parcelPrice?: string;
+  kidsParcelPrice?: string;
+};
+
 export type MealConfig = {
   enabled: boolean;
   veg: boolean;
@@ -118,6 +136,7 @@ export type MealConfig = {
   nonVegPrice?: string;
   vegParcelPrice?: string;
   nonVegParcelPrice?: string;
+  varieties?: DietaryVariety[];
 };
 
 export type ConfigDay = {
@@ -223,7 +242,7 @@ export type MealAllocation = Record<DietType, number> & {
   kidsNonVeg?: number;
 };
 
-export type MealChoice = DietaryOption;
+export type MealChoice = DietaryOption | string;
 
 export type MealSlot = Record<MealType, MealChoice> & {
   breakfastParcel: boolean;
@@ -254,6 +273,9 @@ export type MealMenu = {
   nonVegParcelPrice?: string;
   kidsVegParcelPrice?: string;
   kidsNonVegParcelPrice?: string;
+  varieties?: Record<string, VarietyMenu>;
+  guestCounts?: Record<string, number>;
+  guestTakenCounts?: Record<string, number>;
   guestVeg?: number;
   guestNonVeg?: number;
   guestTotal?: number;

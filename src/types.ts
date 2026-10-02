@@ -35,6 +35,8 @@ import {
   GuestCheckoutSource,
   getPassDisplayLabel,
   AppVersionInfo,
+  DietaryVariety,
+  VarietyMenu,
 } from "./domain";
 
 export enum FilterMode {
@@ -75,6 +77,8 @@ export {
   ActivityModule,
   AppThemeMode,
   ConfigDay,
+  DietaryVariety,
+  VarietyMenu,
   getPassDisplayLabel,
   AppVersionInfo,
   AppConfig,

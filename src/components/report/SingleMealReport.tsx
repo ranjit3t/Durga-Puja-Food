@@ -4,8 +4,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { useStyles } from "../../styles";
 import { useAppTheme } from "../../theme";
 import { UI_TEXT } from "../../strings";
-import { getDayLabel, isMealEnabled, isDietaryEnabled, isParcelEnabled, getMealLabel } from "../../constants";
-import { ConfigDay, MealType, DietType } from "../../domain";
+import { getDayLabel, isMealEnabled, isDietaryEnabled, isParcelEnabled, getMealLabel, getMealVarieties } from "../../constants";
+import { ConfigDay, MealType, DietType, DietaryOption } from "../../domain";
+import { useCoreDatabase } from "../../context/DatabaseContext";
 
 interface MealStats {
   veg: number;
@@ -52,6 +53,7 @@ export function SingleMealReport({
 }) {
   const styles = useStyles();
   const { theme } = useAppTheme();
+  const { subscriptions, foodMenu } = useCoreDatabase();
   const [viewMode, setViewMode] = useState<"complete" | "planned">("complete");
 
   const dayData = mealWiseData.find(d => d.day === selectedDayId);
@@ -481,6 +483,98 @@ export function SingleMealReport({
                   </View>
                 </View>
               )}
+
+              {/* 5. SUB-CATEGORY DEMOGRAPHICS BREAKDOWN */}
+              {(() => {
+                const dayConf = (dayConfig || []).find((d) => d.id === selectedDayId);
+                const mConf = dayConf ? dayConf[selectedMealType] : undefined;
+                const varieties = getMealVarieties(mConf, dayConf?.vegOnly);
+                const vegVarieties = varieties.filter((v) => v.type === DietType.VEG);
+                const nonVegVarieties = varieties.filter((v) => v.type === DietType.NON_VEG);
+                const showSubCategorization = vegVarieties.length > 1 || nonVegVarieties.length > 1;
+
+                if (!showSubCategorization) return null;
+
+                return (
+                  <View style={{ backgroundColor: theme.colors.surface, borderRadius: 16, padding: 14, borderWidth: 1, borderColor: theme.colors.border, gap: 10 }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                      <Ionicons name="restaurant-outline" size={16} color={theme.colors.primary} />
+                      <Text style={{ fontSize: 13, fontWeight: "800", color: theme.colors.primary, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                        {UI_TEXT.subCategoryBreakdown}
+                      </Text>
+                    </View>
+
+                    <View style={{ gap: 8 }}>
+                      {varieties.map((v) => {
+                        let adultP = 0, kidsP = 0, guestP = 0;
+                        subscriptions.forEach((sub) => {
+                          const slots = sub.mealSlots?.[selectedDayId] || [];
+                          const adultCount = sub.peopleCount || 0;
+                          slots.forEach((sSlot, idx) => {
+                            const choice = sSlot[selectedMealType];
+                            if (choice === DietaryOption.NONE) return;
+                            const isKid = kidsEnabled && idx >= adultCount;
+                            const isMatch =
+                              choice === v.id ||
+                              ((v.id === "veg_default" || v.isDefault) && v.type === DietType.VEG && (choice === DietaryOption.VEG || choice === "veg")) ||
+                              ((v.id === "nonVeg_default" || v.isDefault) && v.type === DietType.NON_VEG && (choice === DietaryOption.NON_VEG || choice === "nonVeg"));
+
+                            if (isMatch) {
+                              if (isKid) kidsP++;
+                              else adultP++;
+                            }
+                          });
+                        });
+
+                        const mealMenu = foodMenu?.[selectedDayId]?.[selectedMealType];
+                        if (mealMenu) {
+                          if (v.id === "veg_default") guestP = mealMenu.guestVeg || 0;
+                          else if (v.id === "nonVeg_default") guestP = mealMenu.guestNonVeg || 0;
+                          else guestP = mealMenu.guestCounts?.[v.id] || 0;
+                        }
+
+                        const subTotal = adultP + kidsP + guestP;
+                        const vColor = v.color || (v.type === DietType.VEG ? theme.colors.veg : theme.colors.nonVeg);
+
+                        return (
+                          <View
+                            key={v.id}
+                            style={{
+                              flexDirection: "row",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              backgroundColor: theme.colors.surfaceDark,
+                              borderRadius: 10,
+                              padding: 10,
+                              borderWidth: 1,
+                              borderColor: vColor + "66",
+                            }}
+                          >
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                              <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: vColor }} />
+                              <Text style={{ fontSize: 13, fontWeight: "800", color: theme.colors.textPrimary }}>
+                                {v.name}
+                              </Text>
+                              <Text style={{ fontSize: 11, fontWeight: "700", color: theme.colors.textMuted }}>
+                                ({v.type})
+                              </Text>
+                            </View>
+
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                              <Text style={{ fontSize: 11, fontWeight: "700", color: theme.colors.textSecondary }}>
+                                {kidsEnabled ? `${adultP}A, ${kidsP}K` : `${adultP}M`}{guestEnabled && guestP > 0 ? `, ${guestP}G` : ""}
+                              </Text>
+                              <Text style={{ fontSize: 14, fontWeight: "900", color: vColor }}>
+                                {subTotal}
+                              </Text>
+                            </View>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  </View>
+                );
+              })()}
             </View>
           )}
         </View>

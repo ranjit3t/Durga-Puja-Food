@@ -9,7 +9,7 @@ import { useCoreDatabase } from "../context/DatabaseContext";
 import { useUI } from "../context/UIContext";
 import { useAppNavigation } from "../context/NavigationContext";
 import { AppScreen, UserRole, MealType, AppThemeMode, DietaryOption, DietType } from "../types";
-import { getActiveDays, isSeasonDone, isMealCurrent, getDayLabel, isMealEnabled, isDietaryEnabled, getMealLabel } from "../constants";
+import { getActiveDays, isSeasonDone, isMealCurrent, getDayLabel, isMealEnabled, isDietaryEnabled, getMealLabel, getDietTypeForChoice, getMealVarieties, getMealGuestCounts } from "../constants";
 import { ActionLabel } from "../components/common/ActionLabel";
 import { LogoutButton } from "../components/common/LogoutButton";
 import { ThemeToggleButton } from "../components/common/ThemeToggleButton";
@@ -70,15 +70,19 @@ export function HomeScreen() {
       kids += (sub.kidsCount || 0);
 
       activeDays.forEach(dayId => {
+        const dayConf = (dayConfig || []).find(d => d.id === dayId);
         const slots = sub.mealSlots[dayId] || [];
         slots.forEach((slot) => {
           [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].forEach(mType => {
             if (!isMealEnabled(dayId, mType, dayConfig)) return;
 
+            const mConf = dayConf ? dayConf[mType] : undefined;
             const choice = slot[mType];
-            if (choice === DietaryOption.VEG && isDietaryEnabled(dayId, mType, DietType.VEG, dayConfig)) {
+            const diet = getDietTypeForChoice(choice, getMealVarieties(mConf));
+
+            if (diet === DietType.VEG && isDietaryEnabled(dayId, mType, DietType.VEG, dayConfig)) {
               vegPlates++;
-            } else if (choice === DietaryOption.NON_VEG && isDietaryEnabled(dayId, mType, DietType.NON_VEG, dayConfig)) {
+            } else if (diet === DietType.NON_VEG && isDietaryEnabled(dayId, mType, DietType.NON_VEG, dayConfig)) {
               nonVegPlates++;
             }
           });
@@ -91,15 +95,20 @@ export function HomeScreen() {
       Object.keys(foodMenu).forEach(dayId => {
         if (!activeDays.includes(dayId)) return;
         const dayMenu = foodMenu[dayId];
+        const dayConf = dayConfig.find(d => d.id === dayId);
         [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].forEach(mType => {
           if (!isMealEnabled(dayId, mType, dayConfig)) return;
           const meal = dayMenu[mType];
           if (meal) {
+            const mConf = dayConf ? dayConf[mType] : undefined;
+            const varieties = getMealVarieties(mConf, dayConf?.vegOnly);
+            const gCounts = getMealGuestCounts(meal, varieties);
+
             if (isDietaryEnabled(dayId, mType, DietType.VEG, dayConfig)) {
-              vegPlates += (meal.guestVeg || 0);
+              vegPlates += gCounts.guestVeg;
             }
             if (isDietaryEnabled(dayId, mType, DietType.NON_VEG, dayConfig)) {
-              nonVegPlates += (meal.guestNonVeg || 0);
+              nonVegPlates += gCounts.guestNonVeg;
             }
           }
         });
@@ -132,13 +141,18 @@ export function HomeScreen() {
     Object.keys(foodMenu).forEach(dayId => {
       if (!activeDays.includes(dayId)) return;
       const dayMenu = foodMenu[dayId];
+      const dayConf = dayConfig.find(d => d.id === dayId);
       [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].forEach(mType => {
         if (!isMealEnabled(dayId, mType, dayConfig)) return;
         const meal = dayMenu[mType];
         if (meal) {
-          const gVeg = isDietaryEnabled(dayId, mType, DietType.VEG, dayConfig) ? (meal.guestVeg || 0) : 0;
-          const gNonVeg = isDietaryEnabled(dayId, mType, DietType.NON_VEG, dayConfig) ? (meal.guestNonVeg || 0) : 0;
-          const mGuest = gVeg + gNonVeg;
+          const mConf = dayConf ? dayConf[mType] : undefined;
+          const varieties = getMealVarieties(mConf, dayConf?.vegOnly);
+          const gCounts = getMealGuestCounts(meal, varieties);
+
+          const vegG = isDietaryEnabled(dayId, mType, DietType.VEG, dayConfig) ? gCounts.guestVeg : 0;
+          const nonVegG = isDietaryEnabled(dayId, mType, DietType.NON_VEG, dayConfig) ? gCounts.guestNonVeg : 0;
+          const mGuest = vegG + nonVegG;
           seasonTotal += mGuest;
 
           if (isMealCurrent(dayId, mType, dayConfig)) {

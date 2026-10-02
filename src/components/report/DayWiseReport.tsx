@@ -4,8 +4,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { useStyles } from "../../styles";
 import { useAppTheme } from "../../theme";
 import { UI_TEXT } from "../../strings";
-import { getDayLabel, isMealEnabled, isDietaryEnabled, isParcelEnabled, getMealLabel } from "../../constants";
-import { ConfigDay, MealType, DietType } from "../../domain";
+import { getDayLabel, isMealEnabled, isDietaryEnabled, isParcelEnabled, getMealLabel, getMealVarieties } from "../../constants";
+import { ConfigDay, MealType, DietType, DietaryOption } from "../../domain";
+import { useCoreDatabase } from "../../context/DatabaseContext";
+import { MealMetricGrid } from "../dashboard/MealMetricGrid";
 
 interface DayWiseData {
   day: string;
@@ -78,6 +80,7 @@ export function DayWiseReport({
 }) {
   const styles = useStyles();
   const { theme } = useAppTheme();
+  const { subscriptions, foodMenu } = useCoreDatabase();
   const [viewMode, setViewMode] = useState<"complete" | "planned">("complete");
 
   const currentDayId = selectedDayId || (data.length > 0 ? data[0].day : "");
@@ -329,197 +332,53 @@ export function DayWiseReport({
                   )}
                 </View>
               </View>
-
-              {/* Parcels Section */}
-              {parcelEnabled && mealTotalParcel > 0 && (
-                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", borderTopWidth: 1, borderTopColor: colorScheme.border, paddingTop: 12 }}>
-                  <Text style={{ fontSize: 15, fontWeight: "700", color: theme.colors.textSecondary }}>{UI_TEXT.totalParcels}</Text>
-                  <Text style={{ fontSize: 18, fontWeight: "900", color: theme.colors.primary }}>
-                    {mealTotalParcelTaken}{UI_TEXT.space}{UI_TEXT.slash}{UI_TEXT.space}{mealTotalParcel}{UI_TEXT.space}{UI_TEXT.parcelAbbr}
-                  </Text>
-                </View>
-              )}
             </>
           )}
 
-          {/* PLANNED VIEW DETAILED BREAKDOWN WITH STAT BOXES */}
-          {viewMode === "planned" && (
-            <View style={{ gap: 12, marginTop: 4 }}>
-              {/* 1. ADULTS / RESIDENT MEMBERS BLOCK */}
-              <View style={{ backgroundColor: theme.colors.surface, borderRadius: 16, padding: 14, borderWidth: 1, borderColor: theme.colors.border, gap: 10 }}>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                  <Ionicons name="person-outline" size={16} color={theme.colors.textSecondary} />
-                  <Text style={{ fontSize: 13, fontWeight: "800", color: theme.colors.textSecondary, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                    {kidsEnabled ? UI_TEXT.adults : UI_TEXT.generalMembers}
-                  </Text>
-                </View>
-                <View style={{ flexDirection: "row", gap: 8 }}>
-                  {vegEnabled && (
-                    <View style={{ flex: 1, backgroundColor: theme.colors.surfaceDark, borderRadius: 10, padding: 10, alignItems: "center", borderWidth: 1, borderColor: theme.colors.border }}>
-                      <Text style={{ fontSize: 11, fontWeight: "700", color: theme.colors.textMuted, marginBottom: 2 }} numberOfLines={1}>
-                        {UI_TEXT.veg}
-                      </Text>
-                      <Text style={{ fontSize: 20, fontWeight: "900", color: theme.colors.veg }}>
-                        {m ? m.veg : 0}
-                      </Text>
-                    </View>
-                  )}
-
-                  {nonVegEnabled && (
-                    <View style={{ flex: 1, backgroundColor: theme.colors.surfaceDark, borderRadius: 10, padding: 10, alignItems: "center", borderWidth: 1, borderColor: theme.colors.border }}>
-                      <Text style={{ fontSize: 11, fontWeight: "700", color: theme.colors.textMuted, marginBottom: 2 }} numberOfLines={1}>
-                        {UI_TEXT.nonVeg}
-                      </Text>
-                      <Text style={{ fontSize: 20, fontWeight: "900", color: theme.colors.nonVeg }}>
-                        {m ? m.nonVeg : 0}
-                      </Text>
-                    </View>
-                  )}
-
-                  <View style={{ flex: 1, backgroundColor: theme.colors.surfaceDark, borderRadius: 10, padding: 10, alignItems: "center", borderWidth: 1, borderColor: theme.colors.border }}>
-                    <Text style={{ fontSize: 11, fontWeight: "700", color: theme.colors.textMuted, marginBottom: 2 }} numberOfLines={1}>
-                      {UI_TEXT.total}
-                    </Text>
-                    <Text style={{ fontSize: 20, fontWeight: "900", color: theme.colors.primary }}>
-                      {(m ? m.veg + m.nonVeg : 0)}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-
-              {/* 2. KIDS BLOCK */}
-              {kidsEnabled && m && (
-                <View style={{ backgroundColor: theme.colors.surface, borderRadius: 16, padding: 14, borderWidth: 1, borderColor: theme.colors.border, gap: 10 }}>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                    <Ionicons name="happy-outline" size={16} color={theme.colors.primary} />
-                    <Text style={{ fontSize: 13, fontWeight: "800", color: theme.colors.primary, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                      {UI_TEXT.kids}
-                    </Text>
-                  </View>
-                  <View style={{ flexDirection: "row", gap: 8 }}>
-                    {vegEnabled && (
-                      <View style={{ flex: 1, backgroundColor: theme.colors.surfaceDark, borderRadius: 10, padding: 10, alignItems: "center", borderWidth: 1, borderColor: theme.colors.border }}>
-                        <Text style={{ fontSize: 11, fontWeight: "700", color: theme.colors.textMuted, marginBottom: 2 }} numberOfLines={1}>
-                          {UI_TEXT.veg}
-                        </Text>
-                        <Text style={{ fontSize: 20, fontWeight: "900", color: theme.colors.veg }}>
-                          {m.kidsVeg}
-                        </Text>
-                      </View>
-                    )}
-
-                    {nonVegEnabled && (
-                      <View style={{ flex: 1, backgroundColor: theme.colors.surfaceDark, borderRadius: 10, padding: 10, alignItems: "center", borderWidth: 1, borderColor: theme.colors.border }}>
-                        <Text style={{ fontSize: 11, fontWeight: "700", color: theme.colors.textMuted, marginBottom: 2 }} numberOfLines={1}>
-                          {UI_TEXT.nonVeg}
-                        </Text>
-                        <Text style={{ fontSize: 20, fontWeight: "900", color: theme.colors.nonVeg }}>
-                          {m.kidsNonVeg}
-                        </Text>
-                      </View>
-                    )}
-
-                    <View style={{ flex: 1, backgroundColor: theme.colors.surfaceDark, borderRadius: 10, padding: 10, alignItems: "center", borderWidth: 1, borderColor: theme.colors.border }}>
-                      <Text style={{ fontSize: 11, fontWeight: "700", color: theme.colors.textMuted, marginBottom: 2 }} numberOfLines={1}>
-                        {UI_TEXT.total}
-                      </Text>
-                      <Text style={{ fontSize: 20, fontWeight: "900", color: theme.colors.primary }}>
-                        {m.kidsVeg + m.kidsNonVeg}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-              )}
-
-              {/* 3. GUEST BLOCK */}
-              {guestEnabled && m && (m.guestVeg + m.guestNonVeg) > 0 && (
-                <View style={{ backgroundColor: theme.colors.surface, borderRadius: 16, padding: 14, borderWidth: 1, borderColor: theme.colors.border, gap: 10 }}>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                    <Ionicons name="people-circle-outline" size={16} color={theme.colors.secondary} />
-                    <Text style={{ fontSize: 13, fontWeight: "800", color: theme.colors.secondary, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                      {UI_TEXT.guests}
-                    </Text>
-                  </View>
-                  <View style={{ flexDirection: "row", gap: 8 }}>
-                    {vegEnabled && (
-                      <View style={{ flex: 1, backgroundColor: theme.colors.surfaceDark, borderRadius: 10, padding: 10, alignItems: "center", borderWidth: 1, borderColor: theme.colors.border }}>
-                        <Text style={{ fontSize: 11, fontWeight: "700", color: theme.colors.textMuted, marginBottom: 2 }} numberOfLines={1}>
-                          {UI_TEXT.veg}
-                        </Text>
-                        <Text style={{ fontSize: 20, fontWeight: "900", color: theme.colors.veg }}>
-                          {m.guestVeg}
-                        </Text>
-                      </View>
-                    )}
-
-                    {nonVegEnabled && (
-                      <View style={{ flex: 1, backgroundColor: theme.colors.surfaceDark, borderRadius: 10, padding: 10, alignItems: "center", borderWidth: 1, borderColor: theme.colors.border }}>
-                        <Text style={{ fontSize: 11, fontWeight: "700", color: theme.colors.textMuted, marginBottom: 2 }} numberOfLines={1}>
-                          {UI_TEXT.nonVeg}
-                        </Text>
-                        <Text style={{ fontSize: 20, fontWeight: "900", color: theme.colors.nonVeg }}>
-                          {m.guestNonVeg}
-                        </Text>
-                      </View>
-                    )}
-
-                    <View style={{ flex: 1, backgroundColor: theme.colors.surfaceDark, borderRadius: 10, padding: 10, alignItems: "center", borderWidth: 1, borderColor: theme.colors.border }}>
-                      <Text style={{ fontSize: 11, fontWeight: "700", color: theme.colors.textMuted, marginBottom: 2 }} numberOfLines={1}>
-                        {UI_TEXT.total}
-                      </Text>
-                      <Text style={{ fontSize: 20, fontWeight: "900", color: theme.colors.secondary }}>
-                        {m.guestVeg + m.guestNonVeg}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-              )}
-
-              {/* 4. PARCELS BLOCK */}
-              {parcelEnabled && mealTotalParcel > 0 && (
-                <View style={{ backgroundColor: theme.colors.surface, borderRadius: 16, padding: 14, borderWidth: 1, borderColor: theme.colors.border, gap: 10 }}>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                    <Ionicons name="cube-outline" size={16} color={theme.colors.primary} />
-                    <Text style={{ fontSize: 13, fontWeight: "800", color: theme.colors.primary, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                      {UI_TEXT.parcelsNeeded}
-                    </Text>
-                  </View>
-                  <View style={{ flexDirection: "row", gap: 8 }}>
-                    {vegEnabled && (
-                      <View style={{ flex: 1, backgroundColor: theme.colors.surfaceDark, borderRadius: 10, padding: 10, alignItems: "center", borderWidth: 1, borderColor: theme.colors.border }}>
-                        <Text style={{ fontSize: 11, fontWeight: "700", color: theme.colors.textMuted, marginBottom: 2 }} numberOfLines={1}>
-                          {UI_TEXT.veg}
-                        </Text>
-                        <Text style={{ fontSize: 20, fontWeight: "900", color: theme.colors.veg }}>
-                          {mealVegParcel}
-                        </Text>
-                      </View>
-                    )}
-
-                    {nonVegEnabled && (
-                      <View style={{ flex: 1, backgroundColor: theme.colors.surfaceDark, borderRadius: 10, padding: 10, alignItems: "center", borderWidth: 1, borderColor: theme.colors.border }}>
-                        <Text style={{ fontSize: 11, fontWeight: "700", color: theme.colors.textMuted, marginBottom: 2 }} numberOfLines={1}>
-                          {UI_TEXT.nonVeg}
-                        </Text>
-                        <Text style={{ fontSize: 20, fontWeight: "900", color: theme.colors.nonVeg }}>
-                          {mealNonVegParcel}
-                        </Text>
-                      </View>
-                    )}
-
-                    <View style={{ flex: 1, backgroundColor: theme.colors.surfaceDark, borderRadius: 10, padding: 10, alignItems: "center", borderWidth: 1, borderColor: theme.colors.border }}>
-                      <Text style={{ fontSize: 11, fontWeight: "700", color: theme.colors.textMuted, marginBottom: 2 }} numberOfLines={1}>
-                        {UI_TEXT.total}
-                      </Text>
-                      <Text style={{ fontSize: 20, fontWeight: "900", color: theme.colors.primary }}>
-                        {mealTotalParcel}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-              )}
-            </View>
-          )}
+          {/* MEAL METRIC GRID (Dashboard style for both Complete and Planned view modes) */}
+          <MealMetricGrid
+            day={currentDayId}
+            type={currentMealType}
+            total={mealTotalDemand}
+            veg={mealVeg}
+            nonVeg={mealNonVeg}
+            parcel={mealTotalParcel}
+            parcelTaken={mealTotalParcelTaken}
+            totalVegTaken={mealVegTaken}
+            totalNonVegTaken={mealNonVegTaken}
+            guestVeg={m?.guestVeg || 0}
+            guestNonVeg={m?.guestNonVeg || 0}
+            guestVegTaken={m?.guestVegTaken || 0}
+            guestNonVegTaken={m?.guestNonVegTaken || 0}
+            totalMealTaken={mealTotalTaken}
+            kidsTotal={(m?.kidsVeg || 0) + (m?.kidsNonVeg || 0)}
+            kidsTaken={(m?.kidsVegTaken || 0) + (m?.kidsNonVegTaken || 0)}
+            kidsVeg={m?.kidsVeg || 0}
+            kidsNonVeg={m?.kidsNonVeg || 0}
+            kidsVegTaken={m?.kidsVegTaken || 0}
+            kidsNonVegTaken={m?.kidsNonVegTaken || 0}
+            kidsEnabled={kidsEnabled}
+            guestEnabled={!!guestEnabled}
+            isParcelEnabled={parcelEnabled}
+            isBothEnabled={vegEnabled && nonVegEnabled}
+            showPlannedOnly={viewMode === "planned"}
+            labels={{
+              veg: UI_TEXT.veg,
+              nonVeg: UI_TEXT.nonVeg,
+              kidsTotal: UI_TEXT.kids,
+              kidsTaken: UI_TEXT.taken,
+              kidsVeg: UI_TEXT.veg,
+              kidsNonVeg: UI_TEXT.nonVeg,
+              kidsVegTaken: UI_TEXT.vegTaken,
+              kidsNonVegTaken: UI_TEXT.vegTaken,
+              vegTaken: UI_TEXT.vegTaken,
+              nonVegTaken: UI_TEXT.nonVegTaken,
+              guestVeg: UI_TEXT.guestVeg,
+              guestNonVeg: UI_TEXT.guestNonVeg,
+              guestVegTaken: UI_TEXT.guestVegTaken,
+              guestNonVegTaken: UI_TEXT.guestNonVegTaken,
+            }}
+          />
         </View>
       </View>
     </View>

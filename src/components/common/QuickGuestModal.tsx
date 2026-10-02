@@ -33,6 +33,8 @@ import {
   isMealDone,
   isMealInFuture,
   isMealCurrent,
+  getMealVarieties,
+  isDietaryEnabled,
 } from "../../constants";
 import { CounterInput } from "./CounterInput";
 
@@ -100,18 +102,40 @@ export function QuickGuestModal({
   const dayMenu = foodMenu[dayId];
   const mealMenu = dayMenu ? dayMenu[mealType] : undefined;
 
-  const guestVeg = mealMenu?.guestVeg || 0;
-  const guestVegTaken = mealMenu?.guestVegTaken || 0;
-  const guestNonVeg = mealMenu?.guestNonVeg || 0;
-  const guestNonVegTaken = mealMenu?.guestNonVegTaken || 0;
+  const dayConf = dayConfig.find((d) => d.id === dayId);
+  const mConf = dayConf ? dayConf[mealType] : undefined;
+  const varieties = getMealVarieties(mConf);
 
-  const guestTotal = guestVeg + guestNonVeg;
-  const guestTaken = guestVegTaken + guestNonVegTaken;
+  const getGuestCount = (vId: string, kind: "planned" | "served"): number => {
+    if (kind === "planned") {
+      if (vId === "veg_default") return mealMenu?.guestVeg || 0;
+      if (vId === "nonVeg_default") return mealMenu?.guestNonVeg || 0;
+      return mealMenu?.guestCounts?.[vId] || 0;
+    } else {
+      if (vId === "veg_default") return mealMenu?.guestVegTaken || 0;
+      if (vId === "nonVeg_default") return mealMenu?.guestNonVegTaken || 0;
+      return mealMenu?.guestTakenCounts?.[vId] || 0;
+    }
+  };
+
+  let vegTotalPlanned = 0, vegTotalServed = 0;
+  let nonVegTotalPlanned = 0, nonVegTotalServed = 0;
+
+  varieties.forEach((v) => {
+    const p = getGuestCount(v.id, "planned");
+    const s = getGuestCount(v.id, "served");
+    if (v.type === DietType.VEG) {
+      vegTotalPlanned += p;
+      vegTotalServed += s;
+    } else {
+      nonVegTotalPlanned += p;
+      nonVegTotalServed += s;
+    }
+  });
+
+  const guestTotal = vegTotalPlanned + nonVegTotalPlanned;
+  const guestTaken = vegTotalServed + nonVegTotalServed;
   const guestPending = Math.max(0, guestTotal - guestTaken);
-
-  const isVegEnabled = isDietaryEnabledForDay(dayId, DietType.VEG, dayConfig);
-  const isNonVegEnabled = isDietaryEnabledForDay(dayId, DietType.NON_VEG, dayConfig);
-  const showDetailed = isVegEnabled && isNonVegEnabled;
 
   const isAdmin = userRole === UserRole.ADMIN;
   const isFuture = isMealInFuture(dayId, mealType, dayConfig);
@@ -125,9 +149,6 @@ export function QuickGuestModal({
   ));
 
   const isMealEditableForAdmin = isAdmin && (!anyCurrentMealEnabled ? !isDone : (isMealCurrent(dayId, mealType, dayConfig) || isFuture));
-
-  const singleFieldPlanned = isVegEnabled ? "guestVeg" : "guestNonVeg";
-  const singleFieldTaken = isVegEnabled ? "guestVegTaken" : "guestNonVegTaken";
 
   const isUltraNarrow = width < 360;
   const cardMaxWidth = Math.min(width * 0.94, 500);
@@ -252,121 +273,68 @@ export function QuickGuestModal({
               </View>
             </View>
 
-            {/* Section 2: Guest Counter Inputs Card Container */}
-            {showDetailed ? (
-              <View style={{ gap: 10 }}>
-                {/* VEG CATEGORY */}
-                {isVegEnabled && (
-                  <View style={{
-                    padding: 10,
-                    borderRadius: 14,
-                    backgroundColor: theme.colors.surface,
-                    borderColor: theme.colors.veg + "40",
-                    borderWidth: 1.5,
-                    gap: 8,
-                  }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      <Ionicons name="leaf" size={14} color={theme.colors.veg} />
-                      <Text style={{ fontSize: 12, fontWeight: '900', color: theme.colors.veg, letterSpacing: 0.5 }}>
-                        {UI_TEXT.veg.toUpperCase()}
-                      </Text>
-                    </View>
-                    <View style={{ flexDirection: isUltraNarrow ? "column" : "row", gap: 8 }}>
-                      <View style={{ flex: 1, minWidth: 0 }}>
-                        <CounterInput
-                          label={UI_TEXT.planned}
-                          value={guestVeg}
-                          min={guestVegTaken}
-                          disabled={!isMealEditableForAdmin}
-                          onChange={(val) => updateGuestCountDebounced(dayId, mealType, "guestVeg", val, GuestCheckoutSource.GUEST_MODAL)}
-                        />
-                      </View>
-                      <View style={{ flex: 1, minWidth: 0 }}>
-                        <CounterInput
-                          label={UI_TEXT.served}
-                          value={guestVegTaken}
-                          min={0}
-                          max={guestVeg}
-                          disabled={isServedDisabled}
-                          onChange={(val) => updateGuestCountDebounced(dayId, mealType, "guestVegTaken", val, GuestCheckoutSource.GUEST_MODAL)}
-                        />
-                      </View>
-                    </View>
-                  </View>
-                )}
+            {/* Section 2: Guest Counter Inputs for Sub-Categories */}
+            <View style={{ gap: 10 }}>
+              {varieties.map((v) => {
+                if (!isDietaryEnabled(dayId, mealType, v.type, dayConfig)) return null;
 
-                {/* NON-VEG CATEGORY */}
-                {isNonVegEnabled && (
-                  <View style={{
-                    padding: 10,
-                    borderRadius: 14,
-                    backgroundColor: theme.colors.surface,
-                    borderColor: theme.colors.nonVeg + "40",
-                    borderWidth: 1.5,
-                    gap: 8,
-                  }}>
+                const pCount = getGuestCount(v.id, "planned");
+                const sCount = getGuestCount(v.id, "served");
+                const vColor = v.color || (v.type === DietType.VEG ? theme.colors.veg : theme.colors.nonVeg);
+
+                const plannedField = v.id === "veg_default" ? "guestVeg" : v.id === "nonVeg_default" ? "guestNonVeg" : `gc_${v.id}`;
+                const servedField = v.id === "veg_default" ? "guestVegTaken" : v.id === "nonVeg_default" ? "guestNonVegTaken" : `gt_${v.id}`;
+
+                return (
+                  <View
+                    key={v.id}
+                    style={{
+                      padding: 10,
+                      borderRadius: 14,
+                      backgroundColor: theme.colors.surface,
+                      borderColor: vColor + "40",
+                      borderWidth: 1.5,
+                      gap: 8,
+                    }}
+                  >
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      <Ionicons name="flame" size={14} color={theme.colors.nonVeg} />
-                      <Text style={{ fontSize: 12, fontWeight: '900', color: theme.colors.nonVeg, letterSpacing: 0.5 }}>
-                        {UI_TEXT.nonVeg.toUpperCase()}
+                      <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: vColor }} />
+                      <Ionicons name={v.type === DietType.VEG ? "leaf" : "flame"} size={14} color={vColor} />
+                      <Text style={{ fontSize: 12, fontWeight: '900', color: theme.colors.textPrimary, letterSpacing: 0.5 }}>
+                        {v.name.toUpperCase()}
                       </Text>
+                      <View style={{ backgroundColor: theme.colors.surfaceDark, paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 }}>
+                        <Text style={{ fontSize: 9, fontWeight: '800', color: theme.colors.textMuted, textTransform: 'uppercase' }}>
+                          {v.type}
+                        </Text>
+                      </View>
                     </View>
+
                     <View style={{ flexDirection: isUltraNarrow ? "column" : "row", gap: 8 }}>
                       <View style={{ flex: 1, minWidth: 0 }}>
                         <CounterInput
                           label={UI_TEXT.planned}
-                          value={guestNonVeg}
-                          min={guestNonVegTaken}
+                          value={pCount}
+                          min={sCount}
                           disabled={!isMealEditableForAdmin}
-                          onChange={(val) => updateGuestCountDebounced(dayId, mealType, "guestNonVeg", val, GuestCheckoutSource.GUEST_MODAL)}
+                          onChange={(val) => updateGuestCountDebounced(dayId, mealType, plannedField, val, GuestCheckoutSource.GUEST_MODAL)}
                         />
                       </View>
                       <View style={{ flex: 1, minWidth: 0 }}>
                         <CounterInput
                           label={UI_TEXT.served}
-                          value={guestNonVegTaken}
+                          value={sCount}
                           min={0}
-                          max={guestNonVeg}
+                          max={pCount}
                           disabled={isServedDisabled}
-                          onChange={(val) => updateGuestCountDebounced(dayId, mealType, "guestNonVegTaken", val, GuestCheckoutSource.GUEST_MODAL)}
+                          onChange={(val) => updateGuestCountDebounced(dayId, mealType, servedField, val, GuestCheckoutSource.GUEST_MODAL)}
                         />
                       </View>
                     </View>
                   </View>
-                )}
-              </View>
-            ) : (
-              <View style={{
-                padding: 10,
-                borderRadius: 14,
-                backgroundColor: theme.cardColors[2].accentLight,
-                borderColor: theme.cardColors[2].border,
-                borderWidth: 1.5,
-                gap: 8,
-              }}>
-                <View style={{ flexDirection: isUltraNarrow ? "column" : "row", gap: 8 }}>
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <CounterInput
-                      label={UI_TEXT.planned}
-                      value={guestTotal}
-                      min={guestTaken}
-                      disabled={!isMealEditableForAdmin}
-                      onChange={(val) => updateGuestCountDebounced(dayId, mealType, singleFieldPlanned, val, GuestCheckoutSource.GUEST_MODAL)}
-                    />
-                  </View>
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <CounterInput
-                      label={UI_TEXT.served}
-                      value={guestTaken}
-                      min={0}
-                      max={guestTotal}
-                      disabled={isServedDisabled}
-                      onChange={(val) => updateGuestCountDebounced(dayId, mealType, singleFieldTaken, val, GuestCheckoutSource.GUEST_MODAL)}
-                    />
-                  </View>
-                </View>
-              </View>
-            )}
+                );
+              })}
+            </View>
 
             {/* Action Buttons */}
             <View style={modalStyles.actionRow}>

@@ -39,7 +39,10 @@ import {
   isKidsParcelEnabled,
   getDayLabel,
   getMealLabel,
-  formatTakenTime
+  formatTakenTime,
+  getDietTypeForChoice,
+  getMealVarieties,
+  getMealGuestCounts
 } from "../constants";
 
 export interface CoreDatabaseContextType {
@@ -550,6 +553,94 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
     }
   }, [addActivityLog]);
 
+  const applyGuestCountUpdate = (mealMenu: MealMenu, field: string, value: number): MealMenu => {
+    const updatedMeal: MealMenu = { ...mealMenu };
+
+    if (field === "guestVeg" || field === "guestNonVeg" || field === "guestVegTaken" || field === "guestNonVegTaken") {
+      (updatedMeal as any)[field] = value;
+    } else if (field.startsWith("gc_")) {
+      const varId = field.replace("gc_", "");
+      if (varId === "veg_default") {
+        updatedMeal.guestVeg = value;
+      } else if (varId === "nonVeg_default") {
+        updatedMeal.guestNonVeg = value;
+      } else {
+        const guestCounts = { ...(updatedMeal.guestCounts || {}) };
+        guestCounts[varId] = value;
+        updatedMeal.guestCounts = guestCounts;
+      }
+    } else if (field.startsWith("gt_")) {
+      const varId = field.replace("gt_", "");
+      if (varId === "veg_default") {
+        updatedMeal.guestVegTaken = value;
+      } else if (varId === "nonVeg_default") {
+        updatedMeal.guestNonVegTaken = value;
+      } else {
+        const guestTakenCounts = { ...(updatedMeal.guestTakenCounts || {}) };
+        guestTakenCounts[varId] = value;
+        updatedMeal.guestTakenCounts = guestTakenCounts;
+      }
+    } else {
+      (updatedMeal as any)[field] = value;
+    }
+
+    let gTotal = (updatedMeal.guestVeg || 0) + (updatedMeal.guestNonVeg || 0);
+    let gTaken = (updatedMeal.guestVegTaken || 0) + (updatedMeal.guestNonVegTaken || 0);
+
+    if (updatedMeal.guestCounts) {
+      Object.entries(updatedMeal.guestCounts).forEach(([vId, cnt]) => {
+        if (vId !== "veg_default" && vId !== "nonVeg_default") {
+          gTotal += Number(cnt) || 0;
+        }
+      });
+    }
+    if (updatedMeal.guestTakenCounts) {
+      Object.entries(updatedMeal.guestTakenCounts).forEach(([vId, cnt]) => {
+        if (vId !== "veg_default" && vId !== "nonVeg_default") {
+          gTaken += Number(cnt) || 0;
+        }
+      });
+    }
+
+    updatedMeal.guestTotal = gTotal;
+    updatedMeal.guestTaken = gTaken;
+
+    return updatedMeal;
+  };
+
+  const buildGuestUpdatePayload = (field: string, value: number, guestTotal: number, guestTaken: number): Record<string, any> => {
+    const payload: Record<string, any> = {
+      guestTotal,
+      guestTaken,
+    };
+
+    if (field === "guestVeg" || field === "guestNonVeg" || field === "guestVegTaken" || field === "guestNonVegTaken") {
+      payload[field] = value;
+    } else if (field.startsWith("gc_")) {
+      const varId = field.replace("gc_", "");
+      if (varId === "veg_default") {
+        payload["guestVeg"] = value;
+      } else if (varId === "nonVeg_default") {
+        payload["guestNonVeg"] = value;
+      } else {
+        payload[`guestCounts/${varId}`] = value;
+      }
+    } else if (field.startsWith("gt_")) {
+      const varId = field.replace("gt_", "");
+      if (varId === "veg_default") {
+        payload["guestVegTaken"] = value;
+      } else if (varId === "nonVeg_default") {
+        payload["guestNonVegTaken"] = value;
+      } else {
+        payload[`guestTakenCounts/${varId}`] = value;
+      }
+    } else {
+      payload[field] = value;
+    }
+
+    return payload;
+  };
+
   const updateGuestCount = useCallback(async (dayId: string, mealKey: MealType, field: string, value: number) => {
     try {
       setFoodMenu(prev => {
@@ -559,16 +650,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
           [MealType.DINNER]: { veg: [], nonVeg: [] },
         };
         const mealMenu = dayMenu[mealKey] || { veg: [], nonVeg: [] };
-        const updatedMeal = {
-          ...mealMenu,
-          [field]: value
-        };
-        const gVeg = updatedMeal.guestVeg || 0;
-        const gNonVeg = updatedMeal.guestNonVeg || 0;
-        const gVegTaken = updatedMeal.guestVegTaken || 0;
-        const gNonVegTaken = updatedMeal.guestNonVegTaken || 0;
-        updatedMeal.guestTotal = gVeg + gNonVeg;
-        updatedMeal.guestTaken = gVegTaken + gNonVegTaken;
+        const updatedMeal = applyGuestCountUpdate(mealMenu, field, value);
 
         return {
           ...prev,
@@ -580,19 +662,11 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       });
 
       setFoodMenu(currentMenu => {
-        const currentMeal = currentMenu[dayId]?.[mealKey] || {};
-        const gVeg = currentMeal.guestVeg || 0;
-        const gNonVeg = currentMeal.guestNonVeg || 0;
-        const gVegTaken = currentMeal.guestVegTaken || 0;
-        const gNonVegTaken = currentMeal.guestNonVegTaken || 0;
-        const guestTotal = gVeg + gNonVeg;
-        const guestTaken = gVegTaken + gNonVegTaken;
+        const currentMeal = currentMenu[dayId]?.[mealKey] || { veg: [], nonVeg: [] };
+        const updatedMeal = applyGuestCountUpdate(currentMeal, field, value);
+        const payload = buildGuestUpdatePayload(field, value, updatedMeal.guestTotal || 0, updatedMeal.guestTaken || 0);
 
-        repository.updateGuestCounts(dayId, mealKey, {
-          [field]: value,
-          guestTotal,
-          guestTaken,
-        });
+        repository.updateGuestCounts(dayId, mealKey, payload);
         return currentMenu;
       });
     } catch (err: any) {
@@ -773,16 +847,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
      setFoodMenu(prev => {
         const updatedDay = { ...(prev[dayId] || {}) };
         const mealMenu = updatedDay[mealKey] || { veg: [], nonVeg: [] };
-        const updatedMeal = {
-           ...mealMenu,
-           [field]: value
-        };
-        const gVeg = updatedMeal.guestVeg || 0;
-        const gNonVeg = updatedMeal.guestNonVeg || 0;
-        const gVegTaken = updatedMeal.guestVegTaken || 0;
-        const gNonVegTaken = updatedMeal.guestNonVegTaken || 0;
-        updatedMeal.guestTotal = gVeg + gNonVeg;
-        updatedMeal.guestTaken = gVegTaken + gNonVegTaken;
+        const updatedMeal = applyGuestCountUpdate(mealMenu, field, value);
 
         return {
           ...prev,
@@ -798,19 +863,11 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
      guestUpdateTimers.current[timerKey] = setTimeout(async () => {
         try {
           setFoodMenu(currentMenu => {
-             const currentMeal = currentMenu[dayId]?.[mealKey] || {};
-             const gVeg = currentMeal.guestVeg || 0;
-             const gNonVeg = currentMeal.guestNonVeg || 0;
-             const gVegTaken = currentMeal.guestVegTaken || 0;
-             const gNonVegTaken = currentMeal.guestNonVegTaken || 0;
-             const guestTotal = gVeg + gNonVeg;
-             const guestTaken = gVegTaken + gNonVegTaken;
+             const currentMeal = currentMenu[dayId]?.[mealKey] || { veg: [], nonVeg: [] };
+             const updatedMeal = applyGuestCountUpdate(currentMeal, field, value);
+             const payload = buildGuestUpdatePayload(field, value, updatedMeal.guestTotal || 0, updatedMeal.guestTaken || 0);
 
-             repository.updateGuestCounts(dayId, mealKey, {
-                [field]: value,
-                guestTotal,
-                guestTaken,
-             });
+             repository.updateGuestCounts(dayId, mealKey, payload);
              return currentMenu;
           });
 
@@ -845,6 +902,20 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
 
     return activeDays.map((day) => {
       const dayMenu = foodMenu[day];
+      const dayConf = (dayConfig || []).find((d) => d.id === day);
+
+      const bMenu = dayMenu?.breakfast;
+      const lMenu = dayMenu?.lunch;
+      const dMenu = dayMenu?.dinner;
+
+      const bVarieties = getMealVarieties(dayConf?.breakfast, dayConf?.vegOnly);
+      const lVarieties = getMealVarieties(dayConf?.lunch, dayConf?.vegOnly);
+      const dVarieties = getMealVarieties(dayConf?.dinner, dayConf?.vegOnly);
+
+      const bGC = getMealGuestCounts(bMenu, bVarieties);
+      const lGC = getMealGuestCounts(lMenu, lVarieties);
+      const dGC = getMealGuestCounts(dMenu, dVarieties);
+
       const initialTotals = {
         dayId: day,
         people: 0,
@@ -854,11 +925,11 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
         breakfastParcel: 0,
         breakfastParcelTaken: 0,
         breakfastTaken: 0,
-        breakfastGuestVeg: (guestEnabled && isMealEnabled(day, MealType.BREAKFAST, dayConfig) && isDietaryEnabled(day, MealType.BREAKFAST, DietType.VEG, dayConfig)) ? (dayMenu?.breakfast?.guestVeg || 0) : 0,
-        breakfastGuestNonVeg: (guestEnabled && isMealEnabled(day, MealType.BREAKFAST, dayConfig) && isDietaryEnabled(day, MealType.BREAKFAST, DietType.NON_VEG, dayConfig)) ? (dayMenu?.breakfast?.guestNonVeg || 0) : 0,
-        breakfastGuestTaken: (guestEnabled && isMealEnabled(day, MealType.BREAKFAST, dayConfig)) ? (dayMenu?.breakfast?.guestTaken || 0) : 0,
-        breakfastGuestVegTaken: (guestEnabled && isMealEnabled(day, MealType.BREAKFAST, dayConfig) && isDietaryEnabled(day, MealType.BREAKFAST, DietType.VEG, dayConfig)) ? (dayMenu?.breakfast?.guestVegTaken || 0) : 0,
-        breakfastGuestNonVegTaken: (guestEnabled && isMealEnabled(day, MealType.BREAKFAST, dayConfig) && isDietaryEnabled(day, MealType.BREAKFAST, DietType.NON_VEG, dayConfig)) ? (dayMenu?.breakfast?.guestNonVegTaken || 0) : 0,
+        breakfastGuestVeg: (guestEnabled && isMealEnabled(day, MealType.BREAKFAST, dayConfig) && isDietaryEnabled(day, MealType.BREAKFAST, DietType.VEG, dayConfig)) ? bGC.guestVeg : 0,
+        breakfastGuestNonVeg: (guestEnabled && isMealEnabled(day, MealType.BREAKFAST, dayConfig) && isDietaryEnabled(day, MealType.BREAKFAST, DietType.NON_VEG, dayConfig)) ? bGC.guestNonVeg : 0,
+        breakfastGuestTaken: (guestEnabled && isMealEnabled(day, MealType.BREAKFAST, dayConfig)) ? ((isDietaryEnabled(day, MealType.BREAKFAST, DietType.VEG, dayConfig) ? bGC.guestVegTaken : 0) + (isDietaryEnabled(day, MealType.BREAKFAST, DietType.NON_VEG, dayConfig) ? bGC.guestNonVegTaken : 0)) : 0,
+        breakfastGuestVegTaken: (guestEnabled && isMealEnabled(day, MealType.BREAKFAST, dayConfig) && isDietaryEnabled(day, MealType.BREAKFAST, DietType.VEG, dayConfig)) ? bGC.guestVegTaken : 0,
+        breakfastGuestNonVegTaken: (guestEnabled && isMealEnabled(day, MealType.BREAKFAST, dayConfig) && isDietaryEnabled(day, MealType.BREAKFAST, DietType.NON_VEG, dayConfig)) ? bGC.guestNonVegTaken : 0,
         breakfastFlatVegTaken: 0,
         breakfastFlatNonVegTaken: 0,
         breakfastKidsTotal: 0,
@@ -874,11 +945,11 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
         lunchParcel: 0,
         lunchParcelTaken: 0,
         lunchTaken: 0,
-        lunchGuestVeg: (guestEnabled && isMealEnabled(day, MealType.LUNCH, dayConfig) && isDietaryEnabled(day, MealType.LUNCH, DietType.VEG, dayConfig)) ? (dayMenu?.lunch?.guestVeg || 0) : 0,
-        lunchGuestNonVeg: (guestEnabled && isMealEnabled(day, MealType.LUNCH, dayConfig) && isDietaryEnabled(day, MealType.LUNCH, DietType.NON_VEG, dayConfig)) ? (dayMenu?.lunch?.guestNonVeg || 0) : 0,
-        lunchGuestTaken: (guestEnabled && isMealEnabled(day, MealType.LUNCH, dayConfig)) ? (dayMenu?.lunch?.guestTaken || 0) : 0,
-        lunchGuestVegTaken: (guestEnabled && isMealEnabled(day, MealType.LUNCH, dayConfig) && isDietaryEnabled(day, MealType.LUNCH, DietType.VEG, dayConfig)) ? (dayMenu?.lunch?.guestVegTaken || 0) : 0,
-        lunchGuestNonVegTaken: (guestEnabled && isMealEnabled(day, MealType.LUNCH, dayConfig) && isDietaryEnabled(day, MealType.LUNCH, DietType.NON_VEG, dayConfig)) ? (dayMenu?.lunch?.guestNonVegTaken || 0) : 0,
+        lunchGuestVeg: (guestEnabled && isMealEnabled(day, MealType.LUNCH, dayConfig) && isDietaryEnabled(day, MealType.LUNCH, DietType.VEG, dayConfig)) ? lGC.guestVeg : 0,
+        lunchGuestNonVeg: (guestEnabled && isMealEnabled(day, MealType.LUNCH, dayConfig) && isDietaryEnabled(day, MealType.LUNCH, DietType.NON_VEG, dayConfig)) ? lGC.guestNonVeg : 0,
+        lunchGuestTaken: (guestEnabled && isMealEnabled(day, MealType.LUNCH, dayConfig)) ? ((isDietaryEnabled(day, MealType.LUNCH, DietType.VEG, dayConfig) ? lGC.guestVegTaken : 0) + (isDietaryEnabled(day, MealType.LUNCH, DietType.NON_VEG, dayConfig) ? lGC.guestNonVegTaken : 0)) : 0,
+        lunchGuestVegTaken: (guestEnabled && isMealEnabled(day, MealType.LUNCH, dayConfig) && isDietaryEnabled(day, MealType.LUNCH, DietType.VEG, dayConfig)) ? lGC.guestVegTaken : 0,
+        lunchGuestNonVegTaken: (guestEnabled && isMealEnabled(day, MealType.LUNCH, dayConfig) && isDietaryEnabled(day, MealType.LUNCH, DietType.NON_VEG, dayConfig)) ? lGC.guestNonVegTaken : 0,
         lunchFlatVegTaken: 0,
         lunchFlatNonVegTaken: 0,
         lunchKidsTotal: 0,
@@ -894,11 +965,11 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
         dinnerParcel: 0,
         dinnerParcelTaken: 0,
         dinnerTaken: 0,
-        dinnerGuestVeg: (guestEnabled && isMealEnabled(day, MealType.DINNER, dayConfig) && isDietaryEnabled(day, MealType.DINNER, DietType.VEG, dayConfig)) ? (dayMenu?.dinner?.guestVeg || 0) : 0,
-        dinnerGuestNonVeg: (guestEnabled && isMealEnabled(day, MealType.DINNER, dayConfig) && isDietaryEnabled(day, MealType.DINNER, DietType.NON_VEG, dayConfig)) ? (dayMenu?.dinner?.guestNonVeg || 0) : 0,
-        dinnerGuestTaken: (guestEnabled && isMealEnabled(day, MealType.DINNER, dayConfig)) ? (dayMenu?.dinner?.guestTaken || 0) : 0,
-        dinnerGuestVegTaken: (guestEnabled && isMealEnabled(day, MealType.DINNER, dayConfig) && isDietaryEnabled(day, MealType.DINNER, DietType.VEG, dayConfig)) ? (dayMenu?.dinner?.guestVegTaken || 0) : 0,
-        dinnerGuestNonVegTaken: (guestEnabled && isMealEnabled(day, MealType.DINNER, dayConfig) && isDietaryEnabled(day, MealType.DINNER, DietType.NON_VEG, dayConfig)) ? (dayMenu?.dinner?.guestNonVegTaken || 0) : 0,
+        dinnerGuestVeg: (guestEnabled && isMealEnabled(day, MealType.DINNER, dayConfig) && isDietaryEnabled(day, MealType.DINNER, DietType.VEG, dayConfig)) ? dGC.guestVeg : 0,
+        dinnerGuestNonVeg: (guestEnabled && isMealEnabled(day, MealType.DINNER, dayConfig) && isDietaryEnabled(day, MealType.DINNER, DietType.NON_VEG, dayConfig)) ? dGC.guestNonVeg : 0,
+        dinnerGuestTaken: (guestEnabled && isMealEnabled(day, MealType.DINNER, dayConfig)) ? ((isDietaryEnabled(day, MealType.DINNER, DietType.VEG, dayConfig) ? dGC.guestVegTaken : 0) + (isDietaryEnabled(day, MealType.DINNER, DietType.NON_VEG, dayConfig) ? dGC.guestNonVegTaken : 0)) : 0,
+        dinnerGuestVegTaken: (guestEnabled && isMealEnabled(day, MealType.DINNER, dayConfig) && isDietaryEnabled(day, MealType.DINNER, DietType.VEG, dayConfig)) ? dGC.guestVegTaken : 0,
+        dinnerGuestNonVegTaken: (guestEnabled && isMealEnabled(day, MealType.DINNER, dayConfig) && isDietaryEnabled(day, MealType.DINNER, DietType.NON_VEG, dayConfig)) ? dGC.guestNonVegTaken : 0,
         dinnerFlatVegTaken: 0,
         dinnerFlatNonVegTaken: 0,
         dinnerKidsTotal: 0,
@@ -913,65 +984,68 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
         const mealSlots = item.mealSlots?.[day] || [];
         const takenByPerson = item.takenByPerson?.[day] || [];
 
-          mealSlots.forEach((slots, index) => {
+        mealSlots.forEach((slots, index) => {
           const taken = takenByPerson?.[index];
           const isKid = kidsEnabled && index >= item.peopleCount;
 
           // Breakfast
           if (isMealEnabled(day, MealType.BREAKFAST, dayConfig) && slots?.[MealType.BREAKFAST] && slots[MealType.BREAKFAST] !== DietaryOption.NONE) {
-             const diet = slots[MealType.BREAKFAST] === DietaryOption.VEG ? DietType.VEG : DietType.NON_VEG;
-             if (isDietaryEnabled(day, MealType.BREAKFAST, diet, dayConfig)) {
-                totals.breakfast += 1;
-                if (isKid) totals.breakfastKidsTotal += 1;
+            const bVarieties = dayConf ? getMealVarieties(dayConf.breakfast) : [];
+            const diet = getDietTypeForChoice(slots[MealType.BREAKFAST], bVarieties);
+            if (diet && isDietaryEnabled(day, MealType.BREAKFAST, diet, dayConfig)) {
+              totals.breakfast += 1;
+              if (isKid) totals.breakfastKidsTotal += 1;
 
-                if (slots[MealType.BREAKFAST] === DietaryOption.VEG) {
-                   if (isKid) totals.breakfastKidsVeg += 1;
-                   else totals.breakfastVeg += 1;
+              if (diet === DietType.VEG) {
+                if (isKid) totals.breakfastKidsVeg += 1;
+                else totals.breakfastVeg += 1;
+              } else {
+                if (isKid) totals.breakfastKidsNonVeg += 1;
+                else totals.breakfastNonVeg += 1;
+              }
+
+              const isB_ParcelOptEnabled = isKid
+                ? isKidsParcelEnabled(day, MealType.BREAKFAST, dayConfig, kidsEnabled)
+                : isParcelEnabled(day, MealType.BREAKFAST, dayConfig);
+
+              if (isB_ParcelOptEnabled && slots.breakfastParcel) {
+                totals.breakfastParcel += 1;
+                if (taken?.breakfastParcel) totals.breakfastParcelTaken += 1;
+              }
+
+              const isB_Taken = taken?.breakfast || taken?.breakfastParcel;
+
+              if (isB_Taken) {
+                totals.breakfastTaken += 1;
+                if (isKid) totals.breakfastKidsTaken += 1;
+
+                if (diet === DietType.VEG) {
+                  if (isKid) totals.breakfastKidsVegTaken += 1;
+                  else totals.breakfastFlatVegTaken += 1;
                 } else {
-                   if (isKid) totals.breakfastKidsNonVeg += 1;
-                   else totals.breakfastNonVeg += 1;
+                  if (isKid) totals.breakfastKidsNonVegTaken += 1;
+                  else totals.breakfastFlatNonVegTaken += 1;
                 }
-
-                const isB_ParcelOptEnabled = isKid
-                  ? isKidsParcelEnabled(day, MealType.BREAKFAST, dayConfig, kidsEnabled)
-                  : isParcelEnabled(day, MealType.BREAKFAST, dayConfig);
-
-                if (isB_ParcelOptEnabled && slots.breakfastParcel) {
-                  totals.breakfastParcel += 1;
-                  if (taken?.breakfastParcel) totals.breakfastParcelTaken += 1;
-                }
-
-                const isB_Taken = taken?.breakfast || taken?.breakfastParcel;
-
-                if (isB_Taken) {
-                  totals.breakfastTaken += 1;
-                  if (isKid) totals.breakfastKidsTaken += 1;
-
-                  if (slots[MealType.BREAKFAST] === DietaryOption.VEG) {
-                     if (isKid) totals.breakfastKidsVegTaken += 1;
-                     else totals.breakfastFlatVegTaken += 1;
-                  } else {
-                     if (isKid) totals.breakfastKidsNonVegTaken += 1;
-                     else totals.breakfastFlatNonVegTaken += 1;
-                  }
-                }
-             }
+              }
+            }
           }
 
           // Lunch
           if (isMealEnabled(day, MealType.LUNCH, dayConfig) && slots?.[MealType.LUNCH] && slots[MealType.LUNCH] !== DietaryOption.NONE) {
-            const diet = slots[MealType.LUNCH] === DietaryOption.VEG ? DietType.VEG : DietType.NON_VEG;
-            if (isDietaryEnabled(day, MealType.LUNCH, diet, dayConfig)) {
+            const lVarieties = dayConf ? getMealVarieties(dayConf.lunch) : [];
+            const diet = getDietTypeForChoice(slots[MealType.LUNCH], lVarieties);
+            if (diet && isDietaryEnabled(day, MealType.LUNCH, diet, dayConfig)) {
               totals.lunch += 1;
               if (isKid) totals.lunchKidsTotal += 1;
 
-              if (slots[MealType.LUNCH] === DietaryOption.VEG) {
-                 if (isKid) totals.lunchKidsVeg += 1;
-                 else totals.lunchVeg += 1;
+              if (diet === DietType.VEG) {
+                if (isKid) totals.lunchKidsVeg += 1;
+                else totals.lunchVeg += 1;
               } else {
-                 if (isKid) totals.lunchKidsNonVeg += 1;
-                 else totals.lunchNonVeg += 1;
+                if (isKid) totals.lunchKidsNonVeg += 1;
+                else totals.lunchNonVeg += 1;
               }
+
               const isL_ParcelOptEnabled = isKid
                 ? isKidsParcelEnabled(day, MealType.LUNCH, dayConfig, kidsEnabled)
                 : isParcelEnabled(day, MealType.LUNCH, dayConfig);
@@ -987,12 +1061,12 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
                 totals.lunchTaken += 1;
                 if (isKid) totals.lunchKidsTaken += 1;
 
-                if (slots[MealType.LUNCH] === DietaryOption.VEG) {
-                   if (isKid) totals.lunchKidsVegTaken += 1;
-                   else totals.lunchFlatVegTaken += 1;
+                if (diet === DietType.VEG) {
+                  if (isKid) totals.lunchKidsVegTaken += 1;
+                  else totals.lunchFlatVegTaken += 1;
                 } else {
-                   if (isKid) totals.lunchKidsNonVegTaken += 1;
-                   else totals.lunchFlatNonVegTaken += 1;
+                  if (isKid) totals.lunchKidsNonVegTaken += 1;
+                  else totals.lunchFlatNonVegTaken += 1;
                 }
               }
             }
@@ -1000,18 +1074,20 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
 
           // Dinner
           if (isMealEnabled(day, MealType.DINNER, dayConfig) && slots?.[MealType.DINNER] && slots[MealType.DINNER] !== DietaryOption.NONE) {
-            const diet = slots[MealType.DINNER] === DietaryOption.VEG ? DietType.VEG : DietType.NON_VEG;
-            if (isDietaryEnabled(day, MealType.DINNER, diet, dayConfig)) {
+            const dVarieties = dayConf ? getMealVarieties(dayConf.dinner) : [];
+            const diet = getDietTypeForChoice(slots[MealType.DINNER], dVarieties);
+            if (diet && isDietaryEnabled(day, MealType.DINNER, diet, dayConfig)) {
               totals.dinner += 1;
               if (isKid) totals.dinnerKidsTotal += 1;
 
-              if (slots[MealType.DINNER] === DietaryOption.VEG) {
-                 if (isKid) totals.dinnerKidsVeg += 1;
-                 else totals.dinnerVeg += 1;
+              if (diet === DietType.VEG) {
+                if (isKid) totals.dinnerKidsVeg += 1;
+                else totals.dinnerVeg += 1;
               } else {
-                 if (isKid) totals.dinnerKidsNonVeg += 1;
-                 else totals.dinnerNonVeg += 1;
+                if (isKid) totals.dinnerKidsNonVeg += 1;
+                else totals.dinnerNonVeg += 1;
               }
+
               const isD_ParcelOptEnabled = isKid
                 ? isKidsParcelEnabled(day, MealType.DINNER, dayConfig, kidsEnabled)
                 : isParcelEnabled(day, MealType.DINNER, dayConfig);
@@ -1027,12 +1103,12 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
                 totals.dinnerTaken += 1;
                 if (isKid) totals.dinnerKidsTaken += 1;
 
-                if (slots[MealType.DINNER] === DietaryOption.VEG) {
-                   if (isKid) totals.dinnerKidsVegTaken += 1;
-                   else totals.dinnerFlatVegTaken += 1;
+                if (diet === DietType.VEG) {
+                  if (isKid) totals.dinnerKidsVegTaken += 1;
+                  else totals.dinnerFlatVegTaken += 1;
                 } else {
-                   if (isKid) totals.dinnerKidsNonVegTaken += 1;
-                   else totals.dinnerFlatNonVegTaken += 1;
+                  if (isKid) totals.dinnerKidsNonVegTaken += 1;
+                  else totals.dinnerFlatNonVegTaken += 1;
                 }
               }
             }

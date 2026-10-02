@@ -11,11 +11,12 @@ import {
   StatusBar,
   TextInput,
   Switch,
+  Modal,
 } from "react-native";
 import { useStyles } from "../styles";
 import { useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
-import { ConfigDay, PaymentConfig, AppScreen, PaymentMode, AppThemeMode, ActivityModule, ActivityAction, DietaryOption, MealSlot } from "../types";
+import { ConfigDay, PaymentConfig, AppScreen, PaymentMode, AppThemeMode, ActivityModule, ActivityAction, DietaryOption, MealSlot, DietaryVariety } from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
@@ -27,8 +28,250 @@ import { useAuth } from "../context/AuthContext";
 import { useCoreDatabase, useActivityLogs } from "../context/DatabaseContext";
 import { useUI } from "../context/UIContext";
 import { useAppNavigation } from "../context/NavigationContext";
-import { getPaymentModeLabel, getMealLabel, getMealConstraints } from "../constants";
-import { MealConfig, MealType } from "../domain";
+import { getPaymentModeLabel, getMealLabel, getMealConstraints, getMealVarieties } from "../constants";
+import { MealConfig, MealType, DietType } from "../domain";
+
+export type PresetColor = {
+  hex: string;
+  name: string;
+};
+
+export const COLOR_PALETTE: PresetColor[] = [
+  { hex: "#16A34A", name: "Emerald Green" },
+  { hex: "#15803D", name: "Forest Green" },
+  { hex: "#0D9488", name: "Teal Blue" },
+  { hex: "#2563EB", name: "Royal Blue" },
+  { hex: "#4F46E5", name: "Indigo Purple" },
+  { hex: "#9333EA", name: "Deep Purple" },
+  { hex: "#DC2626", name: "Crimson Red" },
+  { hex: "#B91C1C", name: "Ruby Red" },
+  { hex: "#E11D48", name: "Rose Pink" },
+  { hex: "#D97706", name: "Amber Gold" },
+  { hex: "#EA580C", name: "Vibrant Orange" },
+  { hex: "#78350F", name: "Saddle Brown" },
+  { hex: "#475569", name: "Slate Gray" },
+];
+
+function VarietyModal({
+  visible,
+  editingVariety,
+  allowedDietTypes,
+  onClose,
+  onSave,
+  theme,
+}: {
+  visible: boolean;
+  editingVariety: { dayId: string; mealKey: MealType; variety: DietaryVariety | null } | null;
+  allowedDietTypes: DietType[];
+  onClose: () => void;
+  onSave: (dayId: string, mealKey: MealType, varId: string | null, name: string, type: DietType, color: string) => void;
+  theme: any;
+}) {
+  const [name, setName] = useState("");
+  const [type, setType] = useState<DietType>(allowedDietTypes[0] || DietType.VEG);
+  const [color, setColor] = useState("#16A34A");
+  const [hoveredColor, setHoveredColor] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (editingVariety?.variety) {
+      setName(editingVariety.variety.name);
+      const vType = allowedDietTypes.includes(editingVariety.variety.type)
+        ? editingVariety.variety.type
+        : (allowedDietTypes[0] || DietType.VEG);
+      setType(vType);
+      setColor(editingVariety.variety.color || (vType === DietType.VEG ? "#16A34A" : "#DC2626"));
+    } else {
+      setName("");
+      const initialType = allowedDietTypes.includes(DietType.VEG) ? DietType.VEG : (allowedDietTypes[0] || DietType.NON_VEG);
+      setType(initialType);
+      setColor(initialType === DietType.VEG ? "#16A34A" : "#DC2626");
+    }
+  }, [editingVariety, allowedDietTypes]);
+
+  if (!visible || !editingVariety) return null;
+
+  const isVegSupported = allowedDietTypes.includes(DietType.VEG);
+  const isNonVegSupported = allowedDietTypes.includes(DietType.NON_VEG);
+
+  const activeColorHex = hoveredColor || color;
+  const activeColorObj = COLOR_PALETTE.find(c => c.hex.toLowerCase() === activeColorHex.trim().toLowerCase());
+  const activeColorName = activeColorObj ? activeColorObj.name : activeColorHex;
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <View
+        accessibilityViewIsModal={true}
+        style={{ flex: 1, backgroundColor: theme.colors.shadow + "99", justifyContent: "center", alignItems: "center", padding: 16 }}
+      >
+        <View style={{ width: "100%", maxWidth: 420, backgroundColor: theme.colors.surface, borderRadius: 20, padding: 20, gap: 16, borderWidth: 1, borderColor: theme.colors.border }}>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+            <Text style={{ fontSize: 18, fontWeight: "900", color: theme.colors.textPrimary }}>
+              {editingVariety.variety ? UI_TEXT.editVariety : UI_TEXT.addVarietyTitle}
+            </Text>
+            <Pressable
+              onPress={onClose}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={UI_TEXT.close}
+            >
+              <Ionicons name="close" size={22} color={theme.colors.textSecondary} />
+            </Pressable>
+          </View>
+
+          <View style={{ gap: 6 }}>
+            <Text style={{ fontSize: 12, fontWeight: "800", color: theme.colors.textSecondary }}>
+              {UI_TEXT.varietyNameLabel}
+            </Text>
+            <TextInput
+              accessible={true}
+              accessibilityLabel={UI_TEXT.varietyNameLabel}
+              accessibilityHint={UI_TEXT.varietyNamePlaceholder}
+              style={{
+                backgroundColor: theme.colors.surfaceDark,
+                borderWidth: 1,
+                borderColor: theme.colors.border,
+                borderRadius: 12,
+                paddingHorizontal: 12,
+                paddingVertical: 10,
+                fontSize: 15,
+                fontWeight: "700",
+                color: theme.colors.textPrimary,
+              }}
+              value={name}
+              onChangeText={(txt) => setName(txt.slice(0, 15))}
+              placeholder={UI_TEXT.varietyNamePlaceholder}
+              placeholderTextColor={theme.colors.textMuted}
+              maxLength={15}
+            />
+          </View>
+
+          <View style={{ gap: 6 }}>
+            <Text style={{ fontSize: 12, fontWeight: "800", color: theme.colors.textSecondary }}>
+              {UI_TEXT.primaryCategoryLabel}
+            </Text>
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              {isVegSupported && (
+                <Pressable
+                  onPress={() => {
+                    setType(DietType.VEG);
+                    if (color.toLowerCase() === "#dc2626") setColor("#16A34A");
+                  }}
+                  accessible={true}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: type === DietType.VEG }}
+                  accessibilityLabel={`${UI_TEXT.primaryCategoryLabel}: ${UI_TEXT.veg}`}
+                  style={{
+                    flex: 1,
+                    paddingVertical: 10,
+                    borderRadius: 12,
+                    alignItems: "center",
+                    backgroundColor: type === DietType.VEG ? theme.colors.veg : theme.colors.surfaceDark,
+                    borderWidth: 1.5,
+                    borderColor: type === DietType.VEG ? theme.colors.veg : theme.colors.border,
+                  }}
+                >
+                  <Text style={{ fontWeight: "900", fontSize: 13, color: type === DietType.VEG ? theme.colors.white : theme.colors.textSecondary }}>
+                    {UI_TEXT.veg.toUpperCase()}
+                  </Text>
+                </Pressable>
+              )}
+
+              {isNonVegSupported && (
+                <Pressable
+                  onPress={() => {
+                    setType(DietType.NON_VEG);
+                    if (color.toLowerCase() === "#16a34a") setColor("#DC2626");
+                  }}
+                  accessible={true}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: type === DietType.NON_VEG }}
+                  accessibilityLabel={`${UI_TEXT.primaryCategoryLabel}: ${UI_TEXT.nonVeg}`}
+                  style={{
+                    flex: 1,
+                    paddingVertical: 10,
+                    borderRadius: 12,
+                    alignItems: "center",
+                    backgroundColor: type === DietType.NON_VEG ? theme.colors.nonVeg : theme.colors.surfaceDark,
+                    borderWidth: 1.5,
+                    borderColor: type === DietType.NON_VEG ? theme.colors.nonVeg : theme.colors.border,
+                  }}
+                >
+                  <Text style={{ fontWeight: "900", fontSize: 13, color: type === DietType.NON_VEG ? theme.colors.white : theme.colors.textSecondary }}>
+                    {UI_TEXT.nonVeg.toUpperCase()}
+                  </Text>
+                </Pressable>
+              )}
+            </View>
+          </View>
+
+          <View style={{ gap: 8 }}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+              <Text style={{ fontSize: 12, fontWeight: "800", color: theme.colors.textSecondary }}>
+                {UI_TEXT.colorCodeLabel}
+              </Text>
+              <Text style={{ fontSize: 12, fontWeight: "800", color: theme.colors.primary }}>
+                {activeColorName}
+              </Text>
+            </View>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              {COLOR_PALETTE.map((c) => {
+                const isSelected = color.trim().toLowerCase() === c.hex.toLowerCase();
+                return (
+                  <Pressable
+                    key={c.hex}
+                    onPress={() => setColor(c.hex)}
+                    onHoverIn={() => setHoveredColor(c.hex)}
+                    onHoverOut={() => setHoveredColor(null)}
+                    accessible={true}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: isSelected }}
+                    accessibilityLabel={`${UI_TEXT.colorCodeLabel}: ${c.name}`}
+                    style={({ pressed }) => [
+                      {
+                        width: 32,
+                        height: 32,
+                        borderRadius: 16,
+                        backgroundColor: c.hex,
+                        borderWidth: isSelected ? 3 : 1,
+                        borderColor: isSelected ? theme.colors.textPrimary : theme.colors.border,
+                        alignItems: "center",
+                        justifyContent: "center",
+                      },
+                      pressed && { opacity: 0.8 },
+                    ]}
+                  >
+                    {isSelected && <Ionicons name="checkmark" size={16} color="#FFFFFF" />}
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+
+          <View style={{ flexDirection: "row", gap: 10, marginTop: 8 }}>
+            <Pressable
+              onPress={onClose}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={UI_TEXT.cancel}
+              style={{ flex: 1, height: 42, borderRadius: 12, backgroundColor: theme.colors.surfaceDark, borderWidth: 1, borderColor: theme.colors.border, alignItems: "center", justifyContent: "center" }}
+            >
+              <Text style={{ fontWeight: "800", color: theme.colors.textPrimary, fontSize: 14 }}>{UI_TEXT.cancel}</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => onSave(editingVariety.dayId, editingVariety.mealKey, editingVariety.variety?.id || null, name, type, color)}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={UI_TEXT.saveChanges}
+              style={{ flex: 1.5, height: 42, borderRadius: 12, backgroundColor: theme.colors.primary, alignItems: "center", justifyContent: "center" }}
+            >
+              <Text style={{ fontWeight: "900", color: theme.colors.white, fontSize: 14 }}>{UI_TEXT.saveChanges}</Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
 
 export function SettingsScreen() {
   const { handleLogout } = useAuth();
@@ -73,6 +316,126 @@ export function SettingsScreen() {
     quickCheckoutAutoCloseMs: number;
     soundEnabled: boolean;
   } | null>(null);
+
+  const [editingVarietyModal, setEditingVarietyModal] = useState<{
+    dayId: string;
+    mealKey: MealType;
+    variety: DietaryVariety | null;
+  } | null>(null);
+
+  const currentEditingAllowedTypes = useMemo(() => {
+    if (!editingVarietyModal) return [DietType.VEG, DietType.NON_VEG];
+    const day = localConfig.find((d) => d.id === editingVarietyModal.dayId);
+    if (!day) return [DietType.VEG, DietType.NON_VEG];
+    const m = day[editingVarietyModal.mealKey];
+    const isVegAllowed = day.enabled && m.enabled && (m.veg || day.vegOnly);
+    const isNonVegAllowed = day.enabled && m.enabled && !day.vegOnly && m.nonVeg;
+
+    const res: DietType[] = [];
+    if (isVegAllowed) res.push(DietType.VEG);
+    if (isNonVegAllowed) res.push(DietType.NON_VEG);
+    return res.length > 0 ? res : [DietType.VEG, DietType.NON_VEG];
+  }, [editingVarietyModal, localConfig]);
+
+  const handleSaveVariety = (
+    dayId: string,
+    mealKey: MealType,
+    varId: string | null,
+    name: string,
+    type: DietType,
+    color: string
+  ) => {
+    const trimmedName = name.trim().slice(0, 15);
+    if (!trimmedName) {
+      showAlert("Invalid Name", "Please enter a valid variety name (up to 15 characters).");
+      return;
+    }
+
+    const day = localConfig.find((d) => d.id === dayId);
+    if (!day) return;
+    const m = day[mealKey];
+
+    const isVegAllowed = day.enabled && m.enabled && (m.veg || day.vegOnly);
+    const isNonVegAllowed = day.enabled && m.enabled && !day.vegOnly && m.nonVeg;
+
+    if (type === DietType.VEG && !isVegAllowed) {
+      showAlert("Not Allowed", "Veg sub-categories are not enabled for this meal.");
+      return;
+    }
+    if (type === DietType.NON_VEG && !isNonVegAllowed) {
+      showAlert("Not Allowed", "Non-Veg sub-categories are not enabled for this meal.");
+      return;
+    }
+
+    const currentVarieties = getMealVarieties(m, day.vegOnly);
+
+    let nextVarieties: DietaryVariety[] = [];
+    if (varId) {
+      nextVarieties = currentVarieties.map((v) =>
+        v.id === varId ? { ...v, name: trimmedName, type, color } : v
+      );
+    } else {
+      if (currentVarieties.length >= 10) {
+        showAlert("Limit Reached", "Maximum 10 dietary varieties allowed per meal.");
+        return;
+      }
+      const newId = `v_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+      const newVar: DietaryVariety = {
+        id: newId,
+        name: trimmedName,
+        type,
+        color,
+      };
+      nextVarieties = [...currentVarieties, newVar];
+    }
+
+    updateMealConfig(dayId, mealKey, { varieties: nextVarieties });
+    setEditingVarietyModal(null);
+  };
+
+  const handleDeleteVariety = (dayId: string, mealKey: MealType, variety: DietaryVariety) => {
+    const day = localConfig.find((d) => d.id === dayId);
+    if (!day) return;
+    const m = day[mealKey];
+    const currentVarieties = getMealVarieties(m);
+
+    if (currentVarieties.length <= 1) {
+      showAlert("Cannot Delete", "At least one dietary variety must remain enabled for the meal.");
+      return;
+    }
+
+    // Deletion Protection Rule check
+    const isSubscribed = (subscriptions || []).some((sub) => {
+      const slots = sub.mealSlots?.[dayId] || [];
+      return slots.some((s) => {
+        const choice = s[mealKey];
+        if (choice === variety.id) return true;
+        if ((variety.id === "veg_default" || variety.isDefault) && variety.type === DietType.VEG && (choice === DietaryOption.VEG || choice === "veg")) return true;
+        if ((variety.id === "nonVeg_default" || variety.isDefault) && variety.type === DietType.NON_VEG && (choice === DietaryOption.NON_VEG || choice === "nonVeg")) return true;
+        return false;
+      });
+    });
+
+    if (isSubscribed) {
+      showAlert(
+        UI_TEXT.confirmDisableTitle,
+        `Cannot delete sub-category "${variety.name}" as it is currently subscribed in active pass(es).`
+      );
+      return;
+    }
+
+    showAlert("Delete Sub-Category", `Are you sure you want to delete "${variety.name}"?`, [
+      { text: UI_TEXT.cancel, style: "cancel" },
+      {
+        text: UI_TEXT.removeButton,
+        style: "destructive",
+        onPress: () => {
+          const nextVarieties = currentVarieties.filter((v) => v.id !== variety.id);
+          updateMealConfig(dayId, mealKey, { varieties: nextVarieties });
+        },
+      },
+    ]);
+  };
 
   // Sync saved baseline & local state when database config is loaded
   React.useEffect(() => {
@@ -403,6 +766,32 @@ export function SettingsScreen() {
               if (newM.parcelAlert !== oldM.parcelAlert) mChanges.push(`ParcelAlert:${newM.parcelAlert ? 'ON' : 'OFF'}`);
               if (newM.done !== oldM.done) mChanges.push(`Done:${newM.done ? 'ON' : 'OFF'}`);
               if (newM.current !== oldM.current) mChanges.push(`Current:${newM.current ? 'ON' : 'OFF'}`);
+
+              // Variety / Sub-category changes audit trail
+              const oldVars = getMealVarieties(oldM, oldDay.vegOnly);
+              const newVars = getMealVarieties(newM, newDay.vegOnly);
+
+              if (JSON.stringify(oldVars) !== JSON.stringify(newVars)) {
+                const addedVars = newVars.filter(nv => !oldVars.some(ov => ov.id === nv.id));
+                const removedVars = oldVars.filter(ov => !newVars.some(nv => nv.id === ov.id));
+                const modifiedVars = newVars.filter(nv => {
+                  const ov = oldVars.find(o => o.id === nv.id);
+                  return ov && (ov.name !== nv.name || ov.type !== nv.type || ov.color !== nv.color);
+                });
+
+                if (addedVars.length > 0) {
+                  mChanges.push(`Added Varieties:${addedVars.map(v => `${v.name}(${v.type})`).join(', ')}`);
+                }
+                if (removedVars.length > 0) {
+                  mChanges.push(`Deleted Varieties:${removedVars.map(v => v.name).join(', ')}`);
+                }
+                if (modifiedVars.length > 0) {
+                  mChanges.push(`Edited Varieties:${modifiedVars.map(nv => {
+                    const ov = oldVars.find(o => o.id === nv.id);
+                    return `${ov?.name || nv.id}->${nv.name}(${nv.type})`;
+                  }).join(', ')}`);
+                }
+              }
 
               if (mChanges.length > 0) {
                 dayChanges.push(`${getMealLabel(m as MealType).toUpperCase()}(${mChanges.join(',')})`);
@@ -876,6 +1265,92 @@ export function SettingsScreen() {
                                   <Switch value={m.current || false} onValueChange={(val) => validateAndSetCurrent(day.id, mKey as MealType, val)} trackColor={{ true: theme.colors.primary }} style={{ transform: [{ scale: 0.8 }], flexShrink: 0 }} />
                                </View>
                             )}
+
+                            {/* Dietary Sub-Categories manager */}
+                            {(() => {
+                              const isVegAllowed = day.enabled && m.enabled && (m.veg || day.vegOnly);
+                              const isNonVegAllowed = day.enabled && m.enabled && !day.vegOnly && m.nonVeg;
+                              const isAnyAllowed = isVegAllowed || isNonVegAllowed;
+                              const varieties = getMealVarieties(m, day.vegOnly);
+
+                              return (
+                                <View style={{ backgroundColor: theme.colors.background, padding: 10, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border, gap: 8 }}>
+                                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <View style={{ flex: 1, marginRight: 8 }}>
+                                      <Text style={{ fontSize: 12, fontWeight: '800', color: theme.colors.textSecondary }}>
+                                        {UI_TEXT.dietarySubCategories} ({varieties.length}/10)
+                                      </Text>
+                                      <Text style={{ fontSize: 10, fontWeight: '600', color: theme.colors.textMuted }}>
+                                        {isAnyAllowed
+                                          ? (day.vegOnly ? UI_TEXT.vegOnlyDayHelper : !m.nonVeg ? UI_TEXT.vegOnlyMealHelper : !m.veg ? UI_TEXT.nonVegOnlyMealHelper : UI_TEXT.dietarySubCategoriesHelper)
+                                          : UI_TEXT.noDietaryCategoryEnabled}
+                                      </Text>
+                                    </View>
+                                    {isAnyAllowed && varieties.length < 10 && (
+                                      <Pressable
+                                        onPress={() => setEditingVarietyModal({ dayId: day.id, mealKey: mKey as MealType, variety: null })}
+                                        accessible={true}
+                                        accessibilityRole="button"
+                                        accessibilityLabel={UI_TEXT.addVariety}
+                                        style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: theme.colors.primary, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 8 }}
+                                      >
+                                        <Ionicons name="add" size={14} color={theme.colors.white} />
+                                        <Text style={{ fontSize: 11, fontWeight: '800', color: theme.colors.white }}>{UI_TEXT.addVariety}</Text>
+                                      </Pressable>
+                                    )}
+                                  </View>
+
+                                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                                    {varieties.map((v) => (
+                                      <View
+                                        key={v.id}
+                                        style={{
+                                          flexDirection: 'row',
+                                          alignItems: 'center',
+                                          gap: 6,
+                                          backgroundColor: theme.colors.surface,
+                                          paddingHorizontal: 8,
+                                          paddingVertical: 5,
+                                          borderRadius: 8,
+                                          borderWidth: 1.5,
+                                          borderColor: v.color || (v.type === DietType.VEG ? theme.colors.veg : theme.colors.nonVeg),
+                                          maxWidth: '100%',
+                                        }}
+                                      >
+                                        <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: v.color || (v.type === DietType.VEG ? theme.colors.veg : theme.colors.nonVeg) }} />
+                                        <Text numberOfLines={1} style={{ fontSize: 12, fontWeight: '800', color: theme.colors.textPrimary, flexShrink: 1 }}>{v.name}</Text>
+                                        <Text style={{ fontSize: 9, fontWeight: '700', color: theme.colors.textMuted, textTransform: 'uppercase' }}>({v.type})</Text>
+
+                                        <Pressable
+                                          onPress={() => setEditingVarietyModal({ dayId: day.id, mealKey: mKey as MealType, variety: v })}
+                                          accessible={true}
+                                          accessibilityRole="button"
+                                          accessibilityLabel={`${UI_TEXT.editVariety}: ${v.name}`}
+                                          style={{ padding: 2 }}
+                                        >
+                                          <Ionicons name="pencil-outline" size={13} color={theme.colors.textSecondary} />
+                                        </Pressable>
+
+                                        <Pressable
+                                          onPress={() => handleDeleteVariety(day.id, mKey as MealType, v)}
+                                          accessible={true}
+                                          accessibilityRole="button"
+                                          accessibilityLabel={`Delete variety ${v.name}`}
+                                          style={{ padding: 2 }}
+                                        >
+                                          <Ionicons name="trash-outline" size={13} color={theme.colors.nonVeg} />
+                                        </Pressable>
+                                      </View>
+                                    ))}
+                                    {varieties.length === 0 && (
+                                      <Text style={{ fontSize: 11, fontStyle: 'italic', color: theme.colors.textMuted }}>
+                                        {UI_TEXT.noActiveSubCategories}
+                                      </Text>
+                                    )}
+                                  </View>
+                                </View>
+                              );
+                            })()}
                           </View>
                         )}
                       </View>
@@ -951,6 +1426,15 @@ export function SettingsScreen() {
         </Pressable>
         <View style={styles.footer}><Text style={styles.footerText}>{UI_TEXT.footerCopyright}</Text></View>
       </ScrollView>
+
+      <VarietyModal
+        visible={!!editingVarietyModal}
+        editingVariety={editingVarietyModal}
+        allowedDietTypes={currentEditingAllowedTypes}
+        onClose={() => setEditingVarietyModal(null)}
+        onSave={handleSaveVariety}
+        theme={theme}
+      />
     </View>
   );
 }

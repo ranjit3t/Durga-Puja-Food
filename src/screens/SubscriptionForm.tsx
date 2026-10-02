@@ -41,6 +41,9 @@ import {
   getDayAbbr,
   generateUniquePasscode,
   formatTakenTime,
+  getMealVarieties,
+  getDietTypeForChoice,
+  getVarietyForChoice,
 } from "../constants";
 import {
   MealChoice,
@@ -256,17 +259,26 @@ export function SubscriptionForm() {
       let lV = 0, lN = 0, lP = 0;
       let dV = 0, dN = 0, dP = 0;
 
-      slots.forEach(s => {
-        if (s[MealType.BREAKFAST] === DietaryOption.VEG) bV++;
-        if (s[MealType.BREAKFAST] === DietaryOption.NON_VEG) bN++;
+      const dConfig = dayConfig.find(d => d.id === dayId);
+      slots.forEach((s) => {
+        const bConf = dConfig ? dConfig[MealType.BREAKFAST] : undefined;
+        const lConf = dConfig ? dConfig[MealType.LUNCH] : undefined;
+        const dConf = dConfig ? dConfig[MealType.DINNER] : undefined;
+
+        const bDiet = getDietTypeForChoice(s[MealType.BREAKFAST], getMealVarieties(bConf));
+        const lDiet = getDietTypeForChoice(s[MealType.LUNCH], getMealVarieties(lConf));
+        const dDiet = getDietTypeForChoice(s[MealType.DINNER], getMealVarieties(dConf));
+
+        if (bDiet === DietType.VEG) bV++;
+        if (bDiet === DietType.NON_VEG) bN++;
         if (s.breakfastParcel) bP++;
 
-        if (s[MealType.LUNCH] === DietaryOption.VEG) lV++;
-        if (s[MealType.LUNCH] === DietaryOption.NON_VEG) lN++;
+        if (lDiet === DietType.VEG) lV++;
+        if (lDiet === DietType.NON_VEG) lN++;
         if (s.lunchParcel) lP++;
 
-        if (s[MealType.DINNER] === DietaryOption.VEG) dV++;
-        if (s[MealType.DINNER] === DietaryOption.NON_VEG) dN++;
+        if (dDiet === DietType.VEG) dV++;
+        if (dDiet === DietType.NON_VEG) dN++;
         if (s.dinnerParcel) dP++;
       });
 
@@ -1203,12 +1215,16 @@ export function SubscriptionForm() {
                 const isPast = !!currentDayId && !isCurrent && !isFuture;
                 const isLocked = isDone || (!lockIdentity && isPast);
 
+                const dayConf = (dayConfig || []).find((d) => d.id === selectedDay);
+                const mConf = dayConf ? dayConf[slot] : undefined;
+                const varieties = getMealVarieties(mConf);
+
                 return (
                   <View key={slot} style={[{ marginBottom: 16 }, isLocked && { opacity: 0.5 }]}>
                     <Text style={[styles.label, { marginTop: 0, marginBottom: 8, fontSize: 14, color: theme.colors.textPrimary }]}>
                       {label} {isDone ? `(${UI_TEXT.mealDoneLabel})` : (!lockIdentity && isPast) ? `(${UI_TEXT.resSuffix})` : ""}
                     </Text>
-                    <View style={styles.choiceRow}>
+                    <View style={[styles.choiceRow, { flexWrap: "wrap", gap: 8 }]}>
                       {/* Option: None */}
                       <Pressable
                         onPress={() => isAdmin && canEdit && !isLocked && setMealSlotChoice(slot, DietaryOption.NONE)}
@@ -1218,7 +1234,7 @@ export function SubscriptionForm() {
                             ? { backgroundColor: theme.colors.surfaceDark, borderColor: theme.colors.primary, borderWidth: 2 }
                             : styles.noneChoice,
                           (!isAdmin || isLocked) && { opacity: currentSlotChoice === DietaryOption.NONE ? 1 : 0.3 },
-                          { paddingVertical: 12, paddingHorizontal: 4 }
+                          { paddingVertical: 10, paddingHorizontal: 10, flex: 1, minWidth: 70 }
                         ]}
                         disabled={!isAdmin || !canEdit || isLocked}
                       >
@@ -1233,53 +1249,52 @@ export function SubscriptionForm() {
                         </Text>
                       </Pressable>
 
-                      {/* Option: Veg */}
-                      {isDietaryEnabled(selectedDay, slot, DietType.VEG, dayConfig) && (
-                        <Pressable
-                          onPress={() => isAdmin && canEdit && !isLocked && setMealSlotChoice(slot, DietaryOption.VEG)}
-                          style={[
-                            styles.choice,
-                            currentSlotChoice === DietaryOption.VEG ? styles.vegChoice : styles.noneChoice,
-                            (!isAdmin || isLocked) && { opacity: currentSlotChoice === DietaryOption.VEG ? 1 : 0.3 },
-                            { paddingVertical: 12, paddingHorizontal: 4 }
-                          ]}
-                          disabled={!isAdmin || !canEdit || isLocked}
-                        >
-                          <Text
-                            style={[
-                              styles.choiceText,
-                              currentSlotChoice === DietaryOption.VEG && styles.choiceTextOn,
-                              { fontSize: 12 }
-                            ]}
-                          >
-                            {getDietaryOptionLabel(DietaryOption.VEG)}
-                          </Text>
-                        </Pressable>
-                      )}
+                      {/* Options: All Active Varieties / Sub-Categories */}
+                      {varieties.map((v) => {
+                        if (isVegOnly && v.type === DietType.NON_VEG) return null;
+                        if (!isDietaryEnabled(selectedDay, slot, v.type, dayConfig)) return null;
 
-                      {/* Option: Non-Veg */}
-                      {!isVegOnly && isDietaryEnabled(selectedDay, slot, DietType.NON_VEG, dayConfig) && (
-                        <Pressable
-                          onPress={() => isAdmin && canEdit && !isLocked && setMealSlotChoice(slot, DietaryOption.NON_VEG)}
-                          style={[
-                            styles.choice,
-                            currentSlotChoice === DietaryOption.NON_VEG ? styles.nonVegChoice : styles.noneChoice,
-                            (!isAdmin || isLocked) && { opacity: currentSlotChoice === DietaryOption.NON_VEG ? 1 : 0.3 },
-                            { paddingVertical: 12, paddingHorizontal: 4 }
-                          ]}
-                          disabled={!isAdmin || !canEdit || isLocked}
-                        >
-                          <Text
+                        const isVegMatch =
+                          (currentSlotChoice === DietaryOption.VEG || currentSlotChoice === "veg" || currentSlotChoice === "veg_default") &&
+                          v.type === DietType.VEG &&
+                          (v.id === "veg_default" || v.isDefault || varieties.find(x => x.type === DietType.VEG)?.id === v.id);
+
+                        const isNonVegMatch =
+                          (currentSlotChoice === DietaryOption.NON_VEG || currentSlotChoice === "nonVeg" || currentSlotChoice === "nonVeg_default") &&
+                          v.type === DietType.NON_VEG &&
+                          (v.id === "nonVeg_default" || v.isDefault || varieties.find(x => x.type === DietType.NON_VEG)?.id === v.id);
+
+                        const isSelected = currentSlotChoice === v.id || isVegMatch || isNonVegMatch;
+
+                        const vColor = v.color || (v.type === DietType.VEG ? theme.colors.veg : theme.colors.nonVeg);
+
+                        return (
+                          <Pressable
+                            key={v.id}
+                            onPress={() => isAdmin && canEdit && !isLocked && setMealSlotChoice(slot, v.id)}
                             style={[
-                              styles.choiceText,
-                              currentSlotChoice === DietaryOption.NON_VEG && styles.choiceTextOn,
-                              { fontSize: 12 }
+                              styles.choice,
+                              isSelected
+                                ? { backgroundColor: vColor, borderColor: vColor, borderWidth: 2 }
+                                : { backgroundColor: theme.colors.surfaceDark, borderColor: theme.colors.border, borderWidth: 1 },
+                              (!isAdmin || isLocked) && { opacity: isSelected ? 1 : 0.3 },
+                              { paddingVertical: 10, paddingHorizontal: 10, flex: 1, minWidth: 90 }
                             ]}
+                            disabled={!isAdmin || !canEdit || isLocked}
                           >
-                            {getDietaryOptionLabel(DietaryOption.NON_VEG)}
-                          </Text>
-                        </Pressable>
-                      )}
+                            <Text
+                              style={[
+                                styles.choiceText,
+                                isSelected ? { color: theme.colors.white, fontWeight: "900" } : { color: theme.colors.textSecondary },
+                                { fontSize: 12 }
+                              ]}
+                              numberOfLines={1}
+                            >
+                              {v.name}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
                     </View>
                   </View>
                 );
@@ -1353,7 +1368,8 @@ export function SubscriptionForm() {
           {/* SECTION 3: Food Collection */}
           {lockIdentity && [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].some(s => {
             const choice = form.mealSlots[selectedDay]?.[selectedPerson]?.[s];
-            return choice && choice !== DietaryOption.NONE && isDietaryEnabled(selectedDay, s, choice === DietaryOption.VEG ? DietType.VEG : DietType.NON_VEG, dayConfig);
+            const dietKey = getDietTypeForChoice(choice);
+            return choice && choice !== DietaryOption.NONE && dietKey && isDietaryEnabled(selectedDay, s, dietKey, dayConfig);
           }) && (
             <View style={{ marginTop: 24, borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: 16 }}>
               <View style={{ marginBottom: 12 }}>
@@ -1370,14 +1386,14 @@ export function SubscriptionForm() {
                       form.mealSlots[selectedDay]?.[selectedPerson]?.[slot];
                     if (!choice || choice === DietaryOption.NONE) return null;
 
-                    const dietKey = choice === DietaryOption.VEG ? DietType.VEG : DietType.NON_VEG;
-                    if (!isDietaryEnabled(selectedDay, slot, dietKey, dayConfig))
+                    const dietKey = getDietTypeForChoice(choice);
+                    if (!dietKey || !isDietaryEnabled(selectedDay, slot, dietKey, dayConfig))
                       return null;
 
                     const isTaken =
                       !!form.takenByPerson[selectedDay]?.[selectedPerson]?.[slot];
                     const slotColorStyle =
-                      choice === DietaryOption.VEG
+                      dietKey === DietType.VEG
                         ? styles.vegChoice
                         : styles.nonVegChoice;
 

@@ -115,6 +115,19 @@ export function ViewMenuScreen() {
       return str;
     };
 
+    const formatListItems = (raw: any): string => {
+      if (Array.isArray(raw)) {
+        return raw.filter(Boolean).map(String).join(", ");
+      }
+      if (raw && typeof raw === "object") {
+        return Object.values(raw).filter(Boolean).map(String).join(", ");
+      }
+      if (typeof raw === "string" && raw.trim().length > 0) {
+        return raw.trim();
+      }
+      return UI_TEXT.none;
+    };
+
     const rows: string[][] = [];
 
     activeDays.forEach((dayId) => {
@@ -127,8 +140,8 @@ export function ViewMenuScreen() {
           const mealMenu: MealMenu = dayMenu[mKey] || { veg: [], nonVeg: [] };
           const mealLabel = getMealLabel(mKey);
 
-          const vegItems = (mealMenu.veg && mealMenu.veg.length > 0) ? mealMenu.veg.join(", ") : UI_TEXT.none;
-          const nonVegItems = (mealMenu.nonVeg && mealMenu.nonVeg.length > 0) ? mealMenu.nonVeg.join(", ") : UI_TEXT.none;
+          const vegItems = formatListItems(mealMenu.veg);
+          const nonVegItems = formatListItems(mealMenu.nonVeg);
 
           const vegPrice = mealMenu.vegPrice || UI_TEXT.zero;
           const nonVegPrice = mealMenu.nonVegPrice || UI_TEXT.zero;

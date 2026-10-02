@@ -7,7 +7,7 @@ import { useDatabase } from "../../context/DatabaseContext";
 import { useUI } from "../../context/UIContext";
 import { useAppNavigation } from "../../context/NavigationContext";
 import { Subscription, MealType, DietaryOption, DietType, normalizeChoice, toBool, ActivityModule, ActivityAction, AppThemeMode, AppScreen, TakenState, CheckoutSource, MealSlot } from "../../types";
-import { isParcelEnabled, isKidsParcelEnabled, isMealCurrent, isMealDone, getMealLabel, formatTakenTime, isVegOnlyDay, isDietaryEnabled, isMealEnabled, getValidSlotChoice, isParcelValidForSlot } from "../../constants";
+import { isParcelEnabled, isKidsParcelEnabled, isMealCurrent, isMealDone, getMealLabel, formatTakenTime, isVegOnlyDay, isDietaryEnabled, isMealEnabled, getValidSlotChoice, isParcelValidForSlot, getMealVarieties, getVarietyForChoice, getDietTypeForChoice } from "../../constants";
 import { QuickCheckoutHeader } from "../../features/checkout/components/QuickCheckoutHeader";
 import { QuickCheckoutItemCard } from "../../features/checkout/components/QuickCheckoutItemCard";
 
@@ -82,20 +82,16 @@ function playSynthesizedChime() {
   }
 }
 
-export enum CategoryKey {
-  ADULT_VEG = "adultVeg",
-  ADULT_NON_VEG = "adultNonVeg",
-  KIDS_VEG = "kidsVeg",
-  KIDS_NON_VEG = "kidsNonVeg",
-}
-
 export enum SectionType {
   ADULTS = "adults",
   KIDS = "kids",
 }
 
 export interface CategoryInfo {
-  key: CategoryKey;
+  key: string;
+  varietyId?: string;
+  varietyName?: string;
+  varietyColor?: string;
   section: SectionType;
   subSection: DietType;
   label: string;
@@ -107,7 +103,7 @@ export interface CategoryInfo {
   remParcelCount: number;
 }
 
-export type CategoryInputs = Record<CategoryKey, { parcel: number; dineIn: number }>;
+export type CategoryInputs = Record<string, { parcel: number; dineIn: number }>;
 
 interface QuickCheckoutModalProps {
   visible: boolean;
@@ -131,6 +127,7 @@ interface SuccessData {
   mealLabel: string;
   categoryDetails: Array<{
     categoryLabel: string;
+    varietyColor?: string;
     dineIn: number;
     parcel: number;
   }>;
@@ -148,6 +145,8 @@ export function QuickCheckoutModal({
   onClose,
   onSuccess
 }: QuickCheckoutModalProps) {
+  if (!visible || !subscription) return null;
+
   const { theme } = useAppTheme();
   const { dayConfig, kidsEnabled, addActivityLog, upsertSubscription, subscriptions, quickCheckoutAutoCloseMs, soundEnabled } = useDatabase();
   const { showAlert } = useUI();
@@ -159,12 +158,7 @@ export function QuickCheckoutModal({
     return subscriptions.find(s => s.id === subscription.id) || subscription;
   }, [subscription, subscriptions]);
 
-  const [inputs, setInputs] = useState<CategoryInputs>({
-    [CategoryKey.ADULT_VEG]: { parcel: 0, dineIn: 0 },
-    [CategoryKey.ADULT_NON_VEG]: { parcel: 0, dineIn: 0 },
-    [CategoryKey.KIDS_VEG]: { parcel: 0, dineIn: 0 },
-    [CategoryKey.KIDS_NON_VEG]: { parcel: 0, dineIn: 0 },
-  });
+  const [inputs, setInputs] = useState<CategoryInputs>({});
 
   const [successData, setSuccessData] = useState<SuccessData | null>(null);
   const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -237,56 +231,11 @@ export function QuickCheckoutModal({
 
     const parcelSupported = isParcelEnabled(dayId, mealType, dayConfig);
 
-    const categories: Record<CategoryKey, CategoryInfo> = {
-      [CategoryKey.ADULT_VEG]: {
-        key: CategoryKey.ADULT_VEG,
-        section: SectionType.ADULTS,
-        subSection: DietType.VEG,
-        label: kidsEnabled ? UI_TEXT.adultVeg : UI_TEXT.memberVeg,
-        plannedCount: 0,
-        servedCount: 0,
-        remMealCount: 0,
-        parcelPlannedCount: 0,
-        parcelServedCount: 0,
-        remParcelCount: 0,
-      },
-      [CategoryKey.ADULT_NON_VEG]: {
-        key: CategoryKey.ADULT_NON_VEG,
-        section: SectionType.ADULTS,
-        subSection: DietType.NON_VEG,
-        label: kidsEnabled ? UI_TEXT.adultNonVeg : UI_TEXT.memberNonVeg,
-        plannedCount: 0,
-        servedCount: 0,
-        remMealCount: 0,
-        parcelPlannedCount: 0,
-        parcelServedCount: 0,
-        remParcelCount: 0,
-      },
-      [CategoryKey.KIDS_VEG]: {
-        key: CategoryKey.KIDS_VEG,
-        section: SectionType.KIDS,
-        subSection: DietType.VEG,
-        label: UI_TEXT.kidsVeg,
-        plannedCount: 0,
-        servedCount: 0,
-        remMealCount: 0,
-        parcelPlannedCount: 0,
-        parcelServedCount: 0,
-        remParcelCount: 0,
-      },
-      [CategoryKey.KIDS_NON_VEG]: {
-        key: CategoryKey.KIDS_NON_VEG,
-        section: SectionType.KIDS,
-        subSection: DietType.NON_VEG,
-        label: UI_TEXT.kidsNonVeg,
-        plannedCount: 0,
-        servedCount: 0,
-        remMealCount: 0,
-        parcelPlannedCount: 0,
-        parcelServedCount: 0,
-        remParcelCount: 0,
-      },
-    };
+    const dayConf = (dayConfig || []).find((d) => d.id === dayId);
+    const mConf = dayConf ? dayConf[mealType] : undefined;
+    const varieties = getMealVarieties(mConf);
+
+    const categories: Record<string, CategoryInfo> = {};
 
     let totalFoodRegistered = 0;
     let totalFoodAlreadyServed = 0;
@@ -301,10 +250,32 @@ export function QuickCheckoutModal({
       const choice = getValidSlotChoice(dayId, mealType, slot?.[mealKey], dayConfig);
       if (choice === DietaryOption.NONE) continue;
 
-      const isVeg = choice === DietaryOption.VEG;
-      const catKey = isKid
-        ? (isVeg ? CategoryKey.KIDS_VEG : CategoryKey.KIDS_NON_VEG)
-        : (isVeg ? CategoryKey.ADULT_VEG : CategoryKey.ADULT_NON_VEG);
+      const variety = getVarietyForChoice(choice, varieties);
+      const diet = getDietTypeForChoice(choice, varieties) || DietType.VEG;
+
+      const varId = variety ? variety.id : (choice === DietaryOption.NON_VEG ? "nonVeg_default" : "veg_default");
+      const varName = variety ? variety.name : (choice === DietaryOption.NON_VEG ? "Non-Veg" : "Veg");
+      const varColor = variety?.color || (diet === DietType.VEG ? theme.colors.veg : theme.colors.nonVeg);
+
+      const catKey = `${isKid ? "kids" : "adult"}_${varId}`;
+
+      if (!categories[catKey]) {
+        categories[catKey] = {
+          key: catKey,
+          varietyId: varId,
+          varietyName: varName,
+          varietyColor: varColor,
+          section: isKid ? SectionType.KIDS : SectionType.ADULTS,
+          subSection: diet,
+          label: `${varName}${kidsEnabled ? (isKid ? " (Kid)" : " (Adult)") : ""}`,
+          plannedCount: 0,
+          servedCount: 0,
+          remMealCount: 0,
+          parcelPlannedCount: 0,
+          parcelServedCount: 0,
+          remParcelCount: 0,
+        };
+      }
 
       const cat = categories[catKey];
       cat.plannedCount++;
@@ -375,12 +346,11 @@ export function QuickCheckoutModal({
     if (visible && activeSubscription && quickCheckoutDetails) {
       const passId = activeSubscription.id;
       if (activePassIdRef.current !== passId) {
-        setInputs({
-          [CategoryKey.ADULT_VEG]: { parcel: 0, dineIn: 0 },
-          [CategoryKey.ADULT_NON_VEG]: { parcel: 0, dineIn: 0 },
-          [CategoryKey.KIDS_VEG]: { parcel: 0, dineIn: 0 },
-          [CategoryKey.KIDS_NON_VEG]: { parcel: 0, dineIn: 0 },
+        const initInputs: CategoryInputs = {};
+        Object.keys(quickCheckoutDetails.categories).forEach((catKey) => {
+          initInputs[catKey] = { parcel: 0, dineIn: 0 };
         });
+        setInputs(initInputs);
         setSuccessData(null);
         activePassIdRef.current = passId;
       }
@@ -449,8 +419,9 @@ export function QuickCheckoutModal({
         let changed = false;
         const nextInputs = { ...prev };
 
-        Object.values(CategoryKey).forEach((catKey) => {
+        Object.keys(quickCheckoutDetails.categories).forEach((catKey) => {
           const cat = quickCheckoutDetails.categories[catKey];
+          if (!cat) return;
           const currentP = prev[catKey]?.parcel || 0;
           const currentD = prev[catKey]?.dineIn || 0;
 
@@ -464,7 +435,7 @@ export function QuickCheckoutModal({
             clampedD = Math.max(0, maxMeal - clampedP);
           }
 
-          if (clampedP !== currentP || clampedD !== currentD) {
+          if (clampedP !== currentP || clampedD !== currentD || !prev[catKey]) {
             nextInputs[catKey] = { parcel: clampedP, dineIn: clampedD };
             changed = true;
           }
@@ -476,19 +447,19 @@ export function QuickCheckoutModal({
   }, [quickCheckoutDetails]);
 
   // Interdependence change handlers for Parcel & Dine-In inputs
-  const handleParcelChange = (catKey: CategoryKey, newVal: number) => {
+  const handleParcelChange = (catKey: string, newVal: number) => {
     if (!quickCheckoutDetails) return;
     const cat = quickCheckoutDetails.categories[catKey];
+    if (!cat) return;
     const maxP = cat.remParcelCount;
     const maxMeal = cat.remMealCount;
 
     const clampedP = Math.max(0, Math.min(maxP, newVal));
 
     setInputs((prev) => {
-      const currDineIn = prev[catKey].dineIn;
+      const currDineIn = prev[catKey]?.dineIn || 0;
       let newDineIn = currDineIn;
 
-      // Summation constraint: P + D <= remMeal
       if (clampedP + currDineIn > maxMeal) {
         newDineIn = Math.max(0, maxMeal - clampedP);
       }
@@ -503,18 +474,18 @@ export function QuickCheckoutModal({
     });
   };
 
-  const handleDineInChange = (catKey: CategoryKey, newVal: number) => {
+  const handleDineInChange = (catKey: string, newVal: number) => {
     if (!quickCheckoutDetails) return;
     const cat = quickCheckoutDetails.categories[catKey];
+    if (!cat) return;
     const maxMeal = cat.remMealCount;
 
     const clampedD = Math.max(0, Math.min(maxMeal, newVal));
 
     setInputs((prev) => {
-      const currParcel = prev[catKey].parcel;
+      const currParcel = prev[catKey]?.parcel || 0;
       let newParcel = currParcel;
 
-      // Summation constraint: P + D <= remMeal
       if (currParcel + clampedD > maxMeal) {
         newParcel = Math.max(0, maxMeal - clampedD);
       }
@@ -539,36 +510,37 @@ export function QuickCheckoutModal({
       key: SectionType;
       title: string;
       subSections: Array<{
-        key: DietType;
+        key: string;
         label: string;
         isVeg: boolean;
         categoryInfo: CategoryInfo;
       }>;
     }> = [];
 
-    // 1. Adults / Members Section
-    const adultSubSections = [];
-    const adultVeg = categories[CategoryKey.ADULT_VEG];
-    const adultNonVeg = categories[CategoryKey.ADULT_NON_VEG];
+    const getSubSectionsForSection = (section: SectionType) => {
+      const result: Array<{
+        key: string;
+        label: string;
+        isVeg: boolean;
+        categoryInfo: CategoryInfo;
+      }> = [];
 
-    if (adultVeg.remMealCount > 0 || (parcelSupported && adultVeg.remParcelCount > 0)) {
-      adultSubSections.push({
-        key: DietType.VEG,
-        label: UI_TEXT.vegSubsection,
-        isVeg: true,
-        categoryInfo: adultVeg,
+      Object.values(categories).forEach((cat) => {
+        if (cat.section !== section) return;
+        if (cat.remMealCount <= 0 && (!parcelSupported || cat.remParcelCount <= 0)) return;
+
+        result.push({
+          key: cat.key,
+          label: cat.label,
+          isVeg: cat.subSection === DietType.VEG,
+          categoryInfo: cat,
+        });
       });
-    }
 
-    if (adultNonVeg.remMealCount > 0 || (parcelSupported && adultNonVeg.remParcelCount > 0)) {
-      adultSubSections.push({
-        key: DietType.NON_VEG,
-        label: UI_TEXT.nonVegSubsection,
-        isVeg: false,
-        categoryInfo: adultNonVeg,
-      });
-    }
+      return result;
+    };
 
+    const adultSubSections = getSubSectionsForSection(SectionType.ADULTS);
     if (adultSubSections.length > 0) {
       sections.push({
         key: SectionType.ADULTS,
@@ -577,30 +549,8 @@ export function QuickCheckoutModal({
       });
     }
 
-    // 2. Kids Section (Only if kidsEnabled)
     if (kidsEnabled) {
-      const kidsSubSections = [];
-      const kidsVeg = categories[CategoryKey.KIDS_VEG];
-      const kidsNonVeg = categories[CategoryKey.KIDS_NON_VEG];
-
-      if (kidsVeg.remMealCount > 0 || (parcelSupported && kidsVeg.remParcelCount > 0)) {
-        kidsSubSections.push({
-          key: DietType.VEG,
-          label: UI_TEXT.vegSubsection,
-          isVeg: true,
-          categoryInfo: kidsVeg,
-        });
-      }
-
-      if (kidsNonVeg.remMealCount > 0 || (parcelSupported && kidsNonVeg.remParcelCount > 0)) {
-        kidsSubSections.push({
-          key: DietType.NON_VEG,
-          label: UI_TEXT.nonVegSubsection,
-          isVeg: false,
-          categoryInfo: kidsNonVeg,
-        });
-      }
-
+      const kidsSubSections = getSubSectionsForSection(SectionType.KIDS);
       if (kidsSubSections.length > 0) {
         sections.push({
           key: SectionType.KIDS,
@@ -616,7 +566,7 @@ export function QuickCheckoutModal({
   const totalSelectedItems = useMemo(() => {
     let count = 0;
     Object.values(inputs).forEach((inp) => {
-      count += inp.parcel + inp.dineIn;
+      count += (inp?.parcel || 0) + (inp?.dineIn || 0);
     });
     return count;
   }, [inputs]);
@@ -656,31 +606,25 @@ export function QuickCheckoutModal({
 
     const categoryServedDetails: Array<{
       categoryLabel: string;
+      varietyColor?: string;
       dineIn: number;
       parcel: number;
     }> = [];
 
     let parcelDiscrepancyOccurred = false;
 
-    // Process each of the 4 categories
-    const categoryOrder = [
-      CategoryKey.ADULT_VEG,
-      CategoryKey.ADULT_NON_VEG,
-      CategoryKey.KIDS_VEG,
-      CategoryKey.KIDS_NON_VEG,
-    ];
+    const dayConf = (dayConfig || []).find((d) => d.id === dayId);
+    const mConf = dayConf ? dayConf[mealType] : undefined;
+    const varieties = getMealVarieties(mConf);
 
-    for (const catKey of categoryOrder) {
+    for (const catKey of Object.keys(quickCheckoutDetails.categories)) {
       const cat = quickCheckoutDetails.categories[catKey];
+      if (!cat) continue;
       const rawP = inputs[catKey]?.parcel || 0;
       const rawD = inputs[catKey]?.dineIn || 0;
 
-      // Mathematical invariant protection:
-      // 1. Parcel taken <= remaining parcel subscribed for category
       const safeParcelInput = Math.max(0, Math.min(cat.remParcelCount, rawP));
-      // 2. Dine-In taken <= remaining meal subscribed for category
       let safeDineInInput = Math.max(0, Math.min(cat.remMealCount, rawD));
-      // 3. Dine-In + Parcel <= remaining meal subscribed for category
       if (safeParcelInput + safeDineInInput > cat.remMealCount) {
         safeDineInInput = Math.max(0, cat.remMealCount - safeParcelInput);
       }
@@ -689,6 +633,7 @@ export function QuickCheckoutModal({
 
       categoryServedDetails.push({
         categoryLabel: cat.label,
+        varietyColor: cat.varietyColor,
         dineIn: safeDineInInput,
         parcel: safeParcelInput,
       });
@@ -697,20 +642,20 @@ export function QuickCheckoutModal({
       let remDineInToAllocate = safeDineInInput;
 
       const isKidCategory = cat.section === SectionType.KIDS;
-      const isVegCategory = cat.subSection === DietType.VEG;
+      const targetVarId = cat.varietyId;
 
-      // Helper to test if slot index i belongs to this category
       const isSlotInCat = (i: number) => {
         if (!isMealEnabled(dayId, mealType, dayConfig)) return false;
-
         const isKidSlot = kidsEnabled && i >= peopleCount;
         if (isKidCategory !== isKidSlot) return false;
 
         const choice = getValidSlotChoice(dayId, mealType, updatedSub.mealSlots[dayId]?.[i]?.[mealKey], dayConfig);
         if (choice === DietaryOption.NONE) return false;
 
-        const isVegSlot = choice === DietaryOption.VEG;
-        return isVegSlot === isVegCategory;
+        const variety = getVarietyForChoice(choice, varieties);
+        const slotVarId = variety ? variety.id : (choice === DietaryOption.NON_VEG ? "nonVeg_default" : "veg_default");
+
+        return slotVarId === targetVarId;
       };
 
       const checkParcelOptedForSlot = (i: number) => {
@@ -719,7 +664,6 @@ export function QuickCheckoutModal({
         return isParcelValidForSlot(dayId, mealType, choice, updatedSub.mealSlots[dayId]?.[i]?.[parcelKey as keyof MealSlot], dayConfig, isKidSlot, !!kidsEnabled);
       };
 
-      // Step 1: Allocate Parcel inputs ONLY to slots in this category where slot opted for parcel & parcel/meal pending
       if (remParcelToAllocate > 0) {
         for (let i = 0; i < headcount; i++) {
           if (remParcelToAllocate <= 0) break;
@@ -742,9 +686,7 @@ export function QuickCheckoutModal({
         }
       }
 
-      // Step 2: Allocate Dine-In inputs to remaining unserved slots in this category
       if (remDineInToAllocate > 0) {
-        // Priority 1: Unserved slots that did NOT opt for parcel
         for (let i = 0; i < headcount; i++) {
           if (remDineInToAllocate <= 0) break;
           if (!isSlotInCat(i)) continue;
@@ -763,7 +705,6 @@ export function QuickCheckoutModal({
           }
         }
 
-        // Priority 2: Unserved slots that DID opt for parcel (marks meal served, explicitly setting parcel taken false -> creates missed parcel condition)
         if (remDineInToAllocate > 0) {
           for (let i = 0; i < headcount; i++) {
             if (remDineInToAllocate <= 0) break;
@@ -785,7 +726,6 @@ export function QuickCheckoutModal({
         }
       }
 
-      // Step 3: Check Parcel Discrepancy rule for this category
       const isKidCat = cat.section === SectionType.KIDS;
       const isKidParcelOpt = isKidsParcelEnabled(dayId, mealType, dayConfig, kidsEnabled);
       const isParcelCheckActive = isKidCat ? isKidParcelOpt : quickCheckoutDetails.parcelSupported;
@@ -1101,9 +1041,12 @@ export function QuickCheckoutModal({
                         borderRadius: 8,
                       }}
                     >
-                      <Text style={{ fontSize: 13, fontWeight: "800", color: theme.colors.textPrimary }}>
-                        {item.categoryLabel}
-                      </Text>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                        <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: item.varietyColor || theme.colors.success }} />
+                        <Text style={{ fontSize: 13, fontWeight: "800", color: theme.colors.textPrimary }}>
+                          {item.categoryLabel}
+                        </Text>
+                      </View>
                       <Text style={{ fontSize: 13, fontWeight: "800", color: theme.colors.success }}>
                         {parts.join(", ")}
                       </Text>
@@ -1486,7 +1429,9 @@ export function QuickCheckoutModal({
                     {/* Subsections (Veg / Non-Veg) */}
                     {section.subSections.map((sub) => {
                       const cat = sub.categoryInfo;
-                      const catInputs = inputs[cat.key];
+                      const catInputs = (cat && inputs[cat.key]) ? inputs[cat.key] : { parcel: 0, dineIn: 0 };
+                      const parcelVal = catInputs?.parcel ?? 0;
+                      const dineInVal = catInputs?.dineIn ?? 0;
 
                       return (
                         <View key={sub.key} style={{ gap: 4 }}>
@@ -1525,7 +1470,7 @@ export function QuickCheckoutModal({
                                 plannedCount={cat.parcelPlannedCount}
                                 servedCount={cat.parcelServedCount}
                                 remCount={cat.remParcelCount}
-                                value={catInputs.parcel}
+                                value={parcelVal}
                                 onChange={(val) => handleParcelChange(cat.key, val)}
                                 max={cat.remParcelCount}
                                 disabled={!isStillCurrent || isDone}
@@ -1539,7 +1484,7 @@ export function QuickCheckoutModal({
                                 plannedCount={cat.plannedCount}
                                 servedCount={cat.servedCount}
                                 remCount={cat.remMealCount}
-                                value={catInputs.dineIn}
+                                value={dineInVal}
                                 onChange={(val) => handleDineInChange(cat.key, val)}
                                 max={cat.remMealCount}
                                 disabled={!isStillCurrent || isDone}

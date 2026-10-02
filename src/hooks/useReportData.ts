@@ -16,7 +16,10 @@ import {
   isDietaryEnabled,
   isParcelEnabled,
   isKidsParcelEnabled,
-  isMealCurrent
+  isMealCurrent,
+  getDietTypeForChoice,
+  getMealVarieties,
+  getMealGuestCounts,
 } from "../constants";
 import { getAmountDiscrepancyData, resolvePrice, DiscrepancyItem } from "../utils/paymentUtils";
 
@@ -92,10 +95,12 @@ export function useReportData(
             if (choice === DietaryOption.NONE) return;
             if (!isMealEnabled(day, type, dayConfig)) return;
 
-            const diet = choice === DietaryOption.VEG ? DietType.VEG : DietType.NON_VEG;
-            if (!isDietaryEnabled(day, type, diet, dayConfig)) return;
+            const dayConf = (dayConfig || []).find(d => d.id === day);
+            const mConf = dayConf ? dayConf[type] : undefined;
+            const diet = getDietTypeForChoice(choice, getMealVarieties(mConf));
+            if (!diet || !isDietaryEnabled(day, type, diet, dayConfig)) return;
 
-            const isVeg = choice === DietaryOption.VEG;
+            const isVeg = diet === DietType.VEG;
             const hasTaken = taken[idx]?.[type] || taken[idx]?.[`${type}Parcel` as keyof typeof s];
 
             if (isVeg) {
@@ -145,15 +150,20 @@ export function useReportData(
       });
 
       const dayMenu = foodMenu[day];
+      const dayConf = (dayConfig || []).find((d) => d.id === day);
       if (guestEnabled && dayMenu) {
         [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].forEach((m) => {
           if (!isMealEnabled(day, m, dayConfig)) return;
           const gm = dayMenu[m];
           if (gm) {
-            totals.guestVeg += isDietaryEnabled(day, m, DietType.VEG, dayConfig) ? (gm.guestVeg || 0) : 0;
-            totals.guestNonVeg += isDietaryEnabled(day, m, DietType.NON_VEG, dayConfig) ? (gm.guestNonVeg || 0) : 0;
-            totals.guestVegTaken += isDietaryEnabled(day, m, DietType.VEG, dayConfig) ? (gm.guestVegTaken || 0) : 0;
-            totals.guestNonVegTaken += isDietaryEnabled(day, m, DietType.NON_VEG, dayConfig) ? (gm.guestNonVegTaken || 0) : 0;
+            const mConf = dayConf ? dayConf[m] : undefined;
+            const varieties = getMealVarieties(mConf, dayConf?.vegOnly);
+            const gCounts = getMealGuestCounts(gm, varieties);
+
+            totals.guestVeg += isDietaryEnabled(day, m, DietType.VEG, dayConfig) ? gCounts.guestVeg : 0;
+            totals.guestNonVeg += isDietaryEnabled(day, m, DietType.NON_VEG, dayConfig) ? gCounts.guestNonVeg : 0;
+            totals.guestVegTaken += isDietaryEnabled(day, m, DietType.VEG, dayConfig) ? gCounts.guestVegTaken : 0;
+            totals.guestNonVegTaken += isDietaryEnabled(day, m, DietType.NON_VEG, dayConfig) ? gCounts.guestNonVegTaken : 0;
           }
         });
       }
@@ -252,10 +262,12 @@ export function useReportData(
             if (choice === DietaryOption.NONE) return;
             if (!isMealEnabled(day, mKey, dayConfig)) return;
 
-            const diet = choice === DietaryOption.VEG ? DietType.VEG : DietType.NON_VEG;
-            if (!isDietaryEnabled(day, mKey, diet, dayConfig)) return;
+            const dayConf = (dayConfig || []).find(d => d.id === day);
+            const mConf = dayConf ? dayConf[mKey] : undefined;
+            const diet = getDietTypeForChoice(choice, getMealVarieties(mConf));
+            if (!diet || !isDietaryEnabled(day, mKey, diet, dayConfig)) return;
 
-            const isVeg = choice === DietaryOption.VEG;
+            const isVeg = diet === DietType.VEG;
             const isTaken = t?.[mKey] || t?.[`${mKey}Parcel` as keyof typeof s];
 
             if (isVeg) {
@@ -307,15 +319,20 @@ export function useReportData(
       });
 
       const dayMenu = foodMenu[day];
+      const dayConf = (dayConfig || []).find((d) => d.id === day);
       if (guestEnabled && dayMenu) {
         [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].forEach((m) => {
           if (!isMealEnabled(day, m, dayConfig)) return;
           const gm = dayMenu[m];
           if (gm) {
-            meals[m].guestVeg += isDietaryEnabled(day, m, DietType.VEG, dayConfig) ? (gm.guestVeg || 0) : 0;
-            meals[m].guestNonVeg += isDietaryEnabled(day, m, DietType.NON_VEG, dayConfig) ? (gm.guestNonVeg || 0) : 0;
-            meals[m].guestVegTaken += isDietaryEnabled(day, m, DietType.VEG, dayConfig) ? (gm.guestVegTaken || 0) : 0;
-            meals[m].guestNonVegTaken += isDietaryEnabled(day, m, DietType.NON_VEG, dayConfig) ? (gm.guestNonVegTaken || 0) : 0;
+            const mConf = dayConf ? dayConf[m] : undefined;
+            const varieties = getMealVarieties(mConf, dayConf?.vegOnly);
+            const gCounts = getMealGuestCounts(gm, varieties);
+
+            meals[m].guestVeg += isDietaryEnabled(day, m, DietType.VEG, dayConfig) ? gCounts.guestVeg : 0;
+            meals[m].guestNonVeg += isDietaryEnabled(day, m, DietType.NON_VEG, dayConfig) ? gCounts.guestNonVeg : 0;
+            meals[m].guestVegTaken += isDietaryEnabled(day, m, DietType.VEG, dayConfig) ? gCounts.guestVegTaken : 0;
+            meals[m].guestNonVegTaken += isDietaryEnabled(day, m, DietType.NON_VEG, dayConfig) ? gCounts.guestNonVegTaken : 0;
           }
         });
       }
