@@ -11,6 +11,8 @@ import {
   ActivityIndicator,
   useWindowDimensions,
   Keyboard,
+  PanResponder,
+  Animated,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useChat } from "../../context/ChatContext";
@@ -79,7 +81,52 @@ export function ChatWidget() {
   const [searchQuery, setSearchQuery] = useState("");
   const [sending, setSending] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [sizeXY, setSizeXY] = useState({ width: 310, height: 440 });
+  const [hasMoved, setHasMoved] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
+
+  const pan = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (evt, gestureState) => {
+        return Math.abs(gestureState.dx) > 3 || Math.abs(gestureState.dy) > 3;
+      },
+      onPanResponderGrant: () => {
+        pan.setOffset({
+          // @ts-ignore
+          x: pan.x._value,
+          // @ts-ignore
+          y: pan.y._value,
+        });
+        pan.setValue({ x: 0, y: 0 });
+      },
+      onPanResponderMove: Animated.event(
+        [null, { dx: pan.x, dy: pan.y }],
+        { useNativeDriver: false }
+      ),
+      onPanResponderRelease: (evt, gestureState) => {
+        pan.flattenOffset();
+        // @ts-ignore
+        if (pan.x._value !== 0 || pan.y._value !== 0 || Math.abs(gestureState.dx) > 2 || Math.abs(gestureState.dy) > 2) {
+          setHasMoved(true);
+        }
+      },
+    })
+  ).current;
+
+  const resizePanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onPanResponderMove: (evt, gestureState) => {
+        setSizeXY((prev) => ({
+          width: Math.max(260, Math.min(windowWidth - 20, prev.width + gestureState.dx)),
+          height: Math.max(260, Math.min(windowHeight - 140, prev.height + gestureState.dy)),
+        }));
+      },
+    })
+  ).current;
 
   // Track native keyboard height on mobile platforms
   useEffect(() => {
@@ -183,58 +230,66 @@ export function ChatWidget() {
     : Math.max(220, windowHeight - headerOffset - bottomOffset);
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 20 : 0}
+    <Animated.View
       style={[
         styles.floatingContainer,
-        isExpanded ? { top: headerOffset, bottom: undefined } : { bottom: dynamicBottom, top: undefined }
+        {
+          bottom: dynamicBottom,
+          transform: pan.getTranslateTransform(),
+        },
       ]}
       pointerEvents="box-none"
     >
-      {!isExpanded ? (
-        // --- Minimized Floating Pill Button (Bottom-Right) ---
-        <Pressable
-          style={[
-            styles.minimizedPill,
-            {
-              backgroundColor: theme.colors.surface,
-              borderColor: theme.colors.primary,
-              shadowColor: theme.colors.shadow,
-            },
-          ]}
-          onPress={toggleChatWindow}
-          accessible={true}
-          accessibilityRole="button"
-          accessibilityLabel={`${UI_TEXT.chat} ${totalUnreadCount > 0 ? `, ${totalUnreadCount} ${UI_TEXT.unreadBadgeCount}` : ""}`}
-        >
-          <View style={[styles.pillIconBg, { backgroundColor: theme.colors.primary }]}>
-            <Ionicons name="chatbubbles" size={13} color={theme.colors.white} />
-          </View>
-          <Text style={[styles.pillText, { color: theme.colors.textPrimary }]}>{UI_TEXT.chat}</Text>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 20 : 0}
+        pointerEvents="box-none"
+      >
+        {!isExpanded ? (
+          // --- Minimized Floating Pill Button (Bottom-Right, Draggable) ---
+          <Animated.View {...panResponder.panHandlers}>
+            <Pressable
+              style={[
+                styles.minimizedPill,
+                {
+                  backgroundColor: theme.colors.surface,
+                  borderColor: theme.colors.primary,
+                  shadowColor: theme.colors.shadow,
+                },
+              ]}
+              onPress={toggleChatWindow}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={`${UI_TEXT.chat} ${totalUnreadCount > 0 ? `, ${totalUnreadCount} ${UI_TEXT.unreadBadgeCount}` : ""}`}
+            >
+              <View style={[styles.pillIconBg, { backgroundColor: theme.colors.primary }]}>
+                <Ionicons name="chatbubbles" size={13} color={theme.colors.white} />
+              </View>
+              <Text style={[styles.pillText, { color: theme.colors.textPrimary }]}>{UI_TEXT.chat}</Text>
 
-          {totalUnreadCount > 0 && (
-            <View style={[styles.badge, { backgroundColor: theme.colors.error }]}>
-              <Text style={styles.badgeText}>{totalUnreadCount > 99 ? "99+" : totalUnreadCount}</Text>
-            </View>
-          )}
-        </Pressable>
-      ) : (
-        // --- Expanded Popup Floating Window ---
-        <View
-          style={[
-            styles.expandedPopup,
-            {
-              width: popupWidth,
-              height: popupHeight,
-              backgroundColor: theme.colors.surface,
-              borderColor: theme.colors.border,
-              shadowColor: theme.colors.shadow,
-            },
-          ]}
-        >
-          {/* --- Header --- */}
-          <View style={[styles.header, { backgroundColor: theme.colors.primary }]}>
+              {totalUnreadCount > 0 && (
+                <View style={[styles.badge, { backgroundColor: theme.colors.error }]}>
+                  <Text style={styles.badgeText}>{totalUnreadCount > 99 ? "99+" : totalUnreadCount}</Text>
+                </View>
+              )}
+            </Pressable>
+          </Animated.View>
+        ) : (
+          // --- Expanded Popup Floating Window (Draggable & Resizable) ---
+          <View
+            style={[
+              styles.expandedPopup,
+              {
+                width: sizeXY.width,
+                height: sizeXY.height,
+                backgroundColor: theme.colors.surface,
+                borderColor: theme.colors.border,
+                shadowColor: theme.colors.shadow,
+              },
+            ]}
+          >
+          {/* --- Header (Draggable) --- */}
+          <View {...panResponder.panHandlers} style={[styles.header, { backgroundColor: theme.colors.primary }]}>
             {activeRecipient ? (
               <View style={styles.headerTitleRow}>
                 <Pressable
@@ -512,18 +567,79 @@ export function ChatWidget() {
               </View>
             </View>
           )}
+
+          {/* Bottom Action Footer (Always Accessible for Minimize & Reset Position) */}
+          <View style={[styles.bottomFooterBar, { backgroundColor: theme.colors.surfaceDark, borderTopColor: theme.colors.border }]}>
+            <Pressable
+              style={styles.bottomFooterBtn}
+              onPress={minimizeChatWindow}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={UI_TEXT.minimizeChat}
+            >
+              <Ionicons name="chevron-down" size={15} color={theme.colors.textPrimary} style={{ marginRight: 4 }} />
+              <Text style={[styles.bottomFooterText, { color: theme.colors.textPrimary }]}>{UI_TEXT.minimizeChat}</Text>
+            </Pressable>
+
+            <Pressable
+              style={styles.bottomFooterBtn}
+              onPress={() => {
+                pan.setValue({ x: 0, y: 0 });
+                pan.setOffset({ x: 0, y: 0 });
+                setSizeXY({ width: 310, height: 440 });
+                setHasMoved(false);
+              }}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={UI_TEXT.resetPosition}
+            >
+              <Ionicons name="refresh-outline" size={13} color={theme.colors.textSecondary} style={{ marginRight: 4 }} />
+              <Text style={[styles.bottomFooterText, { color: theme.colors.textSecondary }]}>{UI_TEXT.resetPosition}</Text>
+            </Pressable>
+          </View>
+
+          {/* Resize Handle */}
+          <View {...resizePanResponder.panHandlers} style={styles.resizeHandle} pointerEvents="auto">
+            <Ionicons name="resize-outline" size={13} color={theme.colors.textMuted} />
+          </View>
         </View>
       )}
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   floatingContainer: {
     position: "absolute",
-    bottom: Platform.OS === "web" ? 38 : 78,
     right: 20,
     zIndex: 9999,
+  },
+  bottomFooterBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderTopWidth: 1,
+  },
+  bottomFooterBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+  },
+  bottomFooterText: {
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  resizeHandle: {
+    position: "absolute",
+    bottom: 2,
+    right: 4,
+    padding: 6,
+    zIndex: 20,
   },
   minimizedPill: {
     flexDirection: "row",

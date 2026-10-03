@@ -706,7 +706,7 @@ export const UI_TEXT = {
   unreadBadgeCount: "{count} unread",
   activeChatWith: "Chatting with {name}",
   changeRecipient: "Switch User",
-  minimizeChat: "Minimize Chat",
+  minimizeChat: "Minimize",
   expandChat: "Expand Chat",
   noOtherUsers: "No other users available for chat",
   today: "Today",
@@ -721,4 +721,5 @@ export const UI_TEXT = {
   closeChat: "Close Chat",
   chatWith: "Chat with {name}",
   activeUsersOnline: "{count} Online",
+  resetPosition: "Reset",
 };

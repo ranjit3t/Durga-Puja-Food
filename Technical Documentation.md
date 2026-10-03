@@ -190,8 +190,8 @@ The application follows a **Serverless Layered Architecture** built on the **Exp
 - **Deterministic Room Privacy**: Configures isolated WebSocket streams under `chats/{user1}__${user2}/messages` where `user1` and `user2` are alphabetically sorted lowercase usernames, preventing message leakage.
 - **Firebase Presence Sync**: Uses `.info/connected` with `onDisconnect()` under `presence/{username}` to monitor live online/offline status and `lastSeen` timestamps.
 - **Typing Indicators & Read Status**: Tracks live typing state (`chats/{chatId}/typing/{username}`) and message status receipts (`✓ Sent`, `✓✓ Delivered`, `✓✓ Read`).
-- **Bottom-Right Position & Compact Sizing**: Anchored at bottom-right corner (`right: 20`, `bottom: 38px web / 78px mobile`) with a compact `310px` popup width and miniature minimized pill button (`13px` icon).
-- **Native Keyboard Avoiding**: Wrapped in React Native `KeyboardAvoidingView` (`behavior={Platform.OS === "ios" ? "padding" : "height"}`) paired with native `Keyboard.addListener("keyboardDidShow")` height offset handlers, raising the chat popup container smoothly above the soft keyboard on mobile.
+- **Draggable & Resizable Viewport Widget (`PanResponder`, `Animated`)**: Fully interactive chat widget and window supporting smooth drag positioning anywhere across the mobile/web viewport (via the minimized pill or expanded header) and dynamic user resizing (via the bottom-right resize handle).
+- **Native Keyboard Avoiding & Top Header Alignment**: Wrapped in React Native `KeyboardAvoidingView` with native `Keyboard.addListener` height offset handlers, top-aligned directly below the welcome message header (`UserGreeting`) and lifting cleanly above the soft keyboard when typing.
 - **Strict Camera, Modal, Dropdown & Alert Exclusion**: Hides automatically on camera viewfinders (`ScannerScreen`, `PaymentScannerModal`) and all active modal, dropdown, and alert windows (`QuickCheckoutModal`, `QuickGuestModal`, `CustomAlert`, `Dropdown`, `Notes` modal, `ActivityLog` summary, etc.).
 
 ---
