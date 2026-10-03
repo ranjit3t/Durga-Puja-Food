@@ -282,17 +282,19 @@ export const SubscriptionPaymentSection: React.FC<SubscriptionPaymentSectionProp
             </View>
           )}
 
-          <View style={{ marginTop: 16 }}>
-            <Text style={styles.label}>{UI_TEXT.receivedByLabel}</Text>
-            <TextInput
-              value={p.receivedBy || ""}
-              onChangeText={(collector) => updatePayment(idx, { receivedBy: collector })}
-              placeholder={UI_TEXT.receivedByPlaceholder}
-              placeholderTextColor={theme.colors.textMuted}
-              editable={isAdmin && canEdit}
-              style={[styles.input, !isAdmin && { backgroundColor: theme.colors.surface }]}
-            />
-          </View>
+          {p.mode === PaymentMode.CASH && (
+            <View style={{ marginTop: 16 }}>
+              <Text style={styles.label}>{UI_TEXT.receivedByLabel}</Text>
+              <TextInput
+                value={p.receivedBy || ""}
+                onChangeText={(collector) => updatePayment(idx, { receivedBy: collector })}
+                placeholder={UI_TEXT.receivedByPlaceholder}
+                placeholderTextColor={theme.colors.textMuted}
+                editable={isAdmin && canEdit}
+                style={[styles.input, !isAdmin && { backgroundColor: theme.colors.surface }]}
+              />
+            </View>
+          )}
         </View>
       ))}
 

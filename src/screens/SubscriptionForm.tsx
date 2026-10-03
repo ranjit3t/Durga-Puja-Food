@@ -425,25 +425,13 @@ export function SubscriptionForm() {
   const hasNonZeroPayment = paymentConfig.enabled && (parseFloat(value.amount) > 0 || (value.payments && value.payments.some((p: PaymentEntry) => parseFloat(p.amount) > 0)));
 
   const hasAnyMealTaken = useMemo(() => {
-    // 1. Check explicit 'taken' flags
-    const explicitTaken = Object.values(form.takenByPerson || {}).some(dayList =>
+    // Check explicit 'taken' flags (food taken/served)
+    return Object.values(form.takenByPerson || {}).some(dayList =>
       dayList.some((t: any) => t.breakfast || t.lunch || t.dinner || t.breakfastParcel || t.lunchParcel || t.dinnerParcel)
     );
-    if (explicitTaken) return true;
+  }, [form.takenByPerson]);
 
-    // 2. Check 'done' meals where person was subscribed
-    return Object.entries(form.mealSlots || {}).some(([dayId, personsSlots]) => {
-      return (personsSlots as any[]).some((slot) => {
-        return (
-          (slot.breakfast !== DietaryOption.NONE && isMealDone(dayId, MealType.BREAKFAST, dayConfig)) ||
-          (slot.lunch !== DietaryOption.NONE && isMealDone(dayId, MealType.LUNCH, dayConfig)) ||
-          (slot.dinner !== DietaryOption.NONE && isMealDone(dayId, MealType.DINNER, dayConfig))
-        );
-      });
-    });
-  }, [form.takenByPerson, form.mealSlots, dayConfig]);
-
-  const canDeletePass = !hasNonZeroPayment && !hasAnyMealTaken;
+  const canDeletePass = !hasAnyMealTaken;
 
   const onDelete = lockIdentity ? () => showGlobalAlert(UI_TEXT.deleteConfirmTitle, `${UI_TEXT.deleteConfirmMessage}${getPassDisplayLabel(value) || value.id}${UI_TEXT.deleteConfirmMessageSuffix}`, [
     { text: UI_TEXT.cancel, style: "cancel" },

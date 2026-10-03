@@ -507,7 +507,7 @@ export const UI_TEXT = {
   overpaidLabel: "Excess",
   noDiscrepancies: "No payment amount discrepancies found.",
   viewPassHint: "Navigates to pass details",
-  packageReport: "Package Passes",
+  packageReport: "Package",
   noPackagePasses: "No package discount passes registered.",
   packagesAppliedTitle: "APPLIED PACKAGES",
 
