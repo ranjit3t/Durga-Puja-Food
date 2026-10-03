@@ -129,7 +129,7 @@ export function MealDisplay({
                   <View style={{ alignItems: "flex-end", gap: 4, flexShrink: 1 }}>
                     <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
                       {adultPrice ? (
-                        <View style={[styles.pill, { backgroundColor: vColor + "22", height: 24, paddingHorizontal: 10, borderRadius: 8, borderWidth: 1, borderColor: vColor }]}>
+                        <View style={[styles.pill, { backgroundColor: vColor + "22", paddingVertical: 4, paddingHorizontal: 10, borderRadius: 8, borderWidth: 1, borderColor: vColor }]}>
                           <Text style={{ fontSize: 11, fontWeight: "900", color: theme.colors.textPrimary }}>
                             {UI_TEXT.rs} {adultPrice}
                           </Text>
