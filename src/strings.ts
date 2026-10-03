@@ -4,7 +4,7 @@
  */
 export const UI_TEXT = {
   appName: "FestiveDesk",
-  appVersion: "1.1.0",
+  appVersion: "1.1.1",
   appUpdateTitle: "Update Available",
   appUpdatedMessage: "An updated version of FestiveDesk is available. Please download and install the latest build.",
   clickHereToUpdatePrefix: "Click ",
@@ -647,6 +647,7 @@ export const UI_TEXT = {
   authServerError: "Unable to connect to authentication server.",
 
   // Footer
+  footerText: "Eternia Durga Puja Food Committee",
   footerCopyright: "© 2026 Eternia Festival Committee",
 
   // Additional Form & Component Strings
