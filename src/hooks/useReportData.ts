@@ -263,38 +263,108 @@ export function useReportData(
     if (activeReportType && activeReportType !== ReportType.FLAT) return [];
     return subscriptions
       .map((sub) => {
-        let totalMeals = 0;
-        let totalServed = 0;
+        const dayStats: any[] = [];
 
         activeDays.forEach((dayId) => {
           const slots = sub.mealSlots[dayId] || [];
           const taken = sub.takenByPerson[dayId] || [];
+          const adultCount = sub.peopleCount;
 
-          slots.forEach((s, idx) => {
-            if (!s) return;
-            const tState = taken[idx] || {};
-            [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].forEach((mType) => {
-              if (s[mType] !== DietaryOption.NONE && isMealEnabled(dayId, mType, dayConfig)) {
-                totalMeals++;
-                if (tState[mType]) totalServed++;
+          const meals: any[] = [];
+
+          [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].forEach((mType) => {
+            if (!isMealEnabled(dayId, mType, dayConfig)) return;
+
+            const mealStat: any = {
+              type: mType,
+              veg: 0,
+              nonVeg: 0,
+              kidsVeg: 0,
+              kidsNonVeg: 0,
+              vegTaken: 0,
+              nonVegTaken: 0,
+              kidsVegTaken: 0,
+              kidsNonVegTaken: 0,
+              vegParcel: 0,
+              nonVegParcel: 0,
+              kidsVegParcel: 0,
+              kidsNonVegParcel: 0,
+              vegParcelTaken: 0,
+              nonVegParcelTaken: 0,
+              kidsVegParcelTaken: 0,
+              kidsNonVegParcelTaken: 0,
+            };
+
+            slots.forEach((s, idx) => {
+              if (!s) return;
+              const isKid = kidsEnabled && idx >= adultCount;
+              const choice = s[mType];
+              if (choice === DietaryOption.NONE) return;
+
+              const dayConf = (dayConfig || []).find(d => d.id === dayId);
+              const mConf = dayConf ? dayConf[mType] : undefined;
+              const diet = getDietTypeForChoice(choice, getMealVarieties(mConf));
+              if (!diet || !isDietaryEnabled(dayId, mType, diet, dayConfig)) return;
+
+              const tState = taken[idx] || {};
+              const isTaken = !!tState[mType];
+              const isParcelOpted = toBool(s[`${mType}Parcel` as keyof typeof s]);
+              const isParcelAllowed = isParcelOpted && (isKid ? isKidsParcelEnabled(dayId, mType, dayConfig, kidsEnabled) : isParcelEnabled(dayId, mType, dayConfig));
+              const isParcelTaken = !!tState[`${mType}Parcel` as keyof TakenState];
+
+              if (diet === DietType.VEG) {
+                if (isKid) {
+                  mealStat.kidsVeg++;
+                  if (isTaken) mealStat.kidsVegTaken++;
+                  if (isParcelAllowed) {
+                    mealStat.kidsVegParcel++;
+                    if (isParcelTaken) mealStat.kidsVegParcelTaken++;
+                  }
+                } else {
+                  mealStat.veg++;
+                  if (isTaken) mealStat.vegTaken++;
+                  if (isParcelAllowed) {
+                    mealStat.vegParcel++;
+                    if (isParcelTaken) mealStat.vegParcelTaken++;
+                  }
+                }
+              } else if (diet === DietType.NON_VEG) {
+                if (isKid) {
+                  mealStat.kidsNonVeg++;
+                  if (isTaken) mealStat.kidsNonVegTaken++;
+                  if (isParcelAllowed) {
+                    mealStat.kidsNonVegParcel++;
+                    if (isParcelTaken) mealStat.kidsNonVegParcelTaken++;
+                  }
+                } else {
+                  mealStat.nonVeg++;
+                  if (isTaken) mealStat.nonVegTaken++;
+                  if (isParcelAllowed) {
+                    mealStat.nonVegParcel++;
+                    if (isParcelTaken) mealStat.nonVegParcelTaken++;
+                  }
+                }
               }
             });
+
+            meals.push(mealStat);
           });
+
+          dayStats.push({ day: dayId, meals });
         });
 
         return {
           id: sub.id,
-          block: sub.block,
           flat: sub.flat,
-          peopleCount: sub.peopleCount || 0,
-          kidsCount: sub.kidsCount || 0,
-          totalMeals,
-          totalServed,
-          amount: parseFloat(sub.amount) || 0,
+          block: sub.block,
+          people: sub.peopleCount || 0,
+          kids: sub.kidsCount || 0,
+          amount: sub.amount || "0",
+          dayStats,
         };
       })
       .sort((a, b) => (a.block || "").localeCompare(b.block || "", undefined, { numeric: true, sensitivity: 'base' }) || (a.flat || "").localeCompare(b.flat || "", undefined, { numeric: true, sensitivity: 'base' }));
-  }, [subscriptions, activeDays, dayConfig, activeReportType]);
+  }, [subscriptions, activeDays, dayConfig, kidsEnabled, activeReportType]);
 
   const getMissedParcelData = useCallback((selectedDayId: string, selectedMealType: MealType) => {
     return subscriptions
