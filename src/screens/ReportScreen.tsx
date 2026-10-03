@@ -35,6 +35,7 @@ import { PendingReport } from "../components/report/PendingReport";
 import { FlatWiseReport } from "../components/report/FlatWiseReport";
 import { PaymentSummaryReport } from "../components/report/PaymentSummaryReport";
 import { KidsReport } from "../components/report/KidsReport";
+import { PackagePassesReport } from "../components/report/PackagePassesReport";
 
 // Custom Hook
 import { useReportData } from "../hooks/useReportData";
@@ -56,7 +57,7 @@ export function ReportScreen() {
   } = useAppNavigation();
 
   const {
-    activeDays, dayWiseData, mealWiseData, flatWiseData, paymentData, getNotTakenData, getKidsMealData, getMissedParcelData
+    activeDays, dayWiseData, mealWiseData, flatWiseData, paymentData, getNotTakenData, getKidsMealData, getMissedParcelData, packagePassesData
   } = useReportData(subscriptions, foodMenu, dayConfig, guestEnabled, paymentConfig, !!kidsEnabled, reportType);
 
   const styles = useStyles();
@@ -241,6 +242,7 @@ export function ReportScreen() {
             { id: ReportType.NOT_TAKEN, label: UI_TEXT.pending, icon: "alert-circle-outline" },
             { id: ReportType.FLAT, label: UI_TEXT.flat, icon: "business-outline" },
             { id: ReportType.PAYMENT, label: UI_TEXT.payment, icon: "card-outline" },
+            { id: ReportType.PACKAGE, label: UI_TEXT.packageReport, icon: "pricetag-outline" },
           ].filter(tab =>
             (tab.id !== ReportType.PAYMENT || paymentConfig.enabled) &&
             (tab.id !== ReportType.GUEST || guestEnabled) &&
@@ -383,6 +385,7 @@ export function ReportScreen() {
                   {reportType === ReportType.NOT_TAKEN && `${UI_TEXT.notTakenReport}`}
                   {reportType === ReportType.FLAT && UI_TEXT.flatWiseReport}
                   {reportType === ReportType.PAYMENT && UI_TEXT.paymentReport}
+                  {reportType === ReportType.PACKAGE && UI_TEXT.packageReport}
                 </Text>
               </View>
             </View>
@@ -394,10 +397,10 @@ export function ReportScreen() {
 
           {reportType === ReportType.DAY && (
             <DayWiseReport
-              data={dayWiseData}
+              data={dayWiseData as any}
               selectedDayId={selectedDayId}
               selectedMealType={selectedMealType}
-              mealWiseData={mealWiseData}
+              mealWiseData={mealWiseData as any}
               dayConfig={dayConfig}
               kidsEnabled={!!kidsEnabled}
               guestEnabled={guestEnabled}
@@ -406,7 +409,7 @@ export function ReportScreen() {
 
           {reportType === ReportType.MEAL && (
             <MealWiseReport
-              data={mealWiseData}
+              data={mealWiseData as any}
               dayConfig={dayConfig}
               kidsEnabled={!!kidsEnabled}
             />
@@ -418,7 +421,7 @@ export function ReportScreen() {
 
           {reportType === ReportType.PARCEL && (
             <ParcelWiseReport
-              data={mealWiseData}
+              data={mealWiseData as any}
               dayConfig={dayConfig}
               getMissedParcelData={getMissedParcelData}
               selectedDayId={selectedDayId}
@@ -432,7 +435,7 @@ export function ReportScreen() {
             <SingleMealReport
               selectedDayId={selectedDayId}
               selectedMealType={selectedMealType}
-              mealWiseData={mealWiseData}
+              mealWiseData={mealWiseData as any}
               dayConfig={dayConfig}
               guestEnabled={guestEnabled}
               kidsEnabled={!!kidsEnabled}
@@ -441,7 +444,7 @@ export function ReportScreen() {
 
           {reportType === ReportType.KIDS_MEAL && (
             <KidsReport
-              data={getKidsMealData(selectedDayId, selectedMealType)}
+              data={getKidsMealData(selectedDayId, selectedMealType) as any}
               selectedDayId={selectedDayId}
               selectedMealType={selectedMealType}
               dayConfig={dayConfig}
@@ -462,7 +465,7 @@ export function ReportScreen() {
 
           {reportType === ReportType.FLAT && (
             <FlatWiseReport
-              data={flatWiseData}
+              data={flatWiseData as any}
               dayConfig={dayConfig}
               onSelectFlat={onSelectFlat}
               kidsEnabled={!!kidsEnabled}
@@ -472,6 +475,14 @@ export function ReportScreen() {
           {reportType === ReportType.PAYMENT && (
             <PaymentSummaryReport
               data={paymentData}
+              onSelectFlat={onSelectFlat}
+              kidsEnabled={!!kidsEnabled}
+            />
+          )}
+
+          {reportType === ReportType.PACKAGE && (
+            <PackagePassesReport
+              data={packagePassesData}
               onSelectFlat={onSelectFlat}
               kidsEnabled={!!kidsEnabled}
             />

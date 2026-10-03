@@ -226,9 +226,29 @@ export function DetailsScreen() {
           <View style={styles.previewTop}>
             <View>
               <Text style={[styles.previewLabel, { color: theme.colors.white, opacity: 0.7 }]}>{UI_TEXT.passIdentity}</Text>
-              <Text style={[styles.previewTitle, { color: theme.colors.white, fontSize: 28 }]}>
-                {subscription.id}
-              </Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 2 }}>
+                <Text style={[styles.previewTitle, { color: theme.colors.white, fontSize: 28 }]}>
+                  {subscription.id}
+                </Text>
+                {(subscription.isPackageApplied || (subscription.appliedPackages && Object.keys(subscription.appliedPackages).length > 0)) && (
+                  <View
+                    style={{
+                      backgroundColor: theme.colors.white,
+                      paddingHorizontal: 8,
+                      paddingVertical: 3,
+                      borderRadius: 10,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 4,
+                    }}
+                  >
+                    <Ionicons name="pricetag" size={12} color={theme.colors.primary} />
+                    <Text style={{ fontSize: 11, fontWeight: "900", color: theme.colors.primary }}>
+                      {UI_TEXT.packageAppliedMarker}
+                    </Text>
+                  </View>
+                )}
+              </View>
               <Text style={{ fontSize: 13, fontWeight: "700", color: theme.colors.white, opacity: 0.9, marginTop: 4 }}>
                 {UI_TEXT.passCodeLabel}: {subscription.passcode || generateUniquePasscode(subscriptions, subscription.id, subscription.id)}
               </Text>

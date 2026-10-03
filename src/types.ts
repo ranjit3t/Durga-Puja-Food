@@ -41,6 +41,9 @@ import {
   UserPresence,
   ChatUser,
   MessageStatus,
+  PackageApplicability,
+  FoodPackage,
+  AppliedPackageInfo,
 } from "./domain";
 
 export enum FilterMode {
@@ -96,4 +99,7 @@ export {
   UserPresence,
   ChatUser,
   MessageStatus,
+  PackageApplicability,
+  FoodPackage,
+  AppliedPackageInfo,
 };

@@ -12,6 +12,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   StatusBar,
+  Modal,
 } from "react-native";
 import { Contact, requestPermissionsAsync } from "expo-contacts";
 import { useStyles, useScaling } from "../styles";
@@ -63,6 +64,9 @@ import {
   ActivityAction,
   TakenState,
   getPassDisplayLabel,
+  FoodPackage,
+  AppliedPackageInfo,
+  PackageApplicability,
 } from "../domain";
 import { ActionLabel } from "../components/common/ActionLabel";
 import { PaymentScannerModal } from "../components/common/PaymentScannerModal";
@@ -78,11 +82,15 @@ import { SubscriptionBasicInfoSection } from "../features/subscriptions/componen
 import { SubscriptionPaymentSection } from "../features/subscriptions/components/SubscriptionPaymentSection";
 
 import { useAuth } from "../context/AuthContext";
-import { useCoreDatabase, useActivityLogs } from "../context/DatabaseContext";
+import { useCoreDatabase, useActivityLogs, useFoodPackages } from "../context/DatabaseContext";
 import { useUI } from "../context/UIContext";
 import { useAppNavigation } from "../context/NavigationContext";
 import { Day, Subscription } from "../types";
-import { calculateSubscriptionAmount } from "../utils/paymentUtils";
+import {
+  calculateSubscriptionAmount,
+  findApplicablePackagesForPerson,
+  calculatePassTotalWithPackages,
+} from "../utils/paymentUtils";
 
 export { calculateSubscriptionAmount };
 
@@ -97,6 +105,11 @@ export function SubscriptionForm() {
   const {
     editing: value, navigate, goBack, setSelectedId, setSelectedRecord
   } = useAppNavigation();
+
+  const { foodPackages } = useFoodPackages();
+  const [appliedPackages, setAppliedPackages] = useState<Record<number, AppliedPackageInfo>>(() => value?.appliedPackages || {});
+  const [showApplyPackageModal, setShowApplyPackageModal] = useState(false);
+  const [viewingPackage, setViewingPackage] = useState<FoodPackage | null>(null);
 
   if (!value) return null;
 
@@ -196,6 +209,33 @@ export function SubscriptionForm() {
   const [selectedPerson, setSelectedPerson] = useState(0);
   const [selectedDay, setSelectedDay] = useState<Day>(currentDayId || activeDays[0]);
   const [isManualAmount, setIsManualAmount] = useState(lockIdentity);
+
+  const totalPeopleCount = form.peopleCount + (form.kidsCount || 0);
+
+  const perPersonApplicablePackages = useMemo(() => {
+    const map: Record<number, ReturnType<typeof findApplicablePackagesForPerson>> = {};
+    for (let i = 0; i < totalPeopleCount; i++) {
+      const isKid = !!kidsEnabled && i >= form.peopleCount;
+      map[i] = findApplicablePackagesForPerson(
+        i,
+        form.mealSlots,
+        isKid,
+        foodPackages,
+        foodMenu,
+        dayConfig,
+        !!kidsEnabled
+      );
+    }
+    return map;
+  }, [totalPeopleCount, form.mealSlots, foodPackages, foodMenu, dayConfig, kidsEnabled, form.peopleCount]);
+
+  const hasAnyApplicablePackage = useMemo(() => {
+    return Object.values(perPersonApplicablePackages).some((list) => list && list.length > 0);
+  }, [perPersonApplicablePackages]);
+
+  const isPackageApplied = useMemo(() => {
+    return Object.keys(appliedPackages).length > 0;
+  }, [appliedPackages]);
 
   const checkParcelInconsistency = (sub: Subscription): boolean => {
     if (!lockIdentity || !currentMealInfo) return false;
@@ -317,6 +357,9 @@ export function SubscriptionForm() {
       .replace("{amount}", sub.amount);
 
     detailedDesc += ` | ${daySummaries.join(' | ')}`;
+    if (sub.isPackageApplied) {
+      detailedDesc += ` | ${UI_TEXT.packageAppliedMarker}`;
+    }
     detailedDesc += ` | Taken: ${newCounts.ft} (was ${oldCounts.ft})`;
     if (newCounts.pt > 0 || oldCounts.pt > 0) {
       detailedDesc += `, P-Taken: ${newCounts.pt} (was ${oldCounts.pt})`;
@@ -904,10 +947,12 @@ export function SubscriptionForm() {
   useEffect(() => {
     if (!foodPriceEnabled || !paymentConfig.enabled) return;
 
-    const total = calculateSubscriptionAmount(
+    const total = calculatePassTotalWithPackages(
       form.mealSlots,
       form.peopleCount,
       form.kidsCount || 0,
+      appliedPackages,
+      foodPackages,
       foodMenu,
       dayConfig,
       !!kidsEnabled
@@ -933,7 +978,8 @@ export function SubscriptionForm() {
     form.peopleCount,
     form.kidsCount,
     lockIdentity,
-    payments
+    appliedPackages,
+    foodPackages
   ]);
 
   const handleSaveWithValidation = (
@@ -966,18 +1012,22 @@ export function SubscriptionForm() {
       amount: currentTotalAmount.toFixed(0),
       paymentMode: sanitizedPayments[0]?.mode || PaymentMode.CASH,
       transactionId: sanitizedPayments[0]?.transactionId || "",
+      isPackageApplied,
+      appliedPackages: isPackageApplied ? appliedPackages : undefined,
     };
 
-    const calculatedExpectedAmount = calculateSubscriptionAmount(
+    const calculatedExpectedAmount = calculatePassTotalWithPackages(
       form.mealSlots,
       form.peopleCount,
       form.kidsCount || 0,
+      appliedPackages,
+      foodPackages,
       foodMenu,
       dayConfig,
       !!kidsEnabled
     );
 
-    const shouldCheckDiscrepancy = paymentConfig.enabled && (!lockIdentity || hasMealOrParcelChoicesChanged);
+    const shouldCheckDiscrepancy = paymentConfig.enabled && !isPackageApplied && (!lockIdentity || hasMealOrParcelChoicesChanged);
     const isDiscrepancy = shouldCheckDiscrepancy && Math.abs(currentTotalAmount - calculatedExpectedAmount) > 0.01;
 
     const proceedToSave = () => {
@@ -1047,9 +1097,29 @@ export function SubscriptionForm() {
           <View style={styles.previewTop}>
             <View>
               <Text style={[styles.previewLabel, { color: theme.colors.white, opacity: 0.7 }]}>{UI_TEXT.livePreview}</Text>
-              <Text style={[styles.previewTitle, { color: theme.colors.white, fontSize: 28 }]}>
-                {form.block || UI_TEXT.hyphen}{UI_TEXT.hyphen}{form.flat || UI_TEXT.hyphen}
-              </Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 2 }}>
+                <Text style={[styles.previewTitle, { color: theme.colors.white, fontSize: 28 }]}>
+                  {form.block || UI_TEXT.hyphen}{UI_TEXT.hyphen}{form.flat || UI_TEXT.hyphen}
+                </Text>
+                {isPackageApplied && (
+                  <View
+                    style={{
+                      backgroundColor: theme.colors.white,
+                      paddingHorizontal: 8,
+                      paddingVertical: 3,
+                      borderRadius: 10,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 4,
+                    }}
+                  >
+                    <Ionicons name="pricetag" size={12} color={theme.colors.primary} />
+                    <Text style={{ fontSize: 11, fontWeight: "900", color: theme.colors.primary }}>
+                      {UI_TEXT.packageAppliedMarker}
+                    </Text>
+                  </View>
+                )}
+              </View>
               {summaryPasscode ? (
                 <Text style={{ fontSize: 13, fontWeight: "700", color: theme.colors.white, opacity: 0.9, marginTop: 4 }}>
                   {UI_TEXT.passCodeLabel}: {summaryPasscode}
@@ -1519,6 +1589,16 @@ export function SubscriptionForm() {
             theme={theme}
             styles={styles}
             s={s}
+            onOpenApplyPackageModal={() => setShowApplyPackageModal(true)}
+            hasApplicablePackages={hasAnyApplicablePackage}
+            isPackageApplied={isPackageApplied}
+            appliedPackages={appliedPackages}
+            lockIdentity={lockIdentity}
+            onViewAppliedPackage={(pkgId) => {
+              const pkg = foodPackages.find((p) => p.id === pkgId);
+              if (pkg) setViewingPackage(pkg);
+            }}
+            getPersonLabel={(idx) => getMemberLegend(idx, form.peopleCount, !!kidsEnabled)}
           />
         )}
 
@@ -1621,6 +1701,319 @@ export function SubscriptionForm() {
         onClose={() => setScannerTargetIdx(null)}
         onExtracted={handleTxnDetailsExtracted}
       />
+
+      {/* Apply Package Modal */}
+      <Modal
+        visible={showApplyPackageModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowApplyPackageModal(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={{ flex: 1, backgroundColor: theme.colors.shadow + "80", justifyContent: "center", alignItems: "center" }}
+        >
+          <View style={[styles.card, { width: "94%", maxHeight: "88%", padding: s(20), backgroundColor: theme.colors.surface }]}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: s(16) }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: s(8) }}>
+                <Ionicons name="pricetag-outline" size={s(22)} color={theme.colors.primary} />
+                <Text style={{ fontSize: s(18), fontWeight: "900", color: theme.colors.textPrimary }}>
+                  {UI_TEXT.applyPackage}
+                </Text>
+              </View>
+              <Pressable onPress={() => setShowApplyPackageModal(false)}>
+                <Ionicons name="close-outline" size={s(24)} color={theme.colors.textPrimary} />
+              </Pressable>
+            </View>
+
+            <ScrollView style={{ flexShrink: 1 }} contentContainerStyle={{ gap: s(16) }}>
+              {Array.from({ length: totalPeopleCount }).map((_, pIdx) => {
+                const personLabel = getMemberLegend(pIdx, form.peopleCount, !!kidsEnabled);
+                const applicableList = perPersonApplicablePackages[pIdx] || [];
+                const currentApplied = appliedPackages[pIdx];
+
+                return (
+                  <View
+                    key={pIdx}
+                    style={{
+                      backgroundColor: theme.colors.surfaceDark,
+                      padding: s(14),
+                      borderRadius: s(14),
+                      borderWidth: 1,
+                      borderColor: theme.colors.border,
+                      gap: s(10),
+                    }}
+                  >
+                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                      <Text style={{ fontSize: s(15), fontWeight: "900", color: theme.colors.primary }}>
+                        {personLabel}
+                      </Text>
+                      {currentApplied && (
+                        <View
+                          style={{
+                            backgroundColor: theme.colors.successLight,
+                            paddingHorizontal: s(8),
+                            paddingVertical: s(3),
+                            borderRadius: s(6),
+                            borderWidth: 1,
+                            borderColor: theme.colors.success,
+                          }}
+                        >
+                          <Text style={{ fontSize: s(11), fontWeight: "800", color: theme.colors.success }}>
+                            {UI_TEXT.packageAppliedMarker}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+
+                    {/* Currently Applied Package for this person */}
+                    {currentApplied ? (
+                      <View
+                        style={{
+                          backgroundColor: theme.colors.surface,
+                          padding: s(12),
+                          borderRadius: s(12),
+                          borderWidth: 1.5,
+                          borderColor: theme.colors.success,
+                          gap: s(6),
+                        }}
+                      >
+                        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                          <Text style={{ fontSize: s(14), fontWeight: "900", color: theme.colors.textPrimary }}>
+                            {currentApplied.packageName}
+                          </Text>
+                          <Text style={{ fontSize: s(14), fontWeight: "900", color: theme.colors.success }}>
+                            {currentApplied.packagePrice}
+                          </Text>
+                        </View>
+                        <Pressable
+                          onPress={() => {
+                            setAppliedPackages((prev) => {
+                              const next = { ...prev };
+                              delete next[pIdx];
+                              return next;
+                            });
+                          }}
+                          style={({ pressed }) => [
+                            {
+                              backgroundColor: theme.colors.errorLight,
+                              paddingVertical: s(6),
+                              paddingHorizontal: s(10),
+                              borderRadius: s(8),
+                              alignSelf: "flex-end",
+                              borderWidth: 1,
+                              borderColor: theme.colors.error,
+                            },
+                            pressed && { opacity: 0.7 },
+                          ]}
+                        >
+                          <Text style={{ fontSize: s(12), fontWeight: "800", color: theme.colors.error }}>
+                            {UI_TEXT.removePackage}
+                          </Text>
+                        </Pressable>
+                      </View>
+                    ) : null}
+
+                    {/* Available Applicable Packages List */}
+                    {applicableList.length > 0 ? (
+                      <View style={{ gap: s(8) }}>
+                        <Text style={{ fontSize: s(11), fontWeight: "800", color: theme.colors.textMuted, textTransform: "uppercase" }}>
+                          {UI_TEXT.foodPackages}
+                        </Text>
+                        {applicableList.map((appPkg) => {
+                          const isThisApplied = currentApplied?.packageId === appPkg.packageId;
+                          return (
+                            <View
+                              key={appPkg.packageId}
+                              style={{
+                                backgroundColor: theme.colors.surface,
+                                padding: s(12),
+                                borderRadius: s(12),
+                                borderWidth: 1,
+                                borderColor: theme.colors.border,
+                                gap: s(6),
+                              }}
+                            >
+                              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                                <Text style={{ fontSize: s(14), fontWeight: "900", color: theme.colors.textPrimary, flex: 1 }}>
+                                  {appPkg.packageName}
+                                </Text>
+                                <View
+                                  style={{
+                                    backgroundColor: theme.colors.successLight,
+                                    paddingHorizontal: s(6),
+                                    paddingVertical: s(2),
+                                    borderRadius: s(6),
+                                  }}
+                                >
+                                  <Text style={{ fontSize: s(10), fontWeight: "900", color: theme.colors.success }}>
+                                    {UI_TEXT.savings}: {appPkg.savings}
+                                  </Text>
+                                </View>
+                              </View>
+
+                              {!!appPkg.packageDescription && (
+                                <Text style={{ fontSize: s(12), color: theme.colors.textSecondary }}>
+                                  {appPkg.packageDescription}
+                                </Text>
+                              )}
+
+                              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: s(4) }}>
+                                <View style={{ gap: s(2) }}>
+                                  <Text style={{ fontSize: s(10), fontWeight: "700", color: theme.colors.textMuted }}>
+                                    {UI_TEXT.normalPrice}: {appPkg.normalTotalMealPrice}
+                                    {appPkg.totalParcelPrice > 0 ? ` + ${UI_TEXT.parcelPriceLabel}: ${appPkg.totalParcelPrice}` : ""}
+                                  </Text>
+                                  <Text style={{ fontSize: s(13), fontWeight: "900", color: theme.colors.primary }}>
+                                    {UI_TEXT.priceAfterPackage}: {appPkg.priceWithPackage}
+                                  </Text>
+                                </View>
+
+                                {!isThisApplied && (
+                                  <Pressable
+                                    onPress={() => {
+                                      setAppliedPackages((prev) => ({
+                                        ...prev,
+                                        [pIdx]: {
+                                          packageId: appPkg.packageId,
+                                          packageName: appPkg.packageName,
+                                          packagePrice: appPkg.packagePrice,
+                                        },
+                                      }));
+                                    }}
+                                    style={({ pressed }) => [
+                                      {
+                                        backgroundColor: theme.colors.primary,
+                                        paddingVertical: s(6),
+                                        paddingHorizontal: s(12),
+                                        borderRadius: s(8),
+                                      },
+                                      pressed && { opacity: 0.8 },
+                                    ]}
+                                  >
+                                    <Text style={{ fontSize: s(12), fontWeight: "900", color: theme.colors.white }}>
+                                      {UI_TEXT.applyPackage}
+                                    </Text>
+                                  </Pressable>
+                                )}
+                              </View>
+                            </View>
+                          );
+                        })}
+                      </View>
+                    ) : (
+                      !currentApplied && (
+                        <Text style={{ fontSize: s(12), color: theme.colors.textMuted, fontStyle: "italic" }}>
+                          {UI_TEXT.noPackageMealsFound}
+                        </Text>
+                      )
+                    )}
+                  </View>
+                );
+              })}
+            </ScrollView>
+
+            <Pressable
+              onPress={() => setShowApplyPackageModal(false)}
+              style={({ pressed }) => [
+                styles.primary,
+                { height: 46, marginTop: s(16), borderRadius: 12 },
+                pressed && { opacity: 0.8 },
+              ]}
+            >
+              <Text style={{ color: theme.colors.white, fontWeight: "900", fontSize: s(15) }}>
+                {UI_TEXT.ok}
+              </Text>
+            </Pressable>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* View-Only Package Details Modal */}
+      <Modal
+        visible={!!viewingPackage}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setViewingPackage(null)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={{ flex: 1, backgroundColor: theme.colors.shadow + "80", justifyContent: "center", alignItems: "center" }}
+        >
+          <View style={[styles.card, { width: "90%", maxHeight: "80%", padding: s(20), backgroundColor: theme.colors.surface }]}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: s(16) }}>
+              <Text style={{ fontSize: s(18), fontWeight: "900", color: theme.colors.textPrimary }}>
+                {UI_TEXT.packageDetails}
+              </Text>
+              <Pressable onPress={() => setViewingPackage(null)}>
+                <Ionicons name="close-outline" size={s(24)} color={theme.colors.textPrimary} />
+              </Pressable>
+            </View>
+
+            {viewingPackage && (
+              <ScrollView style={{ flexShrink: 1 }} contentContainerStyle={{ gap: s(12) }}>
+                <Text style={{ fontSize: s(20), fontWeight: "900", color: theme.colors.primary }}>
+                  {viewingPackage.name}
+                </Text>
+
+                <Text style={{ fontSize: s(14), color: theme.colors.textSecondary, lineHeight: s(20) }}>
+                  {viewingPackage.description}
+                </Text>
+
+                <View style={{ flexDirection: "row", gap: s(8), alignItems: "center" }}>
+                  <View style={{ backgroundColor: theme.colors.primary + "18", paddingHorizontal: s(10), paddingVertical: s(4), borderRadius: s(6) }}>
+                    <Text style={{ fontSize: s(12), fontWeight: "900", color: theme.colors.primary }}>
+                      {viewingPackage.applicability === "kids" ? UI_TEXT.kidsOnly : viewingPackage.applicability === "member" ? UI_TEXT.membersAll : UI_TEXT.adultsOnly}
+                    </Text>
+                  </View>
+                  <View style={{ backgroundColor: theme.colors.successLight, paddingHorizontal: s(10), paddingVertical: s(4), borderRadius: s(6) }}>
+                    <Text style={{ fontSize: s(12), fontWeight: "900", color: theme.colors.success }}>
+                      {UI_TEXT.packagePrice}: {viewingPackage.packagePrice}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Included Meals */}
+                <View style={{ backgroundColor: theme.colors.surfaceDark, padding: s(12), borderRadius: s(12), gap: s(6) }}>
+                  <Text style={{ fontSize: s(11), fontWeight: "800", color: theme.colors.textMuted, textTransform: "uppercase" }}>
+                    {UI_TEXT.selectMealsForPackage}
+                  </Text>
+                  {Object.keys(viewingPackage.selectedMealItems || viewingPackage.selectedMeals || {}).map((dayId) => {
+                    const dLabel = getDayLabel(dayId, dayConfig);
+                    const mealItems = viewingPackage.selectedMealItems?.[dayId] || (viewingPackage.selectedMeals?.[dayId] || []).map((m: any) => ({ mealType: m, varietyId: "" }));
+                    const mLabels = mealItems.map((i) => {
+                      const mLabel = getMealLabel(i.mealType);
+                      const dObj = dayConfig.find((d) => d.id === dayId);
+                      const mealConf = dObj ? (dObj as any)[i.mealType] : null;
+                      const varieties = getMealVarieties(mealConf);
+                      const v = varieties.find((vr) => vr.id === i.varietyId);
+                      return v ? `${mLabel} (${v.name})` : mLabel;
+                    }).join(", ");
+                    return (
+                      <Text key={dayId} style={{ fontSize: s(13), fontWeight: "700", color: theme.colors.textPrimary }}>
+                        • {dLabel}: {mLabels}
+                      </Text>
+                    );
+                  })}
+                </View>
+              </ScrollView>
+            )}
+
+            <Pressable
+              onPress={() => setViewingPackage(null)}
+              style={({ pressed }) => [
+                styles.primary,
+                { height: 46, marginTop: s(16), borderRadius: 12 },
+                pressed && { opacity: 0.8 },
+              ]}
+            >
+              <Text style={{ color: theme.colors.white, fontWeight: "900", fontSize: s(15) }}>
+                {UI_TEXT.ok}
+              </Text>
+            </Pressable>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }

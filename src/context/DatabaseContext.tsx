@@ -25,7 +25,8 @@ import {
   TakenState,
   UserRole,
   KitchenMetrics,
-  GuestCheckoutSource
+  GuestCheckoutSource,
+  FoodPackage,
 } from "../types";
 import { useAuth } from "./AuthContext";
 
@@ -102,11 +103,18 @@ export interface NotesContextType {
   deleteNote: (id: string) => Promise<void>;
 }
 
-export type DatabaseContextType = CoreDatabaseContextType & ActivityLogsContextType & NotesContextType;
+export interface FoodPackagesContextType {
+  foodPackages: FoodPackage[];
+  upsertFoodPackage: (pkg: FoodPackage) => Promise<void>;
+  deleteFoodPackage: (id: string) => Promise<void>;
+}
+
+export type DatabaseContextType = CoreDatabaseContextType & ActivityLogsContextType & NotesContextType & FoodPackagesContextType;
 
 const CoreDatabaseContext = createContext<CoreDatabaseContextType | undefined>(undefined);
 const ActivityLogsContext = createContext<ActivityLogsContextType | undefined>(undefined);
 const NotesContext = createContext<NotesContextType | undefined>(undefined);
+const FoodPackagesContext = createContext<FoodPackagesContextType | undefined>(undefined);
 
 export function DatabaseProvider({ children }: { children: React.ReactNode }) {
   const { userRole, userName, userAccountName } = useAuth();
@@ -134,6 +142,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
   const [androidAppLocation, setAndroidAppLocation] = useState<string | undefined>(undefined);
   const [iosAppLocation, setIosAppLocation] = useState<string | undefined>(undefined);
   const [notes, setNotes] = useState<Note[]>([]);
+  const [foodPackages, setFoodPackages] = useState<FoodPackage[]>([]);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [kitchenMetrics, setKitchenMetrics] = useState<KitchenMetrics | null>(null);
 
@@ -193,11 +202,12 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
         setFirebaseError(firebaseMissingConfig.join(", "));
         return;
       }
-      const [subs, config, menu, notesData, appVer, logsData, metricsData] = await Promise.all([
+      const [subs, config, menu, notesData, packagesData, appVer, logsData, metricsData] = await Promise.all([
         repository.list(),
         repository.getConfig(),
         repository.getMenu(),
         repository.getNotes(),
+        repository.getFoodPackages(),
         repository.getAppVersion(),
         repository.getActivityLogs(50),
         repository.getMetrics(),
@@ -226,6 +236,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       setSoundEnabled(config.soundEnabled !== false);
       setFoodMenu(menu);
       setNotes(notesData);
+      setFoodPackages(packagesData);
       setActivityLogs(logsData);
       setKitchenMetrics(metricsData);
       setFirebaseError("");
@@ -250,10 +261,11 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       repository.getConfig(),
       repository.getMenu(),
       repository.getNotes(),
+      repository.getFoodPackages(),
       repository.getAppVersion(),
       repository.getMetrics(),
       repository.getActivityLogs(50)
-    ]).then(([config, menu, notesData, appVer, metricsData, logsData]) => {
+    ]).then(([config, menu, notesData, packagesData, appVer, metricsData, logsData]) => {
       if (!isMounted) return;
 
       setDayConfig(config.days || []);
@@ -269,6 +281,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       setSoundEnabled(config.soundEnabled !== false);
       setFoodMenu(menu);
       setNotes(notesData || []);
+      setFoodPackages(packagesData || []);
       setActivityLogs(logsData || []);
       if (appVer) {
         setRemoteAppVersion(appVer.version);
@@ -364,6 +377,23 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       }
     );
 
+    const unsubFoodPackages = repository.onFoodPackagesDelta(
+      (newPkg) => {
+        setFoodPackages((prev) => {
+          if (prev.some((p) => p.id === newPkg.id)) {
+            return prev.map((p) => (p.id === newPkg.id ? newPkg : p)).sort((a, b) => b.timestamp - a.timestamp);
+          }
+          return [newPkg, ...prev].sort((a, b) => b.timestamp - a.timestamp);
+        });
+      },
+      (updatedPkg) => {
+        setFoodPackages((prev) => prev.map((p) => (p.id === updatedPkg.id ? updatedPkg : p)).sort((a, b) => b.timestamp - a.timestamp));
+      },
+      (removedId) => {
+        setFoodPackages((prev) => prev.filter((p) => p.id !== removedId));
+      }
+    );
+
     let logBuffer: ActivityLog[] = [];
     let logBatchTimer: any = null;
 
@@ -432,6 +462,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       if (logBatchTimer) clearTimeout(logBatchTimer);
       unsubSubs();
       unsubNotes();
+      unsubFoodPackages();
       unsubLogs();
       unsubMenu();
       unsubConfig();
@@ -841,6 +872,51 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
     }
   }, [notes, addActivityLog]);
 
+  const upsertFoodPackage = useCallback(async (pkg: FoodPackage) => {
+    try {
+      const isEdit = !!pkg.id;
+      await repository.upsertFoodPackage(pkg);
+      addActivityLog({
+        module: ActivityModule.PACKAGE,
+        action: isEdit ? ActivityAction.UPDATE : ActivityAction.CREATE,
+        targetId: pkg.name,
+        description: (isEdit ? UI_TEXT.logUpdatePackage : UI_TEXT.logCreatePackage).replace("{name}", pkg.name)
+      });
+    } catch (err: any) {
+      addActivityLog({
+        module: ActivityModule.PACKAGE,
+        action: ActivityAction.ERROR,
+        description: UI_TEXT.logError.replace("{module}", ActivityModule.PACKAGE).replace("{message}", err.message || String(err)),
+        stack: err.stack
+      });
+      throw err;
+    }
+  }, [addActivityLog]);
+
+  const deleteFoodPackage = useCallback(async (id: string) => {
+    try {
+      const pkgToDelete = foodPackages.find(p => p.id === id);
+      const pkgName = pkgToDelete?.name || id;
+      setFoodPackages(prev => prev.filter(p => p.id !== id));
+      await repository.removeFoodPackage(id);
+      addActivityLog({
+        module: ActivityModule.PACKAGE,
+        action: ActivityAction.DELETE,
+        targetId: pkgName,
+        description: UI_TEXT.logDeletePackage.replace("{name}", pkgName)
+      });
+    } catch (err: any) {
+      addActivityLog({
+        module: ActivityModule.PACKAGE,
+        action: ActivityAction.ERROR,
+        targetId: id,
+        description: UI_TEXT.logError.replace("{module}", ActivityModule.PACKAGE).replace("{message}", err.message || String(err)),
+        stack: err.stack
+      });
+      throw err;
+    }
+  }, [foodPackages, addActivityLog]);
+
   const guestUpdateTimers = useRef<Record<string, any>>({});
 
   const updateGuestCountDebounced = useCallback((dayId: string, mealKey: MealType, field: string, value: number, source?: GuestCheckoutSource | string) => {
@@ -1171,12 +1247,18 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
     notes, upsertNote, deleteNote
   }), [notes, upsertNote, deleteNote]);
 
+  const foodPackagesValue = useMemo(() => ({
+    foodPackages, upsertFoodPackage, deleteFoodPackage
+  }), [foodPackages, upsertFoodPackage, deleteFoodPackage]);
+
   return (
     <CoreDatabaseContext.Provider value={coreValue}>
       <NotesContext.Provider value={notesValue}>
-        <ActivityLogsContext.Provider value={logsValue}>
-          {children}
-        </ActivityLogsContext.Provider>
+        <FoodPackagesContext.Provider value={foodPackagesValue}>
+          <ActivityLogsContext.Provider value={logsValue}>
+            {children}
+          </ActivityLogsContext.Provider>
+        </FoodPackagesContext.Provider>
       </NotesContext.Provider>
     </CoreDatabaseContext.Provider>
   );
@@ -1200,18 +1282,26 @@ export function useNotes(): NotesContextType {
   return context;
 }
 
+export function useFoodPackages(): FoodPackagesContextType {
+  const context = useContext(FoodPackagesContext);
+  if (!context) throw new Error("useFoodPackages must be used within DatabaseProvider");
+  return context;
+}
+
 export function useDatabase(): DatabaseContextType {
   const core = useContext(CoreDatabaseContext);
   const notesCtx = useContext(NotesContext);
+  const foodPackagesCtx = useContext(FoodPackagesContext);
   const logsCtx = useContext(ActivityLogsContext);
 
-  if (!core || !notesCtx || !logsCtx) {
+  if (!core || !notesCtx || !foodPackagesCtx || !logsCtx) {
     throw new Error("useDatabase must be used within DatabaseProvider");
   }
 
   return useMemo(() => ({
     ...core,
     ...notesCtx,
+    ...foodPackagesCtx,
     ...logsCtx,
-  }), [core, notesCtx, logsCtx]);
+  }), [core, notesCtx, foodPackagesCtx, logsCtx]);
 }

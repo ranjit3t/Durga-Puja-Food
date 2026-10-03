@@ -94,6 +94,14 @@ The application follows a **Serverless Layered Architecture** built on the **Exp
 
 ### L. Subscription Amount Validation & Discrepancy Engine (`SubscriptionForm.tsx`)
 - **Pricing Calculation Helper (`calculateSubscriptionAmount`)**: Pure function summing meal and parcel fees for all active days. Supports kids pricing (`kidsVegPrice`, `kidsNonVegPrice`, `kidsVegParcelPrice`, `kidsNonVegParcelPrice`) with fallbacks to adult menu pricing and `dayConfig` meal defaults.
+- **Food Package Discount Engine (`FoodPackageScreen.tsx`, `paymentUtils.ts`, `SubscriptionForm.tsx`, `PackagePassesReport.tsx`)**:
+  - **Modular Pricing Refactoring**: Refactored `calculateSubscriptionAmount` into `calculatePersonMealAndParcelCost`, isolating single-person meal and parcel cost breakdowns across all active days.
+  - **Applicability & Sub-Category Coverage Engine (`findApplicablePackagesForPerson`)**: Evaluates enabled food packages against a person's category (`adult`, `kids`, `member`) and exact meal items with sub-category dietary varieties. Evaluates minimum cart value criteria for percentage flat discounts.
+  - **Combined Pass Total Calculation (`calculatePassTotalWithPackages`)**: Reuses single-person pricing breakdown and applies per-person package discounts independently. Parcels are kept strictly outside package discounts and added to both normal and package totals as extra.
+  - **Add Pass Apply Package Modal**: Renders eligible packages per person, displaying current price (with parcel), price after package (with parcel), and savings.
+  - **Edit Pass & View Pass Summary Card Markers**: Displays a high-visibility `"PACKAGE APPLIED"` badge pill on the top summary/identity cards of both Edit Pass (`SubscriptionForm.tsx`) and View Pass (`DetailsScreen.tsx`) for passes with applied packages. Renders an "Applied Food Packages" card section in Edit Pass listing applied package names and prices per person. Tapping any package name opens a view-only details modal.
+  - **Package Passes Report (`PackagePassesReport.tsx`)**: Dedicated report tab under Reports listing all package-applied passes with member headcount, paid totals, and applied package details per member, with 1-tap navigation to View Pass (`DetailsScreen.tsx`).
+  - **Discrepancy Exemption**: Passes with an applied package (`isPackageApplied: true`) bypass amount mismatch warning alerts and are excluded from `AmountDiscrepancyReport`.
 - **Legacy Data Normalization**: On Edit Pass load, empty or missing amount fields are normalized to `"0"` (`UI_TEXT.zero`), displaying as `"0"` in payment input controls.
 - **Payment Input Filtering**: Enforces numeric/decimal filtering (`replace(/[^0-9.]/g, '')`) and resets empty fields to `"0"` on blur.
 - **Meal Change Snapshot (`hasMealOrParcelChoicesChanged`)**: Compares current meal slots, parcel selections, and headcount with `initialMealSnapshot.current`. Amount discrepancy validation runs on Save/Save QR for new passes or whenever meal/parcel/headcount choices differ in Edit Pass.
@@ -165,6 +173,10 @@ The application follows a **Serverless Layered Architecture** built on the **Exp
       ".write": "auth != null"
     },
     "notes": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "food_packages": {
       ".read": "auth != null",
       ".write": "auth != null"
     },

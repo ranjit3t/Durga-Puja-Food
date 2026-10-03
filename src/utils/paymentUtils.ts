@@ -9,6 +9,9 @@ import {
   normalizeChoice,
   toBool,
   DietaryVariety,
+  FoodPackage,
+  AppliedPackageInfo,
+  PackageMealItem,
 } from "../domain";
 import { isParcelEnabled, isKidsParcelEnabled, isDietaryEnabled, isMealEnabled, getMealVarieties, getDietTypeForChoice, getVarietyForChoice } from "../constants";
 
@@ -22,6 +25,27 @@ export interface DiscrepancyItem {
   calculatedAmount: number;
   difference: number; // paidAmount - calculatedAmount
   payments: PaymentEntry[];
+}
+
+export interface PersonCostBreakdown {
+  totalMealPrice: number;
+  totalParcelPrice: number;
+  totalPersonPrice: number;
+  mealPricesMap: Record<string, Record<string, number>>; // dayId -> mealType -> mealPrice
+}
+
+export interface ApplicablePackageEvaluation {
+  packageId: string;
+  packageName: string;
+  packageDescription: string;
+  applicability: string;
+  packagePrice: number;
+  packageMealsNormalPrice: number;
+  normalTotalMealPrice: number;
+  totalParcelPrice: number;
+  normalTotalPrice: number;
+  priceWithPackage: number;
+  savings: number;
 }
 
 /**
@@ -52,18 +76,64 @@ export function resolvePrice(
 }
 
 /**
- * Calculates the expected total subscription cost for a pass based on configured
- * food menu pricing, day configurations, and headcounts.
+ * Resolves the price for a specific meal dietary variety / sub-category.
  */
-export function calculateSubscriptionAmount(
+export function resolveVarietyPrice(
+  dayId: string,
+  mType: MealType,
+  varietyId: string,
+  isKid: boolean,
+  applicability: string,
+  dayConfig: any[],
+  foodMenu: Record<string, any>
+): number {
+  const dayConf = dayConfig.find((d) => d.id === dayId);
+  const mealConf = dayConf ? dayConf[mType] : null;
+  const dayMenu = foodMenu?.[dayId]?.[mType];
+  const varieties = getMealVarieties(mealConf);
+  const variety = varieties.find((v) => v.id === varietyId);
+
+  let adultMealPrice: any;
+  let kidsMealPrice: any;
+
+  if (variety?.id === "veg_default") {
+    adultMealPrice = dayMenu?.vegPrice ?? mealConf?.vegPrice;
+    kidsMealPrice = dayMenu?.kidsVegPrice;
+  } else if (variety?.id === "nonVeg_default") {
+    adultMealPrice = dayMenu?.nonVegPrice ?? mealConf?.nonVegPrice;
+    kidsMealPrice = dayMenu?.kidsNonVegPrice;
+  } else if (variety) {
+    const varMenu = dayMenu?.varieties?.[variety.id];
+    const isVeg = variety.type === DietType.VEG;
+    const defaultAdultMeal = isVeg ? (dayMenu?.vegPrice ?? mealConf?.vegPrice) : (dayMenu?.nonVegPrice ?? mealConf?.nonVegPrice);
+    const defaultKidsMeal = isVeg ? dayMenu?.kidsVegPrice : dayMenu?.kidsNonVegPrice;
+
+    adultMealPrice = (varMenu?.adultPrice !== undefined && varMenu?.adultPrice !== "") ? varMenu.adultPrice : defaultAdultMeal;
+    kidsMealPrice = (varMenu?.kidsPrice !== undefined && varMenu?.kidsPrice !== "") ? varMenu.kidsPrice : defaultKidsMeal;
+  } else {
+    adultMealPrice = dayMenu?.vegPrice ?? mealConf?.vegPrice;
+    kidsMealPrice = dayMenu?.kidsVegPrice;
+  }
+
+  const shouldUseKidPrice = isKid || applicability === "kids";
+  return resolvePrice(shouldUseKidPrice, kidsMealPrice, adultMealPrice, undefined);
+}
+
+/**
+ * Calculates normal meal cost and parcel cost breakdown for a single person index.
+ */
+export function calculatePersonMealAndParcelCost(
+  personIndex: number,
   mealSlots: Record<string, MealSlot[]>,
-  peopleCount: number,
-  _kidsCount: number,
+  isKid: boolean,
   foodMenu: Record<string, any>,
   dayConfig: any[],
   kidsEnabled: boolean
-): number {
-  let total = 0;
+): PersonCostBreakdown {
+  let totalMealPrice = 0;
+  let totalParcelPrice = 0;
+  const mealPricesMap: Record<string, Record<string, number>> = {};
+
   const dayIds = Object.keys(mealSlots || {});
 
   dayIds.forEach((dayId) => {
@@ -72,76 +142,391 @@ export function calculateSubscriptionAmount(
 
     const dayMenu = foodMenu?.[dayId];
     const slots = mealSlots[dayId] || [];
+    const personSlot = slots[personIndex];
+    if (!personSlot) return;
 
-    slots.forEach((personSlot, index) => {
-      const isKid = kidsEnabled && index >= peopleCount;
+    mealPricesMap[dayId] = mealPricesMap[dayId] || {};
 
-      const mealTypes = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER];
-      mealTypes.forEach((mType) => {
-        if (!isMealEnabled(dayId, mType, dayConfig)) return;
-        const mealConf = dayConf[mType];
-        const varieties = getMealVarieties(mealConf);
+    const mealTypes = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER];
+    mealTypes.forEach((mType) => {
+      if (!isMealEnabled(dayId, mType, dayConfig)) return;
+      const mealConf = dayConf[mType];
+      const varieties = getMealVarieties(mealConf);
 
-        const choice = normalizeChoice(personSlot[mType]);
-        if (choice === DietaryOption.NONE) return;
+      const choice = normalizeChoice(personSlot[mType]);
+      if (choice === DietaryOption.NONE) return;
 
-        const diet = getDietTypeForChoice(choice, varieties);
-        if (!diet || !isDietaryEnabled(dayId, mType, diet, dayConfig)) return;
+      const diet = getDietTypeForChoice(choice, varieties);
+      if (!diet || !isDietaryEnabled(dayId, mType, diet, dayConfig)) return;
 
-        const variety = getVarietyForChoice(choice, varieties);
-        const isParcel = toBool(personSlot[`${mType}Parcel` as keyof MealSlot]);
-        const isParcelAllowed = isParcel && (isKid
-          ? isKidsParcelEnabled(dayId, mType, dayConfig, kidsEnabled)
-          : isParcelEnabled(dayId, mType, dayConfig));
+      const variety = getVarietyForChoice(choice, varieties);
+      const isParcel = toBool(personSlot[`${mType}Parcel` as keyof MealSlot]);
+      const isParcelAllowed = isParcel && (isKid
+        ? isKidsParcelEnabled(dayId, mType, dayConfig, kidsEnabled)
+        : isParcelEnabled(dayId, mType, dayConfig));
 
-        let adultMealPrice: any;
-        let kidsMealPrice: any;
-        let adultParcelPrice: any;
-        let kidsParcelPrice: any;
+      let adultMealPrice: any;
+      let kidsMealPrice: any;
+      let adultParcelPrice: any;
+      let kidsParcelPrice: any;
 
-        if (variety?.id === "veg_default") {
-          adultMealPrice = dayMenu?.[mType]?.vegPrice ?? mealConf.vegPrice;
-          kidsMealPrice = dayMenu?.[mType]?.kidsVegPrice;
-          adultParcelPrice = dayMenu?.[mType]?.vegParcelPrice ?? mealConf.vegParcelPrice;
-          kidsParcelPrice = dayMenu?.[mType]?.kidsVegParcelPrice;
-        } else if (variety?.id === "nonVeg_default") {
-          adultMealPrice = dayMenu?.[mType]?.nonVegPrice ?? mealConf.nonVegPrice;
-          kidsMealPrice = dayMenu?.[mType]?.kidsNonVegPrice;
-          adultParcelPrice = dayMenu?.[mType]?.nonVegParcelPrice ?? mealConf.nonVegParcelPrice;
-          kidsParcelPrice = dayMenu?.[mType]?.kidsNonVegParcelPrice;
-        } else if (variety) {
-          const varMenu = dayMenu?.[mType]?.varieties?.[variety.id];
-          const isVeg = variety.type === DietType.VEG;
-          const defaultAdultMeal = isVeg ? (dayMenu?.[mType]?.vegPrice ?? mealConf.vegPrice) : (dayMenu?.[mType]?.nonVegPrice ?? mealConf.nonVegPrice);
-          const defaultKidsMeal = isVeg ? dayMenu?.[mType]?.kidsVegPrice : dayMenu?.[mType]?.kidsNonVegPrice;
-          const defaultAdultParcel = isVeg ? (dayMenu?.[mType]?.vegParcelPrice ?? mealConf.vegParcelPrice) : (dayMenu?.[mType]?.nonVegParcelPrice ?? mealConf.nonVegParcelPrice);
-          const defaultKidsParcel = isVeg ? dayMenu?.[mType]?.kidsVegParcelPrice : dayMenu?.[mType]?.kidsNonVegParcelPrice;
+      if (variety?.id === "veg_default") {
+        adultMealPrice = dayMenu?.[mType]?.vegPrice ?? mealConf.vegPrice;
+        kidsMealPrice = dayMenu?.[mType]?.kidsVegPrice;
+        adultParcelPrice = dayMenu?.[mType]?.vegParcelPrice ?? mealConf.vegParcelPrice;
+        kidsParcelPrice = dayMenu?.[mType]?.kidsVegParcelPrice;
+      } else if (variety?.id === "nonVeg_default") {
+        adultMealPrice = dayMenu?.[mType]?.nonVegPrice ?? mealConf.nonVegPrice;
+        kidsMealPrice = dayMenu?.[mType]?.kidsNonVegPrice;
+        adultParcelPrice = dayMenu?.[mType]?.vegParcelPrice ?? mealConf.vegParcelPrice;
+        kidsParcelPrice = dayMenu?.[mType]?.kidsNonVegParcelPrice;
+      } else if (variety) {
+        const varMenu = dayMenu?.[mType]?.varieties?.[variety.id];
+        const isVeg = variety.type === DietType.VEG;
+        const defaultAdultMeal = isVeg ? (dayMenu?.[mType]?.vegPrice ?? mealConf.vegPrice) : (dayMenu?.[mType]?.nonVegPrice ?? mealConf.nonVegPrice);
+        const defaultKidsMeal = isVeg ? dayMenu?.[mType]?.kidsVegPrice : dayMenu?.[mType]?.kidsNonVegPrice;
+        const defaultAdultParcel = isVeg ? (dayMenu?.[mType]?.vegParcelPrice ?? mealConf.vegParcelPrice) : (dayMenu?.[mType]?.nonVegParcelPrice ?? mealConf.nonVegParcelPrice);
+        const defaultKidsParcel = isVeg ? dayMenu?.[mType]?.kidsVegParcelPrice : dayMenu?.[mType]?.kidsNonVegParcelPrice;
 
-          adultMealPrice = (varMenu?.adultPrice !== undefined && varMenu?.adultPrice !== "") ? varMenu.adultPrice : defaultAdultMeal;
-          kidsMealPrice = (varMenu?.kidsPrice !== undefined && varMenu?.kidsPrice !== "") ? varMenu.kidsPrice : defaultKidsMeal;
-          adultParcelPrice = (varMenu?.parcelPrice !== undefined && varMenu?.parcelPrice !== "") ? varMenu.parcelPrice : defaultAdultParcel;
-          kidsParcelPrice = (varMenu?.kidsParcelPrice !== undefined && varMenu?.kidsParcelPrice !== "") ? varMenu.kidsParcelPrice : defaultKidsParcel;
-        } else {
-          // Fallback
-          const isVeg = diet === DietType.VEG;
-          adultMealPrice = isVeg ? (dayMenu?.[mType]?.vegPrice ?? mealConf.vegPrice) : (dayMenu?.[mType]?.nonVegPrice ?? mealConf.nonVegPrice);
-          kidsMealPrice = isVeg ? dayMenu?.[mType]?.kidsVegPrice : dayMenu?.[mType]?.kidsNonVegPrice;
-          adultParcelPrice = isVeg ? (dayMenu?.[mType]?.vegParcelPrice ?? mealConf.vegParcelPrice) : (dayMenu?.[mType]?.nonVegParcelPrice ?? mealConf.nonVegParcelPrice);
-          kidsParcelPrice = isVeg ? dayMenu?.[mType]?.kidsVegParcelPrice : dayMenu?.[mType]?.kidsNonVegParcelPrice;
-        }
+        adultMealPrice = (varMenu?.adultPrice !== undefined && varMenu?.adultPrice !== "") ? varMenu.adultPrice : defaultAdultMeal;
+        kidsMealPrice = (varMenu?.kidsPrice !== undefined && varMenu?.kidsPrice !== "") ? varMenu.kidsPrice : defaultKidsMeal;
+        adultParcelPrice = (varMenu?.parcelPrice !== undefined && varMenu?.parcelPrice !== "") ? varMenu.parcelPrice : defaultAdultParcel;
+        kidsParcelPrice = (varMenu?.kidsParcelPrice !== undefined && varMenu?.kidsParcelPrice !== "") ? varMenu.kidsParcelPrice : defaultKidsParcel;
+      } else {
+        const isVeg = diet === DietType.VEG;
+        adultMealPrice = isVeg ? (dayMenu?.[mType]?.vegPrice ?? mealConf.vegPrice) : (dayMenu?.[mType]?.nonVegPrice ?? mealConf.nonVegPrice);
+        kidsMealPrice = isVeg ? dayMenu?.[mType]?.kidsVegPrice : dayMenu?.[mType]?.kidsNonVegPrice;
+        adultParcelPrice = isVeg ? (dayMenu?.[mType]?.vegParcelPrice ?? mealConf.vegParcelPrice) : (dayMenu?.[mType]?.nonVegParcelPrice ?? mealConf.nonVegParcelPrice);
+        kidsParcelPrice = isVeg ? dayMenu?.[mType]?.kidsVegParcelPrice : dayMenu?.[mType]?.kidsNonVegParcelPrice;
+      }
 
-        const mealPrice = resolvePrice(isKid, kidsMealPrice, adultMealPrice, undefined);
-        total += mealPrice;
+      const mealPrice = resolvePrice(isKid, kidsMealPrice, adultMealPrice, undefined);
+      totalMealPrice += mealPrice;
+      mealPricesMap[dayId][mType] = mealPrice;
 
-        if (isParcelAllowed) {
-          const parcelPrice = resolvePrice(isKid, kidsParcelPrice, adultParcelPrice, undefined);
-          total += parcelPrice;
-        }
-      });
+      if (isParcelAllowed) {
+        const parcelPrice = resolvePrice(isKid, kidsParcelPrice, adultParcelPrice, undefined);
+        totalParcelPrice += parcelPrice;
+      }
     });
   });
 
+  return {
+    totalMealPrice,
+    totalParcelPrice,
+    totalPersonPrice: totalMealPrice + totalParcelPrice,
+    mealPricesMap,
+  };
+}
+
+/**
+ * Calculates the expected total subscription cost for a pass based on configured
+ * food menu pricing, day configurations, and headcounts.
+ */
+export function calculateSubscriptionAmount(
+  mealSlots: Record<string, MealSlot[]>,
+  peopleCount: number,
+  kidsCount: number,
+  foodMenu: Record<string, any>,
+  dayConfig: any[],
+  kidsEnabled: boolean
+): number {
+  let total = 0;
+  const totalPeople = (peopleCount || 0) + (kidsCount || 0);
+
+  for (let i = 0; i < totalPeople; i++) {
+    const isKid = kidsEnabled && i >= peopleCount;
+    const cost = calculatePersonMealAndParcelCost(i, mealSlots, isKid, foodMenu, dayConfig, kidsEnabled);
+    total += cost.totalPersonPrice;
+  }
+
   return total;
+}
+
+/**
+ * Evaluates enabled packages for a single person to determine which packages match
+ * the person's category and selected meals (including percentage flat discounts and min cart value), and calculates savings.
+ */
+export function findApplicablePackagesForPerson(
+  personIndex: number,
+  mealSlots: Record<string, MealSlot[]>,
+  isKid: boolean,
+  foodPackages: FoodPackage[],
+  foodMenu: Record<string, any>,
+  dayConfig: any[],
+  kidsEnabled: boolean
+): ApplicablePackageEvaluation[] {
+  if (!foodPackages || foodPackages.length === 0) return [];
+
+  const personCost = calculatePersonMealAndParcelCost(personIndex, mealSlots, isKid, foodMenu, dayConfig, kidsEnabled);
+  const applicableList: ApplicablePackageEvaluation[] = [];
+
+  foodPackages.forEach((pkg) => {
+    if (!pkg.enabled) return;
+
+    if (pkg.applicability === "adult" && isKid) return;
+    if (pkg.applicability === "kids" && !isKid) return;
+
+    const isFlatDiscount = pkg.discountType === "flat_discount" || pkg.discountRate !== undefined;
+
+    if (isFlatDiscount) {
+      const mealItemsMap = pkg.selectedMealItems || {};
+      const legacyMealsMap = pkg.selectedMeals || {};
+      const pkgDays = Object.keys(mealItemsMap).length > 0 ? Object.keys(mealItemsMap) : Object.keys(legacyMealsMap);
+
+      if (pkgDays.length > 0) {
+        // Meal-specific percentage flat discount
+        let coversAllPackageMeals = true;
+        let packageMealsNormalPrice = 0;
+
+        for (const dayId of pkgDays) {
+          const mealItems: PackageMealItem[] = mealItemsMap[dayId] || (legacyMealsMap[dayId] || []).map((m: any) => ({ mealType: m, varietyId: "" }));
+          if (mealItems.length === 0) continue;
+
+          const personDaySlots = mealSlots[dayId]?.[personIndex];
+          if (!personDaySlots) {
+            coversAllPackageMeals = false;
+            break;
+          }
+
+          for (const item of mealItems) {
+            const mType = item.mealType;
+            const targetVarietyId = item.varietyId;
+
+            const choice = normalizeChoice(personDaySlots[mType]);
+            if (choice === DietaryOption.NONE) {
+              coversAllPackageMeals = false;
+              break;
+            }
+
+            const mealConf = dayConfig.find((d) => d.id === dayId)?.[mType];
+            const varieties = getMealVarieties(mealConf);
+            const personVariety = getVarietyForChoice(choice, varieties);
+
+            if (targetVarietyId && targetVarietyId !== "" && personVariety?.id !== targetVarietyId) {
+              coversAllPackageMeals = false;
+              break;
+            }
+
+            const slotNormalMealPrice = personCost.mealPricesMap[dayId]?.[mType] || 0;
+            packageMealsNormalPrice += slotNormalMealPrice;
+          }
+
+          if (!coversAllPackageMeals) break;
+        }
+
+        if (!coversAllPackageMeals) return;
+
+        const minCart = pkg.minCartValue ?? 0;
+        if (packageMealsNormalPrice < minCart) return;
+
+        const discountPercent = Math.min(100, Math.max(0, pkg.discountRate ?? 0));
+        const effectiveDiscount = (packageMealsNormalPrice * discountPercent) / 100;
+        const discountedMealsPrice = Math.max(0, packageMealsNormalPrice - effectiveDiscount);
+        const priceWithPackage = (personCost.totalMealPrice - packageMealsNormalPrice + discountedMealsPrice) + personCost.totalParcelPrice;
+        const savings = Math.round((personCost.totalPersonPrice - priceWithPackage) * 100) / 100;
+
+        if (savings > 0) {
+          applicableList.push({
+            packageId: pkg.id,
+            packageName: pkg.name,
+            packageDescription: pkg.description,
+            applicability: pkg.applicability,
+            packagePrice: Math.round(discountedMealsPrice * 100) / 100,
+            packageMealsNormalPrice,
+            normalTotalMealPrice: personCost.totalMealPrice,
+            totalParcelPrice: personCost.totalParcelPrice,
+            normalTotalPrice: personCost.totalPersonPrice,
+            priceWithPackage: Math.round(priceWithPackage * 100) / 100,
+            savings,
+          });
+        }
+      } else {
+        // All-meal percentage flat discount
+        const totalMealPrice = personCost.totalMealPrice;
+        const minCart = pkg.minCartValue ?? 0;
+        if (totalMealPrice < minCart) return;
+
+        const discountPercent = Math.min(100, Math.max(0, pkg.discountRate ?? 0));
+        const effectiveDiscount = (totalMealPrice * discountPercent) / 100;
+        const discountedMealsPrice = Math.max(0, totalMealPrice - effectiveDiscount);
+        const priceWithPackage = discountedMealsPrice + personCost.totalParcelPrice;
+        const savings = Math.round((personCost.totalPersonPrice - priceWithPackage) * 100) / 100;
+
+        if (savings > 0) {
+          applicableList.push({
+            packageId: pkg.id,
+            packageName: pkg.name,
+            packageDescription: pkg.description,
+            applicability: pkg.applicability,
+            packagePrice: Math.round(discountedMealsPrice * 100) / 100,
+            packageMealsNormalPrice: totalMealPrice,
+            normalTotalMealPrice: totalMealPrice,
+            totalParcelPrice: personCost.totalParcelPrice,
+            normalTotalPrice: personCost.totalPersonPrice,
+            priceWithPackage: Math.round(priceWithPackage * 100) / 100,
+            savings,
+          });
+        }
+      }
+    } else {
+      // Meal-based package (fixed package price)
+      const mealItemsMap = pkg.selectedMealItems || {};
+      const legacyMealsMap = pkg.selectedMeals || {};
+      const pkgDays = Object.keys(mealItemsMap).length > 0 ? Object.keys(mealItemsMap) : Object.keys(legacyMealsMap);
+      if (pkgDays.length === 0) return;
+
+      let coversAllPackageMeals = true;
+      let packageMealsNormalPrice = 0;
+
+      for (const dayId of pkgDays) {
+        const mealItems: PackageMealItem[] = mealItemsMap[dayId] || (legacyMealsMap[dayId] || []).map((m: any) => ({ mealType: m, varietyId: "" }));
+        if (mealItems.length === 0) continue;
+
+        const personDaySlots = mealSlots[dayId]?.[personIndex];
+        if (!personDaySlots) {
+          coversAllPackageMeals = false;
+          break;
+        }
+
+        for (const item of mealItems) {
+          const mType = item.mealType;
+          const targetVarietyId = item.varietyId;
+
+          const choice = normalizeChoice(personDaySlots[mType]);
+          if (choice === DietaryOption.NONE) {
+            coversAllPackageMeals = false;
+            break;
+          }
+
+          const mealConf = dayConfig.find((d) => d.id === dayId)?.[mType];
+          const varieties = getMealVarieties(mealConf);
+          const personVariety = getVarietyForChoice(choice, varieties);
+
+          if (targetVarietyId && targetVarietyId !== "" && personVariety?.id !== targetVarietyId) {
+            coversAllPackageMeals = false;
+            break;
+          }
+
+          const slotNormalMealPrice = personCost.mealPricesMap[dayId]?.[mType] || 0;
+          packageMealsNormalPrice += slotNormalMealPrice;
+        }
+
+        if (!coversAllPackageMeals) break;
+      }
+
+      if (!coversAllPackageMeals) return;
+
+      const normalTotalMealPrice = personCost.totalMealPrice;
+      const totalParcelPrice = personCost.totalParcelPrice;
+      const normalTotalPrice = personCost.totalPersonPrice;
+
+      const pkgPrice = pkg.packagePrice ?? 0;
+      const priceWithPackage = (normalTotalMealPrice - packageMealsNormalPrice + pkgPrice) + totalParcelPrice;
+      const savings = Math.round((normalTotalPrice - priceWithPackage) * 100) / 100;
+
+      if (savings > 0 || priceWithPackage < normalTotalPrice) {
+        applicableList.push({
+          packageId: pkg.id,
+          packageName: pkg.name,
+          packageDescription: pkg.description,
+          applicability: pkg.applicability,
+          packagePrice: pkgPrice,
+          packageMealsNormalPrice,
+          normalTotalMealPrice,
+          totalParcelPrice,
+          normalTotalPrice,
+          priceWithPackage: Math.round(priceWithPackage * 100) / 100,
+          savings,
+        });
+      }
+    }
+  });
+
+  return applicableList.sort((a, b) => b.savings - a.savings);
+}
+
+/**
+ * Calculates total subscription amount for a pass considering per-person applied packages (meal packages or percentage flat discounts).
+ */
+export function calculatePassTotalWithPackages(
+  mealSlots: Record<string, MealSlot[]>,
+  peopleCount: number,
+  kidsCount: number,
+  appliedPackages: Record<number, AppliedPackageInfo> | undefined,
+  foodPackages: FoodPackage[],
+  foodMenu: Record<string, any>,
+  dayConfig: any[],
+  kidsEnabled: boolean
+): number {
+  let totalPassPrice = 0;
+  const totalPeople = (peopleCount || 0) + (kidsCount || 0);
+
+  for (let i = 0; i < totalPeople; i++) {
+    const isKid = kidsEnabled && i >= peopleCount;
+    const personCost = calculatePersonMealAndParcelCost(i, mealSlots, isKid, foodMenu, dayConfig, kidsEnabled);
+
+    const appliedInfo = appliedPackages?.[i];
+    if (appliedInfo) {
+      const pkg = foodPackages.find((p) => p.id === appliedInfo.packageId);
+      if (pkg) {
+        const isFlatDiscount = pkg.discountType === "flat_discount" || pkg.discountRate !== undefined;
+
+        if (isFlatDiscount) {
+          const mealItemsMap = pkg.selectedMealItems || {};
+          const legacyMealsMap = pkg.selectedMeals || {};
+          const pkgDays = Object.keys(mealItemsMap).length > 0 ? Object.keys(mealItemsMap) : Object.keys(legacyMealsMap);
+
+          if (pkgDays.length > 0) {
+            let packageMealsNormalPrice = 0;
+            pkgDays.forEach((dayId) => {
+              const mealItems: PackageMealItem[] = mealItemsMap[dayId] || (legacyMealsMap[dayId] || []).map((m: any) => ({ mealType: m, varietyId: "" }));
+              mealItems.forEach((item) => {
+                const slotNormalMealPrice = personCost.mealPricesMap[dayId]?.[item.mealType] || 0;
+                packageMealsNormalPrice += slotNormalMealPrice;
+              });
+            });
+            const discountPercent = Math.min(100, Math.max(0, pkg.discountRate ?? 0));
+            const effectiveDiscount = (packageMealsNormalPrice * discountPercent) / 100;
+            const discountedMealsPrice = Math.max(0, packageMealsNormalPrice - effectiveDiscount);
+            const personPriceWithPkg = (personCost.totalMealPrice - packageMealsNormalPrice + discountedMealsPrice) + personCost.totalParcelPrice;
+            totalPassPrice += Math.max(0, personPriceWithPkg);
+            continue;
+          } else {
+            const totalMealPrice = personCost.totalMealPrice;
+            const discountPercent = Math.min(100, Math.max(0, pkg.discountRate ?? 0));
+            const effectiveDiscount = (totalMealPrice * discountPercent) / 100;
+            const discountedMealsPrice = Math.max(0, totalMealPrice - effectiveDiscount);
+            const personPriceWithPkg = discountedMealsPrice + personCost.totalParcelPrice;
+            totalPassPrice += Math.max(0, personPriceWithPkg);
+            continue;
+          }
+        } else {
+          let packageMealsNormalPrice = 0;
+          const mealItemsMap = pkg.selectedMealItems || {};
+          const legacyMealsMap = pkg.selectedMeals || {};
+          const pkgDays = Object.keys(mealItemsMap).length > 0 ? Object.keys(mealItemsMap) : Object.keys(legacyMealsMap);
+
+          pkgDays.forEach((dayId) => {
+            const mealItems: PackageMealItem[] = mealItemsMap[dayId] || (legacyMealsMap[dayId] || []).map((m: any) => ({ mealType: m, varietyId: "" }));
+            mealItems.forEach((item) => {
+              const slotNormalMealPrice = personCost.mealPricesMap[dayId]?.[item.mealType] || 0;
+              packageMealsNormalPrice += slotNormalMealPrice;
+            });
+          });
+
+          const pkgPrice = pkg.packagePrice ?? 0;
+          const personPriceWithPkg = (personCost.totalMealPrice - packageMealsNormalPrice + pkgPrice) + personCost.totalParcelPrice;
+          totalPassPrice += Math.max(0, personPriceWithPkg);
+          continue;
+        }
+      }
+    }
+
+    totalPassPrice += personCost.totalPersonPrice;
+  }
+
+  return totalPassPrice;
 }
 
 /**
@@ -156,6 +541,7 @@ export function calculatePaidAmount(sub: { payments?: PaymentEntry[]; amount?: s
 
 /**
  * Identifies all subscriptions where paid amount and calculated meal amount do not match.
+ * Automatically excludes passes where a food package discount has been applied.
  */
 export function getAmountDiscrepancyData(
   subscriptions: SubscriptionRecord[],
@@ -164,6 +550,7 @@ export function getAmountDiscrepancyData(
   kidsEnabled: boolean
 ): DiscrepancyItem[] {
   return subscriptions
+    .filter((sub) => !sub.isPackageApplied)
     .map((sub) => {
       const paidAmount = calculatePaidAmount(sub);
       const calculatedAmount = calculateSubscriptionAmount(
@@ -194,4 +581,9 @@ export function getAmountDiscrepancyData(
         (a.block || "").localeCompare(b.block || "", undefined, { numeric: true, sensitivity: "base" }) ||
         (a.flat || "").localeCompare(b.flat || "", undefined, { numeric: true, sensitivity: "base" })
     );
+}
+
+export function formatCurrencyAmount(num: number): string {
+  if (isNaN(num)) return "0";
+  return num % 1 !== 0 ? num.toFixed(2) : num.toFixed(0);
 }

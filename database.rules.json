@@ -46,6 +46,10 @@
       ".read": "auth != null",
       ".write": "auth != null"
     },
+    "food_packages": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
     "presence": {
       ".read": "auth != null",
       "$username": {

@@ -197,13 +197,14 @@ Eternia Food Desk is a cross-platform mobile and web application built with **Re
 - **`SubscriptionForm`**: Registration & edit view with headcount protection, automated pricing, identity locking, safe array initialization helpers, timestamp stamping, and OCR Payment Scanner.
 - **`ScannerScreen`**: Dual-mode verification interface featuring isolated `MemoizedCamera` QR scanning (`CheckoutSource.SCANNER`), 4-digit numeric passcode keypad (`CheckoutSource.PASSCODE`), and Quick Checkout mode with mid-service meal closure redirect.
 - **`DashboardScreen`**: Live kitchen counter dashboard with real-time meal metrics, progress bars, and metric grid views (uses `useCoreDatabase()`).
-- **`ReportScreen`**: Targeted lazy analytics suite providing 10 specialized reports with theme-aware PNG image export.
+- **`ReportScreen`**: Targeted lazy analytics suite providing 11 specialized reports (including `PackagePassesReport`) with theme-aware PNG image export.
 - **`NotesScreen`**: Real-time collaborative team notes streaming newest entries to the top in <50ms with sort toggle (uses `useNotes()`).
+- **`FoodPackageScreen`**: Real-time food package discount offers manager with admin-only access, support for meal-based packages and flat rate percentage discounts with minimum cart value, sub-category variety matrix pricing, and enable/disable toggles (uses `useFoodPackages()`).
 - **`ActivityLogScreen`**: Live real-time system audit log viewer streaming newest actions to the top in <50ms with Activity Summary modal window (uses `useActivityLogs()`).
 
 ### B. State & Context Layer (`src/context/`)
 - **`AuthContext`**: Manages login state, roles (`Admin` / `Vendor`), and 24-hour auto-logout.
-- **`DatabaseContext`**: Split into `CoreDatabaseContext`, `ActivityLogsContext`, and `NotesContext`. Features Universal WebSocket delta listeners, debounced batching, optimistic local state updates, progressive hydration, and `remoteAppVersion` sync.
+- **`DatabaseContext`**: Split into `CoreDatabaseContext`, `ActivityLogsContext`, `NotesContext`, and `FoodPackagesContext`. Features Universal WebSocket delta listeners, debounced batching, optimistic local state updates, progressive hydration, and `remoteAppVersion` sync.
 - **`NavigationContext`**: History-stack navigation using `AppScreen` enums with back button support.
 - **`UIContext`**: Global alert modals, error overlays, share handlers (`shareQr`), and printing logic.
 

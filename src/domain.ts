@@ -98,6 +98,7 @@ export enum AppScreen {
   ACTIVITY_LOG = "activityLog",
   NOTES = "notes",
   CONTACTS = "contacts",
+  FOOD_PACKAGE = "foodPackage",
 }
 
 export enum AppThemeMode {
@@ -182,6 +183,7 @@ export enum ActivityModule {
   AUTH = "Login",
   NOTE = "Note",
   CONTACT = "Contact",
+  PACKAGE = "Food Package",
 }
 
 export enum ActivityAction {
@@ -231,6 +233,7 @@ export enum ReportType {
   NOT_TAKEN = "notTaken",
   KIDS_MEAL = "kidsMeal",
   MISSED_PARCEL = "missedParcel",
+  PACKAGE = "package",
 }
 
 export enum UserRole {
@@ -310,6 +313,37 @@ export type PaymentEntry = {
   receivedBy?: string;
 };
 
+export type PackageApplicability = "adult" | "kids" | "member";
+
+export type PackageMealItem = {
+  mealType: MealType;
+  varietyId: string;
+};
+
+export type PackageDiscountType = "meal_package" | "flat_discount";
+
+export type FoodPackage = {
+  id: string;
+  name: string;
+  description: string;
+  applicability: PackageApplicability;
+  enabled: boolean;
+  discountType?: PackageDiscountType;
+  selectedMealItems?: Record<string, PackageMealItem[]>;
+  selectedMeals?: Record<string, MealType[]>;
+  packagePrice?: number;
+  currentPrice?: number;
+  discountRate?: number;
+  minCartValue?: number;
+  timestamp: number;
+};
+
+export type AppliedPackageInfo = {
+  packageId: string;
+  packageName: string;
+  packagePrice: number;
+};
+
 export type SubscriptionRecord = {
   id: string;
   block: string;
@@ -327,6 +361,8 @@ export type SubscriptionRecord = {
   transactionId?: string;
   passcode?: string;
   takenByPerson: Record<EventDay, TakenState[]>;
+  isPackageApplied?: boolean;
+  appliedPackages?: Record<number, AppliedPackageInfo>;
 };
 
 export type Note = {

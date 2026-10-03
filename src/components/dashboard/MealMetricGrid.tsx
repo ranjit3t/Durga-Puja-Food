@@ -173,8 +173,6 @@ export function MealMetricGrid(props: MealMetricProps) {
             const totalS = adultS + kidsS + guestS;
             const vColor = v.color || (v.type === DietType.VEG ? theme.colors.veg : theme.colors.nonVeg);
 
-            if (totalV === 0 && totalS === 0 && !showPlannedOnly) return null;
-
             return (
               <View key={v.id} style={{ backgroundColor: theme.colors.surface, borderRadius: 12, padding: 10, borderWidth: 1, borderColor: vColor + "66", gap: 6 }}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>

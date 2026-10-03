@@ -2,8 +2,9 @@ import React from "react";
 import { View, Text, TextInput, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { UI_TEXT } from "../../../strings";
-import { PaymentEntry, PaymentMode } from "../../../domain";
+import { PaymentEntry, PaymentMode, AppliedPackageInfo } from "../../../domain";
 import { Dropdown } from "../../../components/common/Dropdown";
+import { formatCurrencyAmount } from "../../../utils/paymentUtils";
 
 interface SubscriptionPaymentSectionProps {
   payments: PaymentEntry[];
@@ -20,6 +21,13 @@ interface SubscriptionPaymentSectionProps {
   theme: any;
   styles: any;
   s: (n: number) => number;
+  onOpenApplyPackageModal?: () => void;
+  hasApplicablePackages?: boolean;
+  isPackageApplied?: boolean;
+  appliedPackages?: Record<number, AppliedPackageInfo>;
+  lockIdentity?: boolean;
+  onViewAppliedPackage?: (pkgId: string) => void;
+  getPersonLabel?: (index: number) => string;
 }
 
 export const SubscriptionPaymentSection: React.FC<SubscriptionPaymentSectionProps> = ({
@@ -37,20 +45,149 @@ export const SubscriptionPaymentSection: React.FC<SubscriptionPaymentSectionProp
   theme,
   styles,
   s,
+  onOpenApplyPackageModal,
+  hasApplicablePackages,
+  isPackageApplied,
+  appliedPackages,
+  lockIdentity,
+  onViewAppliedPackage,
+  getPersonLabel,
 }) => {
   return (
     <View
       accessible={true}
       accessibilityRole="header"
-      accessibilityLabel={`${UI_TEXT.paymentDetails}, ${UI_TEXT.total}: ${totalAmount.toFixed(0)}`}
+      accessibilityLabel={`${UI_TEXT.paymentDetails}, ${UI_TEXT.total}: ${formatCurrencyAmount(totalAmount)}`}
       style={[styles.card, { backgroundColor: theme.cardColors[3].bg, borderColor: theme.cardColors[3].border }]}
     >
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <Text style={[styles.sectionTitle, { fontSize: 18, marginBottom: 0, color: theme.cardColors[3].accent }]}>{UI_TEXT.paymentDetails}</Text>
-        <View style={[styles.pill, { backgroundColor: theme.cardColors[3].accentLight }]}>
-          <Text style={[styles.pillText, { color: theme.cardColors[3].accent }]}>{totalAmount.toFixed(0)}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <Text style={[styles.sectionTitle, { fontSize: 18, marginBottom: 0, color: theme.cardColors[3].accent }]}>
+            {UI_TEXT.paymentDetails}
+          </Text>
+          {isPackageApplied && (
+            <View
+              style={{
+                backgroundColor: theme.colors.successLight,
+                paddingHorizontal: 8,
+                paddingVertical: 3,
+                borderRadius: 6,
+                borderWidth: 1,
+                borderColor: theme.colors.success,
+              }}
+            >
+              <Text style={{ fontSize: 10, fontWeight: '900', color: theme.colors.success }}>
+                {UI_TEXT.packageAppliedMarker}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          {!lockIdentity && (hasApplicablePackages || isPackageApplied) && onOpenApplyPackageModal && (
+            <Pressable
+              onPress={onOpenApplyPackageModal}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={UI_TEXT.applyPackage}
+              style={({ pressed }) => [
+                {
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 4,
+                  backgroundColor: theme.colors.primary,
+                  paddingHorizontal: 10,
+                  paddingVertical: 6,
+                  borderRadius: 8,
+                },
+                pressed && { opacity: 0.8 },
+              ]}
+            >
+              <Ionicons name="pricetag-outline" size={14} color={theme.colors.white} />
+              <Text style={{ color: theme.colors.white, fontWeight: '800', fontSize: 12 }}>
+                {isPackageApplied ? UI_TEXT.appliedPackage : UI_TEXT.applyPackage}
+              </Text>
+            </Pressable>
+          )}
+
+          <View style={[styles.pill, { backgroundColor: theme.cardColors[3].accentLight }]}>
+            <Text style={[styles.pillText, { color: theme.cardColors[3].accent }]}>{formatCurrencyAmount(totalAmount)}</Text>
+          </View>
         </View>
       </View>
+
+      {/* Edit Pass Applied Package Details Section */}
+      {lockIdentity && isPackageApplied && appliedPackages && Object.keys(appliedPackages).length > 0 && (
+        <View
+          style={{
+            backgroundColor: theme.colors.surfaceDark,
+            padding: 12,
+            borderRadius: 12,
+            marginBottom: 16,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            gap: 8,
+          }}
+        >
+          <Text style={{ fontSize: 11, fontWeight: '800', color: theme.colors.textMuted, textTransform: 'uppercase' }}>
+            {UI_TEXT.appliedPackage} ({UI_TEXT.foodPackages})
+          </Text>
+
+          {Object.entries(appliedPackages).map(([pIdxStr, pkgInfo]) => {
+            const pIdx = Number(pIdxStr);
+            const personName = getPersonLabel ? getPersonLabel(pIdx) : `${UI_TEXT.person} ${pIdx + 1}`;
+
+            return (
+              <View
+                key={pIdxStr}
+                style={{
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  backgroundColor: theme.colors.surface,
+                  paddingHorizontal: 10,
+                  paddingVertical: 8,
+                  borderRadius: 8,
+                  borderWidth: 1,
+                  borderColor: theme.colors.border,
+                }}
+              >
+                <Text style={{ fontSize: 12, fontWeight: '800', color: theme.colors.textPrimary }}>
+                  {personName}:
+                </Text>
+
+                <Pressable
+                  onPress={() => onViewAppliedPackage && onViewAppliedPackage(pkgInfo.packageId)}
+                  accessible={true}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${UI_TEXT.viewFoodPackage} ${pkgInfo.packageName}`}
+                  accessibilityHint="Click to view package details"
+                  style={({ pressed }) => [
+                    {
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 4,
+                      backgroundColor: theme.colors.primary + '15',
+                      paddingHorizontal: 8,
+                      paddingVertical: 4,
+                      borderRadius: 6,
+                    },
+                    pressed && { opacity: 0.7 },
+                  ]}
+                >
+                  <Ionicons name="information-circle-outline" size={14} color={theme.colors.primary} />
+                  <Text style={{ fontSize: 12, fontWeight: '900', color: theme.colors.primary, textDecorationLine: 'underline' }}>
+                    {pkgInfo.packageName}
+                  </Text>
+                  <Text style={{ fontSize: 12, fontWeight: '800', color: theme.colors.textSecondary }}>
+                    ({formatCurrencyAmount(pkgInfo.packagePrice)})
+                  </Text>
+                </Pressable>
+              </View>
+            );
+          })}
+        </View>
+      )}
 
       {payments.map((p, idx) => (
         <View key={idx} style={{ marginBottom: idx === payments.length - 1 ? 0 : 24, borderTopWidth: idx === 0 ? 0 : 1, borderTopColor: theme.colors.border, paddingTop: idx === 0 ? 0 : 20 }}>

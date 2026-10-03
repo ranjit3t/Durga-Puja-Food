@@ -228,41 +228,73 @@ export function ViewMenuScreen() {
             <Text style={styles.title}>{UI_TEXT.foodMenu}</Text>
             <Text style={styles.subtitle}>{UI_TEXT.menuSubtitle}</Text>
           </View>
-          {sortedActiveDays.length >= 1 && (
-            <Pressable
-              onPress={handleExportExcel}
-              accessible={true}
-              accessibilityRole="button"
-              accessibilityLabel={UI_TEXT.exportExcel}
-              style={({ pressed }) => [
-                {
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 6,
-                  backgroundColor: theme.colors.primary,
-                  paddingHorizontal: 12,
-                  paddingVertical: 8,
-                  borderRadius: 12,
-                  elevation: 2,
-                  shadowColor: theme.colors.primary,
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.2,
-                  shadowRadius: 4,
-                  alignSelf: 'flex-start',
-                },
-                pressed && { opacity: 0.8 }
-              ]}
-            >
-              <Ionicons
-                name={Platform.OS === 'web' ? "download-outline" : "share-outline"}
-                size={18}
-                color={theme.colors.white}
-              />
-              <Text style={{ color: theme.colors.white, fontWeight: '800', fontSize: 13 }}>
-                {UI_TEXT.exportExcel}
-              </Text>
-            </Pressable>
-          )}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            {isAdmin && (
+              <Pressable
+                onPress={() => navigate(AppScreen.FOOD_PACKAGE)}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={UI_TEXT.foodPackages}
+                style={({ pressed }) => [
+                  {
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 6,
+                    backgroundColor: theme.colors.surfaceDark,
+                    borderColor: theme.colors.primary,
+                    borderWidth: 1.5,
+                    paddingHorizontal: 12,
+                    paddingVertical: 8,
+                    borderRadius: 12,
+                    elevation: 2,
+                    alignSelf: 'flex-start',
+                  },
+                  pressed && { opacity: 0.8 }
+                ]}
+              >
+                <Ionicons name="cube-outline" size={18} color={theme.colors.primary} />
+                <Text style={{ color: theme.colors.primary, fontWeight: '800', fontSize: 13 }}>
+                  {UI_TEXT.foodPackages}
+                </Text>
+              </Pressable>
+            )}
+
+            {sortedActiveDays.length >= 1 && (
+              <Pressable
+                onPress={handleExportExcel}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={UI_TEXT.exportExcel}
+                style={({ pressed }) => [
+                  {
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 6,
+                    backgroundColor: theme.colors.primary,
+                    paddingHorizontal: 12,
+                    paddingVertical: 8,
+                    borderRadius: 12,
+                    elevation: 2,
+                    shadowColor: theme.colors.primary,
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.2,
+                    shadowRadius: 4,
+                    alignSelf: 'flex-start',
+                  },
+                  pressed && { opacity: 0.8 }
+                ]}
+              >
+                <Ionicons
+                  name={Platform.OS === 'web' ? "download-outline" : "share-outline"}
+                  size={18}
+                  color={theme.colors.white}
+                />
+                <Text style={{ color: theme.colors.white, fontWeight: '800', fontSize: 13 }}>
+                  {UI_TEXT.exportExcel}
+                </Text>
+              </Pressable>
+            )}
+          </View>
         </View>
       </View>
       <ScrollView

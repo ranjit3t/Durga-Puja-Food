@@ -31,7 +31,7 @@ import {
   getVarietyForChoice,
   getDietTypeForChoice,
 } from "../constants";
-import { MealMenu, UserRole, ConfigDay, MealType, DietType, AppScreen, AppThemeMode, DietaryOption, DietaryVariety, Subscription, FoodMenu } from "../types";
+import { MealMenu, UserRole, ConfigDay, MealType, DietType, AppScreen, AppThemeMode, DietaryOption, DietaryVariety, Subscription, FoodMenu, toBool } from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
@@ -281,9 +281,10 @@ const DashboardMealSection = memo(
 
                 <View style={{ flexDirection: "row", flexWrap: "wrap", gap: s(8) }}>
                   {varieties.map((v) => {
-                    let adultP = 0, kidsP = 0, guestP = 0;
+                    let adultP = 0, kidsP = 0, adultS = 0, kidsS = 0, guestP = 0, guestS = 0;
                     subscriptions.forEach((sub) => {
                       const slots = sub.mealSlots?.[day] || [];
+                      const taken = sub.takenByPerson?.[day] || [];
                       const adultCount = sub.peopleCount || 0;
                       slots.forEach((sSlot, idx) => {
                         const choice = sSlot[type];
@@ -295,20 +296,34 @@ const DashboardMealSection = memo(
                           ((v.id === "nonVeg_default" || v.isDefault) && v.type === DietType.NON_VEG && (choice === DietaryOption.NON_VEG || choice === "nonVeg"));
 
                         if (isMatch) {
-                          if (isKid) kidsP++;
-                          else adultP++;
+                          const isTaken = toBool(taken[idx]?.[type]);
+                          if (isKid) {
+                            kidsP++;
+                            if (isTaken) kidsS++;
+                          } else {
+                            adultP++;
+                            if (isTaken) adultS++;
+                          }
                         }
                       });
                     });
 
                     const mealMenu = foodMenu?.[day]?.[type];
                     if (mealMenu) {
-                      if (v.id === "veg_default") guestP = mealMenu.guestVeg || 0;
-                      else if (v.id === "nonVeg_default") guestP = mealMenu.guestNonVeg || 0;
-                      else guestP = mealMenu.guestCounts?.[v.id] || 0;
+                      if (v.id === "veg_default") {
+                        guestP = mealMenu.guestVeg || 0;
+                        guestS = mealMenu.guestVegTaken || 0;
+                      } else if (v.id === "nonVeg_default") {
+                        guestP = mealMenu.guestNonVeg || 0;
+                        guestS = mealMenu.guestNonVegTaken || 0;
+                      } else {
+                        guestP = mealMenu.guestCounts?.[v.id] || 0;
+                        guestS = mealMenu.guestTakenCounts?.[v.id] || 0;
+                      }
                     }
 
                     const subTotal = adultP + kidsP + guestP;
+                    const subTaken = adultS + kidsS + guestS;
                     const vColor = v.color || (v.type === DietType.VEG ? theme.colors.veg : theme.colors.nonVeg);
 
                     return (
@@ -331,7 +346,7 @@ const DashboardMealSection = memo(
                             {v.name}
                           </Text>
                           <Text style={{ fontSize: s(12), fontWeight: "900", color: vColor }}>
-                            {subTotal}
+                            {subTaken} / {subTotal}
                           </Text>
                         </View>
 

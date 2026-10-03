@@ -46,7 +46,8 @@ import {
   ChatMessage,
   UserPresence,
   ChatUser,
-  MessageStatus
+  MessageStatus,
+  FoodPackage,
 } from "./domain";
 import { ConfigDay, AppConfig } from "./types";
 import { generatePasscode, getDietTypeForChoice } from "./constants";
@@ -74,6 +75,9 @@ export interface SubscriptionRepository {
   getNotes(): Promise<Note[]>;
   upsertNote(note: Note): Promise<Note>;
   removeNote(id: string): Promise<void>;
+  getFoodPackages(): Promise<FoodPackage[]>;
+  upsertFoodPackage(pkg: FoodPackage): Promise<FoodPackage>;
+  removeFoodPackage(id: string): Promise<void>;
   getAppVersion(): Promise<AppVersionInfo | null>;
   updateAppVersion(version: string): Promise<void>;
   getMetrics(): Promise<KitchenMetrics | null>;
@@ -87,6 +91,11 @@ export interface SubscriptionRepository {
   onNotesDelta(
     onAdded: (note: Note) => void,
     onChanged: (note: Note) => void,
+    onRemoved: (id: string) => void
+  ): () => void;
+  onFoodPackagesDelta(
+    onAdded: (pkg: FoodPackage) => void,
+    onChanged: (pkg: FoodPackage) => void,
     onRemoved: (id: string) => void
   ): () => void;
   onLogsDelta(onAdded: (log: ActivityLog) => void): () => void;
@@ -112,6 +121,7 @@ const configPath = "config";
 const authConfigPath = "auth_config";
 const logsPath = "logs";
 const notesPath = "notes";
+const foodPackagesPath = "food_packages";
 const appVersionPath = "appVersion";
 const metricsPath = "metrics";
 const presencePath = "presence";
@@ -664,6 +674,31 @@ export function createFirebaseRepository(): SubscriptionRepository {
       if (!services) return;
       await remove(ref(services.db, `${notesPath}/${id}`));
     },
+    async getFoodPackages() {
+      const services = await ensureFirebaseAuth();
+      if (!services) return [];
+      const snapshot = await get(ref(services.db, foodPackagesPath));
+      const data = snapshot.val() as Record<string, FoodPackage> | null;
+      if (!data) return [];
+      return Object.values(data).sort((a, b) => b.timestamp - a.timestamp);
+    },
+    async upsertFoodPackage(pkg) {
+      const services = await ensureFirebaseAuth();
+      if (!services) return pkg;
+      let targetId = pkg.id;
+      if (!targetId) {
+        const newRef = push(ref(services.db, foodPackagesPath));
+        targetId = newRef.key as string;
+      }
+      const data = cleanUndefined({ ...pkg, id: targetId });
+      await set(ref(services.db, `${foodPackagesPath}/${targetId}`), data);
+      return { ...pkg, id: targetId };
+    },
+    async removeFoodPackage(id) {
+      const services = await ensureFirebaseAuth();
+      if (!services) return;
+      await remove(ref(services.db, `${foodPackagesPath}/${id}`));
+    },
     async getAppVersion() {
       const services = await ensureFirebaseAuth();
       if (!services) return null;
@@ -756,6 +791,41 @@ export function createFirebaseRepository(): SubscriptionRepository {
           }
         });
       }).catch(err => console.error("Notes listener error:", err));
+
+      return () => {
+        if (unsubAdded) unsubAdded();
+        if (unsubChanged) unsubChanged();
+        if (unsubRemoved) unsubRemoved();
+      };
+    },
+
+    onFoodPackagesDelta(onAdded, onChanged, onRemoved) {
+      let unsubAdded: (() => void) | null = null;
+      let unsubChanged: (() => void) | null = null;
+      let unsubRemoved: (() => void) | null = null;
+
+      ensureFirebaseAuth().then((services) => {
+        if (!services?.db) return;
+        const pkgRef = ref(services.db, foodPackagesPath);
+
+        unsubAdded = onChildAdded(pkgRef, (snapshot) => {
+          if (snapshot.exists()) {
+            onAdded(snapshot.val() as FoodPackage);
+          }
+        });
+
+        unsubChanged = onChildChanged(pkgRef, (snapshot) => {
+          if (snapshot.exists()) {
+            onChanged(snapshot.val() as FoodPackage);
+          }
+        });
+
+        unsubRemoved = onChildRemoved(pkgRef, (snapshot) => {
+          if (snapshot.key) {
+            onRemoved(snapshot.key);
+          }
+        });
+      }).catch(err => console.error("Food packages listener error:", err));
 
       return () => {
         if (unsubAdded) unsubAdded();

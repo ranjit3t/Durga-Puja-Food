@@ -183,6 +183,7 @@ export function ChatWidget() {
     AppScreen.VIEW_MENU,
     AppScreen.MENU,
     AppScreen.CONTACTS,
+    AppScreen.FOOD_PACKAGE,
   ];
 
   const isAllowedScreen = ALLOWED_CHAT_SCREENS.includes(screen);
