@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text, Pressable, Modal, ScrollView } from "react-native";
 import { useStyles } from "../../styles";
 import { useAppTheme } from "../../theme";
 import { UI_TEXT } from "../../strings";
+import { useChat } from "../../context/ChatContext";
 
 /**
  * Custom Dropdown component that uses a Modal for the selection list.
@@ -23,6 +24,14 @@ export function Dropdown({
   const styles = useStyles();
   const { theme } = useAppTheme();
   const [open, setOpen] = useState(false);
+  const { registerModalOpen, unregisterModalOpen } = useChat();
+
+  useEffect(() => {
+    if (open) {
+      registerModalOpen("dropdown");
+      return () => unregisterModalOpen("dropdown");
+    }
+  }, [open, registerModalOpen, unregisterModalOpen]);
 
   return (
     <View style={styles.dropdownWrap}>

@@ -130,6 +130,7 @@ export type MealConfig = {
   parcelAlert?: boolean;
   kidsParcel?: boolean;
   kidsParcelAlert?: boolean;
+  dineInFallbackParcel?: boolean;
   done?: boolean;
   current?: boolean;
   vegPrice?: string;
@@ -340,6 +341,39 @@ export type AppVersionInfo = {
   version: string;
   androidAppLocation?: string;
   iosAppLocation?: string;
+};
+
+export type MessageStatus = "sent" | "delivered" | "read";
+
+export type ChatMessage = {
+  id: string;
+  chatId: string;
+  sender: string;
+  senderName: string;
+  recipient: string;
+  text: string;
+  timestamp: number | any;
+  localTimestamp?: number;
+  status: MessageStatus;
+  readAt?: number;
+};
+
+export type UserPresence = {
+  username: string;
+  displayName: string;
+  role: string;
+  online: boolean;
+  lastSeen: number;
+};
+
+export type ChatUser = {
+  username: string;
+  displayName: string;
+  role: string;
+  online: boolean;
+  lastSeen: number;
+  unreadCount: number;
+  lastMessage?: ChatMessage;
 };
 
 export const getPassDisplayLabel = (sub?: { block?: string; flat?: string; id?: string } | null): string => {

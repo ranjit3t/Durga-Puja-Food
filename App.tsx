@@ -9,6 +9,8 @@ import { AuthProvider } from "./src/context/AuthContext";
 import { DatabaseProvider } from "./src/context/DatabaseContext";
 import { NavigationProvider } from "./src/context/NavigationContext";
 import { UIProvider, useUI } from "./src/context/UIContext";
+import { ChatProvider } from "./src/context/ChatContext";
+import { ChatWidget } from "./src/components/chat/ChatWidget";
 import { AppNavigator } from "./src/navigation/AppNavigator";
 import { CustomAlert } from "./src/components/common/CustomAlert";
 import { ErrorBoundary } from "./src/components/common/ErrorBoundary";
@@ -29,9 +31,11 @@ export default function App() {
         <AuthProvider>
           <DatabaseProvider>
             <UIProvider>
-              <NavigationProvider>
-                <AppRoot />
-              </NavigationProvider>
+              <ChatProvider>
+                <NavigationProvider>
+                  <AppRoot />
+                </NavigationProvider>
+              </ChatProvider>
             </UIProvider>
           </DatabaseProvider>
         </AuthProvider>
@@ -46,6 +50,7 @@ function AppRoot() {
   return (
     <>
       <AppNavigator />
+      <ChatWidget />
       <CustomAlert
         visible={alertConfig.visible}
         title={alertConfig.title}

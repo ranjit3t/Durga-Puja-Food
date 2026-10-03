@@ -98,13 +98,6 @@ export function QrScreen() {
 
             <View style={styles.qrPassDetails}>
               <Text style={styles.qrPassFlat}>{subscription.block}{UI_TEXT.hyphen}{subscription.flat}</Text>
-              <Text style={styles.qrPassPeople}>
-                {kidsEnabled ? (
-                  `${subscription.peopleCount}${UI_TEXT.space}${subscription.peopleCount === 1 ? UI_TEXT.adult : UI_TEXT.adults}${subscription.kidsCount ? `${UI_TEXT.plus}${subscription.kidsCount}${UI_TEXT.space}${subscription.kidsCount === 1 ? UI_TEXT.kid : UI_TEXT.kids}` : ""}`
-                ) : (
-                  `${subscription.peopleCount + (subscription.kidsCount || 0)}${subscription.peopleCount + (subscription.kidsCount || 0) === 1 ? UI_TEXT.personSuffix : UI_TEXT.personsSuffix}`
-                )}
-              </Text>
             </View>
 
             <View style={styles.qrPassFooter}>
@@ -125,7 +118,7 @@ export function QrScreen() {
                     ? `${UI_TEXT.bold}${UI_TEXT.people}${UI_TEXT.colon}${UI_TEXT.bold}${UI_TEXT.space}${subscription.peopleCount}${UI_TEXT.space}${subscription.peopleCount === 1 ? UI_TEXT.adult : UI_TEXT.adults}${subscription.kidsCount ? `${UI_TEXT.plus}${subscription.kidsCount}${UI_TEXT.space}${subscription.kidsCount === 1 ? UI_TEXT.kid : UI_TEXT.kids}` : ""}`
                     : `${UI_TEXT.bold}${UI_TEXT.people}${UI_TEXT.colon}${UI_TEXT.bold}${UI_TEXT.space}${subscription.peopleCount + (subscription.kidsCount || 0)}${subscription.peopleCount + (subscription.kidsCount || 0) === 1 ? UI_TEXT.personSuffix : UI_TEXT.personsSuffix}`;
 
-                  const message = `${UI_TEXT.bold}${seasonName || UI_TEXT.headerTitle}${UI_TEXT.bold}${UI_TEXT.newline}${UI_TEXT.bold}${UI_TEXT.flatUpper}${UI_TEXT.colon}${UI_TEXT.bold}${UI_TEXT.space}${subscription.block}${UI_TEXT.hyphen}${subscription.flat}${UI_TEXT.newline}${peopleSummary}${UI_TEXT.newline}${UI_TEXT.bold}${UI_TEXT.passIdLabel}${UI_TEXT.colon}${UI_TEXT.bold}${UI_TEXT.space}${subscription.id}${UI_TEXT.newline}${UI_TEXT.newline}${UI_TEXT.passInstruction}`;
+                  const message = `${UI_TEXT.bold}${seasonName || UI_TEXT.headerTitle}${UI_TEXT.bold}${UI_TEXT.newline}${UI_TEXT.bold}${UI_TEXT.flatUpper}${UI_TEXT.colon}${UI_TEXT.bold}${UI_TEXT.space}${subscription.block}${UI_TEXT.hyphen}${subscription.flat}${UI_TEXT.newline}${UI_TEXT.bold}${UI_TEXT.passIdLabel}${UI_TEXT.colon}${UI_TEXT.bold}${UI_TEXT.space}${subscription.id}${UI_TEXT.newline}${UI_TEXT.newline}${UI_TEXT.passInstruction}`;
                   const url = `https://wa.me/${whatsappCountryCode}${subscription.mobile}?text=${encodeURIComponent(message)}`;
 
                   try {

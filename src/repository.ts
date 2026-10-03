@@ -17,7 +17,9 @@ import {
   onChildRemoved,
   orderByChild,
   equalTo,
-  increment
+  increment,
+  onDisconnect,
+  serverTimestamp
 } from "firebase/database";
 import { ensureFirebaseAuth, firebaseConfigured } from "./firebase";
 import {
@@ -40,7 +42,11 @@ import {
   PaymentMode,
   Note,
   KitchenMetrics,
-  AppVersionInfo
+  AppVersionInfo,
+  ChatMessage,
+  UserPresence,
+  ChatUser,
+  MessageStatus
 } from "./domain";
 import { ConfigDay, AppConfig } from "./types";
 import { generatePasscode, getDietTypeForChoice } from "./constants";
@@ -88,6 +94,16 @@ export interface SubscriptionRepository {
   onConfigChange(callback: (config: AppConfig) => void): () => void;
   onMetricsChange(callback: (metrics: KitchenMetrics | null) => void): () => void;
   onAppVersionChange(callback: (info: AppVersionInfo | null) => void): () => void;
+
+  // Chat & Presence Methods
+  updateUserPresence(username: string, displayName: string, role: string): Promise<() => void>;
+  onAllPresenceChange(callback: (presences: Record<string, UserPresence>) => void): () => void;
+  sendChatMessage(chatId: string, msg: Omit<ChatMessage, "id" | "timestamp" | "status">): Promise<void>;
+  onChatMessagesChange(chatId: string, callback: (messages: ChatMessage[]) => void): () => void;
+  onAllChatsSummaryChange(currentUsername: string, callback: (unreadMap: Record<string, number>, lastMsgMap: Record<string, ChatMessage>) => void): () => void;
+  setTypingStatus(chatId: string, username: string, isTyping: boolean): Promise<void>;
+  onTypingStatusChange(chatId: string, callback: (typingMap: Record<string, boolean>) => void): () => void;
+  markChatMessagesAsRead(chatId: string, currentUsername: string): Promise<void>;
 }
 
 const subscriptionsPath = "subscriptions";
@@ -98,6 +114,8 @@ const logsPath = "logs";
 const notesPath = "notes";
 const appVersionPath = "appVersion";
 const metricsPath = "metrics";
+const presencePath = "presence";
+const chatsPath = "chats";
 
 // --- Helper Functions ---
 
@@ -868,6 +886,209 @@ export function createFirebaseRepository(): SubscriptionRepository {
         if (unsubAndroid) unsubAndroid();
         if (unsubIos) unsubIos();
       };
+    },
+
+    // --- Realtime Chat & Presence Implementation ---
+
+    async updateUserPresence(username, displayName, role) {
+      const cleanUsername = username.trim().toLowerCase();
+      if (!cleanUsername) return () => {};
+      const services = await ensureFirebaseAuth();
+      if (!services?.db) return () => {};
+
+      const userPresenceRef = ref(services.db, `${presencePath}/${cleanUsername}`);
+      const connectedRef = ref(services.db, ".info/connected");
+
+      let unsubConnected: (() => void) | null = null;
+
+      unsubConnected = onValue(connectedRef, (snap) => {
+        if (snap.val() === true) {
+          const presenceData = {
+            username: cleanUsername,
+            displayName,
+            role,
+            online: true,
+            lastSeen: Date.now(),
+          };
+          onDisconnect(userPresenceRef).update({
+            online: false,
+            lastSeen: serverTimestamp(),
+          });
+          update(userPresenceRef, presenceData).catch(err => console.error("Presence update error:", err));
+        }
+      });
+
+      return () => {
+        if (unsubConnected) unsubConnected();
+        update(userPresenceRef, { online: false, lastSeen: Date.now() }).catch(() => {});
+      };
+    },
+
+    onAllPresenceChange(callback) {
+      let unsub: (() => void) | null = null;
+      ensureFirebaseAuth().then((services) => {
+        if (!services?.db) return;
+        unsub = onValue(ref(services.db, presencePath), (snapshot) => {
+          if (!snapshot.exists()) {
+            callback({});
+            return;
+          }
+          const val = snapshot.val() as Record<string, UserPresence>;
+          callback(val || {});
+        });
+      }).catch(err => console.error("All presence listener error:", err));
+
+      return () => {
+        if (unsub) unsub();
+      };
+    },
+
+    async sendChatMessage(chatId, msg) {
+      const services = await ensureFirebaseAuth();
+      if (!services?.db) return;
+      const msgsRef = ref(services.db, `${chatsPath}/${chatId}/messages`);
+      const newMsgRef = push(msgsRef);
+      const now = Date.now();
+      const messageData = {
+        ...msg,
+        id: newMsgRef.key as string,
+        chatId,
+        timestamp: serverTimestamp(),
+        localTimestamp: now,
+        status: "sent",
+      };
+      await set(newMsgRef, cleanUndefined(messageData));
+    },
+
+    onChatMessagesChange(chatId, callback) {
+      let unsub: (() => void) | null = null;
+      ensureFirebaseAuth().then((services) => {
+        if (!services?.db) return;
+        const chatMsgsRef = ref(services.db, `${chatsPath}/${chatId}/messages`);
+        unsub = onValue(chatMsgsRef, (snapshot) => {
+          if (!snapshot.exists()) {
+            callback([]);
+            return;
+          }
+          const data = snapshot.val() as Record<string, ChatMessage>;
+          const getMsgTime = (m: any) => {
+            if (typeof m.timestamp === "number" && m.timestamp > 0) return m.timestamp;
+            return m.localTimestamp || 0;
+          };
+          const list = Object.values(data).sort((a, b) => {
+            const timeA = getMsgTime(a);
+            const timeB = getMsgTime(b);
+            if (timeA !== timeB) return timeA - timeB;
+            return (a.id || "").localeCompare(b.id || "");
+          });
+          callback(list);
+        });
+      }).catch(err => console.error("Chat messages listener error:", err));
+
+      return () => {
+        if (unsub) unsub();
+      };
+    },
+
+    onAllChatsSummaryChange(currentUsername, callback) {
+      let unsub: (() => void) | null = null;
+      const cleanUser = currentUsername.trim().toLowerCase();
+      ensureFirebaseAuth().then((services) => {
+        if (!services?.db) return;
+        const allChatsRef = ref(services.db, chatsPath);
+        unsub = onValue(allChatsRef, (snapshot) => {
+          const unreadMap: Record<string, number> = {};
+          const lastMsgMap: Record<string, ChatMessage> = {};
+
+          if (snapshot.exists()) {
+            const chatsData = snapshot.val() as Record<string, { messages?: Record<string, ChatMessage> }>;
+            const getMsgTime = (m: any) => {
+              if (typeof m.timestamp === "number" && m.timestamp > 0) return m.timestamp;
+              return m.localTimestamp || 0;
+            };
+            Object.entries(chatsData).forEach(([cId, cData]) => {
+              if (cId.includes(cleanUser) && cData.messages) {
+                const msgs = Object.values(cData.messages).sort((a, b) => {
+                  const timeA = getMsgTime(a);
+                  const timeB = getMsgTime(b);
+                  if (timeA !== timeB) return timeA - timeB;
+                  return (a.id || "").localeCompare(b.id || "");
+                });
+                if (msgs.length > 0) {
+                  const lastMsg = msgs[msgs.length - 1];
+                  const otherUser = lastMsg.sender.toLowerCase() === cleanUser ? lastMsg.recipient.toLowerCase() : lastMsg.sender.toLowerCase();
+                  lastMsgMap[otherUser] = lastMsg;
+
+                  const unreadCount = msgs.filter(m => m.recipient.toLowerCase() === cleanUser && m.status !== "read").length;
+                  unreadMap[otherUser] = unreadCount;
+                }
+              }
+            });
+          }
+          callback(unreadMap, lastMsgMap);
+        });
+      }).catch(err => console.error("All chats summary listener error:", err));
+
+      return () => {
+        if (unsub) unsub();
+      };
+    },
+
+    async setTypingStatus(chatId, username, isTyping) {
+      const services = await ensureFirebaseAuth();
+      if (!services?.db) return;
+      const cleanUser = username.trim().toLowerCase();
+      const typingRef = ref(services.db, `${chatsPath}/${chatId}/typing/${cleanUser}`);
+      if (isTyping) {
+        onDisconnect(typingRef).remove();
+        await set(typingRef, true);
+      } else {
+        await remove(typingRef);
+      }
+    },
+
+    onTypingStatusChange(chatId, callback) {
+      let unsub: (() => void) | null = null;
+      ensureFirebaseAuth().then((services) => {
+        if (!services?.db) return;
+        const typingRef = ref(services.db, `${chatsPath}/${chatId}/typing`);
+        unsub = onValue(typingRef, (snapshot) => {
+          if (!snapshot.exists()) {
+            callback({});
+            return;
+          }
+          callback(snapshot.val() as Record<string, boolean>);
+        });
+      }).catch(err => console.error("Typing status listener error:", err));
+
+      return () => {
+        if (unsub) unsub();
+      };
+    },
+
+    async markChatMessagesAsRead(chatId, currentUsername) {
+      const services = await ensureFirebaseAuth();
+      if (!services?.db) return;
+      const cleanUser = currentUsername.trim().toLowerCase();
+      const chatMsgsRef = ref(services.db, `${chatsPath}/${chatId}/messages`);
+      const snapshot = await get(chatMsgsRef);
+
+      if (snapshot.exists()) {
+        const msgs = snapshot.val() as Record<string, ChatMessage>;
+        const updates: Record<string, any> = {};
+        const now = Date.now();
+
+        Object.entries(msgs).forEach(([msgId, msg]) => {
+          if (msg.recipient && msg.recipient.toLowerCase() === cleanUser && msg.status !== "read") {
+            updates[`${chatsPath}/${chatId}/messages/${msgId}/status`] = "read";
+            updates[`${chatsPath}/${chatId}/messages/${msgId}/readAt`] = now;
+          }
+        });
+
+        if (Object.keys(updates).length > 0) {
+          await update(ref(services.db), updates);
+        }
+      }
     },
   };
 }

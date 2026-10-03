@@ -20,6 +20,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAppTheme } from "../../theme";
 import { UI_TEXT } from "../../strings";
 import { useUI } from "../../context/UIContext";
+import { useChat } from "../../context/ChatContext";
 import {
   extractPaymentDetailsFromImage,
   pickScreenshotAndExtractDetails,
@@ -39,6 +40,14 @@ export function PaymentScannerModal({
   const { theme } = useAppTheme();
   const { width } = useWindowDimensions();
   const { showAlert } = useUI();
+  const { registerModalOpen, unregisterModalOpen } = useChat();
+
+  React.useEffect(() => {
+    if (visible) {
+      registerModalOpen("payment_scanner");
+      return () => unregisterModalOpen("payment_scanner");
+    }
+  }, [visible, registerModalOpen, unregisterModalOpen]);
 
   const [permission, requestPermission] = useCameraPermissions();
   const [torch, setTorch] = useState(false);

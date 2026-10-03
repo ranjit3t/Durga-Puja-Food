@@ -48,7 +48,7 @@ The application follows a decoupled, context-driven component architecture with 
 | **`expo-audio` (~57.0.5)** | Modern Expo SDK 57 native audio player engine for triggering checkout completion sound feedback (`assets/checkout.mp3`). |
 | **`assets/checkout.mp3`** | Custom audio chime tone played strictly when quick checkout success splash window opens (if sound is enabled). |
 | **`react-native-qrcode-svg`** | SVG-based QR code pass matrix generation. |
-| **`react-native-view-shot` (`captureRef`)** | Snapshot engine for capturing report cards and digital passes as theme-padded PNG images. |
+| **`react-native-view-shot` (`captureRef`)** | Snapshot engine for capturing report cards and digital food passes as theme-padded PNG images. |
 | **`expo-sharing` & `expo-print`** | Platform-native sharing dialogs (WhatsApp / System) and HTML document printing. |
 | **`@react-native-async-storage/async-storage`** | Local device persistence for theme preferences and session tokens. |
 | **`@expo/vector-icons` (Ionicons)** | Vector icons tuned for high-contrast theme states across screens. |
@@ -70,7 +70,16 @@ The application follows a decoupled, context-driven component architecture with 
 - **Dynamic Layout & Overflow Protection**: Uses responsive `maxBadgeWidth`, `numberOfLines={1}`, and `ellipsizeMode="tail"` truncation to guarantee long names (e.g. `"Sri Satya Narayana Choudhary Mukhopadhyay"`) never overflow or deform header layouts on mobile or web viewports.
 - **Camera & Modal Exclusion**: Excluded from camera screens (`ScannerScreen`, `PaymentScannerModal`) and modal overlays to maintain clean viewfinders and dialog focus.
 
-### 3. Multi-Attribute Audit Trail Security Traceability
+### 3. Peer-to-Peer Realtime Chat Engine (`ChatContext.tsx`, `ChatWidget.tsx`)
+- **Deterministic Peer-to-Peer WebSocket Messaging**: Provides real-time messaging between logged-in system users (`admin`, `vendor`). Messages are stored under deterministic chat pairs (`chats/{user1}__${user2}/messages`) with zero message mixing or cross-talk.
+- **Firebase Realtime Presence & Last Seen Tracking**: Connects to Firebase `.info/connected` to register online status and `lastSeen` timestamps via `onDisconnect()`.
+- **Live Typing Indicators & Read Status**: Tracks live typing state (`typing...`) and message status checkmarks (`✓ Sent`, `✓✓ Delivered`, `✓✓ Read`).
+- **Floating Minimized Pill & Unread Count Badge**: Compact floating widget anchored at bottom-right corner (`right: 20`, `bottom: 38px web / 78px mobile`). Displays a real-time unread message counter badge when minimized, expanding into a sleek `310px` compact floating popup window on tap.
+- **Native Keyboard Avoiding & Smooth Scroll**: Wrapped in React Native `KeyboardAvoidingView` with dynamic soft-keyboard height listeners (`Keyboard.addListener`), automatically raising the chat popup container above the soft keyboard on mobile when typing.
+- **Strict Camera, Modal, Dropdown & Alert Exclusion**: Automatically hides the chat widget when camera viewfinders (`ScannerScreen`, `PaymentScannerModal`) or modal/dropdown/alert windows (`QuickCheckoutModal`, `QuickGuestModal`, `CustomAlert`, `Dropdown`, `Notes` modal, etc.) are active.
+- **100% Theme Tokens & Zero Hardcoded Strings**: Styled dynamically via `useAppTheme()` tokens and localized strings from `UI_TEXT` in `strings.ts`.
+
+### 4. Multi-Attribute Audit Trail Security Traceability
 - **Name, Username & User Type Logging**: `addActivityLog` records user identity as `Name (username)` (e.g. `"Rahul Sharma (admin)"`) alongside `userRole` (e.g. `"ADMIN"` or `"VENDOR"`).
 - **Comprehensive Audit Visibility**: Displays user badges as `Rahul Sharma (admin) (ADMIN)` across all system audit trail views, text exports, and local summaries, providing complete visibility into user Name, Username, and User Type (Role) for security compliance.
 - **Clean Audit Trail Messages & Target IDs (`ActivityLogItem.tsx`, `DatabaseContext.tsx`)**: Note and pass deletion logs cleanly expand subject and pass names (e.g. `Deleted note: Kitchen Supplies`, `Removed pass record A-101`) without unexpanded placeholders or raw Firebase push keys (`-P2nIS5P_...`).
@@ -138,7 +147,12 @@ Quick Checkout can be triggered from 4 distinct application entry methods, track
   - **Pricing & Pass Form Integration**: Pricing calculation evaluates kids parcel fee as 0 when disabled. In Add/Edit Pass, parcel options for kids slots are rendered strictly when `isKidsParcelEnabled` returns `true`.
   - **Quick Checkout & Dine-In Fallback**: In Quick Checkout, when kids parcel is disabled, remaining parcel count for kids categories (`KIDS_VEG`, `KIDS_NON_VEG`) is set to 0. Kids meals are processed as Dine-In only, parcel inputs for kids are omitted, operational summary cards omit kids parcel breakdowns, and no missed parcel discrepancies are logged for kids.
   - **Directory & Reporting Isolation**: Subscription directory parcel badges/filters (`FilterMode.PARCEL`), kitchen metrics, analytics dashboards, report cards, Excel CSV exports, and missed parcel logs ignore kids parcel selections when Kids Parcel support is disabled.
-- **Side-by-Side Interdependent Counter Inputs**: Each active subsection renders **Parcel** (shown first) and **Dine-In** side-by-side in horizontal rows. Enforces $P + D \le \text{remMealCount}$: increasing Parcel automatically decreases Dine-In if the sum exceeds remaining meals, and vice-versa.
+- **Configurable Dine-In Fallback on Parcel Toggle & Independent Count Engine**:
+  - **Conditional Settings Visibility**: Dine-In Fallback toggle (`dineInFallbackParcel`) appears under each meal slot in Settings when **Parcel Support** (`parcel = true`) is active, located directly below the Kids Parcel toggle. Defaults to `false` (disabled) across old, new, and legacy meal configurations.
+  - **Independent Counts Mode (Fallback Disabled - Default)**: When disabled, Quick Checkout Modal displays exact independent counts for Dine-In and Parcel. Dine-In planned, served, and pending counts reflect strictly Dine-In-only slots, while Parcel counts reflect strictly Parcel slots. Dine-In and Parcel counters operate independently without cross-clamping or mutual max-reduction.
+  - **Strict Non-Fallback Allocation**: During checkout submission, Dine-In is allocated strictly from Dine-In-only slots and Parcel strictly from Parcel slots. Extra Dine-In check-ins cannot fall back onto parcel slots, eliminating unintended missed parcel audit log entries (`ActivityAction.MISSED_PARCEL`).
+  - **Legacy Fallback Mode (Fallback Enabled)**: When enabled by the user in Settings, the system maintains legacy behavior: Dine-In and Parcel share total unserved meal limits ($P + D \le \text{remMealCount}$), and extra Dine-In check-ins fall back onto unserved parcel slots, generating missed parcel audit logs.
+- **Side-by-Side Counter Inputs**: Each active subsection renders **Parcel** (shown first) and **Dine-In** side-by-side in horizontal rows. When fallback is enabled, enforcing $P + D \le \text{remMealCount}$ cross-clamps inputs; when fallback is disabled, Dine-In and Parcel inputs are independent within their respective slot limits.
 - **Dynamic Parcel Hiding**: When remaining parcel count for a subsection is `0` (`remParcelCount === 0`) or parcel service is disabled, the Parcel input field is omitted and the Dine-In input spans full width.
 - **Dynamic Subsection & Section Omission**: Empty subsections (`remMealCount === 0` and `remParcelCount === 0`) and empty sections are automatically omitted. On Veg-Only days (`isVegOnlyDay = true`), Non-Veg subsections are omitted. On Non-Veg only meals, Veg subsections are omitted.
 - **Ordered Priority Allocation Algorithm & Sequential UI Slot Matching**:
@@ -247,7 +261,7 @@ src/
     ├── LoginScreen.tsx           # Two-Phase Secured Database Login
     ├── MenuEditorScreen.tsx      # Daily Meal Menu & Pricing Editor
     ├── NotesScreen.tsx           # Real-Time Collaborative Team Notes Stream (uses useNotes())
-    ├── QrScreen.tsx              # Digital Pass Generator with 4-Digit Passcode & WhatsApp Share
+    ├── QrScreen.tsx              # Digital Food Pass Generator with 4-Digit Passcode & WhatsApp Share
     ├── ReportScreen.tsx          # Analytics Suite with Share Report Action & Theme-Aware Image Export
     ├── ScannerScreen.tsx         # Memoized Camera Scanner & Passcode Keypad (uses useCoreDatabase())
     ├── SettingsScreen.tsx        # Festival Configuration, Global Audio Sound Toggle & Splash Timeout Settings (WCAG Compliant)

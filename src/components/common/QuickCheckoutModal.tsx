@@ -6,8 +6,9 @@ import { UI_TEXT } from "../../strings";
 import { useDatabase } from "../../context/DatabaseContext";
 import { useUI } from "../../context/UIContext";
 import { useAppNavigation } from "../../context/NavigationContext";
+import { useChat } from "../../context/ChatContext";
 import { Subscription, MealType, DietaryOption, DietType, normalizeChoice, toBool, ActivityModule, ActivityAction, AppThemeMode, AppScreen, TakenState, CheckoutSource, MealSlot } from "../../types";
-import { isParcelEnabled, isKidsParcelEnabled, isMealCurrent, isMealDone, getMealLabel, formatTakenTime, isVegOnlyDay, isDietaryEnabled, isMealEnabled, getValidSlotChoice, isParcelValidForSlot, getMealVarieties, getVarietyForChoice, getDietTypeForChoice } from "../../constants";
+import { isParcelEnabled, isKidsParcelEnabled, isDineInFallbackParcelEnabled, isMealCurrent, isMealDone, getMealLabel, formatTakenTime, isVegOnlyDay, isDietaryEnabled, isMealEnabled, getValidSlotChoice, isParcelValidForSlot, getMealVarieties, getVarietyForChoice, getDietTypeForChoice } from "../../constants";
 import { QuickCheckoutHeader } from "../../features/checkout/components/QuickCheckoutHeader";
 import { QuickCheckoutItemCard } from "../../features/checkout/components/QuickCheckoutItemCard";
 
@@ -101,6 +102,9 @@ export interface CategoryInfo {
   parcelPlannedCount: number;
   parcelServedCount: number;
   remParcelCount: number;
+  dineInPlannedCount: number;
+  dineInServedCount: number;
+  remDineInCount: number;
 }
 
 export type CategoryInputs = Record<string, { parcel: number; dineIn: number }>;
@@ -145,13 +149,19 @@ export function QuickCheckoutModal({
   onClose,
   onSuccess
 }: QuickCheckoutModalProps) {
-  if (!visible || !subscription) return null;
-
   const { theme } = useAppTheme();
   const { dayConfig, kidsEnabled, addActivityLog, upsertSubscription, subscriptions, quickCheckoutAutoCloseMs, soundEnabled } = useDatabase();
   const { showAlert } = useUI();
   const { navigate } = useAppNavigation();
   const { width, height } = useWindowDimensions();
+  const { registerModalOpen, unregisterModalOpen } = useChat();
+
+  useEffect(() => {
+    if (visible) {
+      registerModalOpen("quick_checkout");
+      return () => unregisterModalOpen("quick_checkout");
+    }
+  }, [visible, registerModalOpen, unregisterModalOpen]);
 
   const activeSubscription = useMemo(() => {
     if (!subscription) return null;
@@ -274,6 +284,9 @@ export function QuickCheckoutModal({
           parcelPlannedCount: 0,
           parcelServedCount: 0,
           remParcelCount: 0,
+          dineInPlannedCount: 0,
+          dineInServedCount: 0,
+          remDineInCount: 0,
         };
       }
 
@@ -302,6 +315,13 @@ export function QuickCheckoutModal({
           totalParcelTaken++;
         } else if (!isMealTaken) {
           cat.remParcelCount++;
+        }
+      } else {
+        cat.dineInPlannedCount++;
+        if (isMealTaken) {
+          cat.dineInServedCount++;
+        } else {
+          cat.remDineInCount++;
         }
       }
     }
@@ -415,6 +435,8 @@ export function QuickCheckoutModal({
   // Auto-clamp inputs state if category limits or subscription status change
   useEffect(() => {
     if (quickCheckoutDetails) {
+      const isFallback = isDineInFallbackParcelEnabled(quickCheckoutDetails.dayId, quickCheckoutDetails.mealType, dayConfig);
+
       setInputs((prev) => {
         let changed = false;
         const nextInputs = { ...prev };
@@ -426,13 +448,15 @@ export function QuickCheckoutModal({
           const currentD = prev[catKey]?.dineIn || 0;
 
           const maxP = cat.remParcelCount;
-          const maxMeal = cat.remMealCount;
+          const maxD = isFallback ? cat.remMealCount : cat.remDineInCount;
 
           const clampedP = Math.max(0, Math.min(maxP, currentP));
-          let clampedD = Math.max(0, Math.min(maxMeal, currentD));
+          let clampedD = Math.max(0, Math.min(maxD, currentD));
 
-          if (clampedP + clampedD > maxMeal) {
-            clampedD = Math.max(0, maxMeal - clampedP);
+          if (isFallback) {
+            if (clampedP + clampedD > cat.remMealCount) {
+              clampedD = Math.max(0, cat.remMealCount - clampedP);
+            }
           }
 
           if (clampedP !== currentP || clampedD !== currentD || !prev[catKey]) {
@@ -444,15 +468,15 @@ export function QuickCheckoutModal({
         return changed ? nextInputs : prev;
       });
     }
-  }, [quickCheckoutDetails]);
+  }, [quickCheckoutDetails, dayConfig]);
 
   // Interdependence change handlers for Parcel & Dine-In inputs
   const handleParcelChange = (catKey: string, newVal: number) => {
     if (!quickCheckoutDetails) return;
     const cat = quickCheckoutDetails.categories[catKey];
     if (!cat) return;
+    const isFallback = isDineInFallbackParcelEnabled(quickCheckoutDetails.dayId, quickCheckoutDetails.mealType, dayConfig);
     const maxP = cat.remParcelCount;
-    const maxMeal = cat.remMealCount;
 
     const clampedP = Math.max(0, Math.min(maxP, newVal));
 
@@ -460,8 +484,11 @@ export function QuickCheckoutModal({
       const currDineIn = prev[catKey]?.dineIn || 0;
       let newDineIn = currDineIn;
 
-      if (clampedP + currDineIn > maxMeal) {
-        newDineIn = Math.max(0, maxMeal - clampedP);
+      if (isFallback) {
+        const maxMeal = cat.remMealCount;
+        if (clampedP + currDineIn > maxMeal) {
+          newDineIn = Math.max(0, maxMeal - clampedP);
+        }
       }
 
       return {
@@ -478,16 +505,20 @@ export function QuickCheckoutModal({
     if (!quickCheckoutDetails) return;
     const cat = quickCheckoutDetails.categories[catKey];
     if (!cat) return;
-    const maxMeal = cat.remMealCount;
+    const isFallback = isDineInFallbackParcelEnabled(quickCheckoutDetails.dayId, quickCheckoutDetails.mealType, dayConfig);
+    const maxD = isFallback ? cat.remMealCount : cat.remDineInCount;
 
-    const clampedD = Math.max(0, Math.min(maxMeal, newVal));
+    const clampedD = Math.max(0, Math.min(maxD, newVal));
 
     setInputs((prev) => {
       const currParcel = prev[catKey]?.parcel || 0;
       let newParcel = currParcel;
 
-      if (currParcel + clampedD > maxMeal) {
-        newParcel = Math.max(0, maxMeal - clampedD);
+      if (isFallback) {
+        const maxMeal = cat.remMealCount;
+        if (currParcel + clampedD > maxMeal) {
+          newParcel = Math.max(0, maxMeal - clampedD);
+        }
       }
 
       return {
@@ -525,9 +556,12 @@ export function QuickCheckoutModal({
         categoryInfo: CategoryInfo;
       }> = [];
 
+      const isFallback = isDineInFallbackParcelEnabled(quickCheckoutDetails.dayId, quickCheckoutDetails.mealType, dayConfig);
+
       Object.values(categories).forEach((cat) => {
         if (cat.section !== section) return;
-        if (cat.remMealCount <= 0 && (!parcelSupported || cat.remParcelCount <= 0)) return;
+        const dineRem = isFallback ? cat.remMealCount : cat.remDineInCount;
+        if (dineRem <= 0 && (!parcelSupported || cat.remParcelCount <= 0)) return;
 
         result.push({
           key: cat.key,
@@ -617,6 +651,8 @@ export function QuickCheckoutModal({
     const mConf = dayConf ? dayConf[mealType] : undefined;
     const varieties = getMealVarieties(mConf);
 
+    const isFallback = isDineInFallbackParcelEnabled(dayId, mealType, dayConfig);
+
     for (const catKey of Object.keys(quickCheckoutDetails.categories)) {
       const cat = quickCheckoutDetails.categories[catKey];
       if (!cat) continue;
@@ -624,9 +660,11 @@ export function QuickCheckoutModal({
       const rawD = inputs[catKey]?.dineIn || 0;
 
       const safeParcelInput = Math.max(0, Math.min(cat.remParcelCount, rawP));
-      let safeDineInInput = Math.max(0, Math.min(cat.remMealCount, rawD));
-      if (safeParcelInput + safeDineInInput > cat.remMealCount) {
-        safeDineInInput = Math.max(0, cat.remMealCount - safeParcelInput);
+      let safeDineInInput = Math.max(0, Math.min(isFallback ? cat.remMealCount : cat.remDineInCount, rawD));
+      if (isFallback) {
+        if (safeParcelInput + safeDineInInput > cat.remMealCount) {
+          safeDineInInput = Math.max(0, cat.remMealCount - safeParcelInput);
+        }
       }
 
       if (safeParcelInput === 0 && safeDineInInput === 0) continue;
@@ -705,7 +743,7 @@ export function QuickCheckoutModal({
           }
         }
 
-        if (remDineInToAllocate > 0) {
+        if (isFallback && remDineInToAllocate > 0) {
           for (let i = 0; i < headcount; i++) {
             if (remDineInToAllocate <= 0) break;
             if (!isSlotInCat(i)) continue;
@@ -726,27 +764,29 @@ export function QuickCheckoutModal({
         }
       }
 
-      const isKidCat = cat.section === SectionType.KIDS;
-      const isKidParcelOpt = isKidsParcelEnabled(dayId, mealType, dayConfig, kidsEnabled);
-      const isParcelCheckActive = isKidCat ? isKidParcelOpt : quickCheckoutDetails.parcelSupported;
+      if (isFallback) {
+        const isKidCat = cat.section === SectionType.KIDS;
+        const isKidParcelOpt = isKidsParcelEnabled(dayId, mealType, dayConfig, kidsEnabled);
+        const isParcelCheckActive = isKidCat ? isKidParcelOpt : quickCheckoutDetails.parcelSupported;
 
-      const catTotalCheckout = safeParcelInput + safeDineInInput;
-      if (isParcelCheckActive && catTotalCheckout === cat.remMealCount && cat.remMealCount > 0) {
-        let hasUncollectedParcelForServedMeal = false;
-        for (let i = 0; i < headcount; i++) {
-          if (!isSlotInCat(i)) continue;
-          const isFoodTaken = toBool(takenList[i]?.[mealKey]);
-          const hasParcelOpted = checkParcelOptedForSlot(i);
-          const isParcelTaken = toBool(takenList[i]?.[parcelKey as keyof TakenState]);
+        const catTotalCheckout = safeParcelInput + safeDineInInput;
+        if (isParcelCheckActive && catTotalCheckout === cat.remMealCount && cat.remMealCount > 0) {
+          let hasUncollectedParcelForServedMeal = false;
+          for (let i = 0; i < headcount; i++) {
+            if (!isSlotInCat(i)) continue;
+            const isFoodTaken = toBool(takenList[i]?.[mealKey]);
+            const hasParcelOpted = checkParcelOptedForSlot(i);
+            const isParcelTaken = toBool(takenList[i]?.[parcelKey as keyof TakenState]);
 
-          if (isFoodTaken && hasParcelOpted && !isParcelTaken) {
-            hasUncollectedParcelForServedMeal = true;
-            break;
+            if (isFoodTaken && hasParcelOpted && !isParcelTaken) {
+              hasUncollectedParcelForServedMeal = true;
+              break;
+            }
           }
-        }
 
-        if (hasUncollectedParcelForServedMeal) {
-          parcelDiscrepancyOccurred = true;
+          if (hasUncollectedParcelForServedMeal) {
+            parcelDiscrepancyOccurred = true;
+          }
         }
       }
     }
@@ -801,15 +841,19 @@ export function QuickCheckoutModal({
       let adultsPlanned = 0;
       let kidsPlanned = 0;
       Object.values(quickCheckoutDetails.categories).forEach((cat) => {
-        if (cat.section === SectionType.ADULTS) adultsPlanned += cat.plannedCount;
-        if (cat.section === SectionType.KIDS) kidsPlanned += cat.plannedCount;
+        if (cat.section === SectionType.ADULTS) {
+          adultsPlanned += isFallback ? cat.plannedCount : cat.dineInPlannedCount;
+        }
+        if (cat.section === SectionType.KIDS) {
+          kidsPlanned += isFallback ? cat.plannedCount : cat.dineInPlannedCount;
+        }
       });
       if (adultsPlanned > 0) totalsParts.push(`${UI_TEXT.adults}: ${newAdultsTaken}/${adultsPlanned}`);
       if (kidsPlanned > 0) totalsParts.push(`${UI_TEXT.kids}: ${newKidsTaken}/${kidsPlanned}`);
     } else {
       let totalPlanned = 0;
       Object.values(quickCheckoutDetails.categories).forEach((cat) => {
-        totalPlanned += cat.plannedCount;
+        totalPlanned += isFallback ? cat.plannedCount : cat.dineInPlannedCount;
       });
       if (totalPlanned > 0) totalsParts.push(`${UI_TEXT.members}: ${newAdultsTaken}/${totalPlanned}`);
     }
@@ -874,6 +918,8 @@ export function QuickCheckoutModal({
   const isCheckoutDisabled = totalSelectedItems === 0 || !isStillCurrent || isDone;
   const cardMaxWidth = Math.min(width * 0.94, Platform.OS === 'web' ? 580 : 500);
   const maxCardHeight = Math.min(height * 0.88, 620);
+
+  if (!visible || !subscription) return null;
 
   // Full-Height Theme-Driven Success Overlay Window (Works on Mobile & Web)
   if (visible && successData) {
@@ -1027,6 +1073,8 @@ export function QuickCheckoutModal({
                     const parcelStr = item.parcel === 1 ? UI_TEXT.parcelSingular : UI_TEXT.parcels;
                     parts.push(`${item.parcel} ${parcelStr}`);
                   }
+
+                  if (parts.length === 0) return null;
 
                   return (
                     <View
@@ -1353,17 +1401,35 @@ export function QuickCheckoutModal({
                 {/* Compact Category-Wise Breakdown */}
                 <View style={{ gap: 3, marginTop: 2 }}>
                   {Object.values(quickCheckoutDetails.categories)
-                    .filter((cat) => cat.plannedCount > 0 || cat.parcelPlannedCount > 0)
+                    .filter((cat) => {
+                      const isFallback = isDineInFallbackParcelEnabled(quickCheckoutDetails.dayId, quickCheckoutDetails.mealType, dayConfig);
+                      const dinePlanned = isFallback ? cat.plannedCount : cat.dineInPlannedCount;
+                      const dineRem = isFallback ? cat.remMealCount : cat.remDineInCount;
+                      const isKidCat = cat.section === SectionType.KIDS;
+                      const isKidParcelOpt = isKidsParcelEnabled(quickCheckoutDetails.dayId, quickCheckoutDetails.mealType, dayConfig, kidsEnabled);
+                      const showCatParcel = quickCheckoutDetails.parcelSupported && (isKidCat ? isKidParcelOpt : true);
+
+                      const hasDineRem = dinePlanned > 0 && dineRem > 0;
+                      const hasParcelRem = showCatParcel && cat.parcelPlannedCount > 0 && cat.remParcelCount > 0;
+                      return hasDineRem || hasParcelRem;
+                    })
                     .map((cat) => {
+                      const isFallback = isDineInFallbackParcelEnabled(quickCheckoutDetails.dayId, quickCheckoutDetails.mealType, dayConfig);
                       const isKidCat = cat.section === SectionType.KIDS;
                       const isKidParcelOpt = isKidsParcelEnabled(quickCheckoutDetails.dayId, quickCheckoutDetails.mealType, dayConfig, kidsEnabled);
                       const showCatParcel = quickCheckoutDetails.parcelSupported && (isKidCat ? isKidParcelOpt : true);
 
                       const parcelLabel = cat.parcelPlannedCount === 1 ? UI_TEXT.parcelSingular : UI_TEXT.parcels;
-                      const dineStr = `${UI_TEXT.dineIn}: ${cat.plannedCount} (${cat.remMealCount} ${UI_TEXT.remAbbr || "rem"})`;
-                      const parcelStr = (showCatParcel && cat.parcelPlannedCount > 0)
-                        ? ` | ${parcelLabel}: ${cat.parcelPlannedCount} (${cat.remParcelCount} ${UI_TEXT.remAbbr || "rem"})`
+                      const dinePlanned = isFallback ? cat.plannedCount : cat.dineInPlannedCount;
+                      const dineRem = isFallback ? cat.remMealCount : cat.remDineInCount;
+
+                      const dineStr = (dinePlanned > 0 && dineRem > 0)
+                        ? `${UI_TEXT.dineIn}: ${dinePlanned} (${dineRem} ${UI_TEXT.remAbbr || "rem"})`
                         : "";
+                      const parcelStr = (showCatParcel && cat.parcelPlannedCount > 0 && cat.remParcelCount > 0)
+                        ? `${parcelLabel}: ${cat.parcelPlannedCount} (${cat.remParcelCount} ${UI_TEXT.remAbbr || "rem"})`
+                        : "";
+                      const combinedStr = [dineStr, parcelStr].filter(Boolean).join(" | ");
 
                       return (
                         <View
@@ -1382,7 +1448,7 @@ export function QuickCheckoutModal({
                             • {cat.label}
                           </Text>
                           <Text style={{ fontSize: 10, fontWeight: "700", color: theme.colors.white, opacity: 0.95 }}>
-                            {dineStr}{parcelStr}
+                            {combinedStr}
                           </Text>
                         </View>
                       );
@@ -1432,6 +1498,11 @@ export function QuickCheckoutModal({
                       const catInputs = (cat && inputs[cat.key]) ? inputs[cat.key] : { parcel: 0, dineIn: 0 };
                       const parcelVal = catInputs?.parcel ?? 0;
                       const dineInVal = catInputs?.dineIn ?? 0;
+                      const isFallback = isDineInFallbackParcelEnabled(quickCheckoutDetails.dayId, quickCheckoutDetails.mealType, dayConfig);
+
+                      const dinePlanned = isFallback ? cat.plannedCount : cat.dineInPlannedCount;
+                      const dineServed = isFallback ? cat.servedCount : cat.dineInServedCount;
+                      const dineRem = isFallback ? cat.remMealCount : cat.remDineInCount;
 
                       return (
                         <View key={sub.key} style={{ gap: 4 }}>
@@ -1458,7 +1529,7 @@ export function QuickCheckoutModal({
                               </Text>
                             </View>
                             <Text style={{ fontSize: 11, fontWeight: "700", color: theme.colors.textSecondary }}>
-                              ({UI_TEXT.pending}: {cat.remMealCount} {cat.remMealCount === 1 ? UI_TEXT.plateSingular.toLowerCase() : UI_TEXT.plates.toLowerCase()}
+                              ({UI_TEXT.pending}: {dineRem} {dineRem === 1 ? UI_TEXT.plateSingular.toLowerCase() : UI_TEXT.plates.toLowerCase()}
                               {quickCheckoutDetails.parcelSupported && cat.remParcelCount > 0 ? `, ${cat.remParcelCount} ${cat.remParcelCount === 1 ? UI_TEXT.parcelSingular.toLowerCase() : UI_TEXT.parcels.toLowerCase()}` : ""})
                             </Text>
                           </View>
@@ -1478,15 +1549,15 @@ export function QuickCheckoutModal({
                                 s={(n: number) => n}
                               />
                             )}
-                            {cat.remMealCount > 0 && (
+                            {dineRem > 0 && (
                               <QuickCheckoutItemCard
                                 label={UI_TEXT.dineIn}
-                                plannedCount={cat.plannedCount}
-                                servedCount={cat.servedCount}
-                                remCount={cat.remMealCount}
+                                plannedCount={dinePlanned}
+                                servedCount={dineServed}
+                                remCount={dineRem}
                                 value={dineInVal}
                                 onChange={(val) => handleDineInChange(cat.key, val)}
-                                max={cat.remMealCount}
+                                max={dineRem}
                                 disabled={!isStillCurrent || isDone}
                                 theme={theme}
                                 s={(n: number) => n}

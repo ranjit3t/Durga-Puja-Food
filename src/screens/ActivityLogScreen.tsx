@@ -27,6 +27,7 @@ import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
 import { ThemeToggleButton } from "../components/common/ThemeToggleButton";
 import { UserGreeting } from "../components/common/UserGreeting";
+import { useChat } from "../context/ChatContext";
 
 import { useAuth } from "../context/AuthContext";
 import { useCoreDatabase, useActivityLogs } from "../context/DatabaseContext";
@@ -56,6 +57,14 @@ export function ActivityLogScreen() {
   // Summary Modal State
   const [summaryModalVisible, setModalVisible] = useState(false);
   const [summaryText, setSummaryText] = useState("");
+  const { registerModalOpen, unregisterModalOpen } = useChat();
+
+  React.useEffect(() => {
+    if (summaryModalVisible) {
+      registerModalOpen("activity_summary");
+      return () => unregisterModalOpen("activity_summary");
+    }
+  }, [summaryModalVisible, registerModalOpen, unregisterModalOpen]);
 
   // Filters & Search
   const [selectedUser, setSelectedUser] = useState(UI_TEXT.all);

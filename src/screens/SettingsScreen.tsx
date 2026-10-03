@@ -690,7 +690,7 @@ export function SettingsScreen() {
     }, 0);
 
     const id = `Day${maxSuffix + 1}`;
-    const emptyMeal: MealConfig = { enabled: false, veg: true, nonVeg: true, parcel: false, parcelAlert: false, kidsParcel: false, vegParcelPrice: UI_TEXT.zero, nonVegParcelPrice: UI_TEXT.zero };
+    const emptyMeal: MealConfig = { enabled: false, veg: true, nonVeg: true, parcel: false, parcelAlert: false, kidsParcel: false, dineInFallbackParcel: false, vegParcelPrice: UI_TEXT.zero, nonVegParcelPrice: UI_TEXT.zero };
     const newDay: ConfigDay = {
       id,
       label: UI_TEXT.newDayLabel,
@@ -763,6 +763,7 @@ export function SettingsScreen() {
               if (newM.nonVeg !== oldM.nonVeg) mChanges.push(`NonVeg:${newM.nonVeg ? 'ON' : 'OFF'}`);
               if (newM.parcel !== oldM.parcel) mChanges.push(`Parcel:${newM.parcel ? 'ON' : 'OFF'}`);
               if (newM.kidsParcel !== oldM.kidsParcel) mChanges.push(`KidsParcel:${newM.kidsParcel ? 'ON' : 'OFF'}`);
+              if (newM.dineInFallbackParcel !== oldM.dineInFallbackParcel) mChanges.push(`DineInFallbackParcel:${newM.dineInFallbackParcel ? 'ON' : 'OFF'}`);
               if (newM.parcelAlert !== oldM.parcelAlert) mChanges.push(`ParcelAlert:${newM.parcelAlert ? 'ON' : 'OFF'}`);
               if (newM.done !== oldM.done) mChanges.push(`Done:${newM.done ? 'ON' : 'OFF'}`);
               if (newM.current !== oldM.current) mChanges.push(`Current:${newM.current ? 'ON' : 'OFF'}`);
@@ -1219,10 +1220,15 @@ export function SettingsScreen() {
                                      parcel: val,
                                      parcelAlert: val ? m.parcelAlert : false,
                                      kidsParcel: val ? m.kidsParcel : false,
+                                     dineInFallbackParcel: val ? m.dineInFallbackParcel : false,
                                    });
                                  }}
                                  trackColor={{ true: theme.colors.primary }}
                                  style={{ transform: [{ scale: 0.8 }], flexShrink: 0 }}
+                                 accessible={true}
+                                 accessibilityRole="switch"
+                                 accessibilityLabel={UI_TEXT.parcelSupportLabel}
+                                 accessibilityState={{ checked: !!m.parcel }}
                                />
                             </View>
                             {m.parcel && localKidsEnabled && (
@@ -1234,7 +1240,33 @@ export function SettingsScreen() {
                                     onValueChange={(val) => validateAndSetKidsParcel(day.id, mKey as MealType, val)}
                                     trackColor={{ true: theme.colors.primary }}
                                     style={{ transform: [{ scale: 0.8 }], flexShrink: 0 }}
+                                    accessible={true}
+                                    accessibilityRole="switch"
+                                    accessibilityLabel={UI_TEXT.kidsParcelLabel}
+                                    accessibilityState={{ checked: !!m.kidsParcel }}
                                   />
+                               </View>
+                            )}
+                            {m.parcel && (
+                               <View style={{ flexDirection: 'column', backgroundColor: theme.colors.background, padding: 10, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border, gap: 4 }}>
+                                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                                     <Text style={{ fontSize: 12, fontWeight: '800', color: theme.colors.textSecondary, flex: 1, marginRight: 10 }}>{UI_TEXT.dineInFallbackParcelLabel.toUpperCase()}</Text>
+                                     <Switch
+                                       value={!!m.dineInFallbackParcel}
+                                       disabled={m.done}
+                                       onValueChange={(val) => updateMealConfig(day.id, mKey, { dineInFallbackParcel: val })}
+                                       trackColor={{ true: theme.colors.primary }}
+                                       style={{ transform: [{ scale: 0.8 }], flexShrink: 0 }}
+                                       accessible={true}
+                                       accessibilityRole="switch"
+                                       accessibilityLabel={UI_TEXT.dineInFallbackParcelLabel}
+                                       accessibilityHint={UI_TEXT.dineInFallbackParcelDesc}
+                                       accessibilityState={{ checked: !!m.dineInFallbackParcel }}
+                                     />
+                                  </View>
+                                  <Text style={{ fontSize: 10, color: theme.colors.textMuted, lineHeight: 14 }}>
+                                     {UI_TEXT.dineInFallbackParcelDesc}
+                                  </Text>
                                </View>
                             )}
                             {m.parcel && (

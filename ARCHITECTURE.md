@@ -16,7 +16,7 @@ Eternia Food Desk is a cross-platform mobile and web application built with **Re
 ┌───────────────────────────────────▼────────────────────────────────────┐
 │                    Decoupled Context Provider Layer                    │
 │   AuthContext ┆ CoreDatabaseContext ┆ ActivityLogsContext ┆ NotesContext│
-│                    NavigationContext ┆ UIContext                       │
+│              ChatContext ┆ NavigationContext ┆ UIContext               │
 └───────────────────────────────────┬────────────────────────────────────┘
                                     │
 ┌───────────────────────────────────▼────────────────────────────────────┐
@@ -26,7 +26,8 @@ Eternia Food Desk is a cross-platform mobile and web application built with **Re
                                     │
 ┌───────────────────────────────────▼────────────────────────────────────┐
 │                       Firebase Realtime Database                       │
-│ subscriptions ┆ menu ┆ config ┆ auth_config ┆ logs ┆ notes ┆ metrics  │
+│ subscriptions ┆ menu ┆ config ┆ auth_config ┆ logs ┆ notes ┆ metrics   │
+│                        presence ┆ chats                                │
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -73,9 +74,10 @@ Eternia Food Desk is a cross-platform mobile and web application built with **Re
 - **Ordered Priority Allocation Algorithm & Sequential UI Slot Matching**:
   - **Sequential First-Available UI Slot Order**: Category processing (`categoryOrder`) strictly follows the top-to-bottom section rendering order (**Adult Veg** $\rightarrow$ **Adult Non-Veg** $\rightarrow$ **Kids Veg** $\rightarrow$ **Kids Non-Veg**). Member slot scanning ($i = 0..N-1$) strictly evaluates the first available unserved slot in sequential pass order matching the UI display without random shuffling.
   - **Strict Parcel Allocation ($P$ times)**: Scans slots in order ($i = 0..N-1$) for the first unserved member belonging to the category who opted for parcel (`slot[parcelKey] === true` and `!taken[parcelKey]`), marking `foodTaken = true` and `parcelTaken = true`. Parcel is **never** allocated to Dine-In-only slots as fallback.
-  - **Prioritized Dine-In Allocation ($D$ times)**: Priority 1 scans for the first unserved member who did **not** opt for parcel (`!slot[parcelKey]`), marking `foodTaken = true`. Priority 2 (fallback) scans for parcel-opted unserved members, marking `foodTaken = true` while leaving `parcelTaken = false`. Dine-In expands up to total category subscribed meals (`remMealCount`).
+  - **Prioritized Dine-In Allocation ($D$ times)**: Priority 1 scans for the first unserved member who did **not** opt for parcel (`!slot[parcelKey]`), marking `foodTaken = true`. Priority 2 (fallback, executed strictly when `dineInFallbackParcel === true`) scans for parcel-opted unserved members, marking `foodTaken = true` while leaving `parcelTaken = false`. When fallback is disabled (`dineInFallbackParcel === false`), Priority 2 fallback is skipped and Dine-In allocates strictly from Dine-In-only slots.
+- **Configurable Dine-In Fallback on Parcel Setting**: Managed via `dineInFallbackParcel` toggle in Settings (`SettingsScreen.tsx`). Defaults to `false` (disabled) for all meals. When disabled, Dine-In and Parcel counts operate independently without cross-clamping.
 - **Unsubscribed Member Protection**: Unsubscribed member slots (`DietaryOption.NONE` or unconfigured) are strictly excluded from limit calculations and can **never** be marked `foodTaken = true` or `parcelTaken = true`.
-- **Parcel Discrepancy Detection**: If a parcel-opted member is served Dine-In when all meals for the category/pass are completed, automatically logs a Missed Parcel activity log (`ActivityAction.MISSED_PARCEL`).
+- **Parcel Discrepancy Detection**: When fallback is enabled, if a parcel-opted member is served Dine-In when all meals for the category/pass are completed, automatically logs a Missed Parcel activity log (`ActivityAction.MISSED_PARCEL`). When fallback is disabled, no parcel discrepancy logs are generated during Dine-In check-in.
 - **Slot Lockout & Immutability**: Once `foodTaken = true` is marked for any slot, that slot is locked and unavailable for subsequent selections.
 - **Compact Viewport Design & Pinned Action Row**: Action buttons (`Close` and `Checkout`) are pinned at the bottom of the card container, ensuring the **Checkout** button is 100% guaranteed to remain visible in the viewport.
 - **Vibrant Full-Height Overlay**: Replaced alert dialogs upon successful checkout with a full-height, theme-enabled success window (`theme.colors.successLight`) featuring a large glowing green checkmark badge (`checkmark-done`), total plates served, overall status, and human-readable category breakdown (e.g. `• Adult Veg: 1 Dine-In, 1 Parcel`).

@@ -315,7 +315,14 @@ export function getDietTypeForChoice(choice: string | undefined, varieties?: Die
     return DietType.NON_VEG;
   }
 
-  return undefined;
+  if (choice && typeof choice === 'string') {
+    const lower = choice.toLowerCase();
+    if (lower.includes("nonveg") || lower.includes("non-veg") || lower.includes("nv")) {
+      return DietType.NON_VEG;
+    }
+  }
+
+  return DietType.VEG;
 }
 
 /**
@@ -363,8 +370,7 @@ export const getValidSlotChoice = (
   const mConf = dayConf ? dayConf[meal] : undefined;
   const varieties = getMealVarieties(mConf);
 
-  const diet = getDietTypeForChoice(choice, varieties);
-  if (!diet) return DietaryOption.NONE;
+  const diet = getDietTypeForChoice(choice, varieties) || DietType.VEG;
 
   if (!isDietaryEnabled(dayId, meal, diet, config)) {
     return DietaryOption.NONE;
@@ -452,6 +458,24 @@ export const isKidsParcelEnabled = (
     dayConfig[meal]?.enabled &&
     dayConfig[meal]?.parcel &&
     Boolean(dayConfig[meal]?.kidsParcel)
+  );
+};
+
+/**
+ * Checks if dine-in fallback on parcel option (breakfast/lunch/dinner) is enabled for a day.
+ * Returns false if the day, meal, or main parcel support is disabled, or if fallback is toggled off.
+ */
+export const isDineInFallbackParcelEnabled = (
+  dayId: string,
+  meal: MealType,
+  config: ConfigDay[]
+) => {
+  const dayConfig = (config || []).find((d) => d.id === dayId);
+  if (!dayConfig || !dayConfig.enabled) return false;
+  return (
+    dayConfig[meal]?.enabled &&
+    dayConfig[meal]?.parcel &&
+    Boolean(dayConfig[meal]?.dineInFallbackParcel)
   );
 };
 

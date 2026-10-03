@@ -19,6 +19,7 @@ import { useDatabase } from "../../context/DatabaseContext";
 import { useAuth } from "../../context/AuthContext";
 import { useUI } from "../../context/UIContext";
 import { useAppNavigation } from "../../context/NavigationContext";
+import { useChat } from "../../context/ChatContext";
 import { useAppTheme } from "../../theme";
 import { UI_TEXT } from "../../strings";
 import {
@@ -60,7 +61,15 @@ export function QuickGuestModal({
   const { showAlert } = useUI();
   const { navigate } = useAppNavigation();
   const { width } = useWindowDimensions();
+  const { registerModalOpen, unregisterModalOpen } = useChat();
   const alertShownRef = useRef(false);
+
+  useEffect(() => {
+    if (visible) {
+      registerModalOpen("quick_guest");
+      return () => unregisterModalOpen("quick_guest");
+    }
+  }, [visible, registerModalOpen, unregisterModalOpen]);
 
   const dayId = currentMealInfo?.dayId || "";
   const mealType = currentMealInfo?.mealType || MealType.BREAKFAST;

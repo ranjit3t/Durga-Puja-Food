@@ -45,6 +45,20 @@
     "notes": {
       ".read": "auth != null",
       ".write": "auth != null"
+    },
+    "presence": {
+      ".read": "auth != null",
+      "$username": {
+        ".write": "auth != null"
+      }
+    },
+    "chats": {
+      ".read": "auth != null",
+      "$chatId": {
+        ".read": "auth != null",
+        ".write": "auth != null",
+        ".indexOn": ["sender", "recipient", "timestamp"]
+      }
     }
   }
 }

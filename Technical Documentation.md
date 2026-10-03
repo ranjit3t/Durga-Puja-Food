@@ -47,15 +47,15 @@ The application follows a **Serverless Layered Architecture** built on the **Exp
 ### E. Full-Height Festive Quick Checkout Overlay, Category Controls & Atomic Meal Binding (`QuickCheckoutModal.tsx`, `CounterInput.tsx`, `SettingsScreen.tsx`)
 - **Current Day & Meal Scope**: Limits and allocation routines target strictly the active current day and meal slot (`currentMealInfo.dayId`, `currentMealInfo.mealType`). Non-current meals cannot be modified via Quick Checkout.
 - **4-Category Classification & Strict Boundary Isolation**: Categorizes pass members into **Adult Veg**, **Adult Non-Veg**, **Kids Veg**, and **Kids Non-Veg** (or **Member Veg** / **Member Non-Veg** when `kidsEnabled = false`). Category matcher (`isSlotInCat`) guarantees zero cross-category meal leakage.
-- **Side-by-Side Interdependent Counter Inputs**: Each active subsection renders **Parcel** (shown first) and **Dine-In** side-by-side in horizontal rows. Enforces $P + D \le \text{remMealCount}$: increasing Parcel automatically decreases Dine-In if the sum exceeds remaining meals, and vice-versa.
+- **Side-by-Side Counter Inputs & Configurable Dine-In Fallback**: Each active subsection renders **Parcel** (shown first) and **Dine-In** side-by-side. Controlled by `dineInFallbackParcel` setting in `SettingsScreen.tsx` (default `false` / disabled). When fallback is enabled, enforces $P + D \le \text{remMealCount}$ cross-clamping; when fallback is disabled, Dine-In and Parcel inputs operate independently with exact separate remaining limits.
 - **Dynamic Parcel Hiding**: When remaining parcel count for a subsection is `0` (`remParcelCount === 0`) or parcel service is disabled, the Parcel input field is omitted and the Dine-In input spans full width.
 - **Dynamic Subsection & Section Omission**: Empty subsections (`remMealCount === 0` and `remParcelCount === 0`) and empty sections are automatically omitted. On Veg-Only days (`isVegOnlyDay = true`), Non-Veg subsections are omitted. On Non-Veg only meals, Veg subsections are omitted.
 - **Ordered Priority Allocation Algorithm & Sequential UI Slot Matching**:
   - **Sequential First-Available UI Slot Order**: Category processing (`categoryOrder`) strictly follows the top-to-bottom section rendering order (**Adult Veg** $\rightarrow$ **Adult Non-Veg** $\rightarrow$ **Kids Veg** $\rightarrow$ **Kids Non-Veg**). Member slot scanning ($i = 0..N-1$) strictly evaluates the first available unserved slot in sequential pass order matching the UI display without random shuffling.
   - **Strict Parcel Allocation ($P$ times)**: Scans slots in order ($i = 0..N-1$) for the first unserved member belonging to the category who opted for parcel (`slot[parcelKey] === true` and `!taken[parcelKey]`), marking `foodTaken = true` and `parcelTaken = true`. Parcel is **never** allocated to Dine-In-only slots as fallback.
-  - **Prioritized Dine-In Allocation ($D$ times)**: Priority 1 scans for the first unserved member who did **not** opt for parcel (`!slot[parcelKey]`), marking `foodTaken = true`. Priority 2 (fallback) scans for parcel-opted unserved members, marking `foodTaken = true` while leaving `parcelTaken = false`. Dine-In expands up to total category subscribed meals (`remMealCount`).
+  - **Prioritized Dine-In Allocation ($D$ times)**: Priority 1 scans for the first unserved member who did **not** opt for parcel (`!slot[parcelKey]`), marking `foodTaken = true`. Priority 2 (fallback, executed strictly when `dineInFallbackParcel === true`) scans for parcel-opted unserved members, marking `foodTaken = true` while leaving `parcelTaken = false`. When fallback is disabled (`dineInFallbackParcel === false`), Priority 2 fallback is skipped and Dine-In allocates strictly from Dine-In-only slots.
 - **Unsubscribed Member Protection**: Unsubscribed member slots (`DietaryOption.NONE` or unconfigured) are strictly excluded from limit calculations and can **never** be marked `foodTaken = true` or `parcelTaken = true`.
-- **Parcel Discrepancy Detection**: If a parcel-opted member is served Dine-In when all meals for the category/pass are completed, automatically logs a Missed Parcel activity log (`ActivityAction.MISSED_PARCEL`).
+- **Parcel Discrepancy Detection**: When fallback is enabled, if a parcel-opted member is served Dine-In when all meals for the category/pass are completed, automatically logs a Missed Parcel activity log (`ActivityAction.MISSED_PARCEL`). When fallback is disabled, no parcel discrepancy logs are generated during Dine-In check-in.
 - **Slot Lockout & Immutability**: Once `foodTaken = true` is marked for any slot, that slot is locked and unavailable for subsequent selections.
 - **Compact Viewport Design & Pinned Action Row**: Action buttons (`Close` and `Checkout`) are pinned at the bottom of the card container, ensuring the **Checkout** button is 100% guaranteed to remain visible in the viewport.
 - **Multi-Source Origin Tracking**: Tracks checkout origin via `CheckoutSource` enum (`QR Code Scan`, `Numeric Passcode Keypad`, `Pass Details`, `Pass Directory`).
@@ -167,10 +167,32 @@ The application follows a **Serverless Layered Architecture** built on the **Exp
     "notes": {
       ".read": "auth != null",
       ".write": "auth != null"
+    },
+    "presence": {
+      ".read": "auth != null",
+      "$username": {
+        ".write": "auth != null"
+      }
+    },
+    "chats": {
+      ".read": "auth != null",
+      "$chatId": {
+        ".read": "auth != null",
+        ".write": "auth != null",
+        ".indexOn": ["sender", "recipient", "timestamp"]
+      }
     }
   }
 }
 ```
+
+### M. Peer-to-Peer Realtime Chat Engine (`ChatContext.tsx`, `ChatWidget.tsx`)
+- **Deterministic Room Privacy**: Configures isolated WebSocket streams under `chats/{user1}__${user2}/messages` where `user1` and `user2` are alphabetically sorted lowercase usernames, preventing message leakage.
+- **Firebase Presence Sync**: Uses `.info/connected` with `onDisconnect()` under `presence/{username}` to monitor live online/offline status and `lastSeen` timestamps.
+- **Typing Indicators & Read Status**: Tracks live typing state (`chats/{chatId}/typing/{username}`) and message status receipts (`✓ Sent`, `✓✓ Delivered`, `✓✓ Read`).
+- **Bottom-Right Position & Compact Sizing**: Anchored at bottom-right corner (`right: 20`, `bottom: 38px web / 78px mobile`) with a compact `310px` popup width and miniature minimized pill button (`13px` icon).
+- **Native Keyboard Avoiding**: Wrapped in React Native `KeyboardAvoidingView` (`behavior={Platform.OS === "ios" ? "padding" : "height"}`) paired with native `Keyboard.addListener("keyboardDidShow")` height offset handlers, raising the chat popup container smoothly above the soft keyboard on mobile.
+- **Strict Camera, Modal, Dropdown & Alert Exclusion**: Hides automatically on camera viewfinders (`ScannerScreen`, `PaymentScannerModal`) and all active modal, dropdown, and alert windows (`QuickCheckoutModal`, `QuickGuestModal`, `CustomAlert`, `Dropdown`, `Notes` modal, `ActivityLog` summary, etc.).
 
 ---
 

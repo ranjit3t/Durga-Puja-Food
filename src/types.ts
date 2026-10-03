@@ -37,6 +37,10 @@ import {
   AppVersionInfo,
   DietaryVariety,
   VarietyMenu,
+  ChatMessage,
+  UserPresence,
+  ChatUser,
+  MessageStatus,
 } from "./domain";
 
 export enum FilterMode {
@@ -88,4 +92,8 @@ export {
   GuestCheckoutSource,
   MealMetrics,
   KitchenMetrics,
+  ChatMessage,
+  UserPresence,
+  ChatUser,
+  MessageStatus,
 };

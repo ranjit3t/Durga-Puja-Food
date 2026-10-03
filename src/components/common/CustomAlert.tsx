@@ -1,8 +1,9 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useEffect } from "react";
 import { View, Text, Pressable, Modal, StyleSheet, Platform, ScrollView, Linking } from "react-native";
 import { useAppTheme } from "../../theme";
 import { UI_TEXT } from "../../strings";
 import { AppThemeMode } from "../../domain";
+import { useChat } from "../../context/ChatContext";
 
 export type AlertButton = {
   text: string;
@@ -28,6 +29,14 @@ export function CustomAlert({
   onClose,
 }: CustomAlertProps) {
   const { theme } = useAppTheme();
+  const { registerModalOpen, unregisterModalOpen } = useChat();
+
+  useEffect(() => {
+    if (visible) {
+      registerModalOpen("custom_alert");
+      return () => unregisterModalOpen("custom_alert");
+    }
+  }, [visible, registerModalOpen, unregisterModalOpen]);
 
   const isStacked = useMemo(() => {
     return buttons.length > 2 || buttons.some((b) => (b.text || "").length > 11);
