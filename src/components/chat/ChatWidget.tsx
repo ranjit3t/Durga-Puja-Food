@@ -85,6 +85,14 @@ export function ChatWidget() {
   const [hasMoved, setHasMoved] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
 
+  const handleMinimize = () => {
+    pan.setValue({ x: 0, y: 0 });
+    pan.setOffset({ x: 0, y: 0 });
+    setSizeXY({ width: 310, height: 440 });
+    setHasMoved(false);
+    minimizeChatWindow();
+  };
+
   const pan = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
 
   const panResponder = useRef(
@@ -335,7 +343,7 @@ export function ChatWidget() {
 
             <Pressable
               style={styles.headerIconButton}
-              onPress={minimizeChatWindow}
+              onPress={handleMinimize}
               accessible={true}
               accessibilityRole="button"
               accessibilityLabel={UI_TEXT.minimizeChat}
@@ -572,7 +580,7 @@ export function ChatWidget() {
           <View style={[styles.bottomFooterBar, { backgroundColor: theme.colors.surfaceDark, borderTopColor: theme.colors.border }]}>
             <Pressable
               style={styles.bottomFooterBtn}
-              onPress={minimizeChatWindow}
+              onPress={handleMinimize}
               accessible={true}
               accessibilityRole="button"
               accessibilityLabel={UI_TEXT.minimizeChat}
