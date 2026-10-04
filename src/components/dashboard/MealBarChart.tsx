@@ -107,7 +107,7 @@ export function MealBarChart(props: MealMetricProps) {
           />
         )}
 
-        {parcel > 0 && (
+        {(props.isParcelEnabled ?? true) && (
           <Bar
             label={UI_TEXT.parcels}
             value={parcel}

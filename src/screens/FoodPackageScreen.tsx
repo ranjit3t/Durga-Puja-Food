@@ -42,7 +42,7 @@ import { useAuth } from "../context/AuthContext";
 import { useCoreDatabase, useFoodPackages } from "../context/DatabaseContext";
 import { useAppNavigation } from "../context/NavigationContext";
 import { useUI } from "../context/UIContext";
-import { getDayLabel, getMealLabel, isMealEnabled, getMealVarieties, isSpecialMeal } from "../constants";
+import { getDayLabel, getMealLabel, isMealEnabled, getMealVarieties, isSpecialMeal, getApplicabilityLabel } from "../constants";
 import { resolveVarietyPrice } from "../utils/paymentUtils";
 
 export function FoodPackageScreen() {
@@ -323,18 +323,6 @@ export function FoodPackageScreen() {
       showAlert(UI_TEXT.error, UI_TEXT.packageSaveError);
     } finally {
       setIsSaving(false);
-    }
-  };
-
-  const getApplicabilityLabel = (app: PackageApplicability) => {
-    switch (app) {
-      case "kids":
-        return UI_TEXT.kidsOnly;
-      case "member":
-        return UI_TEXT.membersAll;
-      case "adult":
-      default:
-        return UI_TEXT.adultsOnly;
     }
   };
 

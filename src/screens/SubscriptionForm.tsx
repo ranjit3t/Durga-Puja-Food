@@ -46,6 +46,7 @@ import {
   getDietTypeForChoice,
   getVarietyForChoice,
   isSpecialMeal,
+  isSpecialOnlySubscribed,
 } from "../constants";
 import {
   MealChoice,
@@ -237,6 +238,10 @@ export function SubscriptionForm() {
   const isPackageApplied = useMemo(() => {
     return Object.keys(appliedPackages).length > 0;
   }, [appliedPackages]);
+
+  const isSpecialOnly = useMemo(() => {
+    return isSpecialOnlySubscribed({ mealSlots: form.mealSlots }, dayConfig);
+  }, [form.mealSlots, dayConfig]);
 
   const checkParcelInconsistency = (sub: Subscription): boolean => {
     if (!lockIdentity || !currentMealInfo) return false;
@@ -1105,6 +1110,27 @@ export function SubscriptionForm() {
                     <Ionicons name="pricetag" size={12} color={theme.colors.primary} />
                     <Text style={{ fontSize: 11, fontWeight: "900", color: theme.colors.primary }}>
                       {UI_TEXT.packageAppliedMarker}
+                    </Text>
+                  </View>
+                )}
+
+                {isSpecialOnly && (
+                  <View
+                    style={{
+                      backgroundColor: theme.colors.specialMealBg,
+                      borderColor: theme.colors.specialMealBorder,
+                      borderWidth: 1,
+                      paddingHorizontal: 8,
+                      paddingVertical: 3,
+                      borderRadius: 10,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 4,
+                    }}
+                  >
+                    <Ionicons name="star" size={12} color={theme.colors.specialMealBorder} />
+                    <Text style={{ fontSize: 11, fontWeight: "900", color: theme.colors.specialMealText }}>
+                      {UI_TEXT.specialOnly}
                     </Text>
                   </View>
                 )}

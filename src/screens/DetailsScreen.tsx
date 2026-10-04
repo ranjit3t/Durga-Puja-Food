@@ -31,6 +31,7 @@ import {
   getMemberLegend,
   getMealLabel,
   generateUniquePasscode,
+  isSpecialOnlySubscribed,
 } from "../constants";
 import { MealMenu, MealType, DietType, DietaryOption, normalizeChoice, toBool, AppScreen, UserRole, PaymentMode, ReportType, AppThemeMode, ActivityModule, ActivityAction, CheckoutSource, getPassDisplayLabel } from "../types";
 import { BackButton } from "../components/common/BackButton";
@@ -245,6 +246,27 @@ export function DetailsScreen() {
                     <Ionicons name="pricetag" size={12} color={theme.colors.primary} />
                     <Text style={{ fontSize: 11, fontWeight: "900", color: theme.colors.primary }}>
                       {UI_TEXT.packageAppliedMarker}
+                    </Text>
+                  </View>
+                )}
+
+                {isSpecialOnlySubscribed(subscription, dayConfig) && (
+                  <View
+                    style={{
+                      backgroundColor: theme.colors.specialMealBg,
+                      borderColor: theme.colors.specialMealBorder,
+                      borderWidth: 1,
+                      paddingHorizontal: 8,
+                      paddingVertical: 3,
+                      borderRadius: 10,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 4,
+                    }}
+                  >
+                    <Ionicons name="star" size={12} color={theme.colors.specialMealBorder} />
+                    <Text style={{ fontSize: 11, fontWeight: "900", color: theme.colors.specialMealText }}>
+                      {UI_TEXT.specialOnly}
                     </Text>
                   </View>
                 )}

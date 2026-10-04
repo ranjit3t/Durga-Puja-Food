@@ -582,6 +582,9 @@ export function DashboardScreen() {
       acc.kidsTotal += (day.breakfastKidsTotal || 0) + (day.lunchKidsTotal || 0) + (day.dinnerKidsTotal || 0);
       acc.kidsTaken += (day.breakfastKidsTaken || 0) + (day.lunchKidsTaken || 0) + (day.dinnerKidsTaken || 0);
 
+      acc.parcel += (day.breakfastParcel || 0) + (day.lunchParcel || 0) + (day.dinnerParcel || 0);
+      acc.parcelTaken += (day.breakfastParcelTaken || 0) + (day.lunchParcelTaken || 0) + (day.dinnerParcelTaken || 0);
+
       if (guestEnabled) {
         const gVeg = (day.breakfastGuestVeg || 0) + (day.lunchGuestVeg || 0) + (day.dinnerGuestVeg || 0);
         const gNonVeg = (day.breakfastGuestNonVeg || 0) + (day.lunchGuestNonVeg || 0) + (day.dinnerGuestNonVeg || 0);
@@ -601,8 +604,16 @@ export function DashboardScreen() {
       }
 
       return acc;
-    }, { total: 0, veg: 0, nonVeg: 0, adultTaken: 0, kidsVeg: 0, kidsNonVeg: 0, kidsTotal: 0, kidsTaken: 0, taken: 0, guestTotal: 0, guestVeg: 0, guestNonVeg: 0, guestTaken: 0 });
+    }, { total: 0, veg: 0, nonVeg: 0, adultTaken: 0, kidsVeg: 0, kidsNonVeg: 0, kidsTotal: 0, kidsTaken: 0, taken: 0, guestTotal: 0, guestVeg: 0, guestNonVeg: 0, guestTaken: 0, parcel: 0, parcelTaken: 0 });
   }, [dashboardData, guestEnabled]);
+
+  const isParcelEnabledGlobally = useMemo(() => {
+    return dayConfig.some(d => d.enabled && (
+      (d[MealType.BREAKFAST].enabled && d[MealType.BREAKFAST].parcel) ||
+      (d[MealType.LUNCH].enabled && d[MealType.LUNCH].parcel) ||
+      (d[MealType.DINNER].enabled && d[MealType.DINNER].parcel)
+    ));
+  }, [dayConfig]);
 
   const currentMealSummary = useMemo(() => {
     const active = dayConfig.filter((d) => d.enabled);
@@ -616,6 +627,7 @@ export function DashboardScreen() {
 
           let total = 0, veg = 0, nonVeg = 0, taken = 0, kidsVeg = 0, kidsNonVeg = 0, kidsTotal = 0, kidsTaken = 0;
           let guestTotal = 0, guestTaken = 0, guestVeg = 0, guestNonVeg = 0, adultsTaken = 0;
+          let parcel = 0, parcelTaken = 0;
 
           if (mType === MealType.BREAKFAST) {
             total = item.breakfast || 0;
@@ -631,6 +643,8 @@ export function DashboardScreen() {
             guestTotal = guestVeg + guestNonVeg;
             guestTaken = (item.breakfastGuestVegTaken || 0) + (item.breakfastGuestNonVegTaken || 0);
             adultsTaken = (item.breakfastFlatVegTaken || 0) + (item.breakfastFlatNonVegTaken || 0);
+            parcel = item.breakfastParcel || 0;
+            parcelTaken = item.breakfastParcelTaken || 0;
           } else if (mType === MealType.LUNCH) {
             total = item.lunch || 0;
             veg = item.lunchVeg || 0;
@@ -645,6 +659,8 @@ export function DashboardScreen() {
             guestTotal = guestVeg + guestNonVeg;
             guestTaken = (item.lunchGuestVegTaken || 0) + (item.lunchGuestNonVegTaken || 0);
             adultsTaken = (item.lunchFlatVegTaken || 0) + (item.lunchFlatNonVegTaken || 0);
+            parcel = item.lunchParcel || 0;
+            parcelTaken = item.lunchParcelTaken || 0;
           } else {
             total = item.dinner || 0;
             veg = item.dinnerVeg || 0;
@@ -659,6 +675,8 @@ export function DashboardScreen() {
             guestTotal = guestVeg + guestNonVeg;
             guestTaken = (item.dinnerGuestVegTaken || 0) + (item.dinnerGuestNonVegTaken || 0);
             adultsTaken = (item.dinnerFlatVegTaken || 0) + (item.dinnerFlatNonVegTaken || 0);
+            parcel = item.dinnerParcel || 0;
+            parcelTaken = item.dinnerParcelTaken || 0;
           }
 
           const mConf = d[mType];
@@ -676,6 +694,9 @@ export function DashboardScreen() {
             kidsNonVeg,
             kidsTotal,
             kidsTaken,
+            parcel,
+            parcelTaken,
+            isParcelEnabled: isParcelEnabled(d.id, mType, dayConfig),
             taken: taken + guestTaken, // Grand total taken for current meal
             guestVeg,
             guestNonVeg,
@@ -811,6 +832,18 @@ export function DashboardScreen() {
                       </Text>
                     </View>
                   )}
+
+                  {isParcelEnabledGlobally && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(6) }}>
+                      <Text style={{ fontSize: s(11), fontWeight: '800', color: theme.colors.white, opacity: 0.9 }}>{UI_TEXT.parcels}:</Text>
+                      <Text style={{ fontSize: s(11), fontWeight: '900', color: theme.colors.white, opacity: 0.9 }}>
+                        {summaryTotals.parcel}
+                      </Text>
+                      <Text style={{ fontSize: s(10), fontWeight: '700', color: theme.colors.white, opacity: 0.8 }}>
+                        ({UI_TEXT.taken}{UI_TEXT.colon}{UI_TEXT.space}{summaryTotals.parcelTaken})
+                      </Text>
+                    </View>
+                  )}
                 </View>
               </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(4) }}>
@@ -900,6 +933,18 @@ export function DashboardScreen() {
                                `(${currentMealSummary.guestVeg}${UI_TEXT.vegAbbrLabel}${UI_TEXT.pipe}${currentMealSummary.guestNonVeg}${UI_TEXT.nonVegAbbrLabel})${UI_TEXT.space}`
                             )}
                             ({UI_TEXT.taken}{UI_TEXT.colon}{UI_TEXT.space}{currentMealSummary.guestTaken})
+                         </Text>
+                      </View>
+                    )}
+
+                    {currentMealSummary.isParcelEnabled && (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(6) }}>
+                         <Text style={{ fontSize: s(12), fontWeight: '800', color: theme.colors.white, opacity: 0.9 }}>{UI_TEXT.parcels}:</Text>
+                         <Text style={{ fontSize: s(12), fontWeight: '900', color: theme.colors.white, opacity: 0.9 }}>
+                            {currentMealSummary.parcel}
+                         </Text>
+                         <Text style={{ fontSize: s(10), fontWeight: '700', color: theme.colors.white, opacity: 0.7 }}>
+                            ({UI_TEXT.taken}{UI_TEXT.colon}{UI_TEXT.space}{currentMealSummary.parcelTaken})
                          </Text>
                       </View>
                     )}

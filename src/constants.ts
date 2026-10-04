@@ -1,7 +1,7 @@
 /**
  * Shared Application Constants and Logic Helpers
  */
-import { FoodMenu, ConfigDay, AppConfig, MealType, DietType, DietaryOption, normalizeChoice, toBool, PaymentMode, MealAllocation, DietaryVariety, MealConfig, MealMenu } from "./domain";
+import { FoodMenu, ConfigDay, AppConfig, MealType, DietType, DietaryOption, normalizeChoice, toBool, PaymentMode, MealAllocation, DietaryVariety, MealConfig, MealMenu, PackageApplicability, MealSlot } from "./domain";
 import { UI_TEXT } from "./strings";
 import { Subscription } from "./types";
 
@@ -80,7 +80,7 @@ export const isSpecialMeal = (
  * Checks if a subscription has subscribed to at least one meal slot marked as SPECIAL.
  */
 export const hasSpecialMealSubscribed = (
-  sub: Subscription,
+  sub: { mealSlots?: Record<string, MealSlot[]> } | null | undefined,
   config: ConfigDay[]
 ): boolean => {
   if (!sub || !sub.mealSlots) return false;
@@ -88,7 +88,7 @@ export const hasSpecialMealSubscribed = (
   const meals: MealType[] = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER];
 
   return activeDays.some((dayId) => {
-    const daySlots = sub.mealSlots[dayId] || [];
+    const daySlots = sub.mealSlots![dayId] || [];
     return daySlots.some((slot) => {
       return meals.some((mType) => {
         const choice = slot[mType];
@@ -105,7 +105,7 @@ export const hasSpecialMealSubscribed = (
  * Checks if a subscription has subscribed ONLY to special meals (and no non-special meals).
  */
 export const isSpecialOnlySubscribed = (
-  sub: Subscription,
+  sub: { mealSlots?: Record<string, MealSlot[]> } | null | undefined,
   config: ConfigDay[]
 ): boolean => {
   if (!sub || !sub.mealSlots) return false;
@@ -768,6 +768,27 @@ export const hasPackageApplied = (sub: Subscription | null | undefined): boolean
   if (!sub) return false;
   return Boolean(sub.isPackageApplied || (sub.appliedPackages && Object.keys(sub.appliedPackages).length > 0));
 };
+
+export enum PackageApplicabilityType {
+  ADULT = "adult",
+  KIDS = "kids",
+  MEMBER = "member",
+}
+
+export function getApplicabilityLabel(app: PackageApplicability | string | undefined): string {
+  switch (app) {
+    case PackageApplicabilityType.KIDS:
+    case "kids":
+      return UI_TEXT.kidsOnly;
+    case PackageApplicabilityType.MEMBER:
+    case "member":
+      return UI_TEXT.membersAll;
+    case PackageApplicabilityType.ADULT:
+    case "adult":
+    default:
+      return UI_TEXT.adultsOnly;
+  }
+}
 
 /**
  * Generates an empty 'taken' status tracking matrix.

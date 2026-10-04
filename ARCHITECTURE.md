@@ -242,5 +242,7 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
 - Attached a high-visibility cube icon badge on pass cards (`SubscriptionCard`) for passes availing at least 1 food package.
 - Made food package cards clickable with hydration-safe sibling action buttons (zero nested `<button>` elements) to open a read-only View Package modal detailing package configuration, pricing, and special meal indicators.
 - Implemented an exhaustive multi-field search engine in `FoodPackageScreen.tsx` matching package names, descriptions, applicability, pricing, discount types, festival days, meal slots, and sub-category varieties.
+- Enforced universal parcel summary and section rendering across `DashboardScreen.tsx`, `MealMetricGrid.tsx`, `MealBarChart.tsx`, and `SingleMealReport.tsx` whenever parcel service is enabled for a meal, ensuring visibility even when registered parcel count is 0.
+- Integrated the **Special Meals Only** star badge on both View Pass (`DetailsScreen.tsx`) and Add/Edit Pass (`SubscriptionForm.tsx`) identity summary cards using `isSpecialOnlySubscribed`.
 
 © 2026 Eternia Festival Committee — Architecture Documentation

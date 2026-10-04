@@ -237,6 +237,8 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
 - **Food Package Subscription Filter & Pass Marker (`SubscriptionListScreen.tsx`, `constants.ts`)**: Added a dedicated **"Food Packages"** filter chip (`FilterMode.PACKAGE`) and reused the existing `hasPackageApplied` helper function to attach high-visibility cube icon badges on pass cards for subscribers availing at least 1 food package.
 - **Food Package View-Only Modal & Hydration-Safe Cards (`FoodPackageScreen.tsx`)**: Made food package cards clickable with hydration-safe sibling action buttons (zero nested `<button>` elements) to open a read-only View Package modal detailing package configuration, pricing, and special meal indicators.
 - **Exhaustive Food Package Multi-Field Search (`FoodPackageScreen.tsx`)**: Implemented an exhaustive multi-field search engine filtering across package names, descriptions, applicability, discount types, pricing, cart values, festival days, meal slots, and sub-category varieties.
+- **Universal Parcel Summary & Section Visibility (`DashboardScreen.tsx`, `MealMetricGrid.tsx`, `MealBarChart.tsx`, `SingleMealReport.tsx`)**: Whenever parcel service is enabled for a meal slot, parcel summary metrics and sections are displayed across planned, grid, chart, and executive report views even if the registered parcel count is 0.
+- **Special Meals Only Pass Card Badge (`DetailsScreen.tsx`, `SubscriptionForm.tsx`)**: Prominently displays the **Special Meals Only** star badge on both View Pass (`DetailsScreen.tsx`) and Add/Edit Pass (`SubscriptionForm.tsx`) summary cards whenever a pass is subscribed exclusively to special meal slots.
 
 ---
 

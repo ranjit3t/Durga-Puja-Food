@@ -448,7 +448,7 @@ export function SingleMealReport({
               )}
 
               {/* 4. PARCELS BLOCK */}
-              {parcelEnabled && totalParcels > 0 && (
+              {parcelEnabled && (
                 <View style={{ backgroundColor: theme.colors.surface, borderRadius: 16, padding: 14, borderWidth: 1, borderColor: theme.colors.border, gap: 10 }}>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                     <Ionicons name="cube-outline" size={16} color={theme.colors.primary} />
