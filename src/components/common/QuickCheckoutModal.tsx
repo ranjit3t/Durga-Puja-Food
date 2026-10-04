@@ -8,7 +8,7 @@ import { useUI } from "../../context/UIContext";
 import { useAppNavigation } from "../../context/NavigationContext";
 import { useChat } from "../../context/ChatContext";
 import { Subscription, MealType, DietaryOption, DietType, normalizeChoice, toBool, ActivityModule, ActivityAction, AppThemeMode, AppScreen, TakenState, CheckoutSource, MealSlot } from "../../types";
-import { isParcelEnabled, isKidsParcelEnabled, isDineInFallbackParcelEnabled, isMealCurrent, isMealDone, getMealLabel, formatTakenTime, isVegOnlyDay, isDietaryEnabled, isMealEnabled, getValidSlotChoice, isParcelValidForSlot, getMealVarieties, getVarietyForChoice, getDietTypeForChoice } from "../../constants";
+import { isParcelEnabled, isKidsParcelEnabled, isDineInFallbackParcelEnabled, isMealCurrent, isMealDone, getMealLabel, formatTakenTime, isVegOnlyDay, isDietaryEnabled, isMealEnabled, getValidSlotChoice, isParcelValidForSlot, getMealVarieties, getVarietyForChoice, getDietTypeForChoice, isSpecialMeal } from "../../constants";
 import { QuickCheckoutHeader } from "../../features/checkout/components/QuickCheckoutHeader";
 import { QuickCheckoutItemCard } from "../../features/checkout/components/QuickCheckoutItemCard";
 
@@ -167,6 +167,8 @@ export function QuickCheckoutModal({
     if (!subscription) return null;
     return subscriptions.find(s => s.id === subscription.id) || subscription;
   }, [subscription, subscriptions]);
+
+  const isSpecial = currentMealInfo ? isSpecialMeal(currentMealInfo.dayId, currentMealInfo.mealType, dayConfig) : false;
 
   const [inputs, setInputs] = useState<CategoryInputs>({});
 
@@ -1226,6 +1228,19 @@ export function QuickCheckoutModal({
             theme={theme}
             s={(n: number) => n}
           />
+          {isSpecial && (
+            <View
+              accessible={true}
+              accessibilityRole="text"
+              accessibilityLabel={`${UI_TEXT.specialMealBadge} - ${currentMealInfo?.dayLabel} ${currentMealInfo?.mealLabel}`}
+              style={{ marginHorizontal: 14, marginBottom: 4, flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: theme.colors.specialMealBg, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, borderWidth: 1.5, borderColor: theme.colors.specialMealBorder, borderStyle: "dashed" }}
+            >
+              <Ionicons name="star" size={14} color={theme.colors.specialMealBorder} />
+              <Text style={{ fontSize: 12, fontWeight: "900", color: theme.colors.specialMealText, letterSpacing: 0.5 }}>
+                {UI_TEXT.specialMealBadge} ({currentMealInfo?.dayLabel} - {currentMealInfo?.mealLabel})
+              </Text>
+            </View>
+          )}
           <ScrollView
             style={{ flexShrink: 1 }}
             contentContainerStyle={{ gap: 10, paddingBottom: 6, paddingHorizontal: 14 }}

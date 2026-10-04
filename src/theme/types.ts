@@ -26,6 +26,9 @@ export interface ThemeColors {
   veg: string;
   nonVeg: string;
   whatsapp: string;
+  specialMealBg: string;
+  specialMealBorder: string;
+  specialMealText: string;
 }
 
 export interface CardColor {

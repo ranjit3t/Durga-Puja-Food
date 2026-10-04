@@ -24,6 +24,9 @@ export const primaryTheme: AppTheme = {
     veg: "#10B981", // FSSAI Standard Veg Emerald Green
     nonVeg: "#EF4444", // FSSAI Standard Non-Veg Crimson Red
     whatsapp: "#25D366",
+    specialMealBg: "#FEF9C3", // Soft Warm Pastel Yellow Canvas
+    specialMealBorder: "#EAB308", // Golden Yellow Accent Border
+    specialMealText: "#854D0E", // Deep Amber/Brown Accent Text
   },
   cardColors: [
     { bg: "rgba(255, 250, 250, 0.95)", border: "#FECDD3", accent: "#C41E3A", accentLight: "rgba(255, 241, 242, 0.8)" }, // Royal Crimson

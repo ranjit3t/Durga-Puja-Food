@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useStyles } from "../../styles";
 import { useAppTheme } from "../../theme";
 import { UI_TEXT } from "../../strings";
-import { getDayLabel, isMealEnabled, isDietaryEnabled, isParcelEnabled, getMealLabel, getMealVarieties } from "../../constants";
+import { getDayLabel, isMealEnabled, isDietaryEnabled, isParcelEnabled, getMealLabel, getMealVarieties, isSpecialMeal } from "../../constants";
 import { ConfigDay, MealType, DietType, DietaryOption } from "../../domain";
 import { useCoreDatabase } from "../../context/DatabaseContext";
 import { MealMetricGrid } from "../dashboard/MealMetricGrid";
@@ -123,6 +123,7 @@ export function DayWiseReport({
   const mealTotalParcelTaken = mealVegParcelTaken + mealNonVegParcelTaken;
 
   const colorScheme = theme.cardColors[0];
+  const isSpecial = isSpecialMeal(currentDayId, currentMealType, dayConfig);
 
   return (
     <View style={{ gap: 16 }}>
@@ -130,7 +131,7 @@ export function DayWiseReport({
       <View style={[styles.dashboardCard, { backgroundColor: colorScheme.bg, borderColor: colorScheme.border, borderWidth: 1.5 }]}>
         {/* Header Top Section */}
         <View style={[styles.dashboardCardTop, { borderBottomWidth: 1, borderBottomColor: colorScheme.border, paddingBottom: 16, flexWrap: "wrap", gap: 10, alignItems: "center" }]}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1, minWidth: 160 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1, minWidth: 160, flexWrap: "wrap" }}>
             <Ionicons
               name={currentMealType === MealType.BREAKFAST ? "sunny-outline" : currentMealType === MealType.LUNCH ? "restaurant-outline" : "moon-outline"}
               size={22}
@@ -139,6 +140,12 @@ export function DayWiseReport({
             <Text style={[styles.dashboardDay, { color: colorScheme.accent, fontSize: 18, flexShrink: 1 }]}>
               {getDayLabel(currentDayId, dayConfig)} - {getMealLabel(currentMealType)}
             </Text>
+            {isSpecial && (
+              <View style={{ backgroundColor: theme.colors.specialMealBorder, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, flexDirection: "row", alignItems: "center", gap: 4 }}>
+                <Ionicons name="star" size={10} color={theme.colors.white} />
+                <Text style={{ color: theme.colors.white, fontSize: 10, fontWeight: "900" }}>{UI_TEXT.specialMealBadge}</Text>
+              </View>
+            )}
           </View>
           <View style={[styles.pill, { backgroundColor: colorScheme.accentLight, alignSelf: "center", flexShrink: 0 }]}>
             <Text style={[styles.pillText, { color: colorScheme.accent, fontSize: 13, fontWeight: "800" }]}>

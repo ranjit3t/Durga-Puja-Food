@@ -5,7 +5,7 @@ import { useStyles } from "../../styles";
 import { useAppTheme } from "../../theme";
 import { UI_TEXT } from "../../strings";
 import { MealMenu, Day, ConfigDay, MealType, DietType, DietaryVariety, VarietyMenu } from "../../types";
-import { isDietaryEnabled, isMealCurrent, isKidsParcelEnabled, getMealVarieties } from "../../constants";
+import { isDietaryEnabled, isMealCurrent, isKidsParcelEnabled, getMealVarieties, isSpecialMeal } from "../../constants";
 
 export function MealMenuEditor({
   title,
@@ -142,11 +142,33 @@ export function MealMenuEditor({
     onChange(nextMenu);
   };
 
+  const isSpecial = isSpecialMeal(dayId, mealKey, config);
+
   return (
-    <View style={[styles.mealEditor, disabled && { opacity: 0.6 }]}>
+    <View
+      style={[
+        styles.mealEditor,
+        disabled && { opacity: 0.6 },
+        isSpecial && {
+          backgroundColor: theme.colors.specialMealBg,
+          borderColor: theme.colors.specialMealBorder,
+          borderWidth: 2,
+          borderStyle: "dashed",
+          borderRadius: 16,
+          padding: 12,
+          marginBottom: 16,
+        }
+      ]}
+    >
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap", flex: 1 }}>
-          <Text style={[styles.mealEditorTitle, { marginBottom: 0, color: isCurrent ? theme.colors.primary : theme.colors.textSecondary }]}>{title}</Text>
+          <Text style={[styles.mealEditorTitle, { marginBottom: 0, color: isCurrent ? theme.colors.primary : isSpecial ? theme.colors.specialMealText : theme.colors.textSecondary }]}>{title}</Text>
+          {isSpecial && (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: theme.colors.specialMealBorder, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+              <Ionicons name="star" size={10} color={theme.colors.white} />
+              <Text style={{ color: theme.colors.white, fontSize: 10, fontWeight: "900", letterSpacing: 0.5 }}>{UI_TEXT.specialMealBadge}</Text>
+            </View>
+          )}
           {isCurrent && (
             <View style={{ backgroundColor: theme.colors.primary, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
               <Text style={{ color: theme.colors.white, fontSize: 10, fontWeight: "900" }}>{UI_TEXT.live.toUpperCase()}</Text>

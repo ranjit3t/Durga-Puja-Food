@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useStyles } from "../styles";
 import { useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
-import { getDayLabel, isMealEnabled, isMealDone, getSortedMealKeys, isDietaryEnabled, isMealCurrent, getMealLabel, isMealInFuture, getMealVarieties, getMealGuestCounts } from "../constants";
+import { getDayLabel, isMealEnabled, isMealDone, getSortedMealKeys, isDietaryEnabled, isMealCurrent, getMealLabel, isMealInFuture, getMealVarieties, getMealGuestCounts, isSpecialMeal } from "../constants";
 import { MealMenu, ConfigDay, MealType, DietType, AppThemeMode, ActivityModule, ActivityAction, AppScreen, UserRole, GuestCheckoutSource, DietaryVariety } from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
@@ -82,19 +82,27 @@ const GuestMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, onUp
 
   const overallTotalPlanned = vegTotalPlanned + nonVegTotalPlanned;
   const overallTotalServed = vegTotalServed + nonVegTotalServed;
+  const isSpecial = isSpecialMeal(dayId, type, config);
 
   return (
     <View style={[
       styles.dashboardMealSection,
       { marginBottom: 20, borderWidth: 1, borderColor: theme.colors.border },
+      isSpecial && { backgroundColor: theme.colors.specialMealBg, borderColor: theme.colors.specialMealBorder, borderWidth: 2, borderStyle: "dashed" },
       isCurrent && { borderColor: theme.colors.primary, borderWidth: 1.5, backgroundColor: theme.colors.primary + "08" },
       isDone && { opacity: 0.6 }
     ]}>
       <View style={[styles.mealDisplayHeader, { marginBottom: 16, justifyContent: "space-between" }]}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-          <Ionicons name={icon} size={22} color={isCurrent ? theme.colors.primary : theme.colors.textSecondary} />
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Text style={[styles.sectionTitle, { marginBottom: 0, fontSize: 18, color: isCurrent ? theme.colors.primary : theme.colors.textPrimary }]}>{mealLabel}</Text>
+          <Ionicons name={icon} size={22} color={isCurrent ? theme.colors.primary : isSpecial ? theme.colors.specialMealText : theme.colors.textSecondary} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: "wrap" }}>
+            <Text style={[styles.sectionTitle, { marginBottom: 0, fontSize: 18, color: isCurrent ? theme.colors.primary : isSpecial ? theme.colors.specialMealText : theme.colors.textPrimary }]}>{mealLabel}</Text>
+            {isSpecial && (
+               <View style={{ backgroundColor: theme.colors.specialMealBorder, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, flexDirection: "row", alignItems: "center", gap: 4 }}>
+                  <Ionicons name="star" size={10} color={theme.colors.white} />
+                  <Text style={{ color: theme.colors.white, fontSize: 10, fontWeight: "900" }}>{UI_TEXT.specialMealBadge}</Text>
+               </View>
+            )}
             {isCurrent && (
                <View style={{ backgroundColor: theme.colors.primary, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
                   <Text style={{ color: theme.colors.white, fontSize: 10, fontWeight: "900" }}>{UI_TEXT.live.toUpperCase()}</Text>

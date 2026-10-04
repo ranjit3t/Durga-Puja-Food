@@ -53,6 +53,8 @@ export enum FilterMode {
   PARCEL = "parcel",
   VEG_ONLY = "vegOnly",
   MISSED = "missed",
+  SPECIAL_ONLY = "specialOnly",
+  PACKAGE = "package",
 }
 
 export type Day = string;

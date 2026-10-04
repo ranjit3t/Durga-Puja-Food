@@ -45,6 +45,7 @@ import {
   getMealVarieties,
   getDietTypeForChoice,
   getVarietyForChoice,
+  isSpecialMeal,
 } from "../constants";
 import {
   MealChoice,
@@ -1272,6 +1273,7 @@ export function SubscriptionForm() {
                 const isFuture = isMealInFuture(selectedDay, slot, dayConfig);
                 const isPast = !!currentDayId && !isCurrent && !isFuture;
                 const isLocked = isDone || (!lockIdentity && isPast);
+                const isSpecial = isSpecialMeal(selectedDay, slot, dayConfig);
 
                 const dayConf = (dayConfig || []).find((d) => d.id === selectedDay);
                 const mConf = dayConf ? dayConf[slot] : undefined;
@@ -1279,9 +1281,16 @@ export function SubscriptionForm() {
 
                 return (
                   <View key={slot} style={[{ marginBottom: 16 }, isLocked && { opacity: 0.5 }]}>
-                    <Text style={[styles.label, { marginTop: 0, marginBottom: 8, fontSize: 14, color: theme.colors.textPrimary }]}>
-                      {label} {isDone ? `(${UI_TEXT.mealDoneLabel})` : (!lockIdentity && isPast) ? `(${UI_TEXT.resSuffix})` : ""}
-                    </Text>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                      <Text style={[styles.label, { marginTop: 0, marginBottom: 0, fontSize: 14, color: isSpecial ? theme.colors.specialMealText : theme.colors.textPrimary }]}>
+                        {label} {isDone ? `(${UI_TEXT.mealDoneLabel})` : (!lockIdentity && isPast) ? `(${UI_TEXT.resSuffix})` : ""}
+                      </Text>
+                      {isSpecial && (
+                        <View style={{ backgroundColor: theme.colors.specialMealBorder, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                          <Text style={{ color: theme.colors.white, fontSize: 10, fontWeight: "900" }}>{UI_TEXT.specialMealBadge}</Text>
+                        </View>
+                      )}
+                    </View>
                     <View style={[styles.choiceRow, { flexWrap: "wrap", gap: 8 }]}>
                       {/* Option: None */}
                       <Pressable
@@ -1289,8 +1298,8 @@ export function SubscriptionForm() {
                         style={[
                           styles.choice,
                           currentSlotChoice === DietaryOption.NONE
-                            ? { backgroundColor: theme.colors.surfaceDark, borderColor: theme.colors.primary, borderWidth: 2 }
-                            : styles.noneChoice,
+                            ? { backgroundColor: theme.colors.surfaceDark, borderColor: isSpecial ? theme.colors.specialMealBorder : theme.colors.primary, borderWidth: 2, borderStyle: isSpecial ? "dashed" : "solid" }
+                            : [styles.noneChoice, isSpecial && { borderColor: theme.colors.specialMealBorder, borderWidth: 1.5, borderStyle: "dashed" }],
                           (!isAdmin || isLocked) && { opacity: currentSlotChoice === DietaryOption.NONE ? 1 : 0.3 },
                           { paddingVertical: 10, paddingHorizontal: 10, flex: 1, minWidth: 70 }
                         ]}
@@ -1333,8 +1342,8 @@ export function SubscriptionForm() {
                             style={[
                               styles.choice,
                               isSelected
-                                ? { backgroundColor: vColor, borderColor: vColor, borderWidth: 2 }
-                                : { backgroundColor: theme.colors.surfaceDark, borderColor: theme.colors.border, borderWidth: 1 },
+                                ? { backgroundColor: vColor, borderColor: isSpecial ? theme.colors.specialMealBorder : vColor, borderWidth: 2, borderStyle: isSpecial ? "dashed" : "solid" }
+                                : { backgroundColor: theme.colors.surfaceDark, borderColor: isSpecial ? theme.colors.specialMealBorder : theme.colors.border, borderWidth: isSpecial ? 1.5 : 1, borderStyle: isSpecial ? "dashed" : "solid" },
                               (!isAdmin || isLocked) && { opacity: isSelected ? 1 : 0.3 },
                               { paddingVertical: 10, paddingHorizontal: 10, flex: 1, minWidth: 90 }
                             ]}
@@ -1391,6 +1400,7 @@ export function SubscriptionForm() {
                     const isFuture = isMealInFuture(selectedDay, slot, dayConfig);
                     const isPast = !!currentDayId && !isCurrent && !isFuture;
                     const isLocked = isDone || (!lockIdentity && isPast);
+                    const isSpecial = isSpecialMeal(selectedDay, slot, dayConfig);
 
                     return (
                       <Pressable
@@ -1402,6 +1412,11 @@ export function SubscriptionForm() {
                           isParcel
                             ? (currentChoice === DietaryOption.NON_VEG ? styles.nonVegChoice : styles.vegChoice)
                             : styles.noneChoice,
+                          isSpecial && {
+                            borderStyle: "dashed",
+                            borderWidth: 2,
+                            borderColor: theme.colors.specialMealBorder,
+                          },
                           (currentChoice === DietaryOption.NONE || isLocked || !isAdmin) && { opacity: 0.2 },
                           { paddingVertical: 12, paddingHorizontal: 4 }
                         ]}

@@ -128,6 +128,7 @@ export type MealConfig = {
   veg: boolean;
   nonVeg: boolean;
   parcel: boolean;
+  special?: boolean;
   parcelAlert?: boolean;
   kidsParcel?: boolean;
   kidsParcelAlert?: boolean;

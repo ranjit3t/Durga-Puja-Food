@@ -42,7 +42,7 @@ import { useAuth } from "../context/AuthContext";
 import { useCoreDatabase, useFoodPackages } from "../context/DatabaseContext";
 import { useAppNavigation } from "../context/NavigationContext";
 import { useUI } from "../context/UIContext";
-import { getDayLabel, getMealLabel, isMealEnabled, getMealVarieties } from "../constants";
+import { getDayLabel, getMealLabel, isMealEnabled, getMealVarieties, isSpecialMeal } from "../constants";
 import { resolveVarietyPrice } from "../utils/paymentUtils";
 
 export function FoodPackageScreen() {
@@ -60,6 +60,7 @@ export function FoodPackageScreen() {
   const [filterActiveOnly, setFilterActiveOnly] = useState(false);
 
   const [editingPackage, setEditingNote] = useState<FoodPackage | null>(null);
+  const [viewingPackage, setViewingPackage] = useState<FoodPackage | null>(null);
   const [packageName, setPackageName] = useState("");
   const [packageDesc, setPackageDesc] = useState("");
   const [applicability, setApplicability] = useState<PackageApplicability>("adult");
@@ -85,18 +86,39 @@ export function FoodPackageScreen() {
   const filteredPackages = useMemo(() => {
     return foodPackages.filter((pkg) => {
       if (filterActiveOnly && !pkg.enabled) return false;
-      if (
-        searchText &&
-        !(
-          pkg.name?.toLowerCase().includes(searchText.toLowerCase()) ||
-          pkg.description?.toLowerCase().includes(searchText.toLowerCase())
-        )
-      ) {
-        return false;
+      if (searchText) {
+        const query = searchText.trim().toLowerCase();
+        const matchName = pkg.name?.toLowerCase().includes(query);
+        const matchDesc = pkg.description?.toLowerCase().includes(query);
+        const matchApplicability = pkg.applicability?.toLowerCase().includes(query);
+        const matchDiscountType = pkg.discountType?.toLowerCase().includes(query);
+        const matchPrice = String(pkg.packagePrice ?? "").toLowerCase().includes(query) || String(pkg.currentPrice ?? "").toLowerCase().includes(query) || String(pkg.discountRate ?? "").toLowerCase().includes(query);
+
+        let matchMeals = false;
+        const mealItemsMap = pkg.selectedMealItems || {};
+        const legacyMealsMap = pkg.selectedMeals || {};
+        Object.keys(mealItemsMap).forEach(dayId => {
+          const dayLabel = getDayLabel(dayId, dayConfig).toLowerCase();
+          if (dayLabel.includes(query)) matchMeals = true;
+          (mealItemsMap[dayId] || []).forEach(item => {
+            if (item.mealType?.toLowerCase().includes(query) || item.varietyId?.toLowerCase().includes(query)) matchMeals = true;
+          });
+        });
+        Object.keys(legacyMealsMap).forEach(dayId => {
+          const dayLabel = getDayLabel(dayId, dayConfig).toLowerCase();
+          if (dayLabel.includes(query)) matchMeals = true;
+          (legacyMealsMap[dayId] || []).forEach((m: any) => {
+            if (String(m).toLowerCase().includes(query)) matchMeals = true;
+          });
+        });
+
+        if (!matchName && !matchDesc && !matchApplicability && !matchDiscountType && !matchPrice && !matchMeals) {
+          return false;
+        }
       }
       return true;
     });
-  }, [foodPackages, filterActiveOnly, searchText]);
+  }, [foodPackages, filterActiveOnly, searchText, dayConfig]);
 
   const calculatedCurrentPrice = useMemo(() => {
     let total = 0;
@@ -338,7 +360,9 @@ export function FoodPackageScreen() {
           const mealConf = dayConfig.find((d) => d.id === dayId)?.[i.mealType];
           const varieties = getMealVarieties(mealConf);
           const v = varieties.find((vr) => vr.id === i.varietyId);
-          return v ? `${mLabel} (${v.name})` : mLabel;
+          const isSpecial = isSpecialMeal(dayId, i.mealType, dayConfig);
+          const baseStr = v ? `${mLabel} (${v.name})` : mLabel;
+          return isSpecial ? `${baseStr} ⭐ (${UI_TEXT.specialMealBadge})` : baseStr;
         }).join(", ");
         return `${dLabel}: ${details}`;
       });
@@ -360,7 +384,7 @@ export function FoodPackageScreen() {
         >
           {/* Top Info Row */}
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: s(10) }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: s(8) }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: s(8), flexWrap: "wrap", flex: 1 }}>
               <View
                 style={{
                   backgroundColor: colorScheme.accentLight,
@@ -422,7 +446,7 @@ export function FoodPackageScreen() {
             </View>
 
             {isAdmin && (
-              <View style={{ flexDirection: "row", alignItems: "center", gap: s(10) }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: s(10), flexShrink: 0 }}>
                 <Pressable
                   onPress={() => handleToggleEnabled(item)}
                   accessible={true}
@@ -460,63 +484,75 @@ export function FoodPackageScreen() {
             )}
           </View>
 
-          {/* Package Name & Description */}
-          <Text style={{ fontSize: s(17), fontWeight: "900", color: theme.colors.textPrimary, marginBottom: s(4) }}>
-            {item.name}
-          </Text>
-          <Text style={{ fontSize: s(13), color: theme.colors.textSecondary, marginBottom: s(12), fontWeight: "500" }}>
-            {item.description}
-          </Text>
-
-          {/* Meals Included Summary */}
-          {mealSummaryParts.length > 0 && (
-            <View style={{ backgroundColor: theme.colors.surfaceDark, padding: s(10), borderRadius: s(10), marginBottom: s(12) }}>
-              <Text style={{ fontSize: s(11), fontWeight: "800", color: theme.colors.textMuted, textTransform: "uppercase", marginBottom: s(4) }}>
-                {UI_TEXT.selectMealsForPackage}
-              </Text>
-              {mealSummaryParts.map((part, pIdx) => (
-                <Text key={pIdx} style={{ fontSize: s(12), fontWeight: "700", color: theme.colors.textPrimary }}>
-                  • {part}
-                </Text>
-              ))}
-            </View>
-          )}
-
-          {/* Pricing Details Bar */}
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              alignItems: "center",
-              backgroundColor: colorScheme.accentLight,
-              padding: s(12),
-              borderRadius: s(12),
-              borderWidth: 1,
-              borderColor: colorScheme.border,
-            }}
+          {/* Clickable Card Body Area */}
+          <Pressable
+            onPress={() => setViewingPackage(item)}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={`${UI_TEXT.viewFoodPackage}: ${item.name}`}
+            style={({ pressed }) => [
+              { gap: s(4) },
+              pressed && { opacity: 0.85 }
+            ]}
           >
-            <View>
-              <Text style={{ fontSize: s(10), fontWeight: "800", color: theme.colors.textMuted, textTransform: "uppercase" }}>
-                {isFlat ? UI_TEXT.minCartValue : UI_TEXT.normalPrice}
-              </Text>
-              <Text style={{ fontSize: s(14), fontWeight: "800", color: theme.colors.textMuted }}>
-                {isFlat ? (item.minCartValue ?? 0) : item.currentPrice}
-              </Text>
-            </View>
+            {/* Package Name & Description */}
+            <Text style={{ fontSize: s(17), fontWeight: "900", color: theme.colors.textPrimary, marginBottom: s(4) }}>
+              {item.name}
+            </Text>
+            <Text style={{ fontSize: s(13), color: theme.colors.textSecondary, marginBottom: s(12), fontWeight: "500" }}>
+              {item.description}
+            </Text>
 
-            <View style={{ alignItems: "center" }}>
-              <Text style={{ fontSize: s(10), fontWeight: "800", color: colorScheme.accent, textTransform: "uppercase" }}>
-                {UI_TEXT.packagePrice}
-              </Text>
-              <Text style={{ fontSize: s(16), fontWeight: "900", color: colorScheme.accent }}>
-                {displayNameOrPrice(item)}
-              </Text>
+            {/* Meals Included Summary */}
+            {mealSummaryParts.length > 0 && (
+              <View style={{ backgroundColor: theme.colors.surfaceDark, padding: s(10), borderRadius: s(10), marginBottom: s(12) }}>
+                <Text style={{ fontSize: s(11), fontWeight: "800", color: theme.colors.textMuted, textTransform: "uppercase", marginBottom: s(4) }}>
+                  {UI_TEXT.selectMealsForPackage}
+                </Text>
+                {mealSummaryParts.map((part, pIdx) => (
+                  <Text key={pIdx} style={{ fontSize: s(12), fontWeight: "700", color: theme.colors.textPrimary }}>
+                    • {part}
+                  </Text>
+                ))}
+              </View>
+            )}
+
+            {/* Pricing Details Bar */}
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "center",
+                backgroundColor: colorScheme.accentLight,
+                padding: s(12),
+                borderRadius: s(12),
+                borderWidth: 1,
+                borderColor: colorScheme.border,
+              }}
+            >
+              <View>
+                <Text style={{ fontSize: s(10), fontWeight: "800", color: theme.colors.textMuted, textTransform: "uppercase" }}>
+                  {isFlat ? UI_TEXT.minCartValue : UI_TEXT.normalPrice}
+                </Text>
+                <Text style={{ fontSize: s(14), fontWeight: "800", color: theme.colors.textMuted }}>
+                  {isFlat ? (item.minCartValue ?? 0) : item.currentPrice}
+                </Text>
+              </View>
+
+              <View style={{ alignItems: "center" }}>
+                <Text style={{ fontSize: s(10), fontWeight: "800", color: colorScheme.accent, textTransform: "uppercase" }}>
+                  {UI_TEXT.packagePrice}
+                </Text>
+                <Text style={{ fontSize: s(16), fontWeight: "900", color: colorScheme.accent }}>
+                  {displayNameOrPrice(item)}
+                </Text>
+              </View>
             </View>
-          </View>
+          </Pressable>
         </View>
       );
     },
-    [theme, styles, s, dayConfig, isAdmin, handleToggleEnabled, handleEditPackage, handleDeletePackage]
+    [theme, styles, s, dayConfig, isAdmin, handleToggleEnabled, handleEditPackage, handleDeletePackage, setViewingPackage]
   );
 
   return (
@@ -573,10 +609,10 @@ export function FoodPackageScreen() {
                 style={[styles.searchInput, { fontSize: 15 }]}
                 value={searchText}
                 onChangeText={setSearchText}
-                placeholder={UI_TEXT.searchActivities}
+                placeholder={UI_TEXT.searchFoodPackages}
                 placeholderTextColor={theme.colors.textMuted}
                 accessible={true}
-                accessibilityLabel={UI_TEXT.searchActivities}
+                accessibilityLabel={UI_TEXT.searchFoodPackages}
               />
             </View>
             <Pressable
@@ -811,12 +847,32 @@ export function FoodPackageScreen() {
                             .map((mKey) => {
                               const mealConf = (day as any)[mKey];
                               const varieties = getMealVarieties(mealConf);
+                              const isSpecial = isSpecialMeal(day.id, mKey, dayConfig);
 
                               return (
-                                <View key={mKey} style={{ backgroundColor: theme.colors.surface, padding: s(8), borderRadius: s(8), gap: s(6) }}>
-                                  <Text style={{ fontSize: s(12), fontWeight: "800", color: theme.colors.textSecondary }}>
-                                    {getMealLabel(mKey)}
-                                  </Text>
+                                <View
+                                  key={mKey}
+                                  style={[
+                                    { backgroundColor: theme.colors.surface, padding: s(8), borderRadius: s(8), gap: s(6) },
+                                    isSpecial && {
+                                      backgroundColor: theme.colors.specialMealBg,
+                                      borderColor: theme.colors.specialMealBorder,
+                                      borderWidth: 1.5,
+                                      borderStyle: "dashed",
+                                    }
+                                  ]}
+                                >
+                                  <View style={{ flexDirection: "row", alignItems: "center", gap: s(6), flexWrap: "wrap" }}>
+                                    <Text style={{ fontSize: s(12), fontWeight: "800", color: isSpecial ? theme.colors.specialMealText : theme.colors.textSecondary }}>
+                                      {getMealLabel(mKey)}
+                                    </Text>
+                                    {isSpecial && (
+                                      <View style={{ backgroundColor: theme.colors.specialMealBorder, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, flexDirection: "row", alignItems: "center", gap: 4 }}>
+                                        <Ionicons name="star" size={10} color={theme.colors.white} />
+                                        <Text style={{ color: theme.colors.white, fontSize: 10, fontWeight: "900" }}>{UI_TEXT.specialMealBadge}</Text>
+                                      </View>
+                                    )}
+                                  </View>
                                   <View style={{ flexDirection: "row", flexWrap: "wrap", gap: s(6) }}>
                                     {varieties.map((v) => {
                                       const isChecked = dayItems.some((item) => item.mealType === mKey && item.varietyId === v.id);
@@ -952,6 +1008,126 @@ export function FoodPackageScreen() {
             </Pressable>
           </View>
         </KeyboardAvoidingView>
+      </Modal>
+
+      {/* View Food Package Read-Only Modal */}
+      <Modal visible={!!viewingPackage} animationType="slide" transparent={true} onRequestClose={() => setViewingPackage(null)}>
+        <View
+          accessibilityViewIsModal={true}
+          style={{ flex: 1, backgroundColor: theme.colors.shadow + "80", justifyContent: "center", alignItems: "center", padding: 16 }}
+        >
+          <View style={[styles.card, { width: "100%", maxWidth: 460, maxHeight: "85%", padding: 20, backgroundColor: theme.colors.surface, borderRadius: 20, borderWidth: 1, borderColor: theme.colors.border }]}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <Ionicons name="cube" size={20} color={theme.colors.primary} />
+                <Text style={{ fontSize: 18, fontWeight: "900", color: theme.colors.textPrimary }}>
+                  {UI_TEXT.foodPackage}
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => setViewingPackage(null)}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={UI_TEXT.close}
+                style={({ pressed }) => [{ padding: 4 }, pressed && { opacity: 0.7 }]}
+              >
+                <Ionicons name="close-outline" size={22} color={theme.colors.textSecondary} />
+              </Pressable>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 14 }}>
+              <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
+                <View style={{ backgroundColor: theme.colors.surfaceDark, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: theme.colors.border }}>
+                  <Text style={{ fontSize: 11, fontWeight: "900", color: theme.colors.primary }}>
+                    {getApplicabilityLabel(viewingPackage?.applicability || "adult").toUpperCase()}
+                  </Text>
+                </View>
+                <View style={{ backgroundColor: viewingPackage?.enabled ? theme.colors.successLight : theme.colors.surfaceDark, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, borderWidth: 1, borderColor: viewingPackage?.enabled ? theme.colors.success : theme.colors.border }}>
+                  <Text style={{ fontSize: 10, fontWeight: "800", color: viewingPackage?.enabled ? theme.colors.success : theme.colors.textMuted }}>
+                    {viewingPackage?.enabled ? UI_TEXT.activeLabel : UI_TEXT.disabledLabel}
+                  </Text>
+                </View>
+              </View>
+
+              <Text style={{ fontSize: 20, fontWeight: "900", color: theme.colors.textPrimary }}>
+                {viewingPackage?.name}
+              </Text>
+              <Text style={{ fontSize: 14, color: theme.colors.textSecondary, fontWeight: "500", lineHeight: 20 }}>
+                {viewingPackage?.description}
+              </Text>
+
+              {viewingPackage?.selectedMealItems && Object.keys(viewingPackage.selectedMealItems).length > 0 && (
+                <View style={{ backgroundColor: theme.colors.surfaceDark, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border, gap: 8 }}>
+                  <Text style={{ fontSize: 11, fontWeight: "800", color: theme.colors.textMuted, textTransform: "uppercase" }}>
+                    {UI_TEXT.selectMealsForPackage}
+                  </Text>
+                  {Object.keys(viewingPackage.selectedMealItems).map((dayId) => {
+                    const dLabel = getDayLabel(dayId, dayConfig);
+                    const items = viewingPackage.selectedMealItems![dayId] || [];
+                    return (
+                      <View key={dayId} style={{ gap: 4 }}>
+                        <Text style={{ fontSize: 13, fontWeight: "800", color: theme.colors.textPrimary }}>
+                          {dLabel}:
+                        </Text>
+                        <View style={{ paddingLeft: 8, gap: 4 }}>
+                          {items.map((i, idx) => {
+                            const mLabel = getMealLabel(i.mealType);
+                            const mealConf = dayConfig.find((d) => d.id === dayId)?.[i.mealType];
+                            const varieties = getMealVarieties(mealConf);
+                            const v = varieties.find((vr) => vr.id === i.varietyId);
+                            const isSpecial = isSpecialMeal(dayId, i.mealType, dayConfig);
+                            return (
+                              <View key={idx} style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                                <Text style={{ fontSize: 12, fontWeight: "700", color: theme.colors.textSecondary }}>
+                                  • {mLabel} {v ? `(${v.name})` : ""}
+                                </Text>
+                                {isSpecial && (
+                                  <View style={{ backgroundColor: theme.colors.specialMealBorder, paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4, flexDirection: "row", alignItems: "center", gap: 3 }}>
+                                    <Ionicons name="star" size={9} color={theme.colors.white} />
+                                    <Text style={{ color: theme.colors.white, fontSize: 9, fontWeight: "900" }}>{UI_TEXT.specialMealBadge}</Text>
+                                  </View>
+                                )}
+                              </View>
+                            );
+                          })}
+                        </View>
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
+
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: theme.colors.surfaceDark, padding: 14, borderRadius: 14, borderWidth: 1, borderColor: theme.colors.border }}>
+                <View>
+                  <Text style={{ fontSize: 11, fontWeight: "800", color: theme.colors.textMuted, textTransform: "uppercase" }}>
+                    {(viewingPackage?.discountType === "flat_discount" || viewingPackage?.discountRate !== undefined) ? UI_TEXT.minCartValue : UI_TEXT.normalPrice}
+                  </Text>
+                  <Text style={{ fontSize: 15, fontWeight: "900", color: theme.colors.textPrimary, marginTop: 2 }}>
+                    {(viewingPackage?.discountType === "flat_discount" || viewingPackage?.discountRate !== undefined) ? (viewingPackage?.minCartValue ?? 0) : viewingPackage?.currentPrice}
+                  </Text>
+                </View>
+                <View style={{ alignItems: "flex-end" }}>
+                  <Text style={{ fontSize: 11, fontWeight: "800", color: theme.colors.primary, textTransform: "uppercase" }}>
+                    {UI_TEXT.packagePrice}
+                  </Text>
+                  <Text style={{ fontSize: 18, fontWeight: "900", color: theme.colors.primary, marginTop: 2 }}>
+                    {(viewingPackage?.discountType === "flat_discount" || viewingPackage?.discountRate !== undefined) ? `${viewingPackage?.discountRate}% ${UI_TEXT.offLabel}` : viewingPackage?.packagePrice}
+                  </Text>
+                </View>
+              </View>
+            </ScrollView>
+
+            <Pressable
+              onPress={() => setViewingPackage(null)}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={UI_TEXT.close}
+              style={{ marginTop: 16, height: 46, borderRadius: 12, backgroundColor: theme.colors.primary, alignItems: "center", justifyContent: "center" }}
+            >
+              <Text style={{ fontWeight: "900", color: theme.colors.white, fontSize: 14 }}>{UI_TEXT.close}</Text>
+            </Pressable>
+          </View>
+        </View>
       </Modal>
     </View>
   );

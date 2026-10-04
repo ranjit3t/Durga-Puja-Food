@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useStyles } from "../../styles";
 import { useAppTheme } from "../../theme";
 import { MealMenu, Day, ConfigDay, MealType, DietType, DietaryVariety, VarietyMenu } from "../../types";
-import { isDietaryEnabled, isMealCurrent, isKidsParcelEnabled, getMealVarieties } from "../../constants";
+import { isDietaryEnabled, isMealCurrent, isKidsParcelEnabled, getMealVarieties, isSpecialMeal } from "../../constants";
 import { UI_TEXT } from "../../strings";
 
 /**
@@ -41,6 +41,7 @@ export function MealDisplay({
   const nonVegEnabled = isDietaryEnabled(dayId, mealKey, DietType.NON_VEG, config);
   const isBothEnabled = vegEnabled && nonVegEnabled;
   const isCurrent = isMealCurrent(dayId, mealKey, config);
+  const isSpecial = isSpecialMeal(dayId, mealKey, config);
 
   const getVarietyItems = (v: DietaryVariety): string[] => {
     let raw: any = [];
@@ -78,12 +79,31 @@ export function MealDisplay({
   };
 
   return (
-    <View style={styles.mealDisplayRow}>
+    <View
+      style={[
+        styles.mealDisplayRow,
+        isSpecial && {
+          backgroundColor: theme.colors.specialMealBg,
+          borderColor: theme.colors.specialMealBorder,
+          borderWidth: 2,
+          borderStyle: "dashed",
+          borderRadius: 16,
+          padding: 12,
+          marginBottom: 16,
+        }
+      ]}
+    >
       <View style={[styles.mealDisplayHeader, { flexWrap: "wrap", gap: 8, justifyContent: "space-between" }]}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-          <Ionicons name={icon} size={18} color={isCurrent ? theme.colors.primary : theme.colors.textSecondary} />
+          <Ionicons name={icon} size={18} color={isCurrent ? theme.colors.primary : isSpecial ? theme.colors.specialMealText : theme.colors.textSecondary} />
           <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-            <Text style={[styles.mealDisplayTitle, { color: isCurrent ? theme.colors.primary : theme.colors.textPrimary }]}>{title}</Text>
+            <Text style={[styles.mealDisplayTitle, { color: isCurrent ? theme.colors.primary : isSpecial ? theme.colors.specialMealText : theme.colors.textPrimary }]}>{title}</Text>
+            {isSpecial && (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: theme.colors.specialMealBorder, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                <Ionicons name="star" size={10} color={theme.colors.white} />
+                <Text style={{ color: theme.colors.white, fontSize: 10, fontWeight: "900", letterSpacing: 0.5 }}>{UI_TEXT.specialMealBadge}</Text>
+              </View>
+            )}
             {isCurrent && (
               <View style={{ backgroundColor: theme.colors.primary, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
                 <Text style={{ color: theme.colors.white, fontSize: 10, fontWeight: "900" }}>{UI_TEXT.live.toUpperCase()}</Text>

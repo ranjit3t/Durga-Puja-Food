@@ -3,6 +3,9 @@ import { View, Text } from "react-native";
 import { useAppTheme } from "../../theme";
 import { UI_TEXT } from "../../strings";
 import { MealMetricProps } from "./MealMetricGrid";
+import { useCoreDatabase } from "../../context/DatabaseContext";
+import { isSpecialMeal } from "../../constants";
+import { Ionicons } from "@expo/vector-icons";
 
 /**
  * A compact bar chart component for visualizing meal demand vs collections.
@@ -64,8 +67,19 @@ export function MealBarChart(props: MealMetricProps) {
   const adultsTotal = total - kidsTotal - guestTotal;
   const adultsTaken = totalMealTaken - kidsTaken - guestTaken;
 
+  const { dayConfig } = useCoreDatabase();
+  const isSpecial = isSpecialMeal(props.day, props.type, dayConfig);
+
   return (
     <View style={{ paddingVertical: 10 }}>
+      {isSpecial && (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: theme.colors.specialMealBg, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: theme.colors.specialMealBorder, borderStyle: "dashed", alignSelf: "flex-start", marginBottom: 8 }}>
+          <Ionicons name="star" size={12} color={theme.colors.specialMealBorder} />
+          <Text style={{ fontSize: 10, fontWeight: "900", color: theme.colors.specialMealText }}>
+            {UI_TEXT.specialMealBadge}
+          </Text>
+        </View>
+      )}
       <View style={{ flexDirection: 'row', height: chartHeight, alignItems: 'flex-end', gap: 8 }}>
         {isBothEnabled ? (
           <>
@@ -113,6 +127,12 @@ export function MealBarChart(props: MealMetricProps) {
             <View style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: theme.colors.textMuted }} />
             <Text style={{ fontSize: 10, fontWeight: '600', color: theme.colors.textSecondary }}>{UI_TEXT.taken}</Text>
          </View>
+         {isSpecial && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+               <Ionicons name="star" size={12} color={theme.colors.specialMealBorder} />
+               <Text style={{ fontSize: 10, fontWeight: '700', color: theme.colors.specialMealText }}>{UI_TEXT.specialMealTag}</Text>
+            </View>
+         )}
       </View>
     </View>
   );

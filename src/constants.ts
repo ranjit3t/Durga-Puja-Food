@@ -64,6 +64,75 @@ export const isMealCurrent = (
 };
 
 /**
+ * Checks if a specific meal slot is marked as SPECIAL.
+ */
+export const isSpecialMeal = (
+  dayId: string,
+  meal: MealType,
+  config: ConfigDay[]
+): boolean => {
+  const dayConfig = (config || []).find((d) => d.id === dayId);
+  if (!dayConfig || !dayConfig.enabled) return false;
+  return !!dayConfig[meal]?.special;
+};
+
+/**
+ * Checks if a subscription has subscribed to at least one meal slot marked as SPECIAL.
+ */
+export const hasSpecialMealSubscribed = (
+  sub: Subscription,
+  config: ConfigDay[]
+): boolean => {
+  if (!sub || !sub.mealSlots) return false;
+  const activeDays = getActiveDays(config);
+  const meals: MealType[] = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER];
+
+  return activeDays.some((dayId) => {
+    const daySlots = sub.mealSlots[dayId] || [];
+    return daySlots.some((slot) => {
+      return meals.some((mType) => {
+        const choice = slot[mType];
+        if (choice && choice !== DietaryOption.NONE && choice !== "None" && choice !== "none") {
+          return isSpecialMeal(dayId, mType, config);
+        }
+        return false;
+      });
+    });
+  });
+};
+
+/**
+ * Checks if a subscription has subscribed ONLY to special meals (and no non-special meals).
+ */
+export const isSpecialOnlySubscribed = (
+  sub: Subscription,
+  config: ConfigDay[]
+): boolean => {
+  if (!sub || !sub.mealSlots) return false;
+  const activeDays = getActiveDays(config);
+  const meals: MealType[] = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER];
+
+  let hasSubscribedMeal = false;
+
+  for (const dayId of activeDays) {
+    const daySlots = sub.mealSlots[dayId] || [];
+    for (const slot of daySlots) {
+      for (const mType of meals) {
+        const choice = slot[mType];
+        if (choice && choice !== DietaryOption.NONE && choice !== "None" && choice !== "none") {
+          hasSubscribedMeal = true;
+          if (!isSpecialMeal(dayId, mType, config)) {
+            return false;
+          }
+        }
+      }
+    }
+  }
+
+  return hasSubscribedMeal;
+};
+
+/**
  * Checks if all enabled meals across all active days are marked as DONE.
  */
 export const isSeasonDone = (config: ConfigDay[]) => {
@@ -691,6 +760,14 @@ export const resizeMealSlots = (
       return [day, [...newAdults, ...newKids]];
     })
   ) as Subscription["mealSlots"];
+
+/**
+ * Checks if a subscription pass has availed at least one food package.
+ */
+export const hasPackageApplied = (sub: Subscription | null | undefined): boolean => {
+  if (!sub) return false;
+  return Boolean(sub.isPackageApplied || (sub.appliedPackages && Object.keys(sub.appliedPackages).length > 0));
+};
 
 /**
  * Generates an empty 'taken' status tracking matrix.

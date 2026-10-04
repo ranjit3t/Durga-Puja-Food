@@ -4,7 +4,7 @@
  */
 export const UI_TEXT = {
   appName: "FestiveDesk",
-  appVersion: "1.2.1",
+  appVersion: "1.3.0",
   appUpdateTitle: "Update Available",
   appUpdatedMessage: "An updated version of FestiveDesk is available. Please download and install the latest build.",
   clickHereToUpdatePrefix: "Click ",
@@ -511,6 +511,13 @@ export const UI_TEXT = {
   noPackagePasses: "No package discount passes registered.",
   packagesAppliedTitle: "APPLIED PACKAGES",
 
+  specialMeal: "Special Meal",
+  specialMealHelper: "Mark this meal slot as a special / complementary meal",
+  specialOnly: "Special Meals Only",
+  specialMealBadge: "SPECIAL MEAL",
+  specialMealTag: "Special",
+  specialPassOnly: "Special Pass",
+
   // Settings Screen
   settingsTitle: "System Settings",
   settingsSubtitle: "Configure festival dates, meal constraints, and payment rules.",
@@ -789,4 +796,5 @@ export const UI_TEXT = {
   packageInUseDeleteTitle: "Cannot Delete Package",
   packageInUseDeleteMsg: "This food package is currently applied to one or more subscription passes. It cannot be deleted, but it can be disabled.",
   packageInUseBadge: "In Use",
+  searchFoodPackages: "Search food packages...",
 };

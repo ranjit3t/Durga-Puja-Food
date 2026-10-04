@@ -1275,12 +1275,29 @@ export function SettingsScreen() {
                                   <Switch
                                     value={!!m.parcelAlert}
                                     disabled={m.done}
-                                    onValueChange={(val) => updateMealConfig(day.id, mKey, { parcelAlert: val })}
+                                    onValueChange={(val) => updateMealConfig(day.id, mKey as MealType, { parcelAlert: val })}
                                     trackColor={{ true: theme.colors.primary }}
                                     style={{ transform: [{ scale: 0.8 }], flexShrink: 0 }}
                                   />
                                </View>
                             )}
+                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: theme.colors.background, padding: 10, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border }}>
+                               <View style={{ flex: 1, marginRight: 10 }}>
+                                  <Text style={{ fontSize: 12, fontWeight: '800', color: theme.colors.textSecondary }}>{UI_TEXT.specialMeal.toUpperCase()}</Text>
+                                  <Text style={{ fontSize: 9, fontWeight: '600', color: theme.colors.textMuted }}>{UI_TEXT.specialMealHelper}</Text>
+                               </View>
+                               <Switch
+                                 value={m.special || false}
+                                 disabled={m.done}
+                                 onValueChange={(val) => updateMealConfig(day.id, mKey as MealType, { special: val })}
+                                 trackColor={{ true: theme.colors.specialMealBorder || theme.colors.warning }}
+                                 style={{ transform: [{ scale: 0.8 }], flexShrink: 0 }}
+                                 accessible={true}
+                                 accessibilityRole="switch"
+                                 accessibilityLabel={UI_TEXT.specialMeal}
+                                 accessibilityState={{ checked: !!m.special }}
+                               />
+                            </View>
                             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: theme.colors.background, padding: 10, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border }}>
                                <View style={{ flex: 1, marginRight: 10 }}>
                                   <Text style={{ fontSize: 12, fontWeight: '800', color: theme.colors.textSecondary }}>{UI_TEXT.markDoneLabel.toUpperCase()}</Text>

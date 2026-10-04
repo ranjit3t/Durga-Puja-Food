@@ -36,6 +36,9 @@ import {
   getDietTypeForChoice,
   getMealVarieties,
   getVarietyForChoice,
+  hasSpecialMealSubscribed,
+  isSpecialOnlySubscribed,
+  hasPackageApplied,
 } from "../constants";
 import {
   AppScreen,
@@ -74,6 +77,8 @@ const SubscriptionCard = React.memo(({
   hasCurrentMeal,
   hasParcel,
   isVegOnly,
+  hasSpecialMeal,
+  hasPackage,
   onSelect,
   onOpenQuickCheckout,
   addActivityLog,
@@ -90,6 +95,8 @@ const SubscriptionCard = React.memo(({
   hasCurrentMeal: boolean;
   hasParcel: boolean;
   isVegOnly: boolean;
+  hasSpecialMeal?: boolean;
+  hasPackage?: boolean;
   onSelect: (sub: Subscription) => void;
   onOpenQuickCheckout?: (sub: Subscription) => void;
   addActivityLog: any;
@@ -167,6 +174,16 @@ const SubscriptionCard = React.memo(({
                 {isVegOnly && (
                   <View style={{ backgroundColor: theme.colors.veg + "20", padding: s(6), borderRadius: s(12), borderWidth: 1, borderColor: theme.colors.veg + "40" }}>
                     <Ionicons name="leaf" size={s(14)} color={theme.colors.veg} />
+                  </View>
+                )}
+                {hasSpecialMeal && (
+                  <View style={{ backgroundColor: theme.colors.specialMealBg, padding: s(6), borderRadius: s(12), borderWidth: 1, borderColor: theme.colors.specialMealBorder }}>
+                    <Ionicons name="star" size={s(14)} color={theme.colors.specialMealBorder} />
+                  </View>
+                )}
+                {hasPackage && (
+                  <View style={{ backgroundColor: theme.colors.primary + "20", padding: s(6), borderRadius: s(12), borderWidth: 1, borderColor: theme.colors.primary + "40" }}>
+                    <Ionicons name="cube" size={s(14)} color={theme.colors.primary} />
                   </View>
                 )}
                 {hasCurrentMeal && (
@@ -334,7 +351,19 @@ export function SubscriptionListScreen() {
   }, []);
 
   const passesWithKidsCount = useMemo(() => {
-    return subscriptions.filter(sub => (sub.kidsCount || 0) > 0).length;
+    return subscriptions.filter(sub => {
+      if ((sub.kidsCount || 0) <= 0) return false;
+      const adultCount = sub.peopleCount || 0;
+      return Object.values(sub.mealSlots || {}).some(daySlots => {
+        return daySlots.some((slot, idx) => {
+          if (idx < adultCount) return false;
+          const bDiet = getDietTypeForChoice(slot[MealType.BREAKFAST]);
+          const lDiet = getDietTypeForChoice(slot[MealType.LUNCH]);
+          const dDiet = getDietTypeForChoice(slot[MealType.DINNER]);
+          return bDiet !== undefined || lDiet !== undefined || dDiet !== undefined;
+        });
+      });
+    }).length;
   }, [subscriptions]);
 
   const hasAnyKids = passesWithKidsCount > 0;
@@ -390,6 +419,18 @@ export function SubscriptionListScreen() {
   }, [subscriptions, isNonVegSeason]);
 
   const hasAnyVegOnly = passesWithVegOnlyCount > 0;
+
+  const passesWithSpecialOnlyCount = useMemo(() => {
+    return subscriptions.filter(sub => isSpecialOnlySubscribed(sub, dayConfig)).length;
+  }, [subscriptions, dayConfig]);
+
+  const hasAnySpecialOnly = passesWithSpecialOnlyCount > 0;
+
+  const passesWithPackageCount = useMemo(() => {
+    return subscriptions.filter(sub => hasPackageApplied(sub)).length;
+  }, [subscriptions]);
+
+  const hasAnyPackage = passesWithPackageCount > 0;
 
   const subscribedCount = useMemo(() => {
     if (!currentMealInfo) return 0;
@@ -447,13 +488,19 @@ export function SubscriptionListScreen() {
       if (next.includes(FilterMode.VEG_ONLY) && !hasAnyVegOnly) {
         next = next.filter(m => m !== FilterMode.VEG_ONLY);
       }
+      if (next.includes(FilterMode.SPECIAL_ONLY) && !hasAnySpecialOnly) {
+        next = next.filter(m => m !== FilterMode.SPECIAL_ONLY);
+      }
+      if (next.includes(FilterMode.PACKAGE) && !hasAnyPackage) {
+        next = next.filter(m => m !== FilterMode.PACKAGE);
+      }
 
       if (next.length === 0) {
         return [FilterMode.ALL];
       }
       return next.length === prev.length ? prev : next;
     });
-  }, [currentMealInfo, hasAnyMissed, hasAnySubscribed, kidsEnabled, hasAnyKids, hasAnyParcel, hasAnyVegOnly]);
+  }, [currentMealInfo, hasAnyMissed, hasAnySubscribed, kidsEnabled, hasAnyKids, hasAnyParcel, hasAnyVegOnly, hasAnySpecialOnly, hasAnyPackage]);
 
   const visibleSubscriptions = useMemo(() => {
     let filtered = subscriptions;
@@ -473,7 +520,19 @@ export function SubscriptionListScreen() {
       }
 
       if (activeFilters.includes(FilterMode.KIDS) && kidsEnabled) {
-        filtered = filtered.filter(sub => (sub.kidsCount || 0) > 0);
+        filtered = filtered.filter(sub => {
+          if ((sub.kidsCount || 0) <= 0) return false;
+          const adultCount = sub.peopleCount || 0;
+          return Object.values(sub.mealSlots || {}).some(daySlots => {
+            return daySlots.some((slot, idx) => {
+              if (idx < adultCount) return false;
+              const bDiet = getDietTypeForChoice(slot[MealType.BREAKFAST]);
+              const lDiet = getDietTypeForChoice(slot[MealType.LUNCH]);
+              const dDiet = getDietTypeForChoice(slot[MealType.DINNER]);
+              return bDiet !== undefined || lDiet !== undefined || dDiet !== undefined;
+            });
+          });
+        });
       }
 
       if (activeFilters.includes(FilterMode.PARCEL)) {
@@ -503,6 +562,14 @@ export function SubscriptionListScreen() {
           });
           return hasVeg && !hasNonVeg;
         });
+      }
+
+      if (activeFilters.includes(FilterMode.SPECIAL_ONLY)) {
+        filtered = filtered.filter(sub => isSpecialOnlySubscribed(sub, dayConfig));
+      }
+
+      if (activeFilters.includes(FilterMode.PACKAGE)) {
+        filtered = filtered.filter(sub => hasPackageApplied(sub));
       }
     }
 
@@ -558,11 +625,13 @@ export function SubscriptionListScreen() {
         });
       });
       const isVegOnly = hasVeg && !hasNonVeg;
+      const hasSpecialMeal = hasSpecialMealSubscribed(item, dayConfig);
+      const hasPackage = hasPackageApplied(item);
       const missedItem = missedData.list.find(m => m.id === item.id);
 
-      return { ...item, _hasCurrentMeal: hasCurrentMeal, _hasParcel: hasParcel, _isVegOnly: isVegOnly, _missedCount: missedItem?.missed };
+      return { ...item, _hasCurrentMeal: hasCurrentMeal, _hasParcel: hasParcel, _isVegOnly: isVegOnly, _hasSpecialMeal: hasSpecialMeal, _hasPackage: hasPackage, _missedCount: missedItem?.missed };
     });
-  }, [subscriptions, subscriptionSearch, activeFilters, currentMealInfo, kidsEnabled, missedData, isAscending]);
+  }, [subscriptions, subscriptionSearch, activeFilters, currentMealInfo, kidsEnabled, missedData, isAscending, dayConfig, hasPackageApplied]);
 
   const handleExportExcel = useCallback(async () => {
     if (visibleSubscriptions.length === 0) return;
@@ -863,7 +932,7 @@ export function SubscriptionListScreen() {
     }
   }, [visibleSubscriptions, dayConfig, kidsEnabled, addActivityLog]);
 
-  const renderItem = useCallback(({ item, index }: { item: Subscription & { _hasCurrentMeal?: boolean; _hasParcel?: boolean; _isVegOnly?: boolean; _missedCount?: number }; index: number }) => {
+  const renderItem = useCallback(({ item, index }: { item: Subscription & { _hasCurrentMeal?: boolean; _hasParcel?: boolean; _isVegOnly?: boolean; _hasSpecialMeal?: boolean; _hasPackage?: boolean; _missedCount?: number }; index: number }) => {
     return (
       <SubscriptionCard
         item={item}
@@ -877,6 +946,8 @@ export function SubscriptionListScreen() {
         hasCurrentMeal={!!item._hasCurrentMeal}
         hasParcel={!!item._hasParcel}
         isVegOnly={!!item._isVegOnly}
+        hasSpecialMeal={!!item._hasSpecialMeal}
+        hasPackage={!!item._hasPackage}
         onSelect={onSelect}
         onOpenQuickCheckout={onOpenQuickCheckout}
         addActivityLog={addActivityLog}
@@ -885,7 +956,7 @@ export function SubscriptionListScreen() {
     );
   }, [theme, styles, s, kidsEnabled, paymentConfig, whatsappCountryCode, onSelect, onOpenQuickCheckout, addActivityLog]);
 
-  const showFilters = (currentMealInfo && hasAnySubscribed) || (kidsEnabled && hasAnyKids) || hasAnyParcel || (isNonVegSeason && hasAnyVegOnly) || (currentMealInfo && hasAnyMissed);
+  const showFilters = (currentMealInfo && hasAnySubscribed) || (kidsEnabled && hasAnyKids) || hasAnyParcel || (isNonVegSeason && hasAnyVegOnly) || (currentMealInfo && hasAnyMissed) || hasAnySpecialOnly || hasAnyPackage;
 
   return (
     <View style={styles.root}>
@@ -1111,6 +1182,82 @@ export function SubscriptionListScreen() {
                   color: activeFilters.includes(FilterMode.VEG_ONLY) ? theme.colors.veg : theme.colors.textSecondary
                 }}>
                   {UI_TEXT.vegOnly} ({passesWithVegOnlyCount})
+                </Text>
+              </Pressable>
+            )}
+
+            {hasAnySpecialOnly && (
+              <Pressable
+                onPress={() => toggleFilter(FilterMode.SPECIAL_ONLY)}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityState={{ selected: activeFilters.includes(FilterMode.SPECIAL_ONLY) }}
+                accessibilityLabel={`${UI_TEXT.specialOnly} (${passesWithSpecialOnlyCount})`}
+                style={({ pressed }) => [
+                  {
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: s(6),
+                    paddingHorizontal: s(12),
+                    paddingVertical: s(8),
+                    borderRadius: s(20),
+                    borderWidth: 1,
+                    borderColor: activeFilters.includes(FilterMode.SPECIAL_ONLY) ? theme.colors.specialMealBorder : theme.colors.border,
+                    backgroundColor: activeFilters.includes(FilterMode.SPECIAL_ONLY) ? theme.colors.specialMealBg : theme.colors.surface,
+                    marginBottom: s(8)
+                  },
+                  pressed && { opacity: 0.7 }
+                ]}
+              >
+                <Ionicons
+                  name={activeFilters.includes(FilterMode.SPECIAL_ONLY) ? "star" : "star-outline"}
+                  size={s(16)}
+                  color={activeFilters.includes(FilterMode.SPECIAL_ONLY) ? theme.colors.specialMealBorder : theme.colors.textSecondary}
+                />
+                <Text style={{
+                  fontSize: s(13),
+                  fontWeight: "700",
+                  color: activeFilters.includes(FilterMode.SPECIAL_ONLY) ? theme.colors.specialMealBorder : theme.colors.textSecondary
+                }}>
+                  {UI_TEXT.specialOnly} ({passesWithSpecialOnlyCount})
+                </Text>
+              </Pressable>
+            )}
+
+            {hasAnyPackage && (
+              <Pressable
+                onPress={() => toggleFilter(FilterMode.PACKAGE)}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityState={{ selected: activeFilters.includes(FilterMode.PACKAGE) }}
+                accessibilityLabel={`${UI_TEXT.foodPackages} (${passesWithPackageCount})`}
+                style={({ pressed }) => [
+                  {
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: s(6),
+                    paddingHorizontal: s(12),
+                    paddingVertical: s(8),
+                    borderRadius: s(20),
+                    borderWidth: 1,
+                    borderColor: activeFilters.includes(FilterMode.PACKAGE) ? theme.colors.primary : theme.colors.border,
+                    backgroundColor: activeFilters.includes(FilterMode.PACKAGE) ? theme.colors.surfaceDark : theme.colors.surface,
+                    marginBottom: s(8)
+                  },
+                  pressed && { opacity: 0.7 }
+                ]}
+              >
+                <Ionicons
+                  name={activeFilters.includes(FilterMode.PACKAGE) ? "cube" : "cube-outline"}
+                  size={s(16)}
+                  color={activeFilters.includes(FilterMode.PACKAGE) ? theme.colors.primary : theme.colors.textSecondary}
+                />
+                <Text style={{
+                  fontSize: s(13),
+                  fontWeight: "700",
+                  color: activeFilters.includes(FilterMode.PACKAGE) ? theme.colors.primary : theme.colors.textSecondary
+                }}>
+                  {UI_TEXT.foodPackages} ({passesWithPackageCount})
                 </Text>
               </Pressable>
             )}

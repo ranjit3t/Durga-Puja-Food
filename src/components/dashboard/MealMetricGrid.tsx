@@ -7,7 +7,7 @@ import { Metric } from "../common/Metric";
 import { MealType, DietaryOption, DietaryVariety, DietType } from "../../domain";
 import { toBool } from "../../domain";
 import { useCoreDatabase } from "../../context/DatabaseContext";
-import { getMealVarieties } from "../../constants";
+import { getMealVarieties, isSpecialMeal } from "../../constants";
 import { Ionicons } from "@expo/vector-icons";
 
 export interface MealMetricProps {
@@ -104,8 +104,19 @@ export function MealMetricGrid(props: MealMetricProps) {
     </View>
   );
 
+  const isSpecial = isSpecialMeal(day, type, dayConfig);
+
   return (
     <View style={{ gap: 10 }}>
+      {isSpecial && (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: theme.colors.specialMealBg, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: theme.colors.specialMealBorder, borderStyle: "dashed" }}>
+          <Ionicons name="star" size={14} color={theme.colors.specialMealBorder} />
+          <Text style={{ fontSize: 11, fontWeight: "900", color: theme.colors.specialMealText, letterSpacing: 0.5 }}>
+            {UI_TEXT.specialMealBadge}
+          </Text>
+        </View>
+      )}
+
       {/* 1. TOP SUMMARY ROW */}
       <View style={styles.metricGrid}>
         <Metric

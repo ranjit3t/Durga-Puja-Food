@@ -228,4 +228,19 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
 
 ---
 
+### U. Special Meal (Complementary Meal) Feature Architecture (`domain.ts`, `constants.ts`, `SettingsScreen.tsx`, `MealDisplay.tsx`, `MealMenuEditor.tsx`, `SubscriptionForm.tsx`, `SubscriptionListScreen.tsx`, `DashboardScreen.tsx`, `GuestManagementScreen.tsx`, `MealMetricGrid.tsx`, `MealBarChart.tsx`, `QuickCheckoutModal.tsx`, `QuickGuestModal.tsx`, `strings.ts`, `theme/`)
+- **Core Domain & Settings Integration (`domain.ts`, `constants.ts`, `SettingsScreen.tsx`)**: Added `special?: boolean` to `MealConfig` under `ConfigDay`. Enabled administrators to mark any meal slot as a special or complementary meal via a toggle switch in System Settings (`SettingsScreen.tsx`). Added robust helper utilities (`isSpecialMeal`, `hasSpecialMealSubscribed`, and `isSpecialOnlySubscribed`) in `constants.ts`.
+- **View Menu & Menu Editor Visual Differentiation (`MealDisplay.tsx`, `MealMenuEditor.tsx`)**: Special meal menu sections render with distinctive theme-compliant soft yellow background (`theme.colors.specialMealBg`), dashed gold borders (`theme.colors.specialMealBorder`, `borderStyle: "dashed"`), and a prominent **"SPECIAL MEAL"** star badge (`star` icon + `specialMealBadge` text).
+- **Add Pass / Edit Pass Button Styling (`SubscriptionForm.tsx`)**: All dietary choice and parcel buttons for special meal slots render with a distinct dashed border (`borderStyle: "dashed"`, `borderWidth: 2`) while retaining global vegetarian (`theme.colors.veg`) or non-vegetarian (`theme.colors.nonVeg`) background and text colors.
+- **Subscription Directory & Filtering (`SubscriptionListScreen.tsx`, `types.ts`)**: Added `FilterMode.SPECIAL_ONLY` ("Special Meals Only") filter chip to isolate passes subscribed exclusively to special meals. Attached high-visibility special meal star icon badges (`star` icon with `specialMealBg`/`specialMealBorder`) on `SubscriptionCard` pass items.
+- **Quick Checkout & Guest Quick Checkout Modals (`QuickCheckoutModal.tsx`, `QuickGuestModal.tsx`)**: Prominently marked special meals with dashed golden borders, soft yellow background tones, and **"SPECIAL MEAL"** star badges.
+- **Kitchen Dashboard & Guest Management Visual Integration (`DashboardScreen.tsx`, `GuestManagementScreen.tsx`, `MealMetricGrid.tsx`, `MealBarChart.tsx`)**: Integrated specialized special meal legends, star badge banners, and section styling across guest desk cards, dashboard metric grids, completed/planned view mode sections, and bar chart legend boxes.
+- **Analytics & Executive Reports (`DayWiseReport.tsx`, `MealWiseReport.tsx`, `SingleMealReport.tsx`)**: Prominently marked special meals with **"SPECIAL MEAL"** star badges and specialized header/card styling across Day-Wise, Meal-Wise, and Single Slot Inspection summary reports.
+
+### V. Food Package Subscription Filter & Pass Marker (`SubscriptionListScreen.tsx`, `FoodPackageScreen.tsx`, `constants.ts`, `types.ts`)
+- Added `FilterMode.PACKAGE` and reused the existing `hasPackageApplied` helper function from `constants.ts` to implement a dedicated **"Food Packages"** filter chip on the subscription list page.
+- Attached a high-visibility cube icon badge on pass cards (`SubscriptionCard`) for passes availing at least 1 food package.
+- Made food package cards clickable with hydration-safe sibling action buttons (zero nested `<button>` elements) to open a read-only View Package modal detailing package configuration, pricing, and special meal indicators.
+- Implemented an exhaustive multi-field search engine in `FoodPackageScreen.tsx` matching package names, descriptions, applicability, pricing, discount types, festival days, meal slots, and sub-category varieties.
+
 © 2026 Eternia Festival Committee — Architecture Documentation

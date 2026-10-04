@@ -36,6 +36,7 @@ import {
   isMealCurrent,
   getMealVarieties,
   isDietaryEnabled,
+  isSpecialMeal,
 } from "../../constants";
 import { CounterInput } from "./CounterInput";
 
@@ -145,6 +146,7 @@ export function QuickGuestModal({
   const guestTotal = vegTotalPlanned + nonVegTotalPlanned;
   const guestTaken = vegTotalServed + nonVegTotalServed;
   const guestPending = Math.max(0, guestTotal - guestTaken);
+  const isSpecial = currentMealInfo ? isSpecialMeal(dayId, mealType, dayConfig) : false;
 
   const isAdmin = userRole === UserRole.ADMIN;
   const isFuture = isMealInFuture(dayId, mealType, dayConfig);
@@ -237,32 +239,44 @@ export function QuickGuestModal({
             <View style={{
               padding: 12,
               borderRadius: 14,
-              backgroundColor: (isStillCurrent && !isDone) ? theme.colors.primary : theme.colors.textMuted,
-              borderColor: (isStillCurrent && !isDone) ? theme.colors.primary : theme.colors.textMuted,
-              borderWidth: 1,
+              backgroundColor: isSpecial ? theme.colors.specialMealBg : ((isStillCurrent && !isDone) ? theme.colors.primary : theme.colors.textMuted),
+              borderColor: isSpecial ? theme.colors.specialMealBorder : ((isStillCurrent && !isDone) ? theme.colors.primary : theme.colors.textMuted),
+              borderWidth: isSpecial ? 2 : 1,
+              borderStyle: isSpecial ? "dashed" : "solid",
               gap: 6,
               ...Platform.select({
                 ios: {
-                  shadowColor: theme.colors.primary,
+                  shadowColor: isSpecial ? theme.colors.specialMealBorder : theme.colors.primary,
                   shadowOffset: { width: 0, height: 3 },
                   shadowOpacity: 0.25,
                   shadowRadius: 6,
                 },
                 android: { elevation: 4 },
-                web: { boxShadow: `0 3px 10px ${theme.colors.primary}33` }
+                web: { boxShadow: `0 3px 10px ${isSpecial ? theme.colors.specialMealBorder : theme.colors.primary}33` }
               })
             }}>
               {/* Heading: Title + Day/Meal + LIVE Badge */}
               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flex: 1 }}>
-                  <Ionicons name="people" size={16} color={theme.colors.white} />
-                  <Text style={{ fontSize: 12, fontWeight: "900", color: theme.colors.white, textTransform: "uppercase", letterSpacing: 0.5, flex: 1, flexWrap: "wrap" }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flex: 1, flexWrap: "wrap" }}>
+                  <Ionicons name="people" size={16} color={isSpecial ? theme.colors.specialMealText : theme.colors.white} />
+                  <Text style={{ fontSize: 12, fontWeight: "900", color: isSpecial ? theme.colors.specialMealText : theme.colors.white, textTransform: "uppercase", letterSpacing: 0.5, flex: 1, flexWrap: "wrap" }}>
                     {UI_TEXT.guestCheckout}{UI_TEXT.space}{UI_TEXT.pipe}{UI_TEXT.space}{dayLabel}{UI_TEXT.space}{UI_TEXT.hyphen}{UI_TEXT.space}{mealLabel}
                   </Text>
+                  {isSpecial && (
+                    <View
+                      accessible={true}
+                      accessibilityRole="text"
+                      accessibilityLabel={`${UI_TEXT.specialMealBadge} - ${dayLabel} ${mealLabel}`}
+                      style={{ backgroundColor: theme.colors.specialMealBorder, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, flexDirection: "row", alignItems: "center", gap: 4 }}
+                    >
+                      <Ionicons name="star" size={10} color={theme.colors.white} />
+                      <Text style={{ color: theme.colors.white, fontSize: 10, fontWeight: "900" }}>{UI_TEXT.specialMealBadge}</Text>
+                    </View>
+                  )}
                 </View>
 
-                <View style={{ backgroundColor: theme.colors.white + "33", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
-                  <Text style={{ fontSize: 9, fontWeight: "900", color: theme.colors.white }}>
+                <View style={{ backgroundColor: (isSpecial ? theme.colors.specialMealBorder : theme.colors.white) + "33", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                  <Text style={{ fontSize: 9, fontWeight: "900", color: isSpecial ? theme.colors.specialMealText : theme.colors.white }}>
                     {(isStillCurrent && !isDone) ? UI_TEXT.live.toUpperCase() : (isDone ? UI_TEXT.mealDoneLabel.toUpperCase() : UI_TEXT.inactive.toUpperCase())}
                   </Text>
                 </View>
@@ -270,13 +284,13 @@ export function QuickGuestModal({
 
               {/* Headcount Metrics */}
               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                <Text style={{ fontSize: 12, fontWeight: "800", color: theme.colors.white }}>
+                <Text style={{ fontSize: 12, fontWeight: "800", color: isSpecial ? theme.colors.specialMealText : theme.colors.white }}>
                   {UI_TEXT.planned}{UI_TEXT.colon}{UI_TEXT.space}{guestTotal}
                   {UI_TEXT.pipe}
                   {UI_TEXT.served}{UI_TEXT.colon}{UI_TEXT.space}{guestTaken}
                 </Text>
 
-                <Text style={{ fontSize: 11, fontWeight: "800", color: theme.colors.white, opacity: 0.9 }}>
+                <Text style={{ fontSize: 11, fontWeight: "800", color: isSpecial ? theme.colors.specialMealText : theme.colors.white, opacity: 0.9 }}>
                   {UI_TEXT.pending}{UI_TEXT.colon}{UI_TEXT.space}{guestPending}
                 </Text>
               </View>

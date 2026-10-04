@@ -576,6 +576,10 @@ export function useReportData(
   }, [subscriptions, paymentConfig, dayConfig, foodMenu, kidsEnabled, activeReportType]);
 
   const getNotTakenData = useCallback((selectedDayId: string, selectedMealType: MealType) => {
+    const dayConf = (dayConfig || []).find(d => d.id === selectedDayId);
+    const mConf = dayConf ? dayConf[selectedMealType] : undefined;
+    const varieties = getMealVarieties(mConf);
+
     return subscriptions
       .map((sub) => {
         const slots = sub.mealSlots[selectedDayId] || [];
@@ -584,15 +588,20 @@ export function useReportData(
         let vegNotTaken = 0, nonVegNotTaken = 0;
 
         slots.forEach((s, idx) => {
+          if (!s) return;
           const choice = s[selectedMealType];
-          if (choice !== DietaryOption.NONE && isMealEnabled(selectedDayId, selectedMealType, dayConfig)) {
-            const diet = choice === DietaryOption.VEG ? DietType.VEG : DietType.NON_VEG;
-            if (isDietaryEnabled(selectedDayId, selectedMealType, diet, dayConfig)) {
-              if (!taken[idx]?.[selectedMealType] && !taken[idx]?.[`${selectedMealType}Parcel` as keyof typeof s]) {
-                if (choice === DietaryOption.VEG) vegNotTaken++;
-                else nonVegNotTaken++;
-              }
-            }
+          if (!choice || choice === DietaryOption.NONE || choice === "None" || choice === "none") return;
+          if (!isMealEnabled(selectedDayId, selectedMealType, dayConfig)) return;
+
+          const diet = getDietTypeForChoice(choice, varieties);
+          if (!diet || !isDietaryEnabled(selectedDayId, selectedMealType, diet, dayConfig)) return;
+
+          const tState = taken[idx] || {};
+          const isTaken = !!tState[selectedMealType] || !!tState[`{selectedMealType}Parcel` as keyof TakenState];
+
+          if (!isTaken) {
+            if (diet === DietType.VEG) vegNotTaken++;
+            else if (diet === DietType.NON_VEG) nonVegNotTaken++;
           }
         });
 
@@ -608,31 +617,37 @@ export function useReportData(
 
   const getKidsMealData = useCallback((selectedDayId: string, selectedMealType: MealType) => {
     if (!kidsEnabled) return [];
+    const dayConf = (dayConfig || []).find(d => d.id === selectedDayId);
+    const mConf = dayConf ? dayConf[selectedMealType] : undefined;
+    const varieties = getMealVarieties(mConf);
+
     return subscriptions
       .map((sub) => {
         const slots = sub.mealSlots[selectedDayId] || [];
         const taken = sub.takenByPerson[selectedDayId] || [];
-        const adultCount = sub.peopleCount;
+        const adultCount = sub.peopleCount || 0;
 
         let veg = 0, nonVeg = 0, vegTaken = 0, nonVegTaken = 0;
 
         slots.forEach((s, idx) => {
+          if (!s) return;
           const isKid = idx >= adultCount;
           if (!isKid) return;
 
           const choice = s[selectedMealType];
-          if (choice === DietaryOption.NONE) return;
+          if (!choice || choice === DietaryOption.NONE || choice === "None" || choice === "none") return;
           if (!isMealEnabled(selectedDayId, selectedMealType, dayConfig)) return;
 
-          const diet = choice === DietaryOption.VEG ? DietType.VEG : DietType.NON_VEG;
-          if (!isDietaryEnabled(selectedDayId, selectedMealType, diet, dayConfig)) return;
+          const diet = getDietTypeForChoice(choice, varieties);
+          if (!diet || !isDietaryEnabled(selectedDayId, selectedMealType, diet, dayConfig)) return;
 
-          const hasTaken = taken[idx]?.[selectedMealType] || taken[idx]?.[`${selectedMealType}Parcel` as keyof typeof s];
+          const tState = taken[idx] || {};
+          const hasTaken = !!tState[selectedMealType] || !!tState[`{selectedMealType}Parcel` as keyof TakenState];
 
-          if (choice === DietaryOption.VEG) {
+          if (diet === DietType.VEG) {
             veg++;
             if (hasTaken) vegTaken++;
-          } else {
+          } else if (diet === DietType.NON_VEG) {
             nonVeg++;
             if (hasTaken) nonVegTaken++;
           }

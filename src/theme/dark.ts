@@ -24,6 +24,9 @@ export const darkTheme: AppTheme = {
     veg: "#34D399", // Veg Green
     nonVeg: "#F87171", // Non-Veg Red
     whatsapp: "#25D366",
+    specialMealBg: "rgba(251, 191, 36, 0.15)", // Warm Amber Glow
+    specialMealBorder: "#FBBF24", // Bright Gold Border
+    specialMealText: "#FEF08A", // Light Warm Gold Text
   },
   cardColors: [
     { bg: "rgba(30, 41, 59, 0.85)", border: "#4C1D24", accent: "#FB7185", accentLight: "rgba(251, 113, 133, 0.15)" }, // Crimson Tint
