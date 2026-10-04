@@ -22,7 +22,6 @@ import {
   getDayAbbr,
   isMealEnabled,
   getValidSlotChoice,
-  isDietaryEnabled,
   isParcelEnabled,
   isKidsParcelEnabled,
   isMealCurrent,
@@ -266,7 +265,7 @@ export function DetailsScreen() {
                   >
                     <Ionicons name="star" size={12} color={theme.colors.specialMealBorder} />
                     <Text style={{ fontSize: 11, fontWeight: "900", color: theme.colors.specialMealText }}>
-                      {UI_TEXT.specialOnly}
+                      {UI_TEXT.specialMeal}
                     </Text>
                   </View>
                 )}
