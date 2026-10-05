@@ -1252,7 +1252,7 @@ export function SubscriptionListScreen() {
                 accessible={true}
                 accessibilityRole="button"
                 accessibilityState={{ selected: activeFilters.includes(FilterMode.SPECIAL_ONLY) }}
-                accessibilityLabel={`${UI_TEXT.specialOnly} (${passesWithSpecialOnlyCount})`}
+                accessibilityLabel={`${UI_TEXT.specialMeals} (${passesWithSpecialOnlyCount})`}
                 style={({ pressed }) => [
                   {
                     flexDirection: 'row',
@@ -1279,7 +1279,7 @@ export function SubscriptionListScreen() {
                   fontWeight: "700",
                   color: activeFilters.includes(FilterMode.SPECIAL_ONLY) ? theme.colors.specialMealBorder : theme.colors.textSecondary
                 }}>
-                  {UI_TEXT.specialOnly} ({passesWithSpecialOnlyCount})
+                  {UI_TEXT.specialMeals} ({passesWithSpecialOnlyCount})
                 </Text>
               </Pressable>
             )}
@@ -1290,7 +1290,7 @@ export function SubscriptionListScreen() {
                 accessible={true}
                 accessibilityRole="button"
                 accessibilityState={{ selected: activeFilters.includes(FilterMode.PACKAGE) }}
-                accessibilityLabel={`${UI_TEXT.foodPackages} (${passesWithPackageCount})`}
+                accessibilityLabel={`${UI_TEXT.packages} (${passesWithPackageCount})`}
                 style={({ pressed }) => [
                   {
                     flexDirection: 'row',
@@ -1317,7 +1317,7 @@ export function SubscriptionListScreen() {
                   fontWeight: "700",
                   color: activeFilters.includes(FilterMode.PACKAGE) ? theme.colors.primary : theme.colors.textSecondary
                 }}>
-                  {UI_TEXT.foodPackages} ({passesWithPackageCount})
+                  {UI_TEXT.packages} ({passesWithPackageCount})
                 </Text>
               </Pressable>
             )}
@@ -1467,11 +1467,19 @@ export function SubscriptionListScreen() {
 
       {isAdmin && seasonEnabled ? (
         <Pressable
-          style={[styles.fab, !canAdd && { opacity: 0.4 }]}
+          style={({ pressed }) => [
+            styles.fab,
+            { bottom: Platform.OS === 'web' ? s(100) : s(140) },
+            !canAdd && { opacity: 0.4 },
+            pressed && { opacity: 0.8 }
+          ]}
           onPress={onAdd}
           disabled={!canAdd}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel={UI_TEXT.addFlat}
         >
-          <Ionicons name="add" size={32} color={theme.colors.white} />
+          <Ionicons name="add" size={s(32)} color={theme.colors.white} />
         </Pressable>
       ) : null}
 

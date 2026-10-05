@@ -361,8 +361,8 @@ const DashboardMealSection = memo(
                         </View>
 
                         <Text style={{ fontSize: s(10), fontWeight: "700", color: theme.colors.textSecondary }}>
-                          {kidsEnabled ? `${adultP} Adult${adultP === 1 ? "" : "s"}, ${kidsP} Kid${kidsP === 1 ? "" : "s"}` : `${adultP} Member${adultP === 1 ? "" : "s"}`}
-                          {guestEnabled && guestP > 0 ? `, ${guestP} Guest${guestP === 1 ? "" : "s"}` : ""}
+                          {kidsEnabled ? `${adultP}${UI_TEXT.space}${adultP === 1 ? UI_TEXT.adult : UI_TEXT.adults}, ${kidsP}${UI_TEXT.space}${kidsP === 1 ? UI_TEXT.kid : UI_TEXT.kids}` : `${adultP}${UI_TEXT.space}${adultP === 1 ? UI_TEXT.personSuffix : UI_TEXT.personsSuffix}`}
+                          {guestEnabled && guestP > 0 ? `, ${guestP}${UI_TEXT.space}${guestP === 1 ? UI_TEXT.guest : UI_TEXT.guests}` : ""}
                         </Text>
                       </View>
                     );

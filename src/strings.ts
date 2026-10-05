@@ -4,7 +4,7 @@
  */
 export const UI_TEXT = {
   appName: "FestiveDesk",
-  appVersion: "1.4.1",
+  appVersion: "1.4.2",
   appUpdateTitle: "Update Available",
   appUpdatedMessage: "An updated version of FestiveDesk is available. Please download and install the latest build.",
   clickHereToUpdatePrefix: "Click ",
@@ -65,7 +65,7 @@ export const UI_TEXT = {
   personNotTaken: "1 Member Pending",
   personsNotTaken: "{count} Members Pending",
   mealDisabled: "This meal slot is disabled for the selected day.",
-  block: "BLOCK",
+  block: "Block",
   flatUpper: "Flat",
   people: "Members",
   parcelAbbr: "P",
@@ -514,6 +514,7 @@ export const UI_TEXT = {
   specialMeal: "Special Meal",
   specialMealHelper: "Mark this meal slot as a special / complementary meal",
   specialOnly: "Special Meals Only",
+  specialMeals: "Special Meals",
   specialMealBadge: "SPECIAL MEAL",
   specialMealTag: "Special",
   specialPassOnly: "Special Pass",
@@ -736,6 +737,7 @@ export const UI_TEXT = {
   // Food Package Discount
   foodPackages: "Food Packages",
   foodPackage: "Food Package",
+  packages: "Packages",
   foodPackageSubtitle: "Configure meal discount packages for adults, kids, and members.",
   addFoodPackage: "Add Food Package",
   editFoodPackage: "Edit Food Package",
@@ -798,8 +800,8 @@ export const UI_TEXT = {
   packageInUseBadge: "In Use",
   searchFoodPackages: "Search food packages...",
   createdTime: "Created",
-  editedTime: "Edited",
+  editedTime: "Updated",
   sortByBlockFlat: "Block & Flat",
   sortByCreatedTime: "Created Time",
-  sortByEditedTime: "Edited Time",
+  sortByEditedTime: "Updated Time",
 };
