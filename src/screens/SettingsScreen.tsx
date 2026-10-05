@@ -67,26 +67,29 @@ function VarietyModal({
   onSave: (dayId: string, mealKey: MealType, varId: string | null, name: string, type: DietType, color: string) => void;
   theme: any;
 }) {
+  const defaultVegColor = theme.colors.veg || "#16A34A";
+  const defaultNonVegColor = theme.colors.nonVeg || "#DC2626";
+
   const [name, setName] = useState("");
   const [type, setType] = useState<DietType>(allowedDietTypes[0] || DietType.VEG);
-  const [color, setColor] = useState("#16A34A");
+  const [color, setColor] = useState(defaultVegColor);
   const [hoveredColor, setHoveredColor] = useState<string | null>(null);
 
-  React.useEffect(() => {
+  React.useLayoutEffect(() => {
     if (editingVariety?.variety) {
       setName(editingVariety.variety.name);
       const vType = allowedDietTypes.includes(editingVariety.variety.type)
         ? editingVariety.variety.type
         : (allowedDietTypes[0] || DietType.VEG);
       setType(vType);
-      setColor(editingVariety.variety.color || (vType === DietType.VEG ? "#16A34A" : "#DC2626"));
+      setColor(editingVariety.variety.color || (vType === DietType.VEG ? defaultVegColor : defaultNonVegColor));
     } else {
       setName("");
       const initialType = allowedDietTypes.includes(DietType.VEG) ? DietType.VEG : (allowedDietTypes[0] || DietType.NON_VEG);
       setType(initialType);
-      setColor(initialType === DietType.VEG ? "#16A34A" : "#DC2626");
+      setColor(initialType === DietType.VEG ? defaultVegColor : defaultNonVegColor);
     }
-  }, [editingVariety, allowedDietTypes]);
+  }, [editingVariety, allowedDietTypes, defaultVegColor, defaultNonVegColor]);
 
   if (!visible || !editingVariety) return null;
 
@@ -154,7 +157,7 @@ function VarietyModal({
                 <Pressable
                   onPress={() => {
                     setType(DietType.VEG);
-                    if (color.toLowerCase() === "#dc2626") setColor("#16A34A");
+                    if (color.toLowerCase() === defaultNonVegColor.toLowerCase()) setColor(defaultVegColor);
                   }}
                   accessible={true}
                   accessibilityRole="button"
@@ -180,7 +183,7 @@ function VarietyModal({
                 <Pressable
                   onPress={() => {
                     setType(DietType.NON_VEG);
-                    if (color.toLowerCase() === "#16a34a") setColor("#DC2626");
+                    if (color.toLowerCase() === defaultVegColor.toLowerCase()) setColor(defaultNonVegColor);
                   }}
                   accessible={true}
                   accessibilityRole="button"
@@ -240,7 +243,7 @@ function VarietyModal({
                       pressed && { opacity: 0.8 },
                     ]}
                   >
-                    {isSelected && <Ionicons name="checkmark" size={16} color="#FFFFFF" />}
+                    {isSelected && <Ionicons name="checkmark" size={16} color={theme.colors.white} />}
                   </Pressable>
                 );
               })}
@@ -438,7 +441,7 @@ export function SettingsScreen() {
   };
 
   // Sync saved baseline & local state when database config is loaded
-  React.useEffect(() => {
+  React.useLayoutEffect(() => {
     if (config) {
       const currentContextBaseline = {
         config: Array.isArray(config) ? JSON.parse(JSON.stringify(config)) : [],
