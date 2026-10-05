@@ -210,6 +210,7 @@ export function DetailsScreen() {
           {
             backgroundColor: theme.colors.primary,
             borderColor: theme.colors.primary,
+            overflow: "hidden",
             ...Platform.select({
               ios: {
                 shadowColor: theme.colors.primary,
@@ -226,8 +227,8 @@ export function DetailsScreen() {
             })
           }
         ]}>
-          <View style={styles.previewTop}>
-            <View>
+          <View style={[styles.previewTop, { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8 }]}>
+            <View style={{ flex: 1, minWidth: 150, flexShrink: 1 }}>
               <Text style={[styles.previewLabel, { color: theme.colors.white, opacity: 0.7 }]}>{UI_TEXT.passIdentity}</Text>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 2 }}>
                 <Text style={[styles.previewTitle, { color: theme.colors.white, fontSize: 28 }]}>
@@ -293,7 +294,7 @@ export function DetailsScreen() {
                 );
               })()}
             </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 0, alignSelf: "flex-start" }}>
               {paymentConfig.enabled && (
                 <Text style={[styles.previewAmount, { color: theme.colors.white, fontSize: 22 }]}>
                   {UI_TEXT.rs}{UI_TEXT.space}{subscription.amount || UI_TEXT.zero}
@@ -314,6 +315,7 @@ export function DetailsScreen() {
               {canEdit && (
                 <Pressable
                   onPress={onEdit}
+                  accessibilityLabel={UI_TEXT.editPass}
                   style={({ pressed }) => [
                     { padding: 6, borderRadius: 20, backgroundColor: theme.colors.white + "33" },
                     pressed && { opacity: 0.7 }

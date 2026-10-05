@@ -1102,9 +1102,9 @@ export function SubscriptionForm() {
         keyboardDismissMode="on-drag"
       >
         {/* Real-time Summary Card */}
-        <View style={[styles.card, { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary }]}>
-          <View style={styles.previewTop}>
-            <View>
+        <View style={[styles.card, { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary, overflow: "hidden" }]}>
+          <View style={[styles.previewTop, { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8 }]}>
+            <View style={{ flex: 1, minWidth: 150, flexShrink: 1 }}>
               <Text style={[styles.previewLabel, { color: theme.colors.white, opacity: 0.7 }]}>{UI_TEXT.livePreview}</Text>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 2 }}>
                 <Text style={[styles.previewTitle, { color: theme.colors.white, fontSize: 28 }]}>
@@ -1165,9 +1165,11 @@ export function SubscriptionForm() {
               </View>
             </View>
             {paymentConfig.enabled && (
-              <Text style={[styles.previewAmount, { color: theme.colors.white, fontSize: 22 }]}>
-                {totalAmount.toFixed(0)}
-              </Text>
+              <View style={{ flexShrink: 0, alignSelf: "flex-start" }}>
+                <Text style={[styles.previewAmount, { color: theme.colors.white, fontSize: 22 }]}>
+                  {totalAmount.toFixed(0)}
+                </Text>
+              </View>
             )}
           </View>
 
