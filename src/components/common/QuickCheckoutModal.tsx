@@ -794,6 +794,13 @@ export function QuickCheckoutModal({
     }
 
     updatedSub.takenByPerson[dayId] = takenList;
+    const now = Date.now();
+    let createdTs = Number(updatedSub.createdAt) || Number(updatedSub.timestamp) || now;
+    let updatedTs = now;
+    if (createdTs > updatedTs) createdTs = updatedTs;
+    updatedSub.createdAt = createdTs;
+    updatedSub.updatedAt = updatedTs;
+
     await upsertSubscription(updatedSub);
 
     // Build transaction log text & success summary strings

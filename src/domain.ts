@@ -364,6 +364,9 @@ export type SubscriptionRecord = {
   takenByPerson: Record<EventDay, TakenState[]>;
   isPackageApplied?: boolean;
   appliedPackages?: Record<number, AppliedPackageInfo>;
+  timestamp?: number;
+  createdAt?: number;
+  updatedAt?: number;
 };
 
 export type Note = {

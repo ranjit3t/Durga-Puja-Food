@@ -989,6 +989,21 @@ export const formatTakenTime = (d: Date = new Date()): string => {
 };
 
 /**
+ * Formats a timestamp (number, string, or Date) into a human-readable time string.
+ * Example: "12 Oct, 1:15 PM"
+ */
+export const formatTimestamp = (ts?: number | string | Date | null): string => {
+  if (!ts) return "";
+  try {
+    const d = ts instanceof Date ? ts : new Date(typeof ts === "string" ? (isNaN(Number(ts)) ? ts : Number(ts)) : ts);
+    if (isNaN(d.getTime())) return "";
+    return formatTakenTime(d);
+  } catch {
+    return "";
+  }
+};
+
+/**
  * Resizes 'taken' tracking array.
  */
 export const resizeTaken = (

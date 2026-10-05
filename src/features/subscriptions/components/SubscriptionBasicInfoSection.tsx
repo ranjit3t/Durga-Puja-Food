@@ -82,7 +82,6 @@ export const SubscriptionBasicInfoSection: React.FC<SubscriptionBasicInfoSection
             keyboardType="default"
             autoCapitalize="characters"
             editable={isAdmin && !lockIdentity}
-            selectTextOnFocus={isAdmin && !lockIdentity}
             accessible={true}
             accessibilityLabel={UI_TEXT.flatNo}
             style={[styles.input, (!isAdmin || lockIdentity) && { backgroundColor: theme.colors.surface }]}
@@ -104,7 +103,6 @@ export const SubscriptionBasicInfoSection: React.FC<SubscriptionBasicInfoSection
               placeholderTextColor={theme.colors.textMuted}
               keyboardType="phone-pad"
               editable={isAdmin && canEdit}
-              selectTextOnFocus={isAdmin && canEdit}
               accessible={true}
               accessibilityLabel={UI_TEXT.mobileNo}
               style={[styles.input, { flex: 1 }, !isAdmin && { backgroundColor: theme.colors.surface }]}

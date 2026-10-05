@@ -31,6 +31,9 @@ import {
   getMealLabel,
   generateUniquePasscode,
   isSpecialOnlySubscribed,
+  getMealVarieties,
+  getDietTypeForChoice,
+  formatTimestamp,
 } from "../constants";
 import { MealMenu, MealType, DietType, DietaryOption, normalizeChoice, toBool, AppScreen, UserRole, PaymentMode, ReportType, AppThemeMode, ActivityModule, ActivityAction, CheckoutSource, getPassDisplayLabel } from "../types";
 import { BackButton } from "../components/common/BackButton";
@@ -273,6 +276,22 @@ export function DetailsScreen() {
               <Text style={{ fontSize: 13, fontWeight: "700", color: theme.colors.white, opacity: 0.9, marginTop: 4 }}>
                 {UI_TEXT.passCodeLabel}: {subscription.passcode || generateUniquePasscode(subscriptions, subscription.id, subscription.id)}
               </Text>
+              {(() => {
+                const now = Date.now();
+                let createdTs = subscription.createdAt || subscription.timestamp || now;
+                let updatedTs = subscription.updatedAt || createdTs || now;
+                if (createdTs > updatedTs) createdTs = updatedTs;
+                return (
+                  <View style={{ flexDirection: "row", gap: 12, marginTop: 6, flexWrap: "wrap" }}>
+                    <Text style={{ fontSize: 11, fontWeight: "700", color: theme.colors.white, opacity: 0.85 }}>
+                      {UI_TEXT.createdTime}: {formatTimestamp(createdTs)}
+                    </Text>
+                    <Text style={{ fontSize: 11, fontWeight: "700", color: theme.colors.white, opacity: 0.85 }}>
+                      {UI_TEXT.editedTime}: {formatTimestamp(updatedTs)}
+                    </Text>
+                  </View>
+                );
+              })()}
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
               {paymentConfig.enabled && (
@@ -549,7 +568,7 @@ export function DetailsScreen() {
 
                 const getMealParts = () => {
                    if (!slots) return [];
-                   const res: Array<{ label: string; parcel: boolean }> = [];
+                   const res: Array<{ label: string; parcel: boolean; color: string }> = [];
                    const meals = [
                      { key: MealType.BREAKFAST, abbr: UI_TEXT.breakfastAbbr, parcelKey: 'breakfastParcel' as const },
                      { key: MealType.LUNCH, abbr: UI_TEXT.lunchAbbr, parcelKey: 'lunchParcel' as const },
@@ -561,12 +580,17 @@ export function DetailsScreen() {
                      const choice = getValidSlotChoice(day, m.key, slots[m.key], dayConfig);
                      if (choice === DietaryOption.NONE) return;
 
+                     const dayConf = dayConfig.find(d => d.id === day);
+                     const mConf = dayConf ? dayConf[m.key] : undefined;
+                     const dietType = getDietTypeForChoice(choice, getMealVarieties(mConf, dayConf?.vegOnly));
+                     const color = dietType === DietType.VEG ? theme.colors.veg : (dietType === DietType.NON_VEG ? theme.colors.nonVeg : theme.cardColors[2].accent);
+
                      const parcelActive = isKid
                        ? isKidsParcelEnabled(day, m.key, dayConfig, kidsEnabled)
                        : isParcelEnabled(day, m.key, dayConfig);
                      const hasParcel = parcelActive && toBool(slots[m.parcelKey]);
 
-                     res.push({ label: m.abbr, parcel: hasParcel });
+                     res.push({ label: m.abbr, parcel: hasParcel, color });
                    });
 
                    return res;
@@ -588,7 +612,7 @@ export function DetailsScreen() {
                     <View style={{ flexDirection: "row", gap: 4, flexWrap: 'wrap', justifyContent: 'center' }}>
                        {mealParts.map((p, i) => (
                           <View key={i} style={{ position: 'relative' }}>
-                             <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: theme.cardColors[2].accent, alignItems: "center", justifyContent: "center" }}>
+                             <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: p.color, alignItems: "center", justifyContent: "center" }}>
                                 <Text style={{ color: theme.colors.white, fontSize: 10, fontWeight: "900" }}>{p.label}</Text>
                              </View>
                              {p.parcel && (
@@ -623,10 +647,27 @@ export function DetailsScreen() {
 
                 const getTakenParts = () => {
                    if (!taken) return [];
-                   const res: Array<{ label: string; parcel: boolean; time?: string }> = [];
-                   if (toBool(taken[MealType.BREAKFAST])) res.push({ label: UI_TEXT.breakfastAbbr, parcel: toBool(taken?.breakfastParcel), time: taken?.breakfastTime });
-                   if (toBool(taken[MealType.LUNCH])) res.push({ label: UI_TEXT.lunchAbbr, parcel: toBool(taken?.lunchParcel), time: taken?.lunchTime });
-                   if (toBool(taken[MealType.DINNER])) res.push({ label: UI_TEXT.dinnerAbbr, parcel: toBool(taken?.dinnerParcel), time: taken?.dinnerTime });
+                   const res: Array<{ label: string; parcel: boolean; time?: string; color: string }> = [];
+                   const personSlots = subscription.mealSlots[day]?.[personIndex];
+
+                   const meals = [
+                     { key: MealType.BREAKFAST, abbr: UI_TEXT.breakfastAbbr, parcelKey: 'breakfastParcel' as const, timeKey: 'breakfastTime' as const },
+                     { key: MealType.LUNCH, abbr: UI_TEXT.lunchAbbr, parcelKey: 'lunchParcel' as const, timeKey: 'lunchTime' as const },
+                     { key: MealType.DINNER, abbr: UI_TEXT.dinnerAbbr, parcelKey: 'dinnerParcel' as const, timeKey: 'dinnerTime' as const },
+                   ];
+
+                   meals.forEach((m) => {
+                     if (toBool(taken[m.key])) {
+                       const choice = personSlots ? getValidSlotChoice(day, m.key, personSlots[m.key], dayConfig) : DietaryOption.NONE;
+                       const dayConf = dayConfig.find(d => d.id === day);
+                       const mConf = dayConf ? dayConf[m.key] : undefined;
+                       const dietType = getDietTypeForChoice(choice, getMealVarieties(mConf, dayConf?.vegOnly));
+                       const color = dietType === DietType.VEG ? theme.colors.veg : (dietType === DietType.NON_VEG ? theme.colors.nonVeg : theme.cardColors[0].accent);
+
+                       res.push({ label: m.abbr, parcel: toBool(taken[m.parcelKey]), time: taken[m.timeKey], color });
+                     }
+                   });
+
                    return res;
                 };
 
@@ -658,7 +699,7 @@ export function DetailsScreen() {
                        {takenParts.map((p, i) => (
                           <View key={i} style={{ alignItems: 'center', gap: 2, paddingVertical: 2 }}>
                              <View style={{ position: 'relative' }}>
-                                <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: theme.cardColors[0].accent, alignItems: "center", justifyContent: "center" }}>
+                                <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: p.color, alignItems: "center", justifyContent: "center" }}>
                                    <Text style={{ color: theme.colors.white, fontSize: 10, fontWeight: "900" }}>{p.label}</Text>
                                 </View>
                                 {p.parcel && (

@@ -46,6 +46,7 @@ import {
   getDietTypeForChoice,
   isSpecialMeal,
   isSpecialOnlySubscribed,
+  formatTimestamp,
 } from "../constants";
 import {
   MealChoice,
@@ -241,6 +242,14 @@ export function SubscriptionForm() {
   const isSpecialOnly = useMemo(() => {
     return isSpecialOnlySubscribed({ mealSlots: form.mealSlots }, dayConfig);
   }, [form.mealSlots, dayConfig]);
+
+  const previewTimestamps = useMemo(() => {
+    const now = Date.now();
+    let createdTs = Number(value?.createdAt) || Number(value?.timestamp) || now;
+    let updatedTs = lockIdentity ? now : (Number(value?.updatedAt) || createdTs);
+    if (createdTs > updatedTs) createdTs = updatedTs;
+    return { createdTs, updatedTs };
+  }, [value, lockIdentity]);
 
   const checkParcelInconsistency = (sub: Subscription): boolean => {
     if (!lockIdentity || !currentMealInfo) return false;
@@ -999,8 +1008,15 @@ export function SubscriptionForm() {
 
     const currentTotalAmount = sanitizedPayments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
 
+    const now = Date.now();
+    let createdTs = Number(value?.createdAt) || Number(value?.timestamp) || now;
+    let updatedTs = now;
+    if (createdTs > updatedTs) createdTs = updatedTs;
+
     const updatedPrepared: Subscription = {
       ...prepared,
+      createdAt: createdTs,
+      updatedAt: updatedTs,
       payments: sanitizedPayments,
       amount: currentTotalAmount.toFixed(0),
       paymentMode: sanitizedPayments[0]?.mode || PaymentMode.CASH,
@@ -1139,6 +1155,14 @@ export function SubscriptionForm() {
                   {UI_TEXT.passCodeLabel}: {summaryPasscode}
                 </Text>
               ) : null}
+              <View style={{ flexDirection: "row", gap: 12, marginTop: 6, flexWrap: "wrap" }}>
+                <Text style={{ fontSize: 11, fontWeight: "700", color: theme.colors.white, opacity: 0.85 }}>
+                  {UI_TEXT.createdTime}: {formatTimestamp(previewTimestamps.createdTs)}
+                </Text>
+                <Text style={{ fontSize: 11, fontWeight: "700", color: theme.colors.white, opacity: 0.85 }}>
+                  {UI_TEXT.editedTime}: {formatTimestamp(previewTimestamps.updatedTs)}
+                </Text>
+              </View>
             </View>
             {paymentConfig.enabled && (
               <Text style={[styles.previewAmount, { color: theme.colors.white, fontSize: 22 }]}>

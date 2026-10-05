@@ -387,6 +387,14 @@ export function normalizeRecord(
     return result;
   }, {} as Record<EventDay, MealAllocation>);
 
+  const now = Date.now();
+  let createdAt = Number(value.createdAt) || Number(value.timestamp) || now;
+  let updatedAt = Number(value.updatedAt) || createdAt || now;
+
+  if (createdAt > updatedAt) {
+    createdAt = updatedAt;
+  }
+
   return {
     ...value,
     id,
@@ -404,6 +412,8 @@ export function normalizeRecord(
     paymentMode,
     transactionId,
     passcode,
+    createdAt,
+    updatedAt,
   } as SubscriptionRecord;
 }
 

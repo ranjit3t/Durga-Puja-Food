@@ -39,6 +39,7 @@ import {
   hasSpecialMealSubscribed,
   isSpecialOnlySubscribed,
   hasPackageApplied,
+  formatTimestamp,
 } from "../constants";
 import {
   AppScreen,
@@ -221,6 +222,23 @@ const SubscriptionCard = React.memo(({
             </Text>
           )}
         </View>
+
+        {(() => {
+          const now = Date.now();
+          let createdTs = Number(item.createdAt) || Number(item.timestamp) || now;
+          let updatedTs = Number(item.updatedAt) || createdTs || now;
+          if (createdTs > updatedTs) createdTs = updatedTs;
+          return (
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: s(10), paddingTop: s(8), borderTopWidth: 1, borderTopColor: colorScheme.border + "66", flexWrap: "wrap", gap: s(4) }}>
+              <Text style={{ fontSize: s(11), color: theme.colors.textMuted, fontWeight: "600" }}>
+                {UI_TEXT.createdTime}: {formatTimestamp(createdTs)}
+              </Text>
+              <Text style={{ fontSize: s(11), color: theme.colors.textMuted, fontWeight: "600" }}>
+                {UI_TEXT.editedTime}: {formatTimestamp(updatedTs)}
+              </Text>
+            </View>
+          );
+        })()}
       </Pressable>
 
       {item.mobile && (
@@ -332,6 +350,7 @@ export function SubscriptionListScreen() {
 
   const [activeFilters, setActiveFilters] = useState<FilterMode[]>([FilterMode.ALL]);
   const [isAscending, setIsAscending] = useState(true);
+  const [sortBy, setSortBy] = useState<"blockFlat" | "createdAt" | "updatedAt">("blockFlat");
 
   const toggleFilter = useCallback((mode: FilterMode) => {
     if (mode === FilterMode.ALL) {
@@ -582,8 +601,25 @@ export function SubscriptionListScreen() {
       );
     }
 
-    // Sort by Block then Flat based on isAscending
+    // Sort based on sortBy and isAscending
     const sorted = [...filtered].sort((a, b) => {
+      const now = Date.now();
+      if (sortBy === "createdAt") {
+        let createdA = Number(a.createdAt) || Number(a.timestamp) || now;
+        let createdB = Number(b.createdAt) || Number(b.timestamp) || now;
+        if (createdA !== createdB) {
+          return isAscending ? createdA - createdB : createdB - createdA;
+        }
+      } else if (sortBy === "updatedAt") {
+        let createdA = Number(a.createdAt) || Number(a.timestamp) || now;
+        let createdB = Number(b.createdAt) || Number(b.timestamp) || now;
+        let updatedA = Number(a.updatedAt) || createdA || now;
+        let updatedB = Number(b.updatedAt) || createdB || now;
+        if (updatedA !== updatedB) {
+          return isAscending ? updatedA - updatedB : updatedB - updatedA;
+        }
+      }
+
       const blockA = a.block || "";
       const blockB = b.block || "";
       const blockCompare = blockA.localeCompare(blockB, undefined, { numeric: true, sensitivity: 'base' });
@@ -631,7 +667,7 @@ export function SubscriptionListScreen() {
 
       return { ...item, _hasCurrentMeal: hasCurrentMeal, _hasParcel: hasParcel, _isVegOnly: isVegOnly, _hasSpecialMeal: hasSpecialMeal, _hasPackage: hasPackage, _missedCount: missedItem?.missed };
     });
-  }, [subscriptions, subscriptionSearch, activeFilters, currentMealInfo, kidsEnabled, missedData, isAscending, dayConfig, hasPackageApplied]);
+  }, [subscriptions, subscriptionSearch, activeFilters, currentMealInfo, kidsEnabled, missedData, isAscending, sortBy, dayConfig, hasPackageApplied]);
 
   const handleExportExcel = useCallback(async () => {
     if (visibleSubscriptions.length === 0) return;
@@ -982,33 +1018,37 @@ export function SubscriptionListScreen() {
         </View>
 
         {showFilters && (
-          <View style={[styles.maxWidthWrapper, { marginTop: 20 }]}>
-            <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+          <View style={[styles.maxWidthWrapper, { marginTop: 10 }]}>
+            <View style={{ flexDirection: 'row', gap: s(4), flexWrap: 'wrap' }}>
             <Pressable
               onPress={() => toggleFilter(FilterMode.ALL)}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityState={{ selected: activeFilters.includes(FilterMode.ALL) }}
+              accessibilityLabel={`${UI_TEXT.all} (${subscriptions.length})`}
               style={({ pressed }) => [
                 {
                   flexDirection: 'row',
                   alignItems: 'center',
-                  gap: s(6),
-                  paddingHorizontal: s(12),
-                  paddingVertical: s(8),
-                  borderRadius: s(20),
+                  gap: s(4),
+                  paddingHorizontal: s(8),
+                  paddingVertical: s(4),
+                  borderRadius: s(12),
                   borderWidth: 1,
                   borderColor: activeFilters.includes(FilterMode.ALL) ? theme.colors.primary : theme.colors.border,
                   backgroundColor: activeFilters.includes(FilterMode.ALL) ? theme.colors.surfaceDark : theme.colors.surface,
-                  marginBottom: s(8)
+                  marginBottom: s(4)
                 },
                 pressed && { opacity: 0.7 }
               ]}
             >
               <Ionicons
                 name={activeFilters.includes(FilterMode.ALL) ? "layers" : "layers-outline"}
-                size={s(16)}
+                size={s(13)}
                 color={activeFilters.includes(FilterMode.ALL) ? theme.colors.primary : theme.colors.textSecondary}
               />
               <Text style={{
-                fontSize: s(13),
+                fontSize: s(11),
                 fontWeight: "700",
                 color: activeFilters.includes(FilterMode.ALL) ? theme.colors.primary : theme.colors.textSecondary
               }}>
@@ -1019,29 +1059,33 @@ export function SubscriptionListScreen() {
             {currentMealInfo && hasAnySubscribed && (
               <Pressable
                 onPress={() => toggleFilter(FilterMode.SUBSCRIBED)}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityState={{ selected: activeFilters.includes(FilterMode.SUBSCRIBED) }}
+                accessibilityLabel={`${UI_TEXT.mealSubscriberMarker} (${subscribedCount})`}
                 style={({ pressed }) => [
                   {
                     flexDirection: 'row',
                     alignItems: 'center',
-                    gap: s(6),
-                    paddingHorizontal: s(12),
-                    paddingVertical: s(8),
-                    borderRadius: s(20),
+                    gap: s(4),
+                    paddingHorizontal: s(8),
+                    paddingVertical: s(4),
+                    borderRadius: s(12),
                     borderWidth: 1,
                     borderColor: activeFilters.includes(FilterMode.SUBSCRIBED) ? theme.colors.success : theme.colors.border,
                     backgroundColor: activeFilters.includes(FilterMode.SUBSCRIBED) ? theme.colors.successLight : theme.colors.surface,
-                    marginBottom: s(8)
+                    marginBottom: s(4)
                   },
                   pressed && { opacity: 0.7 }
                 ]}
               >
                 <Ionicons
                   name={activeFilters.includes(FilterMode.SUBSCRIBED) ? "restaurant" : "restaurant-outline"}
-                  size={s(14)}
+                  size={s(13)}
                   color={activeFilters.includes(FilterMode.SUBSCRIBED) ? theme.colors.success : theme.colors.textSecondary}
                 />
                 <Text style={{
-                  fontSize: s(13),
+                  fontSize: s(11),
                   fontWeight: "700",
                   color: activeFilters.includes(FilterMode.SUBSCRIBED) ? theme.colors.primary : theme.colors.textSecondary
                 }}>
@@ -1053,29 +1097,33 @@ export function SubscriptionListScreen() {
             {currentMealInfo && hasAnyMissed && (
               <Pressable
                 onPress={() => toggleFilter(FilterMode.MISSED)}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityState={{ selected: activeFilters.includes(FilterMode.MISSED) }}
+                accessibilityLabel={`${UI_TEXT.mealMissedMarker} (${missedData.count})`}
                 style={({ pressed }) => [
                   {
                     flexDirection: 'row',
                     alignItems: 'center',
-                    gap: s(6),
-                    paddingHorizontal: s(12),
-                    paddingVertical: s(8),
-                    borderRadius: s(20),
+                    gap: s(4),
+                    paddingHorizontal: s(8),
+                    paddingVertical: s(4),
+                    borderRadius: s(12),
                     borderWidth: 1,
                     borderColor: activeFilters.includes(FilterMode.MISSED) ? theme.colors.error : theme.colors.border,
                     backgroundColor: activeFilters.includes(FilterMode.MISSED) ? theme.colors.errorLight : theme.colors.surface,
-                    marginBottom: s(8)
+                    marginBottom: s(4)
                   },
                   pressed && { opacity: 0.7 }
                 ]}
               >
                 <Ionicons
                   name={activeFilters.includes(FilterMode.MISSED) ? "alert-circle" : "alert-circle-outline"}
-                  size={s(16)}
+                  size={s(13)}
                   color={activeFilters.includes(FilterMode.MISSED) ? theme.colors.error : theme.colors.textSecondary}
                 />
                 <Text style={{
-                  fontSize: s(13),
+                  fontSize: s(11),
                   fontWeight: "700",
                   color: activeFilters.includes(FilterMode.MISSED) ? theme.colors.error : theme.colors.textSecondary
                 }}>
@@ -1087,29 +1135,33 @@ export function SubscriptionListScreen() {
             {kidsEnabled && hasAnyKids && (
               <Pressable
                 onPress={() => toggleFilter(FilterMode.KIDS)}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityState={{ selected: activeFilters.includes(FilterMode.KIDS) }}
+                accessibilityLabel={`${UI_TEXT.kids} (${passesWithKidsCount})`}
                 style={({ pressed }) => [
                   {
                     flexDirection: 'row',
                     alignItems: 'center',
-                    gap: s(6),
-                    paddingHorizontal: s(12),
-                    paddingVertical: s(8),
-                    borderRadius: s(20),
+                    gap: s(4),
+                    paddingHorizontal: s(8),
+                    paddingVertical: s(4),
+                    borderRadius: s(12),
                     borderWidth: 1,
                     borderColor: activeFilters.includes(FilterMode.KIDS) ? theme.colors.nonVeg : theme.colors.border,
                     backgroundColor: activeFilters.includes(FilterMode.KIDS) ? theme.colors.errorLight : theme.colors.surface,
-                    marginBottom: s(8)
+                    marginBottom: s(4)
                   },
                   pressed && { opacity: 0.7 }
                 ]}
               >
                 <Ionicons
                   name={activeFilters.includes(FilterMode.KIDS) ? "happy" : "happy-outline"}
-                  size={s(16)}
+                  size={s(13)}
                   color={activeFilters.includes(FilterMode.KIDS) ? theme.colors.nonVeg : theme.colors.textSecondary}
                 />
                 <Text style={{
-                  fontSize: s(13),
+                  fontSize: s(11),
                   fontWeight: "700",
                   color: activeFilters.includes(FilterMode.KIDS) ? theme.colors.nonVeg : theme.colors.textSecondary
                 }}>
@@ -1121,29 +1173,33 @@ export function SubscriptionListScreen() {
             {hasAnyParcel && (
               <Pressable
                 onPress={() => toggleFilter(FilterMode.PARCEL)}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityState={{ selected: activeFilters.includes(FilterMode.PARCEL) }}
+                accessibilityLabel={`${UI_TEXT.parcels} (${passesWithParcelCount})`}
                 style={({ pressed }) => [
                   {
                     flexDirection: 'row',
                     alignItems: 'center',
-                    gap: s(6),
-                    paddingHorizontal: s(12),
-                    paddingVertical: s(8),
-                    borderRadius: s(20),
+                    gap: s(4),
+                    paddingHorizontal: s(8),
+                    paddingVertical: s(4),
+                    borderRadius: s(12),
                     borderWidth: 1,
                     borderColor: activeFilters.includes(FilterMode.PARCEL) ? theme.colors.secondary : theme.colors.border,
                     backgroundColor: activeFilters.includes(FilterMode.PARCEL) ? theme.colors.surfaceDark : theme.colors.surface,
-                    marginBottom: s(8)
+                    marginBottom: s(4)
                   },
                   pressed && { opacity: 0.7 }
                 ]}
               >
                 <Ionicons
                   name={activeFilters.includes(FilterMode.PARCEL) ? "briefcase" : "briefcase-outline"}
-                  size={s(16)}
+                  size={s(13)}
                   color={activeFilters.includes(FilterMode.PARCEL) ? theme.colors.secondary : theme.colors.textSecondary}
                 />
                 <Text style={{
-                  fontSize: s(13),
+                  fontSize: s(11),
                   fontWeight: "700",
                   color: activeFilters.includes(FilterMode.PARCEL) ? theme.colors.secondary : theme.colors.textSecondary
                 }}>
@@ -1155,29 +1211,33 @@ export function SubscriptionListScreen() {
             {isNonVegSeason && hasAnyVegOnly && (
               <Pressable
                 onPress={() => toggleFilter(FilterMode.VEG_ONLY)}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityState={{ selected: activeFilters.includes(FilterMode.VEG_ONLY) }}
+                accessibilityLabel={`${UI_TEXT.vegOnly} (${passesWithVegOnlyCount})`}
                 style={({ pressed }) => [
                   {
                     flexDirection: 'row',
                     alignItems: 'center',
-                    gap: s(6),
-                    paddingHorizontal: s(12),
-                    paddingVertical: s(8),
-                    borderRadius: s(20),
+                    gap: s(4),
+                    paddingHorizontal: s(8),
+                    paddingVertical: s(4),
+                    borderRadius: s(12),
                     borderWidth: 1,
                     borderColor: activeFilters.includes(FilterMode.VEG_ONLY) ? theme.colors.veg : theme.colors.border,
                     backgroundColor: activeFilters.includes(FilterMode.VEG_ONLY) ? theme.colors.veg + "10" : theme.colors.surface,
-                    marginBottom: s(8)
+                    marginBottom: s(4)
                   },
                   pressed && { opacity: 0.7 }
                 ]}
               >
                 <Ionicons
                   name={activeFilters.includes(FilterMode.VEG_ONLY) ? "leaf" : "leaf-outline"}
-                  size={s(16)}
+                  size={s(13)}
                   color={activeFilters.includes(FilterMode.VEG_ONLY) ? theme.colors.veg : theme.colors.textSecondary}
                 />
                 <Text style={{
-                  fontSize: s(13),
+                  fontSize: s(11),
                   fontWeight: "700",
                   color: activeFilters.includes(FilterMode.VEG_ONLY) ? theme.colors.veg : theme.colors.textSecondary
                 }}>
@@ -1197,25 +1257,25 @@ export function SubscriptionListScreen() {
                   {
                     flexDirection: 'row',
                     alignItems: 'center',
-                    gap: s(6),
-                    paddingHorizontal: s(12),
-                    paddingVertical: s(8),
-                    borderRadius: s(20),
+                    gap: s(4),
+                    paddingHorizontal: s(8),
+                    paddingVertical: s(4),
+                    borderRadius: s(12),
                     borderWidth: 1,
                     borderColor: activeFilters.includes(FilterMode.SPECIAL_ONLY) ? theme.colors.specialMealBorder : theme.colors.border,
                     backgroundColor: activeFilters.includes(FilterMode.SPECIAL_ONLY) ? theme.colors.specialMealBg : theme.colors.surface,
-                    marginBottom: s(8)
+                    marginBottom: s(4)
                   },
                   pressed && { opacity: 0.7 }
                 ]}
               >
                 <Ionicons
                   name={activeFilters.includes(FilterMode.SPECIAL_ONLY) ? "star" : "star-outline"}
-                  size={s(16)}
+                  size={s(13)}
                   color={activeFilters.includes(FilterMode.SPECIAL_ONLY) ? theme.colors.specialMealBorder : theme.colors.textSecondary}
                 />
                 <Text style={{
-                  fontSize: s(13),
+                  fontSize: s(11),
                   fontWeight: "700",
                   color: activeFilters.includes(FilterMode.SPECIAL_ONLY) ? theme.colors.specialMealBorder : theme.colors.textSecondary
                 }}>
@@ -1235,25 +1295,25 @@ export function SubscriptionListScreen() {
                   {
                     flexDirection: 'row',
                     alignItems: 'center',
-                    gap: s(6),
-                    paddingHorizontal: s(12),
-                    paddingVertical: s(8),
-                    borderRadius: s(20),
+                    gap: s(4),
+                    paddingHorizontal: s(8),
+                    paddingVertical: s(4),
+                    borderRadius: s(12),
                     borderWidth: 1,
                     borderColor: activeFilters.includes(FilterMode.PACKAGE) ? theme.colors.primary : theme.colors.border,
                     backgroundColor: activeFilters.includes(FilterMode.PACKAGE) ? theme.colors.surfaceDark : theme.colors.surface,
-                    marginBottom: s(8)
+                    marginBottom: s(4)
                   },
                   pressed && { opacity: 0.7 }
                 ]}
               >
                 <Ionicons
                   name={activeFilters.includes(FilterMode.PACKAGE) ? "cube" : "cube-outline"}
-                  size={s(16)}
+                  size={s(13)}
                   color={activeFilters.includes(FilterMode.PACKAGE) ? theme.colors.primary : theme.colors.textSecondary}
                 />
                 <Text style={{
-                  fontSize: s(13),
+                  fontSize: s(11),
                   fontWeight: "700",
                   color: activeFilters.includes(FilterMode.PACKAGE) ? theme.colors.primary : theme.colors.textSecondary
                 }}>
@@ -1266,22 +1326,54 @@ export function SubscriptionListScreen() {
         )}
 
         <View style={[styles.maxWidthWrapper, { marginTop: showFilters ? 4 : 20 }]}>
-          <View style={{ flexDirection: 'row', gap: s(8), alignItems: 'center', flexWrap: 'wrap' }}>
-            <View style={[styles.searchBox, { flex: 1, minWidth: 160, marginBottom: 0, maxWidth: undefined }]}>
-              <Ionicons name="search-outline" size={22} color={theme.colors.textSecondary} />
+          <View style={{ flexDirection: 'row', gap: s(6), alignItems: 'center', flexWrap: 'nowrap' }}>
+            <View style={[styles.searchBox, { flex: 1, minWidth: 90, height: s(40), marginBottom: 0, maxWidth: undefined, paddingHorizontal: s(8) }]}>
+              <Ionicons name="search-outline" size={s(18)} color={theme.colors.textSecondary} />
               <TextInput
                 value={subscriptionSearch}
                 onChangeText={setSubscriptionSearch}
                 placeholder={UI_TEXT.searchPlaceholder}
                 placeholderTextColor={theme.colors.textMuted}
-                style={styles.searchInput}
+                style={[styles.searchInput, { fontSize: s(13) }]}
                 autoCapitalize="characters"
                 clearButtonMode="while-editing"
                 accessible={true}
                 accessibilityLabel={UI_TEXT.searchPlaceholder}
               />
             </View>
-            <View style={{ flexDirection: 'row', gap: s(8), alignItems: 'center', flexShrink: 0 }}>
+            <View style={{ flexDirection: 'row', gap: s(6), alignItems: 'center', flexShrink: 0 }}>
+              <Pressable
+                onPress={() => {
+                  setSortBy(prev => {
+                    if (prev === "blockFlat") return "createdAt";
+                    if (prev === "createdAt") return "updatedAt";
+                    return "blockFlat";
+                  });
+                }}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={`${UI_TEXT.sortByBlockFlat}: ${sortBy === "blockFlat" ? UI_TEXT.block : (sortBy === "createdAt" ? UI_TEXT.createdTime : UI_TEXT.editedTime)}`}
+                style={({ pressed }) => [
+                  {
+                    height: s(40),
+                    paddingHorizontal: s(8),
+                    borderRadius: s(10),
+                    backgroundColor: theme.colors.surfaceDark,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: s(4),
+                    borderWidth: 1,
+                    borderColor: theme.colors.border,
+                  },
+                  pressed && { opacity: 0.7 }
+                ]}
+              >
+                <Ionicons name="swap-vertical-outline" size={s(15)} color={theme.colors.primary} />
+                <Text style={{ fontSize: s(11), fontWeight: "800", color: theme.colors.textPrimary }}>
+                  {sortBy === "blockFlat" ? UI_TEXT.block : (sortBy === "createdAt" ? UI_TEXT.createdTime : UI_TEXT.editedTime)}
+                </Text>
+              </Pressable>
+
               <Pressable
                 onPress={() => setIsAscending(!isAscending)}
                 accessible={true}
@@ -1289,9 +1381,9 @@ export function SubscriptionListScreen() {
                 accessibilityLabel={UI_TEXT.activePasses}
                 style={({ pressed }) => [
                   {
-                    width: s(44),
-                    height: s(44),
-                    borderRadius: s(12),
+                    width: s(40),
+                    height: s(40),
+                    borderRadius: s(10),
                     backgroundColor: theme.colors.surfaceDark,
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -1303,7 +1395,7 @@ export function SubscriptionListScreen() {
               >
                 <Ionicons
                   name={isAscending ? "arrow-up-outline" : "arrow-down-outline"}
-                  size={s(20)}
+                  size={s(18)}
                   color={theme.colors.primary}
                 />
               </Pressable>
@@ -1315,13 +1407,13 @@ export function SubscriptionListScreen() {
                   accessibilityLabel={UI_TEXT.exportExcel}
                   style={({ pressed }) => [
                     {
+                      height: s(40),
                       flexDirection: 'row',
                       alignItems: 'center',
-                      gap: s(6),
+                      gap: s(4),
                       backgroundColor: theme.colors.primary,
-                      paddingHorizontal: s(12),
-                      paddingVertical: s(10),
-                      borderRadius: s(12),
+                      paddingHorizontal: s(10),
+                      borderRadius: s(10),
                       elevation: 2,
                       shadowColor: theme.colors.primary,
                       shadowOffset: { width: 0, height: 2 },
@@ -1333,10 +1425,10 @@ export function SubscriptionListScreen() {
                 >
                   <Ionicons
                     name={Platform.OS === 'web' ? "download-outline" : "share-outline"}
-                    size={s(18)}
+                    size={s(16)}
                     color={theme.colors.white}
                   />
-                  <Text style={{ color: theme.colors.white, fontWeight: '800', fontSize: s(13) }}>
+                  <Text style={{ color: theme.colors.white, fontWeight: '800', fontSize: s(12) }}>
                     {UI_TEXT.exportExcel}
                   </Text>
                 </Pressable>

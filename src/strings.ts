@@ -4,7 +4,7 @@
  */
 export const UI_TEXT = {
   appName: "FestiveDesk",
-  appVersion: "1.3.2",
+  appVersion: "1.4.0",
   appUpdateTitle: "Update Available",
   appUpdatedMessage: "An updated version of FestiveDesk is available. Please download and install the latest build.",
   clickHereToUpdatePrefix: "Click ",
@@ -797,4 +797,9 @@ export const UI_TEXT = {
   packageInUseDeleteMsg: "This food package is currently applied to one or more subscription passes. It cannot be deleted, but it can be disabled.",
   packageInUseBadge: "In Use",
   searchFoodPackages: "Search food packages...",
+  createdTime: "Created",
+  editedTime: "Edited",
+  sortByBlockFlat: "Block & Flat",
+  sortByCreatedTime: "Created Time",
+  sortByEditedTime: "Edited Time",
 };
