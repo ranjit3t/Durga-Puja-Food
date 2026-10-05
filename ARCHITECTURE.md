@@ -244,7 +244,7 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
 - Implemented an exhaustive multi-field search engine in `FoodPackageScreen.tsx` matching package names, descriptions, applicability, pricing, discount types, festival days, meal slots, and sub-category varieties.
 - Enforced universal parcel summary and section rendering across `DashboardScreen.tsx`, `MealMetricGrid.tsx`, `MealBarChart.tsx`, and `SingleMealReport.tsx` whenever parcel service is enabled for a meal, ensuring visibility even when registered parcel count is 0.
 - Integrated the **Special Meals Only** star badge on both View Pass (`DetailsScreen.tsx`) and Add/Edit Pass (`SubscriptionForm.tsx`) identity summary cards using `isSpecialOnlySubscribed`.
-- Configured dynamic dietary colors (`theme.colors.veg` / `theme.colors.nonVeg`) for individual member meal selection and collection status indicator circles in `DetailsScreen.tsx`.
+- Configured dynamic dietary colors (`theme.colors.veg` / `theme.colors.nonVeg`) for individual member meal selection and collection status indicator circles and parcel superscript badges in `DetailsScreen.tsx`.
 - Implemented `createdAt` and `updatedAt` pass timestamp tracking with `createdAt <= updatedAt` invariant enforcement across `repository.ts`, `SubscriptionForm.tsx`, `QuickCheckoutModal.tsx`, View/Edit summary headers (`DetailsScreen.tsx`, `SubscriptionForm.tsx`), and subscription list sorting (`SubscriptionListScreen.tsx`).
 - Engineered a compact single-row search, sort, export control bar and lightweight filter chips section in `SubscriptionListScreen.tsx` for optimal mobile screen layout.
 
