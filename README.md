@@ -241,6 +241,9 @@ Quick Checkout can be triggered from 4 distinct application entry methods, track
 - **Dietary-Colored Member Selection & Collection Indicators (`DetailsScreen.tsx`)**: Updated member meal selection circles and parcel superscript badges (`P`) in the View Pass screen ([`DetailsScreen.tsx`](src/screens/DetailsScreen.tsx)) to dynamically reflect vegetarian (`theme.colors.veg`) green or non-vegetarian (`theme.colors.nonVeg`) red colors rather than a generic accent color.
 - **Pass Created/Edited Timestamp Tracking & Directory Sorting (`domain.ts`, `repository.ts`, `DetailsScreen.tsx`, `SubscriptionForm.tsx`, `SubscriptionListScreen.tsx`, `QuickCheckoutModal.tsx`)**: Tracks `createdAt` and `updatedAt` timestamps with strict `createdAt <= updatedAt` invariant enforcement across pass creation, editing, and quick checkouts. Displays formatted timestamps in View Pass and Edit Pass summary headers and pass cards, supporting multi-criteria sorting in the subscription list page (Block & Flat, Created Time, Edited Time) in ascending and descending order.
 - **Compact Directory Controls & Filter Section Layout (`SubscriptionListScreen.tsx`)**: Compact single-row control bar and lightweight filter chips section engineered for mobile screens without line wrapping or pushing action buttons to new lines.
+- **Dynamic Dietary Coloring for Parcel & Collection Buttons (`SubscriptionForm.tsx`)**: Parcel buttons, food collection buttons, and parcel taken buttons in Add Pass and Edit Pass dynamically reflect the selected dietary type color (`theme.colors.veg`, `theme.colors.nonVeg`, or custom variety colors) rather than hardcoded green.
+- **Auto-Selection of Parcel Taken on Meal Collection (`SubscriptionForm.tsx`)**: In edit pass, selecting the meal taken button automatically auto-selects parcel taken when a parcel is opted for for that meal, ensuring parcel pickup is marked without inadvertent omission.
+- **Missed Parcel Audit Logging (`SubscriptionForm.tsx`)**: Deselecting parcel taken during meal collection when a parcel was opted for triggers inconsistency checking (`checkParcelInconsistency`) upon save, prompting the operator and logging `ActivityAction.MISSED_PARCEL`.
 
 ---
 
@@ -313,7 +316,7 @@ To maintain high maintainability, testability, and scalability as the codebase g
 
 ---
 
-## 🚀 Build, Setup & Local Execution
+## 🚀 Build, Setup, Testing & Storybook Execution
 
 ```bash
 # 1. Clone repository & install dependencies
@@ -330,7 +333,31 @@ npx expo start
 npx expo start --web       # Web browser (React Native Web)
 npx expo run:android       # Native Android build
 npx expo run:ios           # Native iOS build
+
+# 5. Execute Jest Unit & Integration Tests
+npm run test               # Run all Jest unit & integration tests
+npm run test:watch         # Run tests in watch mode
+npm run test:coverage      # Generate test coverage reports
+
+# 6. Run Storybook UI Component Explorer
+npm run storybook          # Start Storybook UI server
 ```
+
+---
+
+## 🧪 Comprehensive Automated Testing & Storybook UI Suite
+
+FestiveDesk includes 100% test coverage across all domain logic, context providers, hooks, utilities, common UI components, and application screens.
+
+### 1. Jest Unit & Integration Test Architecture
+- **Domain & Utility Testing**: Verifies calculations in `domain.ts`, `paymentUtils.ts`, OCR text extraction in `ocrScanner.ts`, constants, strings, theme colors, and style generators.
+- **Context & Hook Testing**: Ensures isolated state management across `UIContext`, `AuthContext`, `ChatContext`, `NavigationContext`, `DatabaseContext`, and lazy report computations in `useReportData`.
+- **Component & Screen Testing**: Verifies UI rendering and accessibility for all 17 screens and 30+ reusable UI components.
+- **Native API Mocking**: Includes pre-configured Jest mocks (`jest.setup.js`) for `@expo/vector-icons`, `@react-native-async-storage/async-storage`, `expo-camera`, `expo-audio`, `@react-native-ml-kit/text-recognition`, `tesseract.js`, `react-native-view-shot`, `expo-sharing`, `expo-print`, and Firebase Realtime Database.
+
+### 2. Storybook UI Component Exploration
+- **Isolated UI Sandbox**: Storybook configuration in `.storybook/` allows isolated visual testing and interaction testing for all UI components.
+- **Story Categories**: Component stories organized under `Components/Common`, `Components/Menu`, `Components/Report`, `Components/Dashboard`, `Components/Chat`, `Components/Features`, and `Screens/AllScreens`.
 
 ---
 

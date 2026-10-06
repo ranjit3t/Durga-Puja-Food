@@ -4,7 +4,7 @@
  */
 export const UI_TEXT = {
   appName: "FestiveDesk",
-  appVersion: "1.4.2",
+  appVersion: "1.4.3",
   appUpdateTitle: "Update Available",
   appUpdatedMessage: "An updated version of FestiveDesk is available. Please download and install the latest build.",
   clickHereToUpdatePrefix: "Click ",

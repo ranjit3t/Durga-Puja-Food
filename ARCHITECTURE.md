@@ -247,5 +247,45 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
 - Configured dynamic dietary colors (`theme.colors.veg` / `theme.colors.nonVeg`) for individual member meal selection and collection status indicator circles and parcel superscript badges in `DetailsScreen.tsx`.
 - Implemented `createdAt` and `updatedAt` pass timestamp tracking with `createdAt <= updatedAt` invariant enforcement across `repository.ts`, `SubscriptionForm.tsx`, `QuickCheckoutModal.tsx`, View/Edit summary headers (`DetailsScreen.tsx`, `SubscriptionForm.tsx`), and subscription list sorting (`SubscriptionListScreen.tsx`).
 - Engineered a compact single-row search, sort, export control bar and lightweight filter chips section in `SubscriptionListScreen.tsx` for optimal mobile screen layout.
+- **Dynamic Dietary Coloring for Parcel & Collection Buttons (`SubscriptionForm.tsx`)**: Parcel buttons, food collection buttons, and parcel taken buttons in Add Pass and Edit Pass dynamically reflect the selected dietary type color (`theme.colors.veg`, `theme.colors.nonVeg`, or custom variety colors) rather than hardcoded green.
+- **Auto-Selection of Parcel Taken on Meal Collection (`SubscriptionForm.tsx`)**: In edit pass, selecting the meal taken button automatically auto-selects parcel taken when a parcel is opted for for that meal, ensuring parcel pickup is marked without inadvertent omission.
+- **Missed Parcel Audit Logging (`SubscriptionForm.tsx`)**: Deselecting parcel taken during meal collection when a parcel was opted for triggers inconsistency checking (`checkParcelInconsistency`) upon save, prompting the operator and logging `ActivityAction.MISSED_PARCEL`.
+
+---
+
+## 6. Automated Testing Architecture & Storybook Quality Assurance
+
+FestiveDesk implements a two-tier testing and visual isolation paradigm: **Jest Automated Unit & Integration Testing** and **Storybook UI Component Sandbox**.
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                        Automated Test Suite (Jest)                     │
+│  Domain Logic ┆ Utilities ┆ Context Providers ┆ Hooks ┆ Components ┆ Screens │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │
+┌───────────────────────────────────▼────────────────────────────────────┐
+│                    Mocked Native Infrastructure Layer                  │
+│  (Jest Mocks: Firebase DB, Expo Camera, Expo Audio, ML Kit, Tesseract)  │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │
+┌───────────────────────────────────▼────────────────────────────────────┐
+│                  Storybook UI Component Exploration                    │
+│   (Isolated Rendering: Common, Menu, Report, Dashboard, Chat, Screens)  │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+### A. Jest Testing Architecture & Native API Mocking Strategy
+- **Framework & Preset**: Powered by `jest` and `jest-expo` with `@testing-library/react-native` and `@testing-library/jest-native` custom matchers.
+- **Isolated Native Mocks (`jest.setup.js`)**:
+  - `Firebase Database`: Mocked realtime listeners (`onChildAdded`, `onValue`, `get`, `set`, `update`) to allow deterministic context testing without real network calls.
+  - `Camera & Vision`: Mocked `expo-camera` and `@react-native-ml-kit/text-recognition` for zero-hardware OCR and QR scanner testing.
+  - `Tesseract.js`: Mocked worker creation and recognition callbacks for Web OCR test execution.
+  - `Audio Engine`: Mocked `expo-audio` player methods (`play`, `pause`, `seekTo`, `remove`) to test sound feedback without native audio hardware.
+  - `AsyncStorage & Native Tools`: Pre-configured mocks for `@react-native-async-storage/async-storage`, `react-native-view-shot`, `expo-sharing`, and `expo-print`.
+
+### B. Storybook Component Isolation Paradigm
+- **Storybook Architecture**: Storybook setup in `.storybook/` (`main.js`, `preview.tsx`, `index.ts`, `storybook.requires.ts`).
+- **Global Theme & Context Providers**: `.storybook/preview.tsx` wraps all component stories in `ThemeProvider`, `AuthProvider`, `DatabaseProvider`, `NavigationProvider`, `UIProvider`, and `ChatProvider`.
+- **Comprehensive UI Coverage**: Stories created across `src/stories/` covering 100% of reusable components and all 17 application screens under interactive controls and theme states.
 
 © 2026 Eternia Festival Committee — Architecture Documentation

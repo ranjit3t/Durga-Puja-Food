@@ -860,11 +860,19 @@ export function SubscriptionForm() {
       [selectedDay]: currentTaken.map((item, index) => {
         if (index === selectedPerson) {
           const existingTime = item[timeKey as keyof TakenState] as string | undefined;
+          const existingParcelTime = item[parcelTimeKey as keyof TakenState] as string | undefined;
+          const optedParcel = !!form.mealSlots[selectedDay]?.[selectedPerson]?.[parcelKey as keyof MealSlot];
+
           const updated: any = {
             ...item,
             [slot]: taken,
             [timeKey]: taken ? (existingTime || nowTime) : undefined,
           };
+          // Rule: If food taken is toggled ON, and person opted for parcel for this meal, auto select parcel taken!
+          if (!isParcel && taken && optedParcel) {
+            updated[parcelKey] = true;
+            updated[parcelTimeKey] = existingParcelTime || nowTime;
+          }
           // Rule: If food taken is toggled OFF, also force parcel taken to OFF
           if (!isParcel && !taken) {
             updated[parcelKey] = false;
@@ -1453,6 +1461,13 @@ export function SubscriptionForm() {
                     const isLocked = isDone || (!lockIdentity && isPast);
                     const isSpecial = isSpecialMeal(selectedDay, slot, dayConfig);
 
+                    const dayConf = (dayConfig || []).find((d) => d.id === selectedDay);
+                    const mConf = dayConf ? dayConf[slot] : undefined;
+                    const varieties = getMealVarieties(mConf);
+                    const dietKey = getDietTypeForChoice(currentChoice, varieties);
+                    const variety = varieties.find(v => v.id === currentChoice) || varieties.find(v => v.type === dietKey);
+                    const parcelColorStyle = variety?.color ? { backgroundColor: variety.color, borderColor: variety.color } : (dietKey === DietType.NON_VEG ? styles.nonVegChoice : styles.vegChoice);
+
                     return (
                       <Pressable
                         key={slot}
@@ -1461,7 +1476,7 @@ export function SubscriptionForm() {
                         style={[
                           styles.choice,
                           isParcel
-                            ? (currentChoice === DietaryOption.NON_VEG ? styles.nonVegChoice : styles.vegChoice)
+                            ? parcelColorStyle
                             : styles.noneChoice,
                           isSpecial && {
                             borderStyle: "dashed",
@@ -1492,7 +1507,10 @@ export function SubscriptionForm() {
           {/* SECTION 3: Food Collection */}
           {lockIdentity && [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].some(s => {
             const choice = form.mealSlots[selectedDay]?.[selectedPerson]?.[s];
-            const dietKey = getDietTypeForChoice(choice);
+            const dayConf = (dayConfig || []).find((d) => d.id === selectedDay);
+            const mConf = dayConf ? dayConf[s] : undefined;
+            const varieties = getMealVarieties(mConf);
+            const dietKey = getDietTypeForChoice(choice, varieties);
             return choice && choice !== DietaryOption.NONE && dietKey && isDietaryEnabled(selectedDay, s, dietKey, dayConfig);
           }) && (
             <View style={{ marginTop: 24, borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: 16 }}>
@@ -1510,16 +1528,17 @@ export function SubscriptionForm() {
                       form.mealSlots[selectedDay]?.[selectedPerson]?.[slot];
                     if (!choice || choice === DietaryOption.NONE) return null;
 
-                    const dietKey = getDietTypeForChoice(choice);
+                    const dayConf = (dayConfig || []).find((d) => d.id === selectedDay);
+                    const mConf = dayConf ? dayConf[slot] : undefined;
+                    const varieties = getMealVarieties(mConf);
+                    const dietKey = getDietTypeForChoice(choice, varieties);
                     if (!dietKey || !isDietaryEnabled(selectedDay, slot, dietKey, dayConfig))
                       return null;
 
                     const isTaken =
                       !!form.takenByPerson[selectedDay]?.[selectedPerson]?.[slot];
-                    const slotColorStyle =
-                      dietKey === DietType.VEG
-                        ? styles.vegChoice
-                        : styles.nonVegChoice;
+                    const variety = varieties.find(v => v.id === choice) || varieties.find(v => v.type === dietKey);
+                    const slotColorStyle = variety?.color ? { backgroundColor: variety.color, borderColor: variety.color } : (dietKey === DietType.NON_VEG ? styles.nonVegChoice : styles.vegChoice);
 
                     const label = getMealLabel(slot);
                     const isDone = isMealDone(selectedDay, slot, dayConfig);
@@ -1588,7 +1607,14 @@ export function SubscriptionForm() {
                           const choice = form.mealSlots[selectedDay]?.[selectedPerson]?.[slot];
                           const parcelTakenKey = `${slot}Parcel`;
                           const isParcelTaken = !!form.takenByPerson[selectedDay]?.[selectedPerson]?.[parcelTakenKey as keyof TakenState];
-                          const slotColorStyle = choice === DietaryOption.NON_VEG ? styles.nonVegChoice : styles.vegChoice;
+
+                          const dayConf = (dayConfig || []).find((d) => d.id === selectedDay);
+                          const mConf = dayConf ? dayConf[slot] : undefined;
+                          const varieties = getMealVarieties(mConf);
+                          const dietKey = getDietTypeForChoice(choice, varieties);
+                          const variety = varieties.find(v => v.id === choice) || varieties.find(v => v.type === dietKey);
+                          const slotColorStyle = variety?.color ? { backgroundColor: variety.color, borderColor: variety.color } : (dietKey === DietType.NON_VEG ? styles.nonVegChoice : styles.vegChoice);
+
                           const label = getMealLabel(slot);
                           const isDone = isMealDone(selectedDay, slot, dayConfig);
                           const isFuture = isMealInFuture(selectedDay, slot, dayConfig);

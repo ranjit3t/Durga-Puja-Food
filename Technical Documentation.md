@@ -245,4 +245,35 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
 
 ---
 
+## 5. Automated Testing Architecture & Storybook Specifications
+
+FestiveDesk implements automated testing via **Jest** and isolated UI component exploration via **Storybook**.
+
+### A. Jest Test Engine & Native Module Mocks (`jest.config.js`, `jest.setup.js`)
+- **Preset**: Uses `jest-expo` with `@testing-library/react-native` and `@testing-library/jest-native`.
+- **Pre-configured Mocks (`jest.setup.js`)**:
+  - `@expo/vector-icons`: Mocks vector icons (`Ionicons`, `MaterialIcons`, `FontAwesome`, `Feather`, `MaterialCommunityIcons`) to render plain text names.
+  - `@react-native-async-storage/async-storage`: Standard jest mock for Async Storage key-value persistence.
+  - `expo-camera`: Mocks `CameraView` container and `useCameraPermissions` hook returning `{ granted: true }`.
+  - `expo-audio`: Mocks `createAudioPlayer` sound playback API.
+  - `@react-native-ml-kit/text-recognition`: Mocks Google ML Kit `recognize` method returning OCR text blocks.
+  - `tesseract.js`: Mocks web worker worker creation and OCR recognition callbacks.
+  - `react-native-view-shot`: Mocks `captureRef` snapshot method returning image URI.
+  - `expo-sharing` & `expo-print`: Mocks `shareAsync` and `printAsync` methods.
+  - `firebase`: Mocks realtime database refs, getters, setters, updates, and event listeners.
+
+### B. Storybook UI Explorer Setup (`.storybook/`)
+- **Main Configuration (`.storybook/main.js`)**: Configured story pattern `../src/**/*.stories.@(js|jsx|ts|tsx)` and addons (`@storybook/addon-actions`, `@storybook/addon-controls`, `@storybook/addon-ondevice-actions`, `@storybook/addon-ondevice-controls`).
+- **Global Decorator (`.storybook/preview.tsx`)**: Wraps stories with `ThemeProvider`, `AuthProvider`, `DatabaseProvider`, `UIProvider`, `ChatProvider`, and `NavigationProvider`.
+- **Stories Suite (`src/stories/`)**:
+  - `CommonComponents.stories.tsx`: Stories for `Metric`, `Dropdown`, `BackButton`, `HomeButton`, `ActionLabel`, `CustomAlert`, `CounterInput`, `LogoutButton`, `UserGreeting`, `EditableMetric`, `ThemeToggleButton`.
+  - `MenuComponents.stories.tsx`: Stories for `MealDisplay`, `MealMenuEditor`, `MealSummaryInline`.
+  - `ReportComponents.stories.tsx`: Stories for all 12 report sub-views.
+  - `DashboardComponents.stories.tsx`: Stories for `MealBarChart`, `MealMetricGrid`.
+  - `ChatComponents.stories.tsx`: Stories for `ChatWidget`.
+  - `FeatureComponents.stories.tsx`: Stories for feature items and checkout cards.
+  - `ScreenComponents.stories.tsx`: Stories for all 17 application screens.
+
+---
+
 © 2026 Eternia Festival Committee — Technical Documentation
