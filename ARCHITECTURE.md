@@ -169,6 +169,7 @@ Eternia Food Desk is a cross-platform mobile and web application built with **Re
 - **Comprehensive Audit Trail Visibility (`ActivityLogItem.tsx`, `ActivityLogScreen.tsx`)**: Displays user badges as `Rahul Sharma (admin) (ADMIN)` across all system audit views, text exports, and local summaries, providing complete 100% visibility into user **Name**, **Username**, and **User Type (Role)** for security compliance.
 - **Clean Audit Trail Target & Message Expansion (`ActivityLogItem.tsx`, `DatabaseContext.tsx`)**: Automatically expands note subjects and pass labels (e.g. `Deleted note: Kitchen Supplies`, `Removed pass record A-101`) without unexpanded placeholders or raw Firebase push keys (`-P2nIS5P_...`).
 - **Real-Time App Version Sync & Platform-Specific Update Links (`HomeScreen.tsx`, `DatabaseContext.tsx`, `repository.ts`)**: Real-time sync of `appVersion`, `androidAppLocation`, and `iosAppLocation` from Firebase DB. Triggers update alert modals on mobile (`Platform.OS !== 'web'`) when local version differs from server, featuring hyperlinked `"Click Here to update."` (`androidAppLocation` on Android, `iosAppLocation` on iOS), with web clients exempt.
+- **Sleek QR Pass Side-by-Side Action Bar & Direct View Pass Navigation (`QrScreen.tsx`)**: Renders a compact, perfectly aligned 3-button side-by-side action bar (**View**, **Chat**, **Share** / **Download**) with zero wrapping or overflow across viewports. Binds strictly to pre-defined theme tokens (`theme.cardColors[0].accentLight` for View, `theme.colors.successLight` for Chat, `theme.colors.primary` for Share) with 1-tap navigation to `AppScreen.DETAILS` and full WCAG 2.1 AA accessibility bindings (`accessibilityRole="button"`, `accessibilityLabel`, `accessibilityHint`).
 
 ### T. Dietary Sub-Categorization Architecture (`domain.ts`, `constants.ts`, `SettingsScreen.tsx`, `MealMenuEditor.tsx`, `MealDisplay.tsx`, `SubscriptionForm.tsx`, `QuickCheckoutModal.tsx`, `GuestManagementScreen.tsx`, `DashboardScreen.tsx`, `useReportData.ts`)
 - **Flexible Multi-Option Menu Model**: Shifts from a binary (1 Veg / 1 Non-Veg) model to a flexible dietary variety system (`DietaryVariety`), enabling multiple sub-categories per meal (e.g. Jain Veg, Standard Veg, Chicken Meal, Mutton Meal).
@@ -252,40 +253,5 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
 - **Missed Parcel Audit Logging (`SubscriptionForm.tsx`)**: Deselecting parcel taken during meal collection when a parcel was opted for triggers inconsistency checking (`checkParcelInconsistency`) upon save, prompting the operator and logging `ActivityAction.MISSED_PARCEL`.
 
 ---
-
-## 6. Automated Testing Architecture & Storybook Quality Assurance
-
-FestiveDesk implements a two-tier testing and visual isolation paradigm: **Jest Automated Unit & Integration Testing** and **Storybook UI Component Sandbox**.
-
-```
-┌────────────────────────────────────────────────────────────────────────┐
-│                        Automated Test Suite (Jest)                     │
-│  Domain Logic ┆ Utilities ┆ Context Providers ┆ Hooks ┆ Components ┆ Screens │
-└───────────────────────────────────┬────────────────────────────────────┘
-                                    │
-┌───────────────────────────────────▼────────────────────────────────────┐
-│                    Mocked Native Infrastructure Layer                  │
-│  (Jest Mocks: Firebase DB, Expo Camera, Expo Audio, ML Kit, Tesseract)  │
-└───────────────────────────────────┬────────────────────────────────────┘
-                                    │
-┌───────────────────────────────────▼────────────────────────────────────┐
-│                  Storybook UI Component Exploration                    │
-│   (Isolated Rendering: Common, Menu, Report, Dashboard, Chat, Screens)  │
-└────────────────────────────────────────────────────────────────────────┘
-```
-
-### A. Jest Testing Architecture & Native API Mocking Strategy
-- **Framework & Preset**: Powered by `jest` and `jest-expo` with `@testing-library/react-native` and `@testing-library/jest-native` custom matchers.
-- **Isolated Native Mocks (`jest.setup.js`)**:
-  - `Firebase Database`: Mocked realtime listeners (`onChildAdded`, `onValue`, `get`, `set`, `update`) to allow deterministic context testing without real network calls.
-  - `Camera & Vision`: Mocked `expo-camera` and `@react-native-ml-kit/text-recognition` for zero-hardware OCR and QR scanner testing.
-  - `Tesseract.js`: Mocked worker creation and recognition callbacks for Web OCR test execution.
-  - `Audio Engine`: Mocked `expo-audio` player methods (`play`, `pause`, `seekTo`, `remove`) to test sound feedback without native audio hardware.
-  - `AsyncStorage & Native Tools`: Pre-configured mocks for `@react-native-async-storage/async-storage`, `react-native-view-shot`, `expo-sharing`, and `expo-print`.
-
-### B. Storybook Component Isolation Paradigm
-- **Storybook Architecture**: Storybook setup in `.storybook/` (`main.js`, `preview.tsx`, `index.ts`, `storybook.requires.ts`).
-- **Global Theme & Context Providers**: `.storybook/preview.tsx` wraps all component stories in `ThemeProvider`, `AuthProvider`, `DatabaseProvider`, `NavigationProvider`, `UIProvider`, and `ChatProvider`.
-- **Comprehensive UI Coverage**: Stories created across `src/stories/` covering 100% of reusable components and all 17 application screens under interactive controls and theme states.
 
 © 2026 Eternia Festival Committee — Architecture Documentation

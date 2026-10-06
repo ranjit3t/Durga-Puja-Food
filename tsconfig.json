@@ -3,5 +3,10 @@
   "compilerOptions": {
     "jsx": "react",
     "strict": true
-  }
+  },
+  "exclude": [
+    "node_modules",
+    "dist",
+    ".expo"
+  ]
 }

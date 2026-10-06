@@ -98,40 +98,12 @@ The application follows a **Serverless Layered Architecture** built on the **Exp
   - **Modular Pricing Refactoring**: Refactored `calculateSubscriptionAmount` into `calculatePersonMealAndParcelCost`, isolating single-person meal and parcel cost breakdowns across all active days.
   - **Applicability & Sub-Category Coverage Engine (`findApplicablePackagesForPerson`)**: Evaluates enabled food packages against a person's category (`adult`, `kids`, `member`) and exact meal items with sub-category dietary varieties. Evaluates minimum cart value criteria for percentage flat discounts.
   - **Combined Pass Total Calculation (`calculatePassTotalWithPackages`)**: Reuses single-person pricing breakdown and applies per-person package discounts independently. Parcels are kept strictly outside package discounts and added to both normal and package totals as extra.
-  - **Add Pass Apply Package Modal**: Renders eligible packages per person, displaying current price (with parcel), price after package (with parcel), and savings.
-  - **Edit Pass & View Pass Summary Card Markers**: Displays a high-visibility `"PACKAGE APPLIED"` badge pill on the top summary/identity cards of both Edit Pass (`SubscriptionForm.tsx`) and View Pass (`DetailsScreen.tsx`) for passes with applied packages. Renders an "Applied Food Packages" card section in Edit Pass listing applied package names and prices per person. Tapping any package name opens a view-only details modal.
-  - **Pass Deletion Eligibility Rule**: Pass deletion in Edit Pass (`SubscriptionForm.tsx`) is governed strictly by whether any meals have been taken/served (`!hasAnyMealTaken`), allowing passes with recorded payments to be removed before any meal service has started.
-  - **Conditional "Received By" Collector Field**: The "Received By" collector name input field in Add Pass and Edit Pass payment sections (`SubscriptionPaymentSection.tsx`) is rendered strictly only when Cash (`PaymentMode.CASH`) is selected as the payment mode.
-  - **Package Passes Report (`PackagePassesReport.tsx`)**: Dedicated report tab under Reports listing all package-applied passes with member headcount, paid totals, and applied package details per member, with 1-tap navigation to View Pass (`DetailsScreen.tsx`).
-  - **Discrepancy Exemption**: Passes with an applied package (`isPackageApplied: true`) bypass amount mismatch warning alerts and are excluded from `AmountDiscrepancyReport`.
-- **Legacy Data Normalization**: On Edit Pass load, empty or missing amount fields are normalized to `"0"` (`UI_TEXT.zero`), displaying as `"0"` in payment input controls.
-- **Payment Input Filtering**: Enforces numeric/decimal filtering (`replace(/[^0-9.]/g, '')`) and resets empty fields to `"0"` on blur.
-- **Meal Change Snapshot (`hasMealOrParcelChoicesChanged`)**: Compares current meal slots, parcel selections, and headcount with `initialMealSnapshot.current`. Amount discrepancy validation runs on Save/Save QR for new passes or whenever meal/parcel/headcount choices differ in Edit Pass.
-- **Sequential Alert Pipeline**: Ensures subscription amount discrepancy confirmation appears first before any subsequent checks (such as missed parcel alerts).
 
-### M. Personalized Header Welcome Badge & Comprehensive Audit Trail Security Traceability (`UserGreeting.tsx`, `AuthContext.tsx`, `DatabaseContext.tsx`, `ActivityLogItem.tsx`)
-- **Profile Data Extraction (`AuthContext.tsx`, `LoginScreen.tsx`)**: Extracts `user.name` (falling back to `user.username`) from `auth_config/users` upon login. `AuthContext` maintains `userName` (display name for greeting) and `userAccountName` (account username) in state.
-- **Sleek, Theme-Aware Header Welcome Badge (`UserGreeting.tsx`)**: Renders a glassmorphic welcome pill badge (`sparkles` icon + localized prefix + bold user name) in the upper header section directly below the top control buttons row on all 14 operational screens. Excluded from camera screens (`ScannerScreen`) and modal overlays.
-- **Dynamic Layout & Overflow Protection**: Responsive `maxBadgeWidth = Math.max(120, Math.min(isWeb ? 400 : 260, width - 40))`, `numberOfLines={1}`, and `ellipsizeMode="tail"` truncation guarantee long names (e.g. `"Sri Satya Narayana Choudhary Mukhopadhyay"`) never overflow or break header layouts.
-- **Multi-Attribute Audit Trail Logging (`DatabaseContext.tsx`)**: `addActivityLog` records user identity as `Name (username)` (e.g. `"Rahul Sharma (admin)"`) alongside `userRole` (e.g. `"ADMIN"` or `"VENDOR"`).
-- **Comprehensive Audit Visibility (`ActivityLogItem.tsx`, `ActivityLogScreen.tsx`)**: Displays user badges as `Rahul Sharma (admin) (ADMIN)` across all system audit views, text exports, and local summaries, providing 100% complete visibility into user **Name**, **Username**, and **User Type (Role)** for security compliance.
-- **Clean Numeric Display & Accessibility Layer**: Completely removes currency symbols (`₹`) across payment displays and alert messages, applying explicit WCAG 2.1 AA accessibility properties (`accessible={true}`, `accessibilityRole`, `accessibilityLabel`, `accessibilityHint`, `accessibilityState`) to all controls and summary views.
-
-### M. React DOM Hydration & Dynamic Singular/Plural Grammar Architecture (`HomeScreen.tsx`, `SubscriptionListScreen.tsx`, `ContactsScreen.tsx`, `ActivityLogScreen.tsx`, `QuickCheckoutModal.tsx`, `ReportScreen.tsx`, `strings.ts`)
-- **DOM Hydration Compliance**: Replaced nested `<Pressable>` elements (`<button>` inside `<button>` in React Native Web) across `HomeScreen`, `SubscriptionListScreen` (`SubscriptionCard`), `ContactsScreen`, and `ActivityLogScreen` (`ActivityLogItem`) with clean `View` containers + non-nested sibling `Pressable` layouts, eliminating React DOM hydration errors and ensuring valid HTML output.
-- **Deprecation-Free Web Shadows & Text Shadows**: Replaced legacy `shadow*` and `textShadow*` style properties with conditional `Platform.OS === 'web'` spreading for `boxShadow` and `textShadow`, entirely eliminating React Native Web preprocessor warnings across all viewports.
-- **Responsive Wrapping Report Navigation Tabs**: Converted report category navigation buttons on `ReportScreen` to a responsive wrapping flex layout (`flexWrap: 'wrap'`), guaranteeing 100% button visibility without horizontal clipping across Web and mobile viewports.
-- **Responsive Counter Widget Layout**: Added `width: "100%"`, `minWidth: 0`, and `flexShrink: 1` constraints to `SubsectionCounterWidget` and input text fields in `QuickCheckoutModal`, ensuring side-by-side parcel and dine-in inputs scale cleanly without overflowing on narrow viewports or mobile devices.
-- **Dynamic Singular/Plural Grammar (`plate` / `plates`, `parcel` / `parcels`)**: Added `plateSingular: "Plate"` to `strings.ts` and updated quick checkout transaction logs, success category breakdowns, total plate counts, and accessibility announcements (`successA11yLabel`) to dynamically format singular (`1 Plate`, `1 Parcel`) or plural (`2+ Plates`, `2+ Parcels`) forms based on exact numeric values.
-
-### O. Dietary Sub-Categorization Feature Implementation
-- **Flexible Multi-Option Menu Architecture**: Extends the meal system from binary choices to a flexible dietary variety model (`DietaryVariety`), supporting custom varieties (e.g., Jain Veg, Standard Veg, Chicken Meal, Mutton Meal).
-- **Global Aggregation Principle**: Every sub-category created under a meal strictly belongs to either Veg or Non-Veg (`DietType.VEG` or `DietType.NON_VEG`). Top-level counts, filters, home summary plates, and macro reports roll up and aggregate into primary global Veg or Non-Veg totals using `getDietTypeForChoice()`.
-- **Variety Creation, Editing, Category Restrictions & Detailed Audit Trail (`SettingsScreen.tsx`)**: Allows adding and editing sub-categories per meal slot with custom names (max 15 chars) and assigned color codes (`variety.color`). Enforces a combined maximum limit of 10 total varieties per meal slot. **Category Restrictions**: Restricts sub-category creation to Veg-only when day/meal is Veg-Only, to Non-Veg-only when meal is Non-Veg-Only, allows both when both are enabled, and blocks addition when none are enabled. **Detailed Audit Logging**: `getSettingsChangeLog()` explicitly compares meal varieties before and after updates, outputting detailed audit trail events (e.g. `Added Varieties: Jain Veg(VEG)`, `Edited Varieties: Jain Veg -> Strict Jain Veg(VEG)`, `Deleted Varieties: Mutton`). **Firebase RTDB Normalization**: Uses `normalizeDayConfig` and `Object.values()` parsing in `getMealVarieties()` to handle both JS Arrays and Firebase RTDB numeric object keys (`{ "0": {...}, "1": {...} }`), ensuring zero loss of custom variety configurations across real-time WebSocket pushes. Checks active passes before deletion; if a sub-category is subscribed in active passes, deletion is blocked with an alert dialog.
-- **Sub-Category Menu & Pricing Engine (`MealMenuEditor.tsx`, `MealDisplay.tsx`, `paymentUtils.ts`)**: Supports separate Adult, Kids, Member, and Parcel prices and food item lists per sub-category while maintaining backward compatibility with legacy default pricing fields.
-- **Pass Selection Expansion (`SubscriptionForm.tsx`)**: When a meal is selected in pass registration or editing, choice selection expands to display all active sub-categories with custom names and assigned color badges.
-- **Dynamic Quick Checkout & Itemized Splash Screen (`QuickCheckoutModal.tsx`)**: Segregates dine-in and parcel inputs under Veg and Non-Veg categories with dynamic sub-category cards. Extends dine-in and parcel allocation routines to the sub-category level and renders itemized checkout completion splash screens with custom sub-category name badges and color indicators.
-- **Guest Management & Dashboard Demographics Breakdown (`GuestManagementScreen.tsx`, `QuickGuestModal.tsx`, `DashboardScreen.tsx`)**: Provides granular sub-category counter inputs and global category totals on guest screens, and renders a dedicated sub-category demographics breakdown grid (Adults, Kids, Guests) on the analytics dashboard.
+### M. Sleek QR Pass Side-by-Side Action Bar & Direct View Pass Navigation (`QrScreen.tsx`)
+- **Compact Non-Wrapping 3-Button Layout**: Renders **View** (`UI_TEXT.view`), **Chat** (`UI_TEXT.chat`), and **Share** / **Download** (`UI_TEXT.share` / `UI_TEXT.download`) in a single horizontal row (`flexDirection: "row"`, `gap: s(8)`, `width: "100%"`) with `flex: 1`, `minWidth: 0`, and `numberOfLines={1}`, ensuring zero line wrapping across all screen viewports.
+- **1-Tap View Pass Navigation**: The View button (`eye-outline` icon) sets active pass selection and navigates directly to `AppScreen.DETAILS`.
+- **Pure Theme Token Background Fills**: Binds strictly to pre-defined theme tokens without color hardcoding or string concatenation (`theme.cardColors[0].accentLight` for View, `theme.colors.successLight` for Chat, `theme.colors.primary` for Share), ensuring vibrant rendering across Light and Dark themes.
+- **WCAG 2.1 AA Accessibility Integration**: Implemented full accessibility bindings (`accessible={true}`, `accessibilityRole="button"`, `accessibilityLabel`, `accessibilityHint`) across all action buttons.
 
 ---
 
@@ -200,14 +172,6 @@ The application follows a **Serverless Layered Architecture** built on the **Exp
 }
 ```
 
-### M. Peer-to-Peer Realtime Chat Engine (`ChatContext.tsx`, `ChatWidget.tsx`)
-- **Deterministic Room Privacy**: Configures isolated WebSocket streams under `chats/{user1}__${user2}/messages` where `user1` and `user2` are alphabetically sorted lowercase usernames, preventing message leakage.
-- **Firebase Presence Sync**: Uses `.info/connected` with `onDisconnect()` under `presence/{username}` to monitor live online/offline status and `lastSeen` timestamps.
-- **Typing Indicators & Read Status**: Tracks live typing state (`chats/{chatId}/typing/{username}`) and message status receipts (`✓ Sent`, `✓✓ Delivered`, `✓✓ Read`).
-- **Draggable & Resizable Viewport Widget (`PanResponder`, `Animated`)**: Fully interactive chat widget and window supporting smooth drag positioning anywhere across the mobile/web viewport (via the minimized pill or expanded header) and dynamic user resizing (via the bottom-right resize handle).
-- **Native Keyboard Avoiding & Top Header Alignment**: Wrapped in React Native `KeyboardAvoidingView` with native `Keyboard.addListener` height offset handlers, top-aligned directly below the welcome message header (`UserGreeting`) and lifting cleanly above the soft keyboard when typing.
-- **Strict Camera, Modal, Dropdown & Alert Exclusion**: Hides automatically on camera viewfinders (`ScannerScreen`, `PaymentScannerModal`) and all active modal, dropdown, and alert windows (`QuickCheckoutModal`, `QuickGuestModal`, `CustomAlert`, `Dropdown`, `Notes` modal, `ActivityLog` summary, etc.).
-
 ---
 
 ## 4. Feature-Based Modularization & Component Architecture
@@ -218,61 +182,6 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
 - **`src/features/activity/`**: Houses decoupled audit log components (`ActivityLogItem`, `ActivityLogFilterBar`).
 - **`src/features/checkout/`**: Houses decoupled quick checkout components (`QuickCheckoutHeader`, `QuickCheckoutItemCard`).
 - **`src/features/subscriptions/`**: Houses decoupled pass registration and payment tracking sections (`SubscriptionBasicInfoSection`, `SubscriptionPaymentSection`).
-
-### B. Engineering Standards & Compliance
-- **Zero Hardcoding (`strings.ts`)**: All UI strings, placeholders, and announcements bind dynamically to `UI_TEXT`.
-- **Theme-Driven Styling (`theme/`)**: Colors and layout dimensions bind strictly to `theme.colors`, `theme.cardColors`, and responsive scaling hooks (`useScaling()`).
-- **WCAG 2.1 AA Accessibility**: All extracted components include full accessibility attributes (`accessible={true}`, `accessibilityRole`, `accessibilityLabel`, `accessibilityHint`, `accessibilityState`).
-- **Type Safety**: Fully typed with strict TypeScript contracts (`npx tsc --noEmit` verified with 0 errors).
-- **Dashboard & Detailed View UX Polish**: Automatically omits redundant "Subscribed" text in planned mode and group name repetitions ("Adults", "Kids", "Guests") under section headers in the detailed dashboard metric grid.
-
-### C. Special Meal (Complementary Meal) Feature Implementation (`domain.ts`, `constants.ts`, `SettingsScreen.tsx`, `MealDisplay.tsx`, `MealMenuEditor.tsx`, `SubscriptionForm.tsx`, `SubscriptionListScreen.tsx`, `DashboardScreen.tsx`, `GuestManagementScreen.tsx`, `MealMetricGrid.tsx`, `MealBarChart.tsx`, `QuickCheckoutModal.tsx`, `QuickGuestModal.tsx`, `strings.ts`, `theme/`)
-- **Core Domain & Settings (`domain.ts`, `constants.ts`, `SettingsScreen.tsx`)**: Added `special?: boolean` to `MealConfig` under `ConfigDay`. Configured per-meal Special Meal toggle switch in `SettingsScreen.tsx` with default `false`. Added robust helper utilities (`isSpecialMeal`, `hasSpecialMealSubscribed`, and `isSpecialOnlySubscribed`) in `constants.ts`.
-- **View Menu & Menu Editor (`MealDisplay.tsx`, `MealMenuEditor.tsx`)**: Special meal menu sections render with distinctive yellow background (`theme.colors.specialMealBg`), dashed golden border (`theme.colors.specialMealBorder`, `borderStyle: "dashed"`), and a prominent **"SPECIAL MEAL"** star badge.
-- **Add Pass / Edit Pass (`SubscriptionForm.tsx`)**: Choice and parcel buttons for special meals render with dashed borders (`borderStyle: "dashed"`, `borderWidth: 2`) while retaining global vegetarian (`theme.colors.veg`) or non-vegetarian (`theme.colors.nonVeg`) fill colors.
-- **Subscription List & Pass Directory Filters (`SubscriptionListScreen.tsx`, `types.ts`)**: Added `FilterMode.SPECIAL_ONLY` ("Special Meals Only") filter chip to isolate passes subscribed exclusively to special meals. Attached special meal star icon badge on pass cards.
-- **Quick Checkout & Guest Quick Checkout Modals (`QuickCheckoutModal.tsx`, `QuickGuestModal.tsx`)**: Prominently marked special meals with dashed golden borders, soft yellow background tones, and **"SPECIAL MEAL"** star badges.
-- **Kitchen Dashboard & Guest Management (`DashboardScreen.tsx`, `GuestManagementScreen.tsx`, `MealMetricGrid.tsx`, `MealBarChart.tsx`)**: Integrated specialized special meal legends, star badge banners, and section styling across guest desk cards, dashboard metric grids, completed/planned view mode sections, and bar chart legend boxes.
-- **Analytics & Executive Reports (`DayWiseReport.tsx`, `MealWiseReport.tsx`, `SingleMealReport.tsx`)**: Prominently marked special meals with **"SPECIAL MEAL"** star badges and specialized header/card styling across Day-Wise, Meal-Wise, and Single Slot Inspection summary reports.
-- **Food Package Subscription Filter & Pass Marker (`SubscriptionListScreen.tsx`, `constants.ts`)**: Added a dedicated **"Food Packages"** filter chip (`FilterMode.PACKAGE`) and reused the existing `hasPackageApplied` helper function to attach high-visibility cube icon badges on pass cards for subscribers availing at least 1 food package.
-- **Food Package View-Only Modal & Hydration-Safe Cards (`FoodPackageScreen.tsx`)**: Made food package cards clickable with hydration-safe sibling action buttons (zero nested `<button>` elements) to open a read-only View Package modal detailing package configuration, pricing, and special meal indicators.
-- **Exhaustive Food Package Multi-Field Search (`FoodPackageScreen.tsx`)**: Implemented an exhaustive multi-field search engine filtering across package names, descriptions, applicability, discount types, pricing, cart values, festival days, meal slots, and sub-category varieties.
-- **Universal Parcel Summary & Section Visibility (`DashboardScreen.tsx`, `MealMetricGrid.tsx`, `MealBarChart.tsx`, `SingleMealReport.tsx`)**: Whenever parcel service is enabled for a meal slot, parcel summary metrics and sections are displayed across planned, grid, chart, and executive report views even if the registered parcel count is 0.
-- **Special Meals Only Pass Card Badge (`DetailsScreen.tsx`, `SubscriptionForm.tsx`)**: Prominently displays the **Special Meals Only** star badge on both View Pass (`DetailsScreen.tsx`) and Add/Edit Pass (`SubscriptionForm.tsx`) summary cards whenever a pass is subscribed exclusively to special meal slots.
-- **Dietary-Colored Member Selection & Collection Indicators (`DetailsScreen.tsx`)**: Updated member meal selection circles and parcel superscript badges (`P`) in the View Pass screen to use dynamic vegetarian (`theme.colors.veg`) green and non-vegetarian (`theme.colors.nonVeg`) red colors rather than generic accent colors.
-- **Pass Created/Edited Timestamp Tracking & Directory Sorting (`domain.ts`, `repository.ts`, `DetailsScreen.tsx`, `SubscriptionForm.tsx`, `SubscriptionListScreen.tsx`, `QuickCheckoutModal.tsx`)**: Tracks `createdAt` and `updatedAt` timestamps across pass creation, edits, and quick checkout operations with strict `createdAt <= updatedAt` invariant enforcement. Displays formatted timestamps in View Pass and Edit Pass summary headers and pass cards, with multi-criteria sorting in the subscription list (Block & Flat, Created Time, Edited Time) in ascending and descending order.
-- **Compact Directory Controls & Filter Section Layout (`SubscriptionListScreen.tsx`)**: Compact single-row control bar and lightweight filter chips section engineered for mobile screens without line wrapping or pushing action buttons to new lines.
-
----
-
-## 5. Automated Testing Architecture & Storybook Specifications
-
-FestiveDesk implements automated testing via **Jest** and isolated UI component exploration via **Storybook**.
-
-### A. Jest Test Engine & Native Module Mocks (`jest.config.js`, `jest.setup.js`)
-- **Preset**: Uses `jest-expo` with `@testing-library/react-native` and `@testing-library/jest-native`.
-- **Pre-configured Mocks (`jest.setup.js`)**:
-  - `@expo/vector-icons`: Mocks vector icons (`Ionicons`, `MaterialIcons`, `FontAwesome`, `Feather`, `MaterialCommunityIcons`) to render plain text names.
-  - `@react-native-async-storage/async-storage`: Standard jest mock for Async Storage key-value persistence.
-  - `expo-camera`: Mocks `CameraView` container and `useCameraPermissions` hook returning `{ granted: true }`.
-  - `expo-audio`: Mocks `createAudioPlayer` sound playback API.
-  - `@react-native-ml-kit/text-recognition`: Mocks Google ML Kit `recognize` method returning OCR text blocks.
-  - `tesseract.js`: Mocks web worker worker creation and OCR recognition callbacks.
-  - `react-native-view-shot`: Mocks `captureRef` snapshot method returning image URI.
-  - `expo-sharing` & `expo-print`: Mocks `shareAsync` and `printAsync` methods.
-  - `firebase`: Mocks realtime database refs, getters, setters, updates, and event listeners.
-
-### B. Storybook UI Explorer Setup (`.storybook/`)
-- **Main Configuration (`.storybook/main.js`)**: Configured story pattern `../src/**/*.stories.@(js|jsx|ts|tsx)` and addons (`@storybook/addon-actions`, `@storybook/addon-controls`, `@storybook/addon-ondevice-actions`, `@storybook/addon-ondevice-controls`).
-- **Global Decorator (`.storybook/preview.tsx`)**: Wraps stories with `ThemeProvider`, `AuthProvider`, `DatabaseProvider`, `UIProvider`, `ChatProvider`, and `NavigationProvider`.
-- **Stories Suite (`src/stories/`)**:
-  - `CommonComponents.stories.tsx`: Stories for `Metric`, `Dropdown`, `BackButton`, `HomeButton`, `ActionLabel`, `CustomAlert`, `CounterInput`, `LogoutButton`, `UserGreeting`, `EditableMetric`, `ThemeToggleButton`.
-  - `MenuComponents.stories.tsx`: Stories for `MealDisplay`, `MealMenuEditor`, `MealSummaryInline`.
-  - `ReportComponents.stories.tsx`: Stories for all 12 report sub-views.
-  - `DashboardComponents.stories.tsx`: Stories for `MealBarChart`, `MealMetricGrid`.
-  - `ChatComponents.stories.tsx`: Stories for `ChatWidget`.
-  - `FeatureComponents.stories.tsx`: Stories for feature items and checkout cards.
-  - `ScreenComponents.stories.tsx`: Stories for all 17 application screens.
 
 ---
 

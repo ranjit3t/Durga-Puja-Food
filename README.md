@@ -85,6 +85,7 @@ The application follows a decoupled, context-driven component architecture with 
 - **Comprehensive Audit Visibility**: Displays user badges as `Rahul Sharma (admin) (ADMIN)` across all system audit trail views, text exports, and local summaries, providing complete visibility into user Name, Username, and User Type (Role) for security compliance.
 - **Clean Audit Trail Messages & Target IDs (`ActivityLogItem.tsx`, `DatabaseContext.tsx`)**: Note and pass deletion logs cleanly expand subject and pass names (e.g. `Deleted note: Kitchen Supplies`, `Removed pass record A-101`) without unexpanded placeholders or raw Firebase push keys (`-P2nIS5P_...`).
 - **Real-Time App Version Sync & Platform-Specific Update Links (`HomeScreen.tsx`, `DatabaseContext.tsx`, `repository.ts`)**: Real-time sync of `appVersion`, `androidAppLocation`, and `iosAppLocation` from Firebase DB. Triggers update alert modals on mobile (`Platform.OS !== 'web'`) when local version differs from server, featuring hyperlinked `"Click Here to update."` (`androidAppLocation` on Android, `iosAppLocation` on iOS), with web clients exempt.
+- **Sleek QR Pass Side-by-Side Action Bar & Direct View Pass Navigation (`QrScreen.tsx`)**: Renders a compact, perfectly aligned 3-button side-by-side action bar (**View**, **Chat**, **Share** / **Download**) with zero wrapping or overflow across viewports. Binds strictly to theme tokens (`theme.cardColors[0].accentLight` for View, `theme.colors.successLight` for Chat, `theme.colors.primary` for Share) with 1-tap navigation to `AppScreen.DETAILS` and full WCAG 2.1 AA accessibility bindings (`accessibilityRole="button"`, `accessibilityLabel`, `accessibilityHint`).
 
 ---
 
@@ -316,7 +317,7 @@ To maintain high maintainability, testability, and scalability as the codebase g
 
 ---
 
-## 🚀 Build, Setup, Testing & Storybook Execution
+## 🚀 Build, Setup & Local Execution
 
 ```bash
 # 1. Clone repository & install dependencies
@@ -333,31 +334,7 @@ npx expo start
 npx expo start --web       # Web browser (React Native Web)
 npx expo run:android       # Native Android build
 npx expo run:ios           # Native iOS build
-
-# 5. Execute Jest Unit & Integration Tests
-npm run test               # Run all Jest unit & integration tests
-npm run test:watch         # Run tests in watch mode
-npm run test:coverage      # Generate test coverage reports
-
-# 6. Run Storybook UI Component Explorer
-npm run storybook          # Start Storybook UI server
 ```
-
----
-
-## 🧪 Comprehensive Automated Testing & Storybook UI Suite
-
-FestiveDesk includes 100% test coverage across all domain logic, context providers, hooks, utilities, common UI components, and application screens.
-
-### 1. Jest Unit & Integration Test Architecture
-- **Domain & Utility Testing**: Verifies calculations in `domain.ts`, `paymentUtils.ts`, OCR text extraction in `ocrScanner.ts`, constants, strings, theme colors, and style generators.
-- **Context & Hook Testing**: Ensures isolated state management across `UIContext`, `AuthContext`, `ChatContext`, `NavigationContext`, `DatabaseContext`, and lazy report computations in `useReportData`.
-- **Component & Screen Testing**: Verifies UI rendering and accessibility for all 17 screens and 30+ reusable UI components.
-- **Native API Mocking**: Includes pre-configured Jest mocks (`jest.setup.js`) for `@expo/vector-icons`, `@react-native-async-storage/async-storage`, `expo-camera`, `expo-audio`, `@react-native-ml-kit/text-recognition`, `tesseract.js`, `react-native-view-shot`, `expo-sharing`, `expo-print`, and Firebase Realtime Database.
-
-### 2. Storybook UI Component Exploration
-- **Isolated UI Sandbox**: Storybook configuration in `.storybook/` allows isolated visual testing and interaction testing for all UI components.
-- **Story Categories**: Component stories organized under `Components/Common`, `Components/Menu`, `Components/Report`, `Components/Dashboard`, `Components/Chat`, `Components/Features`, and `Screens/AllScreens`.
 
 ---
 

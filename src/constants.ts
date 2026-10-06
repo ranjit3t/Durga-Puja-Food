@@ -778,13 +778,10 @@ export enum PackageApplicabilityType {
 export function getApplicabilityLabel(app: PackageApplicability | string | undefined): string {
   switch (app) {
     case PackageApplicabilityType.KIDS:
-    case "kids":
       return UI_TEXT.kidsOnly;
     case PackageApplicabilityType.MEMBER:
-    case "member":
       return UI_TEXT.membersAll;
     case PackageApplicabilityType.ADULT:
-    case "adult":
     default:
       return UI_TEXT.adultsOnly;
   }
