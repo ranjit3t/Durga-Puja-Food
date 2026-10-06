@@ -6,7 +6,7 @@ import {
   Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { ActivityLog, ActivityModule, ActivityAction, CheckoutSource, GuestCheckoutSource, getPassDisplayLabel } from "../../../domain";
+import { ActivityLog, ActivityModule, ActivityAction, CheckoutSource, FreeMealCheckoutSource, getPassDisplayLabel } from "../../../domain";
 import { UI_TEXT } from "../../../strings";
 import { Subscription } from "../../../types";
 
@@ -73,14 +73,14 @@ export const ActivityLogItem = memo(({
     return null;
   }, [item.description]);
 
-  const guestSource = useMemo(() => {
-    if (!item.description || item.module !== ActivityModule.GUEST) return null;
+  const freeMealSource = useMemo(() => {
+    if (!item.description || item.module !== ActivityModule.FREE_MEAL) return null;
     const desc = item.description;
-    if (desc.includes(`via ${GuestCheckoutSource.GUEST_MODAL}`) || desc.includes(`via Quick Guest Modal`)) {
-      return { label: GuestCheckoutSource.GUEST_MODAL, icon: "people-circle-outline" };
+    if (desc.includes(`via ${FreeMealCheckoutSource.FREE_MEAL_MODAL}`) || desc.includes(`via Quick freeMeal Modal`)) {
+      return { label: FreeMealCheckoutSource.FREE_MEAL_MODAL, icon: "people-circle-outline" };
     }
-    if (desc.includes(`via ${GuestCheckoutSource.GUEST_SCREEN}`) || desc.includes(`via Guest Desk Screen`)) {
-      return { label: GuestCheckoutSource.GUEST_SCREEN, icon: "desktop-outline" };
+    if (desc.includes(`via ${FreeMealCheckoutSource.FREE_MEAL_SCREEN}`) || desc.includes(`via freeMeal Desk Screen`)) {
+      return { label: FreeMealCheckoutSource.FREE_MEAL_SCREEN, icon: "desktop-outline" };
     }
     return null;
   }, [item.description, item.module]);
@@ -154,10 +154,10 @@ export const ActivityLogItem = memo(({
                  <Text style={{ fontSize: s(10), fontWeight: '900', color: theme.colors.primary, textTransform: 'uppercase' }}>{checkoutSource.label}</Text>
                </View>
              )}
-             {guestSource && (
+             {freeMealSource && (
                <View style={{ backgroundColor: theme.cardColors[2].accent + "18", paddingHorizontal: s(8), paddingVertical: s(4), borderRadius: s(6), borderWidth: 1, borderColor: theme.cardColors[2].accent + "40", flexDirection: 'row', alignItems: 'center', gap: s(4) }}>
-                 <Ionicons name={guestSource.icon as any} size={s(12)} color={theme.cardColors[2].accent} />
-                 <Text style={{ fontSize: s(10), fontWeight: '900', color: theme.cardColors[2].accent, textTransform: 'uppercase' }}>{guestSource.label}</Text>
+                 <Ionicons name={freeMealSource.icon as any} size={s(12)} color={theme.cardColors[2].accent} />
+                 <Text style={{ fontSize: s(10), fontWeight: '900', color: theme.cardColors[2].accent, textTransform: 'uppercase' }}>{freeMealSource.label}</Text>
                </View>
              )}
              {isClickable && (

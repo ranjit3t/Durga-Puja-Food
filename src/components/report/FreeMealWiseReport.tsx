@@ -4,10 +4,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { useStyles } from "../../styles";
 import { useAppTheme } from "../../theme";
 import { UI_TEXT } from "../../strings";
-import { getDayLabel, isMealEnabled, isDietaryEnabled, getMealLabel, getMealGuestCounts, getMealVarieties } from "../../constants";
+import { getDayLabel, isMealEnabled, isDietaryEnabled, getMealLabel, getMealFreeMealCounts, getMealVarieties } from "../../constants";
 import { ConfigDay, FoodMenu, MealType, DietType, AppThemeMode } from "../../types";
 
-export function GuestWiseReport({
+export function FreeMealWiseReport({
   activeDays,
   foodMenu,
   dayConfig,
@@ -40,17 +40,17 @@ export function GuestWiseReport({
                 const dayConf = dayConfig.find(d => d.id === dayId);
                 const mConf = dayConf ? dayConf[mKey] : undefined;
                 const varieties = getMealVarieties(mConf, dayConf?.vegOnly);
-                const gCounts = getMealGuestCounts(gm, varieties);
+                const fmCounts = getMealFreeMealCounts(gm, varieties);
 
                 const vEnabled = isDietaryEnabled(dayId, mKey, DietType.VEG, dayConfig);
                 const nvEnabled = isDietaryEnabled(dayId, mKey, DietType.NON_VEG, dayConfig);
-                const guestVeg = vEnabled ? gCounts.guestVeg : 0;
-                const guestNonVeg = nvEnabled ? gCounts.guestNonVeg : 0;
-                const guestVegTaken = vEnabled ? gCounts.guestVegTaken : 0;
-                const guestNonVegTaken = nvEnabled ? gCounts.guestNonVegTaken : 0;
+                const freeMealVeg = vEnabled ? fmCounts.freeMealVeg : 0;
+                const freeMealNonVeg = nvEnabled ? fmCounts.freeMealNonVeg : 0;
+                const freeMealVegTaken = vEnabled ? fmCounts.freeMealVegTaken : 0;
+                const freeMealNonVegTaken = nvEnabled ? fmCounts.freeMealNonVegTaken : 0;
 
-                const tTotal = guestVeg + guestNonVeg;
-                const tTaken = guestVegTaken + guestNonVegTaken;
+                const tTotal = freeMealVeg + freeMealNonVeg;
+                const tTaken = freeMealVegTaken + freeMealNonVegTaken;
 
                 return (
                   <View key={mKey} style={{ backgroundColor: theme.colors.surfaceDark + (theme.themeType === AppThemeMode.DARK ? "66" : "80"), borderRadius: 16, padding: 12, borderWidth: 1, borderColor: theme.colors.border }}>
@@ -60,8 +60,8 @@ export function GuestWiseReport({
                     </View>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
                       <View style={{ gap: 4 }}>
-                        {vEnabled && <Text style={{ fontSize: 13, fontWeight: '600', color: theme.colors.veg }}>{UI_TEXT.veg}{UI_TEXT.colon}{UI_TEXT.space}{guestVegTaken}{UI_TEXT.space}{UI_TEXT.slash}{UI_TEXT.space}{guestVeg}</Text>}
-                        {nvEnabled && <Text style={{ fontSize: 13, fontWeight: '600', color: theme.colors.nonVeg }}>{UI_TEXT.nonVeg}{UI_TEXT.colon}{UI_TEXT.space}{guestNonVegTaken}{UI_TEXT.space}{UI_TEXT.slash}{UI_TEXT.space}{guestNonVeg}</Text>}
+                        {vEnabled && <Text style={{ fontSize: 13, fontWeight: '600', color: theme.colors.veg }}>{UI_TEXT.veg}{UI_TEXT.colon}{UI_TEXT.space}{freeMealVegTaken}{UI_TEXT.space}{UI_TEXT.slash}{UI_TEXT.space}{freeMealVeg}</Text>}
+                        {nvEnabled && <Text style={{ fontSize: 13, fontWeight: '600', color: theme.colors.nonVeg }}>{UI_TEXT.nonVeg}{UI_TEXT.colon}{UI_TEXT.space}{freeMealNonVegTaken}{UI_TEXT.space}{UI_TEXT.slash}{UI_TEXT.space}{freeMealNonVeg}</Text>}
                       </View>
                       <View style={{ alignItems: 'flex-end' }}>
                         <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.textSecondary }}>{UI_TEXT.total.toUpperCase()}</Text>

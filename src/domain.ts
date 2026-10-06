@@ -76,9 +76,9 @@ export enum CheckoutSource {
   SUBSCRIPTION_LIST = "Pass Directory",
 }
 
-export enum GuestCheckoutSource {
-  GUEST_MODAL = "Quick Guest Modal",
-  GUEST_SCREEN = "Guest Desk Screen",
+export enum FreeMealCheckoutSource {
+  FREE_MEAL_MODAL = "Quick Free Meal Modal",
+  FREE_MEAL_SCREEN = "Free Meal Desk Screen",
 }
 
 export enum AppScreen {
@@ -93,7 +93,7 @@ export enum AppScreen {
   REPORT = "report",
   SETTINGS = "settings",
   SUBSCRIPTION_LIST = "subscriptionList",
-  GUEST_MANAGEMENT = "guestManagement",
+  FREE_MEAL_MANAGEMENT = "freeMealManagement",
   LOGIN = "login",
   ACTIVITY_LOG = "activityLog",
   NOTES = "notes",
@@ -163,7 +163,7 @@ export type AppConfig = {
   seasonName: string;
   days: ConfigDay[];
   payment?: PaymentConfig;
-  guestEnabled?: boolean;
+  freeMealEnabled?: boolean;
   mobileEnabled?: boolean;
   foodPriceEnabled?: boolean;
   seasonEnabled?: boolean;
@@ -177,7 +177,7 @@ export enum ActivityModule {
   SUBSCRIPTION = "Pass",
   MENU = "Menu",
   CONFIG = "Settings",
-  GUEST = "Guest",
+  FREE_MEAL = "Free Meal",
   QR = "QR Pass",
   REPORT = "Report",
   SCANNER = "Scanner",
@@ -226,13 +226,13 @@ export type ActivityLog = {
 export enum ReportType {
   DAY = "day",
   MEAL = "meal",
-  GUEST = "guest",
+  FREE_MEAL = "freeMeal",
   PARCEL = "parcel",
   FLAT = "flat",
   PAYMENT = "payment",
   SINGLE = "single",
   NOT_TAKEN = "notTaken",
-  KIDS_MEAL = "kidsMeal",
+  MEMBERS_MEAL = "membersMeal",
   MISSED_PARCEL = "missedParcel",
   PACKAGE = "package",
 }
@@ -279,14 +279,14 @@ export type MealMenu = {
   kidsVegParcelPrice?: string;
   kidsNonVegParcelPrice?: string;
   varieties?: Record<string, VarietyMenu>;
-  guestCounts?: Record<string, number>;
-  guestTakenCounts?: Record<string, number>;
-  guestVeg?: number;
-  guestNonVeg?: number;
-  guestTotal?: number;
-  guestTaken?: number;
-  guestVegTaken?: number;
-  guestNonVegTaken?: number;
+  freeMealCounts?: Record<string, number>;
+  freeMealTakenCounts?: Record<string, number>;
+  freeMealVeg?: number;
+  freeMealNonVeg?: number;
+  freeMealTotal?: number;
+  freeMealTaken?: number;
+  freeMealVegTaken?: number;
+  freeMealNonVegTaken?: number;
   kidsVeg?: number;
   kidsNonVeg?: number;
   kidsVegTaken?: number;

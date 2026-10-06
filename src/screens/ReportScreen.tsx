@@ -28,13 +28,13 @@ import { ActionLabel } from "../components/common/ActionLabel";
 // Modular Report Components
 import { DayWiseReport } from "../components/report/DayWiseReport";
 import { MealWiseReport } from "../components/report/MealWiseReport";
-import { GuestWiseReport } from "../components/report/GuestWiseReport";
+import { FreeMealWiseReport } from "../components/report/FreeMealWiseReport";
 import { ParcelWiseReport } from "../components/report/ParcelWiseReport";
 import { SingleMealReport } from "../components/report/SingleMealReport";
 import { PendingReport } from "../components/report/PendingReport";
 import { FlatWiseReport } from "../components/report/FlatWiseReport";
 import { PaymentSummaryReport } from "../components/report/PaymentSummaryReport";
-import { KidsReport } from "../components/report/KidsReport";
+import { MembersReport } from "../components/report/MembersReport";
 import { PackagePassesReport } from "../components/report/PackagePassesReport";
 
 // Custom Hook
@@ -48,7 +48,7 @@ import { useAppNavigation } from "../context/NavigationContext";
 export function ReportScreen() {
   const { handleLogout } = useAuth();
   const {
-    subscriptions, foodMenu, dayConfig, seasonName, paymentConfig, guestEnabled, kidsEnabled
+    subscriptions, foodMenu, dayConfig, seasonName, paymentConfig, freeMealEnabled, kidsEnabled
   } = useCoreDatabase();
   const { shareQr } = useUI();
   const {
@@ -57,8 +57,10 @@ export function ReportScreen() {
   } = useAppNavigation();
 
   const {
-    activeDays, dayWiseData, mealWiseData, flatWiseData, paymentData, getNotTakenData, getKidsMealData, getMissedParcelData, packagePassesData
-  } = useReportData(subscriptions, foodMenu, dayConfig, guestEnabled, paymentConfig, !!kidsEnabled, reportType);
+    activeDays, dayWiseData, mealWiseData, flatWiseData, paymentData, getNotTakenData, getMembersMealData, getMissedParcelData, packagePassesData
+  } = useReportData(subscriptions, foodMenu, dayConfig, freeMealEnabled, paymentConfig, !!kidsEnabled, reportType);
+
+  const [selectedPersonCategory, setSelectedPersonCategory] = React.useState<"all" | "adult" | "kids">("all");
 
   const styles = useStyles();
   const { s } = useScaling();
@@ -87,7 +89,7 @@ export function ReportScreen() {
 
   const onSetReportType = (type: ReportType) => {
     setReportType(type);
-    if (type === ReportType.DAY || type === ReportType.SINGLE || type === ReportType.NOT_TAKEN || type === ReportType.KIDS_MEAL || type === ReportType.PARCEL) {
+    if (type === ReportType.DAY || type === ReportType.SINGLE || type === ReportType.NOT_TAKEN || type === ReportType.MEMBERS_MEAL || type === ReportType.PARCEL) {
       const active = activeDays;
       for (const dId of active) {
         for (const mType of [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER]) {
@@ -156,8 +158,8 @@ export function ReportScreen() {
         const reportTitle =
           reportType === ReportType.DAY ? UI_TEXT.dayWiseReport :
           reportType === ReportType.MEAL ? UI_TEXT.mealWiseReport :
-          reportType === ReportType.GUEST ? UI_TEXT.guestReport :
-          reportType === ReportType.KIDS_MEAL ? UI_TEXT.kidsMealReport :
+          reportType === ReportType.FREE_MEAL ? UI_TEXT.freeMealReport :
+          reportType === ReportType.MEMBERS_MEAL ? UI_TEXT.membersMealReport :
           reportType === ReportType.PARCEL ? UI_TEXT.parcelReport :
           reportType === ReportType.SINGLE ? `${getDayLabel(selectedDayId, dayConfig)} - ${getMealLabel(selectedMealType)}` :
           reportType === ReportType.NOT_TAKEN ? UI_TEXT.notTakenReport :
@@ -235,8 +237,8 @@ export function ReportScreen() {
           {[
             { id: ReportType.DAY, label: UI_TEXT.day, icon: "calendar-outline" },
             { id: ReportType.MEAL, label: UI_TEXT.meal, icon: "restaurant-outline" },
-            { id: ReportType.GUEST, label: UI_TEXT.guestSuffix, icon: "people-circle-outline" },
-            { id: ReportType.KIDS_MEAL, label: UI_TEXT.kids, icon: "happy-outline" },
+            { id: ReportType.FREE_MEAL, label: UI_TEXT.freeMealSuffix, icon: "people-circle-outline" },
+            { id: ReportType.MEMBERS_MEAL, label: UI_TEXT.members, icon: "people-outline" },
             { id: ReportType.PARCEL, label: UI_TEXT.parcels, icon: "cube-outline" },
             { id: ReportType.SINGLE, label: UI_TEXT.split, icon: "fast-food-outline" },
             { id: ReportType.NOT_TAKEN, label: UI_TEXT.pending, icon: "alert-circle-outline" },
@@ -245,9 +247,8 @@ export function ReportScreen() {
             { id: ReportType.PACKAGE, label: UI_TEXT.packageReport, icon: "pricetag-outline" },
           ].filter(tab =>
             (tab.id !== ReportType.PAYMENT || paymentConfig.enabled) &&
-            (tab.id !== ReportType.GUEST || guestEnabled) &&
-            (tab.id !== ReportType.PARCEL || isParcelEnabledGlobally) &&
-            (tab.id !== ReportType.KIDS_MEAL || kidsEnabled)
+            (tab.id !== ReportType.FREE_MEAL || freeMealEnabled) &&
+            (tab.id !== ReportType.PARCEL || isParcelEnabledGlobally)
           ).map((tab) => (
             <Pressable
               key={tab.id}
@@ -278,7 +279,7 @@ export function ReportScreen() {
         style={{ flex: 1, width: "100%" }}
         contentContainerStyle={[styles.content, { paddingTop: 0 }]}
       >
-        {(reportType === ReportType.DAY || reportType === ReportType.SINGLE || reportType === ReportType.NOT_TAKEN || reportType === ReportType.KIDS_MEAL || reportType === ReportType.PARCEL) && (
+        {(reportType === ReportType.DAY || reportType === ReportType.SINGLE || reportType === ReportType.NOT_TAKEN || reportType === ReportType.MEMBERS_MEAL || reportType === ReportType.PARCEL) && (
           <View style={[styles.card, { marginBottom: 24, marginTop: 10 }]}>
             <Text style={[styles.sectionTitle, { fontSize: 16, marginBottom: 12 }]}>{UI_TEXT.reportFilters}</Text>
 
@@ -350,6 +351,39 @@ export function ReportScreen() {
                   </Pressable>
                 ))}
             </View>
+
+            {reportType === ReportType.MEMBERS_MEAL && (
+              <>
+                <Text style={styles.selectorLabel}>{UI_TEXT.selectCategory}</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8, width: '100%' }}>
+                  <View style={[styles.selectorRow, { flexWrap: 'nowrap' }]}>
+                    {[
+                      { id: "all", label: UI_TEXT.allMembers },
+                      { id: "adult", label: UI_TEXT.adults },
+                      ...(kidsEnabled ? [{ id: "kids", label: UI_TEXT.kids }] : []),
+                    ].map((cat) => (
+                      <Pressable
+                        key={cat.id}
+                        onPress={() => setSelectedPersonCategory(cat.id as any)}
+                        accessible={true}
+                        accessibilityRole="tab"
+                        accessibilityLabel={cat.label}
+                        accessibilityState={{ selected: selectedPersonCategory === cat.id }}
+                        style={[
+                          styles.selector,
+                          selectedPersonCategory === cat.id && styles.selectorOn,
+                          { minWidth: 60, paddingHorizontal: 12, flexShrink: 0 }
+                        ]}
+                      >
+                        <Text style={[styles.selectorText, selectedPersonCategory === cat.id && styles.selectorTextOn]}>
+                          {cat.label}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </ScrollView>
+              </>
+            )}
           </View>
         )}
 
@@ -377,10 +411,10 @@ export function ReportScreen() {
                 <Text style={[styles.previewTitle, { color: theme.colors.white, fontSize: 22 }]}>
                   {reportType === ReportType.DAY && UI_TEXT.dayWiseReport}
                   {reportType === ReportType.MEAL && UI_TEXT.mealWiseReport}
-                  {reportType === ReportType.GUEST && UI_TEXT.guestReport}
+                  {reportType === ReportType.FREE_MEAL && UI_TEXT.freeMealReport}
                   {reportType === ReportType.PARCEL && UI_TEXT.parcelReport}
                   {reportType === ReportType.SINGLE && `${getDayLabel(selectedDayId, dayConfig)}${UI_TEXT.space}${UI_TEXT.hyphen}${UI_TEXT.space}${getMealLabel(selectedMealType)}`}
-                  {reportType === ReportType.KIDS_MEAL && UI_TEXT.kidsMealReport}
+                  {reportType === ReportType.MEMBERS_MEAL && UI_TEXT.membersReport}
                   {reportType === ReportType.MISSED_PARCEL && UI_TEXT.missedParcelReport}
                   {reportType === ReportType.NOT_TAKEN && `${UI_TEXT.notTakenReport}`}
                   {reportType === ReportType.FLAT && UI_TEXT.flatWiseReport}
@@ -403,7 +437,7 @@ export function ReportScreen() {
               mealWiseData={mealWiseData as any}
               dayConfig={dayConfig}
               kidsEnabled={!!kidsEnabled}
-              guestEnabled={guestEnabled}
+              freeMealEnabled={freeMealEnabled}
             />
           )}
 
@@ -415,8 +449,8 @@ export function ReportScreen() {
             />
           )}
 
-          {reportType === ReportType.GUEST && (
-            <GuestWiseReport activeDays={activeDays} foodMenu={foodMenu} dayConfig={dayConfig} />
+          {reportType === ReportType.FREE_MEAL && (
+            <FreeMealWiseReport activeDays={activeDays} foodMenu={foodMenu} dayConfig={dayConfig} />
           )}
 
           {reportType === ReportType.PARCEL && (
@@ -437,14 +471,14 @@ export function ReportScreen() {
               selectedMealType={selectedMealType}
               mealWiseData={mealWiseData as any}
               dayConfig={dayConfig}
-              guestEnabled={guestEnabled}
+              freeMealEnabled={freeMealEnabled}
               kidsEnabled={!!kidsEnabled}
             />
           )}
 
-          {reportType === ReportType.KIDS_MEAL && (
-            <KidsReport
-              data={getKidsMealData(selectedDayId, selectedMealType) as any}
+          {reportType === ReportType.MEMBERS_MEAL && (
+            <MembersReport
+              data={getMembersMealData(selectedDayId, selectedMealType, selectedPersonCategory) as any}
               selectedDayId={selectedDayId}
               selectedMealType={selectedMealType}
               dayConfig={dayConfig}

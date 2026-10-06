@@ -14,7 +14,7 @@ export function MealBarChart(props: MealMetricProps) {
   const { theme } = useAppTheme();
   const {
     total, veg, nonVeg, parcel, parcelTaken, totalVegTaken, totalNonVegTaken,
-    guestVeg, guestNonVeg, guestVegTaken, guestNonVegTaken, kidsEnabled, guestEnabled, isBothEnabled,
+    freeMealVeg, freeMealNonVeg, freeMealVegTaken, freeMealNonVegTaken, kidsEnabled, freeMealEnabled, isBothEnabled,
     kidsTotal, kidsTaken, kidsVegTaken, kidsNonVegTaken, totalMealTaken
   } = props;
 
@@ -26,8 +26,8 @@ export function MealBarChart(props: MealMetricProps) {
   const dataValues = [
     total, veg, nonVeg, parcel,
     totalVegTaken, totalNonVegTaken,
-    guestVeg + guestNonVeg,
-    guestVegTaken + guestNonVegTaken,
+    freeMealVeg + freeMealNonVeg,
+    freeMealVegTaken + freeMealNonVegTaken,
     kidsTotal,
     kidsTaken
   ];
@@ -62,10 +62,10 @@ export function MealBarChart(props: MealMetricProps) {
     );
   };
 
-  const guestTotal = guestVeg + guestNonVeg;
-  const guestTaken = guestVegTaken + guestNonVegTaken;
-  const adultsTotal = total - kidsTotal - guestTotal;
-  const adultsTaken = totalMealTaken - kidsTaken - guestTaken;
+  const freeMealTotal = freeMealVeg + freeMealNonVeg;
+  const freeMealTaken = freeMealVegTaken + freeMealNonVegTaken;
+  const adultsTotal = total - kidsTotal - freeMealTotal;
+  const adultsTaken = totalMealTaken - kidsTaken - freeMealTaken;
 
   const { dayConfig } = useCoreDatabase();
   const isSpecial = isSpecialMeal(props.day, props.type, dayConfig);
@@ -83,8 +83,8 @@ export function MealBarChart(props: MealMetricProps) {
       <View style={{ flexDirection: 'row', height: chartHeight, alignItems: 'flex-end', gap: 8 }}>
         {isBothEnabled ? (
           <>
-            <Bar label={kidsEnabled ? `${UI_TEXT.adultsAbbr}${UI_TEXT.space}${UI_TEXT.veg}` : UI_TEXT.veg} value={veg} color={theme.colors.veg} secondaryValue={totalVegTaken - kidsVegTaken - guestVegTaken} />
-            <Bar label={kidsEnabled ? `${UI_TEXT.adultsAbbr}${UI_TEXT.space}${UI_TEXT.nonVeg}` : UI_TEXT.nonVeg} value={nonVeg} color={theme.colors.nonVeg} secondaryValue={totalNonVegTaken - kidsNonVegTaken - guestNonVegTaken} />
+            <Bar label={kidsEnabled ? `${UI_TEXT.adultsAbbr}${UI_TEXT.space}${UI_TEXT.veg}` : UI_TEXT.veg} value={veg} color={theme.colors.veg} secondaryValue={totalVegTaken - kidsVegTaken - freeMealVegTaken} />
+            <Bar label={kidsEnabled ? `${UI_TEXT.adultsAbbr}${UI_TEXT.space}${UI_TEXT.nonVeg}` : UI_TEXT.nonVeg} value={nonVeg} color={theme.colors.nonVeg} secondaryValue={totalNonVegTaken - kidsNonVegTaken - freeMealNonVegTaken} />
             {hasKids && (
                <Bar label={kidsTotal === 1 ? UI_TEXT.kid : UI_TEXT.kids} value={kidsTotal} color={theme.colors.primary} secondaryValue={kidsTaken} />
             )}
@@ -98,12 +98,12 @@ export function MealBarChart(props: MealMetricProps) {
           </>
         )}
 
-        {guestEnabled && (guestTotal > 0) && (
+        {freeMealEnabled && (freeMealTotal > 0) && (
           <Bar
-            label={UI_TEXT.guests}
-            value={guestTotal}
+            label={UI_TEXT.freeMeals}
+            value={freeMealTotal}
             color={(theme.colors as any).info || theme.colors.secondary}
-            secondaryValue={guestTaken}
+            secondaryValue={freeMealTaken}
           />
         )}
 

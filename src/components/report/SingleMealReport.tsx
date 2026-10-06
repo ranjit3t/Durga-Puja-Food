@@ -25,10 +25,10 @@ interface MealStats {
   nonVegParcelTaken: number;
   kidsVegParcelTaken: number;
   kidsNonVegParcelTaken: number;
-  guestVeg: number;
-  guestNonVeg: number;
-  guestVegTaken: number;
-  guestNonVegTaken: number;
+  freeMealVeg: number;
+  freeMealNonVeg: number;
+  freeMealVegTaken: number;
+  freeMealNonVegTaken: number;
 }
 
 interface DayData {
@@ -41,14 +41,14 @@ export function SingleMealReport({
   selectedMealType,
   mealWiseData,
   dayConfig,
-  guestEnabled,
+  freeMealEnabled,
   kidsEnabled,
 }: {
   selectedDayId: string;
   selectedMealType: MealType;
   mealWiseData: DayData[];
   dayConfig: ConfigDay[];
-  guestEnabled: boolean;
+  freeMealEnabled: boolean;
   kidsEnabled: boolean;
 }) {
   const styles = useStyles();
@@ -69,10 +69,10 @@ export function SingleMealReport({
     return <Text style={styles.emptyState}>{UI_TEXT.mealDisabled}</Text>;
   }
 
-  const tVeg = m.veg + m.guestVeg + m.kidsVeg;
-  const tNonVeg = m.nonVeg + m.guestNonVeg + m.kidsNonVeg;
-  const tTakenVeg = m.vegTaken + m.guestVegTaken + m.kidsVegTaken;
-  const tTakenNonVeg = m.nonVegTaken + m.guestNonVegTaken + m.kidsNonVegTaken;
+  const tVeg = m.veg + m.freeMealVeg + m.kidsVeg;
+  const tNonVeg = m.nonVeg + m.freeMealNonVeg + m.kidsNonVeg;
+  const tTakenVeg = m.vegTaken + m.freeMealVegTaken + m.kidsVegTaken;
+  const tTakenNonVeg = m.nonVegTaken + m.freeMealNonVegTaken + m.kidsNonVegTaken;
 
   const totalDemand = tVeg + tNonVeg;
   const totalTaken = tTakenVeg + tTakenNonVeg;
@@ -403,13 +403,13 @@ export function SingleMealReport({
                 </View>
               )}
 
-              {/* 3. GUEST BLOCK */}
-              {guestEnabled && m && (m.guestVeg + m.guestNonVeg) > 0 && (
+              {/* 3. FREE MEAL BLOCK */}
+              {freeMealEnabled && m && (m.freeMealVeg + m.freeMealNonVeg) > 0 && (
                 <View style={{ backgroundColor: theme.colors.surface, borderRadius: 16, padding: 14, borderWidth: 1, borderColor: theme.colors.border, gap: 10 }}>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                     <Ionicons name="people-circle-outline" size={16} color={theme.colors.secondary} />
                     <Text style={{ fontSize: 13, fontWeight: "800", color: theme.colors.secondary, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                      {UI_TEXT.guests}
+                      {UI_TEXT.freeMeals}
                     </Text>
                   </View>
                   <View style={{ flexDirection: "row", gap: 8 }}>
@@ -419,7 +419,7 @@ export function SingleMealReport({
                           {UI_TEXT.veg}
                         </Text>
                         <Text style={{ fontSize: 20, fontWeight: "900", color: theme.colors.veg }}>
-                          {m.guestVeg}
+                          {m.freeMealVeg}
                         </Text>
                       </View>
                     )}
@@ -430,7 +430,7 @@ export function SingleMealReport({
                           {UI_TEXT.nonVeg}
                         </Text>
                         <Text style={{ fontSize: 20, fontWeight: "900", color: theme.colors.nonVeg }}>
-                          {m.guestNonVeg}
+                          {m.freeMealNonVeg}
                         </Text>
                       </View>
                     )}
@@ -440,7 +440,7 @@ export function SingleMealReport({
                         {UI_TEXT.total}
                       </Text>
                       <Text style={{ fontSize: 20, fontWeight: "900", color: theme.colors.secondary }}>
-                        {m.guestVeg + m.guestNonVeg}
+                        {m.freeMealVeg + m.freeMealNonVeg}
                       </Text>
                     </View>
                   </View>
@@ -513,7 +513,7 @@ export function SingleMealReport({
 
                     <View style={{ gap: 8 }}>
                       {varieties.map((v) => {
-                        let adultP = 0, kidsP = 0, guestP = 0;
+                        let adultP = 0, kidsP = 0, freeMealP = 0;
                         subscriptions.forEach((sub) => {
                           const slots = sub.mealSlots?.[selectedDayId] || [];
                           const adultCount = sub.peopleCount || 0;
@@ -535,12 +535,12 @@ export function SingleMealReport({
 
                         const mealMenu = foodMenu?.[selectedDayId]?.[selectedMealType];
                         if (mealMenu) {
-                          if (v.id === "veg_default") guestP = mealMenu.guestVeg || 0;
-                          else if (v.id === "nonVeg_default") guestP = mealMenu.guestNonVeg || 0;
-                          else guestP = mealMenu.guestCounts?.[v.id] || 0;
+                          if (v.id === "veg_default") freeMealP = mealMenu.freeMealVeg || 0;
+                          else if (v.id === "nonVeg_default") freeMealP = mealMenu.freeMealNonVeg || 0;
+                          else freeMealP = mealMenu.freeMealCounts?.[v.id] || 0;
                         }
 
-                        const subTotal = adultP + kidsP + guestP;
+                        const subTotal = adultP + kidsP + freeMealP;
                         const vColor = v.color || (v.type === DietType.VEG ? theme.colors.veg : theme.colors.nonVeg);
 
                         return (
@@ -569,7 +569,7 @@ export function SingleMealReport({
 
                             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                               <Text style={{ fontSize: 11, fontWeight: "700", color: theme.colors.textSecondary }}>
-                                {kidsEnabled ? `${adultP}A, ${kidsP}K` : `${adultP}M`}{guestEnabled && guestP > 0 ? `, ${guestP}G` : ""}
+                                {kidsEnabled ? `${adultP}A, ${kidsP}K` : `${adultP}M`}{freeMealEnabled && freeMealP > 0 ? `, ${freeMealP}FM` : ""}
                               </Text>
                               <Text style={{ fontSize: 14, fontWeight: "900", color: vColor }}>
                                 {subTotal}

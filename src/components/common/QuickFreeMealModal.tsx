@@ -1,6 +1,6 @@
 /**
- * Reusable Quick Guest Modal component for live/current meals.
- * Opens automatically over Guest Management Screen when launched from Home Screen.
+ * Reusable Quick Free Meal Modal component for live/current meals.
+ * Opens automatically over Free Meal Management Screen when launched from Home Screen.
  * Provides instant optimistic updates, debounced database persistence, and activity logging.
  */
 import React, { useRef, useEffect } from "react";
@@ -27,7 +27,7 @@ import {
   DietType,
   UserRole,
   AppScreen,
-  GuestCheckoutSource,
+  FreeMealCheckoutSource,
 } from "../../types";
 import {
   isDietaryEnabledForDay,
@@ -40,7 +40,7 @@ import {
 } from "../../constants";
 import { CounterInput } from "./CounterInput";
 
-interface QuickGuestModalProps {
+interface QuickFreeMealModalProps {
   visible: boolean;
   currentMealInfo: {
     dayId: string;
@@ -51,12 +51,12 @@ interface QuickGuestModalProps {
   onClose: () => void;
 }
 
-export function QuickGuestModal({
+export function QuickFreeMealModal({
   visible,
   currentMealInfo,
   onClose,
-}: QuickGuestModalProps) {
-  const { foodMenu, dayConfig, updateGuestCountDebounced } = useDatabase();
+}: QuickFreeMealModalProps) {
+  const { foodMenu, dayConfig, updateFreeMealCountDebounced } = useDatabase();
   const { userRole } = useAuth();
   const { theme } = useAppTheme();
   const { showAlert } = useUI();
@@ -67,8 +67,8 @@ export function QuickGuestModal({
 
   useEffect(() => {
     if (visible) {
-      registerModalOpen("quick_guest");
-      return () => unregisterModalOpen("quick_guest");
+      registerModalOpen("quick_free_meal");
+      return () => unregisterModalOpen("quick_free_meal");
     }
   }, [visible, registerModalOpen, unregisterModalOpen]);
 
@@ -116,15 +116,15 @@ export function QuickGuestModal({
   const mConf = dayConf ? dayConf[mealType] : undefined;
   const varieties = getMealVarieties(mConf);
 
-  const getGuestCount = (vId: string, kind: "planned" | "served"): number => {
+  const getFreeMealCount = (vId: string, kind: "planned" | "served"): number => {
     if (kind === "planned") {
-      if (vId === "veg_default") return mealMenu?.guestVeg || 0;
-      if (vId === "nonVeg_default") return mealMenu?.guestNonVeg || 0;
-      return mealMenu?.guestCounts?.[vId] || 0;
+      if (vId === "veg_default") return mealMenu?.freeMealVeg || 0;
+      if (vId === "nonVeg_default") return mealMenu?.freeMealNonVeg || 0;
+      return mealMenu?.freeMealCounts?.[vId] || 0;
     } else {
-      if (vId === "veg_default") return mealMenu?.guestVegTaken || 0;
-      if (vId === "nonVeg_default") return mealMenu?.guestNonVegTaken || 0;
-      return mealMenu?.guestTakenCounts?.[vId] || 0;
+      if (vId === "veg_default") return mealMenu?.freeMealVegTaken || 0;
+      if (vId === "nonVeg_default") return mealMenu?.freeMealNonVegTaken || 0;
+      return mealMenu?.freeMealTakenCounts?.[vId] || 0;
     }
   };
 
@@ -132,8 +132,8 @@ export function QuickGuestModal({
   let nonVegTotalPlanned = 0, nonVegTotalServed = 0;
 
   varieties.forEach((v) => {
-    const p = getGuestCount(v.id, "planned");
-    const s = getGuestCount(v.id, "served");
+    const p = getFreeMealCount(v.id, "planned");
+    const s = getFreeMealCount(v.id, "served");
     if (v.type === DietType.VEG) {
       vegTotalPlanned += p;
       vegTotalServed += s;
@@ -143,9 +143,9 @@ export function QuickGuestModal({
     }
   });
 
-  const guestTotal = vegTotalPlanned + nonVegTotalPlanned;
-  const guestTaken = vegTotalServed + nonVegTotalServed;
-  const guestPending = Math.max(0, guestTotal - guestTaken);
+  const freeMealTotal = vegTotalPlanned + nonVegTotalPlanned;
+  const freeMealTaken = vegTotalServed + nonVegTotalServed;
+  const freeMealPending = Math.max(0, freeMealTotal - freeMealTaken);
   const isSpecial = currentMealInfo ? isSpecialMeal(dayId, mealType, dayConfig) : false;
 
   const isAdmin = userRole === UserRole.ADMIN;
@@ -183,7 +183,7 @@ export function QuickGuestModal({
       >
         <View
           accessible={true}
-          accessibilityLabel={`${UI_TEXT.guestCheckout} for ${mealLabel}`}
+          accessibilityLabel={`${UI_TEXT.freeMealCheckout} for ${mealLabel}`}
           style={{
             width: "100%",
             maxWidth: cardMaxWidth,
@@ -212,7 +212,7 @@ export function QuickGuestModal({
             {/* Top Modal Header Title & Close Button */}
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
               <Text style={{ fontSize: 18, fontWeight: "900", color: theme.colors.textPrimary }}>
-                {UI_TEXT.guestCheckout}
+                {UI_TEXT.freeMealCheckout}
               </Text>
               <Pressable
                 onPress={onClose}
@@ -260,7 +260,7 @@ export function QuickGuestModal({
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flex: 1, flexWrap: "wrap" }}>
                   <Ionicons name="people" size={16} color={isSpecial ? theme.colors.specialMealText : theme.colors.white} />
                   <Text style={{ fontSize: 12, fontWeight: "900", color: isSpecial ? theme.colors.specialMealText : theme.colors.white, textTransform: "uppercase", letterSpacing: 0.5, flex: 1, flexWrap: "wrap" }}>
-                    {UI_TEXT.guestCheckout}{UI_TEXT.space}{UI_TEXT.pipe}{UI_TEXT.space}{dayLabel}{UI_TEXT.space}{UI_TEXT.hyphen}{UI_TEXT.space}{mealLabel}
+                    {UI_TEXT.freeMealCheckout}{UI_TEXT.space}{UI_TEXT.pipe}{UI_TEXT.space}{dayLabel}{UI_TEXT.space}{UI_TEXT.hyphen}{UI_TEXT.space}{mealLabel}
                   </Text>
                   {isSpecial && (
                     <View
@@ -285,28 +285,28 @@ export function QuickGuestModal({
               {/* Headcount Metrics */}
               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
                 <Text style={{ fontSize: 12, fontWeight: "800", color: isSpecial ? theme.colors.specialMealText : theme.colors.white }}>
-                  {UI_TEXT.planned}{UI_TEXT.colon}{UI_TEXT.space}{guestTotal}
+                  {UI_TEXT.planned}{UI_TEXT.colon}{UI_TEXT.space}{freeMealTotal}
                   {UI_TEXT.pipe}
-                  {UI_TEXT.served}{UI_TEXT.colon}{UI_TEXT.space}{guestTaken}
+                  {UI_TEXT.served}{UI_TEXT.colon}{UI_TEXT.space}{freeMealTaken}
                 </Text>
 
                 <Text style={{ fontSize: 11, fontWeight: "800", color: isSpecial ? theme.colors.specialMealText : theme.colors.white, opacity: 0.9 }}>
-                  {UI_TEXT.pending}{UI_TEXT.colon}{UI_TEXT.space}{guestPending}
+                  {UI_TEXT.pending}{UI_TEXT.colon}{UI_TEXT.space}{freeMealPending}
                 </Text>
               </View>
             </View>
 
-            {/* Section 2: Guest Counter Inputs for Sub-Categories */}
+            {/* Section 2: Free Meal Counter Inputs for Sub-Categories */}
             <View style={{ gap: 10 }}>
               {varieties.map((v) => {
                 if (!isDietaryEnabled(dayId, mealType, v.type, dayConfig)) return null;
 
-                const pCount = getGuestCount(v.id, "planned");
-                const sCount = getGuestCount(v.id, "served");
+                const pCount = getFreeMealCount(v.id, "planned");
+                const sCount = getFreeMealCount(v.id, "served");
                 const vColor = v.color || (v.type === DietType.VEG ? theme.colors.veg : theme.colors.nonVeg);
 
-                const plannedField = v.id === "veg_default" ? "guestVeg" : v.id === "nonVeg_default" ? "guestNonVeg" : `gc_${v.id}`;
-                const servedField = v.id === "veg_default" ? "guestVegTaken" : v.id === "nonVeg_default" ? "guestNonVegTaken" : `gt_${v.id}`;
+                const plannedField = v.id === "veg_default" ? "freeMealVeg" : v.id === "nonVeg_default" ? "freeMealNonVeg" : `fmc_${v.id}`;
+                const servedField = v.id === "veg_default" ? "freeMealVegTaken" : v.id === "nonVeg_default" ? "freeMealNonVegTaken" : `fmt_${v.id}`;
 
                 return (
                   <View
@@ -340,7 +340,7 @@ export function QuickGuestModal({
                           value={pCount}
                           min={sCount}
                           disabled={!isMealEditableForAdmin}
-                          onChange={(val) => updateGuestCountDebounced(dayId, mealType, plannedField, val, GuestCheckoutSource.GUEST_MODAL)}
+                          onChange={(val) => updateFreeMealCountDebounced(dayId, mealType, plannedField, val, FreeMealCheckoutSource.FREE_MEAL_MODAL)}
                         />
                       </View>
                       <View style={{ flex: 1, minWidth: 0 }}>
@@ -350,7 +350,7 @@ export function QuickGuestModal({
                           min={0}
                           max={pCount}
                           disabled={isServedDisabled}
-                          onChange={(val) => updateGuestCountDebounced(dayId, mealType, servedField, val, GuestCheckoutSource.GUEST_MODAL)}
+                          onChange={(val) => updateFreeMealCountDebounced(dayId, mealType, servedField, val, FreeMealCheckoutSource.FREE_MEAL_MODAL)}
                         />
                       </View>
                     </View>

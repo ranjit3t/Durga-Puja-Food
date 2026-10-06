@@ -24,10 +24,10 @@ interface MealStats {
   nonVegParcelTaken: number;
   kidsVegParcelTaken: number;
   kidsNonVegParcelTaken: number;
-  guestVeg: number;
-  guestNonVeg: number;
-  guestVegTaken: number;
-  guestNonVegTaken: number;
+  freeMealVeg: number;
+  freeMealNonVeg: number;
+  freeMealVegTaken: number;
+  freeMealNonVegTaken: number;
 }
 
 interface MealWiseData {
@@ -60,8 +60,8 @@ export function MealWiseReport({
               .filter((mKey) => isMealEnabled(item.day, mKey, dayConfig))
               .map((mKey) => {
                 const m = item.meals[mKey];
-                const tVeg = m.veg + m.guestVeg + m.kidsVeg, tNonVeg = m.nonVeg + m.guestNonVeg + m.kidsNonVeg;
-                const tTakenVeg = m.vegTaken + m.guestVegTaken + m.kidsVegTaken, tTakenNonVeg = m.nonVegTaken + m.guestNonVegTaken + m.kidsNonVegTaken;
+                const tVeg = m.veg + m.freeMealVeg + m.kidsVeg, tNonVeg = m.nonVeg + m.freeMealNonVeg + m.kidsNonVeg;
+                const tTakenVeg = m.vegTaken + m.freeMealVegTaken + m.kidsVegTaken, tTakenNonVeg = m.nonVegTaken + m.freeMealNonVegTaken + m.kidsNonVegTaken;
                 const isSpecial = isSpecialMeal(item.day, mKey, dayConfig);
                 return (
                   <View key={mKey} style={[{ backgroundColor: theme.colors.surfaceDark + (theme.themeType === AppThemeMode.DARK ? "66" : "80"), borderRadius: 20, padding: 16, marginBottom: 16 }, isSpecial && { backgroundColor: theme.colors.specialMealBg, borderColor: theme.colors.specialMealBorder, borderWidth: 2, borderStyle: "dashed" }]}>

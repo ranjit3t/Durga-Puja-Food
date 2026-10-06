@@ -150,7 +150,7 @@ export function SubscriptionForm() {
     seasonName: "",
     days: dayConfig,
     payment: paymentConfig,
-    guestEnabled: true,
+    freeMealEnabled: true,
     mobileEnabled: true,
     seasonEnabled: true
   });

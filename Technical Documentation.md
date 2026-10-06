@@ -17,7 +17,7 @@ The application follows a **Serverless Layered Architecture** built on the **Exp
 4. **Universal Real-Time WebSocket Streaming & Listener Batching**:
    - 7 native WebSocket delta listeners (`onChildAdded`, `onChildChanged`, `onChildRemoved`, `onValue`).
    - `onLogsDelta` (150ms debounce) and `onSubscriptionsDelta` (100ms debounce) batch rapid initial delta bursts into a single state update, eliminating 50+ startup re-renders.
-   - Check-ins, pass edits, deletes, team notes, audit logs, and guest plate updates stream across all connected devices in **<100ms** with a **1.5 KB payload**.
+   - Check-ins, pass edits, deletes, team notes, audit logs, and free meal plate updates stream across all connected devices in **<100ms** with a **1.5 KB payload**.
 5. **Decoupled Context Provider Architecture**:
    - `DatabaseContext` is split into `CoreDatabaseContext`, `ActivityLogsContext`, and `NotesContext`.
    - Main operational screens (`DashboardScreen`, `SubscriptionListScreen`, `ScannerScreen`, `ReportScreen`, `HomeScreen`, etc.) consume `useCoreDatabase()`, making them **completely immune to re-renders from background activity logs or notes**.
@@ -104,6 +104,12 @@ The application follows a **Serverless Layered Architecture** built on the **Exp
 - **1-Tap View Pass Navigation**: The View button (`eye-outline` icon) sets active pass selection and navigates directly to `AppScreen.DETAILS`.
 - **Pure Theme Token Background Fills**: Binds strictly to pre-defined theme tokens without color hardcoding or string concatenation (`theme.cardColors[0].accentLight` for View, `theme.colors.successLight` for Chat, `theme.colors.primary` for Share), ensuring vibrant rendering across Light and Dark themes.
 - **WCAG 2.1 AA Accessibility Integration**: Implemented full accessibility bindings (`accessible={true}`, `accessibilityRole="button"`, `accessibilityLabel`, `accessibilityHint`) across all action buttons.
+
+### N. Generic Members Report & Multi-Demographic Category Filtering (`MembersReport.tsx`, `useReportData.ts`, `ReportScreen.tsx`)
+- **Universal Pass Member Breakdown**: Replaced single-demographic kids reporting with a unified, generic `MembersReport` engine handling pass members across **Adults** and **Kids**.
+- **3-Tier Report Filtering Architecture**: `ReportScreen` provides 3 synchronized filter rows: **Day**, **Meal Slot**, and **Member Category** (`All Members`, `Adults`, `Kids`).
+- **Dynamic Feature-Based Filter Chip Rendering**: Category options dynamically toggle based on system enablement (`kidsEnabled`). Selecting a category isolates pass member data for that demographic exclusively.
+- **Zero Hardcoded Text & Hardcoded Colors**: Binds 100% to localized string keys (`UI_TEXT`) and theme tokens (`useAppTheme()`).
 
 ---
 

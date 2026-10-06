@@ -27,10 +27,10 @@ interface DayWiseData {
   nonVegParcelTaken: number;
   kidsVegParcelTaken: number;
   kidsNonVegParcelTaken: number;
-  guestVeg: number;
-  guestNonVeg: number;
-  guestVegTaken: number;
-  guestNonVegTaken: number;
+  freeMealVeg: number;
+  freeMealNonVeg: number;
+  freeMealVegTaken: number;
+  freeMealNonVegTaken: number;
 }
 
 interface MealStats {
@@ -50,10 +50,10 @@ interface MealStats {
   nonVegParcelTaken: number;
   kidsVegParcelTaken: number;
   kidsNonVegParcelTaken: number;
-  guestVeg: number;
-  guestNonVeg: number;
-  guestVegTaken: number;
-  guestNonVegTaken: number;
+  freeMealVeg: number;
+  freeMealNonVeg: number;
+  freeMealVegTaken: number;
+  freeMealNonVegTaken: number;
 }
 
 interface DayData {
@@ -68,7 +68,7 @@ export function DayWiseReport({
   mealWiseData = [],
   dayConfig,
   kidsEnabled,
-  guestEnabled,
+  freeMealEnabled,
 }: {
   data: DayWiseData[];
   selectedDayId?: string;
@@ -76,7 +76,7 @@ export function DayWiseReport({
   mealWiseData?: DayData[];
   dayConfig: ConfigDay[];
   kidsEnabled: boolean;
-  guestEnabled?: boolean;
+  freeMealEnabled?: boolean;
 }) {
   const styles = useStyles();
   const { theme } = useAppTheme();
@@ -106,10 +106,10 @@ export function DayWiseReport({
   const parcelEnabled = isParcelEnabled(currentDayId, currentMealType, dayConfig);
 
   // Meal level calculations
-  const mealVeg = m ? m.veg + (m.guestVeg || 0) + (m.kidsVeg || 0) : 0;
-  const mealNonVeg = m ? m.nonVeg + (m.guestNonVeg || 0) + (m.kidsNonVeg || 0) : 0;
-  const mealVegTaken = m ? m.vegTaken + (m.guestVegTaken || 0) + (m.kidsVegTaken || 0) : 0;
-  const mealNonVegTaken = m ? m.nonVegTaken + (m.guestNonVegTaken || 0) + (m.kidsNonVegTaken || 0) : 0;
+  const mealVeg = m ? m.veg + (m.freeMealVeg || 0) + (m.kidsVeg || 0) : 0;
+  const mealNonVeg = m ? m.nonVeg + (m.freeMealNonVeg || 0) + (m.kidsNonVeg || 0) : 0;
+  const mealVegTaken = m ? m.vegTaken + (m.freeMealVegTaken || 0) + (m.kidsVegTaken || 0) : 0;
+  const mealNonVegTaken = m ? m.nonVegTaken + (m.freeMealNonVegTaken || 0) + (m.kidsNonVegTaken || 0) : 0;
 
   const mealTotalDemand = mealVeg + mealNonVeg;
   const mealTotalTaken = mealVegTaken + mealNonVegTaken;
@@ -353,10 +353,10 @@ export function DayWiseReport({
             parcelTaken={mealTotalParcelTaken}
             totalVegTaken={mealVegTaken}
             totalNonVegTaken={mealNonVegTaken}
-            guestVeg={m?.guestVeg || 0}
-            guestNonVeg={m?.guestNonVeg || 0}
-            guestVegTaken={m?.guestVegTaken || 0}
-            guestNonVegTaken={m?.guestNonVegTaken || 0}
+            freeMealVeg={m?.freeMealVeg || 0}
+            freeMealNonVeg={m?.freeMealNonVeg || 0}
+            freeMealVegTaken={m?.freeMealVegTaken || 0}
+            freeMealNonVegTaken={m?.freeMealNonVegTaken || 0}
             totalMealTaken={mealTotalTaken}
             kidsTotal={(m?.kidsVeg || 0) + (m?.kidsNonVeg || 0)}
             kidsTaken={(m?.kidsVegTaken || 0) + (m?.kidsNonVegTaken || 0)}
@@ -365,7 +365,7 @@ export function DayWiseReport({
             kidsVegTaken={m?.kidsVegTaken || 0}
             kidsNonVegTaken={m?.kidsNonVegTaken || 0}
             kidsEnabled={kidsEnabled}
-            guestEnabled={!!guestEnabled}
+            freeMealEnabled={!!freeMealEnabled}
             isParcelEnabled={parcelEnabled}
             isBothEnabled={vegEnabled && nonVegEnabled}
             showPlannedOnly={viewMode === "planned"}
@@ -380,10 +380,10 @@ export function DayWiseReport({
               kidsNonVegTaken: UI_TEXT.vegTaken,
               vegTaken: UI_TEXT.vegTaken,
               nonVegTaken: UI_TEXT.nonVegTaken,
-              guestVeg: UI_TEXT.guestVeg,
-              guestNonVeg: UI_TEXT.guestNonVeg,
-              guestVegTaken: UI_TEXT.guestVegTaken,
-              guestNonVegTaken: UI_TEXT.guestNonVegTaken,
+              freeMealVeg: UI_TEXT.freeMealVeg,
+              freeMealNonVeg: UI_TEXT.freeMealNonVeg,
+              freeMealVegTaken: UI_TEXT.freeMealVegTaken,
+              freeMealNonVegTaken: UI_TEXT.freeMealNonVegTaken,
             }}
           />
         </View>

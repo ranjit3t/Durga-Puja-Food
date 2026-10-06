@@ -28,7 +28,11 @@ interface PaymentData {
   summary: PaymentSummaryItem[];
   details: FlatPaymentDetail[];
   totalFood: number;
+  totalAdultFood?: number;
+  totalKidsFood?: number;
   totalParcel: number;
+  totalAdultParcel?: number;
+  totalKidsParcel?: number;
   discrepancies?: DiscrepancyItem[];
 }
 
@@ -75,6 +79,16 @@ export function PaymentSummaryReport({
   });
 
   const discrepancyCount = data.discrepancies ? data.discrepancies.length : 0;
+
+  const foodBreakdown = [
+    { label: UI_TEXT.adults, amount: data.totalAdultFood ?? data.totalFood },
+    { label: UI_TEXT.kids, amount: data.totalKidsFood ?? 0 },
+  ].filter(item => item.amount > 0);
+
+  const parcelBreakdown = [
+    { label: UI_TEXT.adults, amount: data.totalAdultParcel ?? data.totalParcel },
+    { label: UI_TEXT.kids, amount: data.totalKidsParcel ?? 0 },
+  ].filter(item => item.amount > 0);
 
   return (
     <View style={{ gap: 16 }}>
@@ -190,7 +204,33 @@ export function PaymentSummaryReport({
                     {data.totalFood.toFixed(0)}
                   </Text>
                 </View>
-                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 4 }}>
+                {foodBreakdown.length > 1 ? (
+                  foodBreakdown.map((item) => (
+                    <View key={item.label} style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 4, paddingLeft: 12 }}>
+                      <Text style={{ color: theme.colors.white + "99", fontSize: 12, fontWeight: "600", flex: 1, minWidth: 120 }}>
+                        • {item.label}
+                      </Text>
+                      <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700", flexShrink: 0 }}>
+                        {UI_TEXT.rs}
+                        {UI_TEXT.space}
+                        {item.amount.toFixed(0)}
+                      </Text>
+                    </View>
+                  ))
+                ) : (
+                  <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 4, paddingLeft: 12 }}>
+                    <Text style={{ color: theme.colors.white + "99", fontSize: 12, fontWeight: "600", flex: 1, minWidth: 120 }}>
+                      • {kidsEnabled ? UI_TEXT.adults : UI_TEXT.members}
+                    </Text>
+                    <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700", flexShrink: 0 }}>
+                      {UI_TEXT.rs}
+                      {UI_TEXT.space}
+                      {data.totalFood.toFixed(0)}
+                    </Text>
+                  </View>
+                )}
+
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 4, marginTop: 4 }}>
                   <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700", flex: 1, minWidth: 120 }}>
                     {UI_TEXT.parcelCollection}
                   </Text>
@@ -200,6 +240,31 @@ export function PaymentSummaryReport({
                     {data.totalParcel.toFixed(0)}
                   </Text>
                 </View>
+                {parcelBreakdown.length > 1 ? (
+                  parcelBreakdown.map((item) => (
+                    <View key={item.label} style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 4, paddingLeft: 12 }}>
+                      <Text style={{ color: theme.colors.white + "99", fontSize: 12, fontWeight: "600", flex: 1, minWidth: 120 }}>
+                        • {item.label}
+                      </Text>
+                      <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700", flexShrink: 0 }}>
+                        {UI_TEXT.rs}
+                        {UI_TEXT.space}
+                        {item.amount.toFixed(0)}
+                      </Text>
+                    </View>
+                  ))
+                ) : (
+                  <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 4, paddingLeft: 12 }}>
+                    <Text style={{ color: theme.colors.white + "99", fontSize: 12, fontWeight: "600", flex: 1, minWidth: 120 }}>
+                      • {kidsEnabled ? UI_TEXT.adults : UI_TEXT.members}
+                    </Text>
+                    <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700", flexShrink: 0 }}>
+                      {UI_TEXT.rs}
+                      {UI_TEXT.space}
+                      {data.totalParcel.toFixed(0)}
+                    </Text>
+                  </View>
+                )}
               </View>
             </View>
           </View>

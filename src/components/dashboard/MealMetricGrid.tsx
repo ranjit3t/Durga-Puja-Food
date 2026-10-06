@@ -20,10 +20,10 @@ export interface MealMetricProps {
   parcelTaken: number;
   totalVegTaken: number;
   totalNonVegTaken: number;
-  guestVeg: number;
-  guestNonVeg: number;
-  guestVegTaken: number;
-  guestNonVegTaken: number;
+  freeMealVeg: number;
+  freeMealNonVeg: number;
+  freeMealVegTaken: number;
+  freeMealNonVegTaken: number;
   totalMealTaken: number;
   kidsTotal: number;
   kidsTaken: number;
@@ -32,7 +32,7 @@ export interface MealMetricProps {
   kidsVegTaken: number;
   kidsNonVegTaken: number;
   kidsEnabled: boolean;
-  guestEnabled: boolean;
+  freeMealEnabled: boolean;
   isParcelEnabled?: boolean;
   isBothEnabled: boolean;
   showPlannedOnly?: boolean;
@@ -48,10 +48,10 @@ export interface MealMetricProps {
     kidsNonVegTaken: string;
     vegTaken: string;
     nonVegTaken: string;
-    guestVeg: string;
-    guestNonVeg: string;
-    guestVegTaken: string;
-    guestNonVegTaken: string;
+    freeMealVeg: string;
+    freeMealNonVeg: string;
+    freeMealVegTaken: string;
+    freeMealNonVegTaken: string;
   };
 }
 
@@ -61,10 +61,10 @@ export function MealMetricGrid(props: MealMetricProps) {
   const {
     day, type,
     total, veg, nonVeg, parcel, parcelTaken,
-    totalVegTaken, totalNonVegTaken, guestVeg, guestNonVeg,
-    guestVegTaken, guestNonVegTaken, totalMealTaken,
+    totalVegTaken, totalNonVegTaken, freeMealVeg, freeMealNonVeg,
+    freeMealVegTaken, freeMealNonVegTaken, totalMealTaken,
     kidsTotal, kidsTaken, kidsVeg, kidsNonVeg, kidsVegTaken, kidsNonVegTaken,
-    guestEnabled, kidsEnabled, isParcelEnabled, isBothEnabled,
+    freeMealEnabled, kidsEnabled, isParcelEnabled, isBothEnabled,
     showPlannedOnly = false
   } = props;
 
@@ -81,17 +81,17 @@ export function MealMetricGrid(props: MealMetricProps) {
   const vegLabel = vegVariety?.name || UI_TEXT.veg;
   const nonVegLabel = nonVegVariety?.name || UI_TEXT.nonVeg;
 
-  const guestTotal = guestVeg + guestNonVeg;
-  const guestTakenTotal = guestVegTaken + guestNonVegTaken;
+  const freeMealTotal = freeMealVeg + freeMealNonVeg;
+  const freeMealTakenTotal = freeMealVegTaken + freeMealNonVegTaken;
 
   // Calculate adult specific taken counts
-  const adultVegTaken = Math.max(0, totalVegTaken - kidsVegTaken - (guestEnabled ? guestVegTaken : 0));
-  const adultNonVegTaken = Math.max(0, totalNonVegTaken - kidsNonVegTaken - (guestEnabled ? guestNonVegTaken : 0));
+  const adultVegTaken = Math.max(0, totalVegTaken - kidsVegTaken - (freeMealEnabled ? freeMealVegTaken : 0));
+  const adultNonVegTaken = Math.max(0, totalNonVegTaken - kidsNonVegTaken - (freeMealEnabled ? freeMealNonVegTaken : 0));
   const adultTotalTaken = adultVegTaken + adultNonVegTaken;
   const adultTotalPlanned = veg + nonVeg;
 
   const showKids = kidsEnabled;
-  const showGuests = guestEnabled && guestTotal > 0;
+  const showFreeMeals = freeMealEnabled && freeMealTotal > 0;
   const showParcels = isParcelEnabled ?? true;
 
   const SectionHeader = ({ icon, title, color }: { icon: keyof typeof Ionicons.glyphMap; title: string; color?: string }) => (
@@ -139,7 +139,7 @@ export function MealMetricGrid(props: MealMetricProps) {
         <View style={{ gap: 10 }}>
           <SectionHeader icon="restaurant-outline" title={UI_TEXT.subCategoryBreakdown} color={theme.colors.primary} />
           {varieties.map((v) => {
-            let adultP = 0, kidsP = 0, adultS = 0, kidsS = 0, guestP = 0, guestS = 0;
+            let adultP = 0, kidsP = 0, adultS = 0, kidsS = 0, freeMealP = 0, freeMealS = 0;
             subscriptions.forEach((sub) => {
               const slots = sub.mealSlots?.[day] || [];
               const taken = sub.takenByPerson?.[day] || [];
@@ -169,19 +169,19 @@ export function MealMetricGrid(props: MealMetricProps) {
             const mealMenu = foodMenu?.[day]?.[type];
             if (mealMenu) {
               if (v.id === "veg_default") {
-                guestP = mealMenu.guestVeg || 0;
-                guestS = mealMenu.guestVegTaken || 0;
+                freeMealP = mealMenu.freeMealVeg || 0;
+                freeMealS = mealMenu.freeMealVegTaken || 0;
               } else if (v.id === "nonVeg_default") {
-                guestP = mealMenu.guestNonVeg || 0;
-                guestS = mealMenu.guestNonVegTaken || 0;
+                freeMealP = mealMenu.freeMealNonVeg || 0;
+                freeMealS = mealMenu.freeMealNonVegTaken || 0;
               } else {
-                guestP = mealMenu.guestCounts?.[v.id] || 0;
-                guestS = mealMenu.guestTakenCounts?.[v.id] || 0;
+                freeMealP = mealMenu.freeMealCounts?.[v.id] || 0;
+                freeMealS = mealMenu.freeMealTakenCounts?.[v.id] || 0;
               }
             }
 
-            const totalV = adultP + kidsP + guestP;
-            const totalS = adultS + kidsS + guestS;
+            const totalV = adultP + kidsP + freeMealP;
+            const totalS = adultS + kidsS + freeMealS;
             const vColor = v.color || (v.type === DietType.VEG ? theme.colors.veg : theme.colors.nonVeg);
 
             return (
@@ -209,8 +209,8 @@ export function MealMetricGrid(props: MealMetricProps) {
                   ) : (
                     <Metric icon="person-outline" label={UI_TEXT.members} value={adultP} color={theme.colors.textSecondary} />
                   )}
-                  {guestEnabled && guestP > 0 ? (
-                    <Metric icon="people-circle-outline" label={UI_TEXT.guests} value={guestP} color={theme.colors.secondary} />
+                  {freeMealEnabled && freeMealP > 0 ? (
+                    <Metric icon="people-circle-outline" label={UI_TEXT.freeMeals} value={freeMealP} color={theme.colors.secondary} />
                   ) : null}
                 </View>
               </View>
@@ -291,31 +291,31 @@ export function MealMetricGrid(props: MealMetricProps) {
             </View>
           )}
 
-          {/* 4. GUESTS SECTION */}
-          {showGuests && (
+          {/* 4. FREE MEALS SECTION */}
+          {showFreeMeals && (
             <View style={{ gap: 4 }}>
               <SectionHeader
                 icon="people-circle-outline"
-                title={UI_TEXT.guests}
+                title={UI_TEXT.freeMeals}
                 color={theme.colors.secondary}
               />
               <View style={styles.metricGrid}>
                 {isBothEnabled ? (
                   <>
-                    <Metric icon="leaf-outline" label={vegLabel} value={guestVeg} color={theme.colors.veg} />
+                    <Metric icon="leaf-outline" label={vegLabel} value={freeMealVeg} color={theme.colors.veg} />
                     {!showPlannedOnly && (
-                      <Metric icon="checkmark-done-outline" label={UI_TEXT.served} value={guestVegTaken} color={theme.colors.veg} />
+                      <Metric icon="checkmark-done-outline" label={UI_TEXT.served} value={freeMealVegTaken} color={theme.colors.veg} />
                     )}
-                    <Metric icon="flame-outline" label={nonVegLabel} value={guestNonVeg} color={theme.colors.nonVeg} />
+                    <Metric icon="flame-outline" label={nonVegLabel} value={freeMealNonVeg} color={theme.colors.nonVeg} />
                     {!showPlannedOnly && (
-                      <Metric icon="checkmark-done-outline" label={UI_TEXT.served} value={guestNonVegTaken} color={theme.colors.nonVeg} />
+                      <Metric icon="checkmark-done-outline" label={UI_TEXT.served} value={freeMealNonVegTaken} color={theme.colors.nonVeg} />
                     )}
                   </>
                 ) : (
                   <>
-                    <Metric icon="people-circle-outline" label={showPlannedOnly ? UI_TEXT.total : UI_TEXT.planned} value={guestTotal} color={theme.colors.secondary} />
+                    <Metric icon="people-circle-outline" label={showPlannedOnly ? UI_TEXT.total : UI_TEXT.planned} value={freeMealTotal} color={theme.colors.secondary} />
                     {!showPlannedOnly && (
-                      <Metric icon="checkmark-done-outline" label={UI_TEXT.served} value={guestTakenTotal} color={theme.colors.veg} />
+                      <Metric icon="checkmark-done-outline" label={UI_TEXT.served} value={freeMealTakenTotal} color={theme.colors.veg} />
                     )}
                   </>
                 )}

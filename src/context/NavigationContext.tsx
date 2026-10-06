@@ -38,9 +38,9 @@ interface NavigationContextType {
   isQuickCheckout: boolean;
   setIsQuickCheckout: (val: boolean) => void;
 
-  // Quick Guest Mode State
-  isQuickGuestMode: boolean;
-  setIsQuickGuestMode: (val: boolean) => void;
+  // Quick Free Meal Mode State
+  isQuickFreeMealMode: boolean;
+  setIsQuickFreeMealMode: (val: boolean) => void;
 
   // Subscription Search
   subscriptionSearch: string;
@@ -53,7 +53,7 @@ interface NavigationContextType {
   setTargetMeal: (meal: MealType | null) => void;
 
   // Actions
-  startNew: (dayConfig: ConfigDay[], seasonName: string, paymentConfig: PaymentConfig, guestEnabled: boolean, mobileEnabled: boolean, seasonEnabled: boolean) => void;
+  startNew: (dayConfig: ConfigDay[], seasonName: string, paymentConfig: PaymentConfig, freeMealEnabled: boolean, mobileEnabled: boolean, seasonEnabled: boolean) => void;
   openScannedValue: (val: string, subscriptions: Subscription[]) => boolean;
 }
 
@@ -69,9 +69,9 @@ export function NavigationProvider({ children }: { children: React.ReactNode }) 
   const [selectedRecord, setSelectedRecord] = useState<Subscription | null>(null);
   const [editing, setEditing] = useState<Subscription | null>(null);
 
-  // Quick Checkout & Guest States
+  // Quick Checkout & Free Meal States
   const [isQuickCheckout, setIsQuickCheckout] = useState(false);
-  const [isQuickGuestMode, setIsQuickGuestMode] = useState(false);
+  const [isQuickFreeMealMode, setIsQuickFreeMealMode] = useState(false);
 
   // View Filter states
   const [reportType, setReportType] = useState<ReportType>(ReportType.DAY);
@@ -82,12 +82,12 @@ export function NavigationProvider({ children }: { children: React.ReactNode }) 
   const [targetDay, setTargetDay] = useState<Day>("");
   const [targetMeal, setTargetMeal] = useState<MealType | null>(null);
 
-  const startNew = (dayConfig: ConfigDay[], seasonName: string, paymentConfig: PaymentConfig, guestEnabled: boolean, mobileEnabled: boolean, seasonEnabled: boolean) => {
+  const startNew = (dayConfig: ConfigDay[], seasonName: string, paymentConfig: PaymentConfig, freeMealEnabled: boolean, mobileEnabled: boolean, seasonEnabled: boolean) => {
     const enabledMethods = getEnabledPaymentMethods({
       seasonName,
       days: dayConfig,
       payment: paymentConfig,
-      guestEnabled,
+      freeMealEnabled,
       mobileEnabled,
       seasonEnabled
     });
@@ -133,7 +133,7 @@ export function NavigationProvider({ children }: { children: React.ReactNode }) 
     return false;
   };
 
-  const resetViewStates = (preserveQuickCheckout = false, preserveQuickGuest = false) => {
+  const resetViewStates = (preserveQuickCheckout = false, preserveQuickFreeMeal = false) => {
     setReportType(ReportType.DAY);
     setReportDayId("");
     setReportMealType(MealType.BREAKFAST);
@@ -143,8 +143,8 @@ export function NavigationProvider({ children }: { children: React.ReactNode }) 
     if (!preserveQuickCheckout) {
       setIsQuickCheckout(false);
     }
-    if (!preserveQuickGuest) {
-      setIsQuickGuestMode(false);
+    if (!preserveQuickFreeMeal) {
+      setIsQuickFreeMealMode(false);
     }
   };
 
@@ -154,10 +154,10 @@ export function NavigationProvider({ children }: { children: React.ReactNode }) 
       resetViewStates(false, false);
     } else if (next !== screen) {
       if (screen === AppScreen.HOME) {
-        resetViewStates(next === AppScreen.SCANNER, next === AppScreen.GUEST_MANAGEMENT);
+        resetViewStates(next === AppScreen.SCANNER, next === AppScreen.FREE_MEAL_MANAGEMENT);
       } else {
         if (next !== AppScreen.SCANNER) setIsQuickCheckout(false);
-        if (next !== AppScreen.GUEST_MANAGEMENT) setIsQuickGuestMode(false);
+        if (next !== AppScreen.FREE_MEAL_MANAGEMENT) setIsQuickFreeMealMode(false);
       }
 
       // Pass Workflow Optimization:
@@ -184,7 +184,7 @@ export function NavigationProvider({ children }: { children: React.ReactNode }) 
         resetViewStates(false, false);
       } else {
         if (prev !== AppScreen.SCANNER) setIsQuickCheckout(false);
-        if (prev !== AppScreen.GUEST_MANAGEMENT) setIsQuickGuestMode(false);
+        if (prev !== AppScreen.FREE_MEAL_MANAGEMENT) setIsQuickFreeMealMode(false);
       }
       setScreen(prev);
       return true;
@@ -221,11 +221,11 @@ export function NavigationProvider({ children }: { children: React.ReactNode }) 
     subscriptionSearch, setSubscriptionSearch,
     targetDay, setTargetDay, targetMeal, setTargetMeal,
     isQuickCheckout, setIsQuickCheckout,
-    isQuickGuestMode, setIsQuickGuestMode
+    isQuickFreeMealMode, setIsQuickFreeMealMode
   }), [
     screen, history, selectedId, selectedRecord, editing,
     reportType, reportDayId, reportMealType, subscriptionSearch,
-    targetDay, targetMeal, isQuickCheckout, isQuickGuestMode,
+    targetDay, targetMeal, isQuickCheckout, isQuickFreeMealMode,
     startNew, openScannedValue
   ]);
 

@@ -171,7 +171,7 @@ export function ChatWidget() {
   const ALLOWED_CHAT_SCREENS = [
     AppScreen.HOME,
     AppScreen.DASHBOARD,
-    AppScreen.GUEST_MANAGEMENT,
+    AppScreen.FREE_MEAL_MANAGEMENT,
     AppScreen.SETTINGS,
     AppScreen.REPORT,
     AppScreen.ACTIVITY_LOG,

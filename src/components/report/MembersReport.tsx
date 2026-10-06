@@ -6,10 +6,12 @@ import { UI_TEXT } from "../../strings";
 import { isDietaryEnabled } from "../../constants";
 import { ConfigDay, MealType, DietType } from "../../domain";
 
-interface KidsMealItem {
+export interface MemberMealReportItem {
   id: string;
   block: string;
   flat: string;
+  categoryLabel?: string;
+  isFreeMeal?: boolean;
   veg: number;
   nonVeg: number;
   vegTaken: number;
@@ -21,14 +23,14 @@ interface KidsMealItem {
   total: number;
 }
 
-export function KidsReport({
+export function MembersReport({
   data,
   selectedDayId,
   selectedMealType,
   dayConfig,
   onSelectFlat,
 }: {
-  data: KidsMealItem[];
+  data: MemberMealReportItem[];
   selectedDayId: string;
   selectedMealType: MealType;
   dayConfig: ConfigDay[];
@@ -49,19 +51,35 @@ export function KidsReport({
 
           return (
             <Pressable
-              key={item.id}
-              onPress={() => onSelectFlat(item.id)}
+              key={`${item.id}-${item.categoryLabel || index}`}
+              onPress={() => !item.isFreeMeal && onSelectFlat(item.id)}
+              disabled={item.isFreeMeal}
+              accessible={true}
+              accessibilityRole={item.isFreeMeal ? "none" : "button"}
+              accessibilityLabel={`${item.block ? `${item.block}-${item.flat}` : item.flat}, ${item.total} ${UI_TEXT.people}`}
+              accessibilityHint={item.isFreeMeal ? undefined : UI_TEXT.viewPassHint}
               style={({ pressed }) => [
                 styles.dashboardCard,
                 { backgroundColor: colorScheme.bg, borderColor: colorScheme.border, borderWidth: 1.5 },
-                pressed && { opacity: 0.7 }
+                !item.isFreeMeal && pressed && { opacity: 0.7 }
               ]}
             >
               <View style={styles.dashboardCardTop}>
-                <View>
-                  <Text style={[styles.dashboardDay, { color: colorScheme.accent }]}>{item.block}{UI_TEXT.hyphen}{item.flat}</Text>
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: theme.colors.textSecondary, marginTop: 2 }}>
-                    {item.total} {item.total === 1 ? UI_TEXT.kid : UI_TEXT.kids}
+                <View style={{ gap: 4 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                    <Text style={[styles.dashboardDay, { color: colorScheme.accent }]}>
+                      {item.block ? `${item.block}${UI_TEXT.hyphen}${item.flat}` : item.flat}
+                    </Text>
+                    {item.categoryLabel && (
+                      <View style={{ backgroundColor: colorScheme.accent + "20", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, borderWidth: 1, borderColor: colorScheme.accent }}>
+                        <Text style={{ fontSize: 10, fontWeight: "800", color: colorScheme.accent }}>
+                          {item.categoryLabel}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: theme.colors.textSecondary }}>
+                    {item.total} {item.total === 1 ? UI_TEXT.personSuffix : UI_TEXT.personsSuffix}
                   </Text>
                 </View>
 

@@ -55,11 +55,11 @@ export function ViewMenuScreen() {
   const emptyMeal = {
     veg: [],
     nonVeg: [],
-    guestVeg: 0,
-    guestNonVeg: 0,
-    guestTaken: 0,
-    guestVegTaken: 0,
-    guestNonVegTaken: 0
+    freeMealVeg: 0,
+    freeMealNonVeg: 0,
+    freeMealTaken: 0,
+    freeMealVegTaken: 0,
+    freeMealNonVegTaken: 0
   };
   const isAdmin = userRole === UserRole.ADMIN;
   const sortedActiveDays = useMemo(() => {

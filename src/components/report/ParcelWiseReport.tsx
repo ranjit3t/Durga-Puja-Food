@@ -21,10 +21,10 @@ interface MealStats {
   kidsNonVegParcel?: number;
   kidsVegParcelTaken?: number;
   kidsNonVegParcelTaken?: number;
-  guestVeg: number;
-  guestNonVeg: number;
-  guestVegTaken: number;
-  guestNonVegTaken: number;
+  freeMealVeg: number;
+  freeMealNonVeg: number;
+  freeMealVegTaken: number;
+  freeMealNonVegTaken: number;
 }
 
 interface MealWiseData {

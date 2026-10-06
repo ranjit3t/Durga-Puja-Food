@@ -26,7 +26,7 @@ import { ViewMenuScreen } from "../screens/ViewMenuScreen";
 import { MenuEditorScreen } from "../screens/MenuEditorScreen";
 import { ReportScreen } from "../screens/ReportScreen";
 import { SettingsScreen } from "../screens/SettingsScreen";
-import { GuestManagementScreen } from "../screens/GuestManagementScreen";
+import { FreeMealManagementScreen } from "../screens/FreeMealManagementScreen";
 import { ActivityLogScreen } from "../screens/ActivityLogScreen";
 import { NotesScreen } from "../screens/NotesScreen";
 import { ContactsScreen } from "../screens/ContactsScreen";
@@ -75,8 +75,8 @@ export function AppNavigator() {
       case AppScreen.DASHBOARD:
         screenComponent = <DashboardScreen />;
         break;
-      case AppScreen.GUEST_MANAGEMENT:
-        screenComponent = <GuestManagementScreen />;
+      case AppScreen.FREE_MEAL_MANAGEMENT:
+        screenComponent = <FreeMealManagementScreen />;
         break;
       case AppScreen.VIEW_MENU:
         screenComponent = <ViewMenuScreen />;

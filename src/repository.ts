@@ -63,8 +63,8 @@ export interface SubscriptionRepository {
   getMenu(): Promise<FoodMenu>;
   updateMenu(menu: FoodMenu): Promise<void>;
   updateMealMenu(dayId: string, mealKey: MealType, menu: MealMenu): Promise<void>;
-  updateGuestCount(dayId: string, mealKey: MealType, field: string, value: number): Promise<void>;
-  updateGuestCounts(dayId: string, mealKey: MealType, data: Record<string, any>): Promise<void>;
+  updateFreeMealCount(dayId: string, mealKey: MealType, field: string, value: number): Promise<void>;
+  updateFreeMealCounts(dayId: string, mealKey: MealType, data: Record<string, any>): Promise<void>;
   getConfig(): Promise<AppConfig>;
   updateConfig(config: AppConfig): Promise<void>;
   updateSubscriptionStatus(flatId: string, dayId: string, personIndex: number, slot: string, taken: boolean, timeStr?: string): Promise<void>;
@@ -173,11 +173,11 @@ function emptyMenu(eventDays: string[]): FoodMenu {
   const emptyMeal = () => ({
     veg: [],
     nonVeg: [],
-    guestVeg: 0,
-    guestNonVeg: 0,
-    guestTaken: 0,
-    guestVegTaken: 0,
-    guestNonVegTaken: 0,
+    freeMealVeg: 0,
+    freeMealNonVeg: 0,
+    freeMealTaken: 0,
+    freeMealVegTaken: 0,
+    freeMealNonVegTaken: 0,
     kidsVeg: 0,
     kidsNonVeg: 0,
     kidsVegTaken: 0,
@@ -559,19 +559,19 @@ export function createFirebaseRepository(): SubscriptionRepository {
       if (!services) return;
       await set(ref(services.db, `${menuPath}/${dayId}/${mealKey}`), cleanUndefined(menu));
     },
-    async updateGuestCount(dayId, mealKey, field, value) {
+    async updateFreeMealCount(dayId, mealKey, field, value) {
       const services = await ensureFirebaseAuth();
       if (!services) return;
       await set(ref(services.db, `${menuPath}/${dayId}/${mealKey}/${field}`), value);
     },
-    async updateGuestCounts(dayId, mealKey, data) {
+    async updateFreeMealCounts(dayId, mealKey, data) {
       const services = await ensureFirebaseAuth();
       if (!services) return;
       await update(ref(services.db, `${menuPath}/${dayId}/${mealKey}`), cleanUndefined(data));
     },
     async getConfig() {
       const services = await ensureFirebaseAuth();
-      if (!services) return { seasonName: "", days: [], payment: { enabled: true, options: { upi: true, cash: true, bankTransfer: true } }, guestEnabled: true, mobileEnabled: true, foodPriceEnabled: false, seasonEnabled: true, kidsEnabled: false };
+      if (!services) return { seasonName: "", days: [], payment: { enabled: true, options: { upi: true, cash: true, bankTransfer: true } }, freeMealEnabled: true, mobileEnabled: true, foodPriceEnabled: false, seasonEnabled: true, kidsEnabled: false };
       const snapshot = await get(ref(services.db, configPath));
       const val = snapshot.val();
 
@@ -579,7 +579,7 @@ export function createFirebaseRepository(): SubscriptionRepository {
 
       if (snapshot.exists() && val) {
         if (Array.isArray(val)) {
-          return { seasonName: "", days: normalizeDayConfig(val), payment: defaultPayment, guestEnabled: true, mobileEnabled: true, foodPriceEnabled: false, seasonEnabled: true, kidsEnabled: false };
+          return { seasonName: "", days: normalizeDayConfig(val), payment: defaultPayment, freeMealEnabled: true, mobileEnabled: true, foodPriceEnabled: false, seasonEnabled: true, kidsEnabled: false };
         }
 
         const days = Array.isArray(val.days)
@@ -595,7 +595,7 @@ export function createFirebaseRepository(): SubscriptionRepository {
           seasonName: val.seasonName || "",
           days: normalizeDayConfig(finalDays),
           payment: val.payment || defaultPayment,
-          guestEnabled: val.guestEnabled !== false,
+          freeMealEnabled: val.freeMealEnabled !== false,
           mobileEnabled: val.mobileEnabled !== false,
           foodPriceEnabled: val.foodPriceEnabled || false,
           seasonEnabled: val.seasonEnabled !== false,
@@ -605,7 +605,7 @@ export function createFirebaseRepository(): SubscriptionRepository {
           soundEnabled: val.soundEnabled !== undefined ? Boolean(val.soundEnabled) : true,
         };
       }
-      return { seasonName: "", days: [], payment: defaultPayment, guestEnabled: true, mobileEnabled: true, foodPriceEnabled: false, seasonEnabled: true, kidsEnabled: false, soundEnabled: true };
+      return { seasonName: "", days: [], payment: defaultPayment, freeMealEnabled: true, mobileEnabled: true, foodPriceEnabled: false, seasonEnabled: true, kidsEnabled: false, soundEnabled: true };
     },
     async updateConfig(config) {
       const services = await ensureFirebaseAuth();
@@ -886,7 +886,7 @@ export function createFirebaseRepository(): SubscriptionRepository {
           const val = snapshot.val();
           const defaultPayment = { enabled: true, options: { upi: true, cash: true, bankTransfer: true } };
           if (Array.isArray(val)) {
-            callback({ seasonName: "", days: normalizeDayConfig(val), payment: defaultPayment, guestEnabled: true, mobileEnabled: true, foodPriceEnabled: false, seasonEnabled: true, kidsEnabled: false });
+            callback({ seasonName: "", days: normalizeDayConfig(val), payment: defaultPayment, freeMealEnabled: true, mobileEnabled: true, foodPriceEnabled: false, seasonEnabled: true, kidsEnabled: false });
           } else {
             const days = Array.isArray(val.days) ? val.days : (val.days ? Object.values(val.days) : []);
             let finalDays = days as ConfigDay[];
@@ -897,7 +897,7 @@ export function createFirebaseRepository(): SubscriptionRepository {
               seasonName: val.seasonName || "",
               days: normalizeDayConfig(finalDays),
               payment: val.payment || defaultPayment,
-              guestEnabled: val.guestEnabled !== false,
+              freeMealEnabled: val.freeMealEnabled !== false,
               mobileEnabled: val.mobileEnabled !== false,
               foodPriceEnabled: val.foodPriceEnabled || false,
               seasonEnabled: val.seasonEnabled !== false,

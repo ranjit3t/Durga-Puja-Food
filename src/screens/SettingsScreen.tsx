@@ -279,7 +279,7 @@ function VarietyModal({
 export function SettingsScreen() {
   const { handleLogout } = useAuth();
   const {
-    dayConfig: config, seasonName, seasonEnabled, paymentConfig: payment, guestEnabled, mobileEnabled, foodPriceEnabled,
+    dayConfig: config, seasonName, seasonEnabled, paymentConfig: payment, freeMealEnabled, mobileEnabled, foodPriceEnabled,
     whatsappCountryCode, updateConfig, kidsEnabled, subscriptions, foodMenu, quickCheckoutAutoCloseMs, soundEnabled
   } = useCoreDatabase();
   const { addActivityLog } = useActivityLogs();
@@ -296,7 +296,7 @@ export function SettingsScreen() {
     enabled: true,
     options: { upi: true, cash: true, bankTransfer: true }
   });
-  const [localGuestEnabled, setLocalGuestEnabled] = useState(true);
+  const [localFreeMealEnabled, setLocalFreeMealEnabled] = useState(true);
   const [localMobileEnabled, setLocalMobileEnabled] = useState(true);
   const [localFoodPriceEnabled, setLocalFoodPriceEnabled] = useState(false);
   const [localKidsEnabled, setLocalKidsEnabled] = useState(false);
@@ -311,7 +311,7 @@ export function SettingsScreen() {
     seasonName: string;
     seasonEnabled: boolean;
     payment: PaymentConfig;
-    guestEnabled: boolean;
+    freeMealEnabled: boolean;
     mobileEnabled: boolean;
     foodPriceEnabled: boolean;
     kidsEnabled: boolean;
@@ -448,7 +448,7 @@ export function SettingsScreen() {
         seasonName: seasonName || "",
         seasonEnabled,
         payment: payment ? JSON.parse(JSON.stringify(payment)) : { enabled: true, options: { upi: true, cash: true, bankTransfer: true } },
-        guestEnabled,
+        freeMealEnabled,
         mobileEnabled,
         foodPriceEnabled,
         kidsEnabled: kidsEnabled || false,
@@ -462,7 +462,7 @@ export function SettingsScreen() {
         setLocalSeasonName(currentContextBaseline.seasonName);
         setLocalSeasonEnabled(currentContextBaseline.seasonEnabled);
         setLocalPayment(JSON.parse(JSON.stringify(currentContextBaseline.payment)));
-        setLocalGuestEnabled(currentContextBaseline.guestEnabled);
+        setLocalFreeMealEnabled(currentContextBaseline.freeMealEnabled);
         setLocalMobileEnabled(currentContextBaseline.mobileEnabled);
         setLocalFoodPriceEnabled(currentContextBaseline.foodPriceEnabled);
         setLocalKidsEnabled(currentContextBaseline.kidsEnabled);
@@ -472,7 +472,7 @@ export function SettingsScreen() {
       }
       setSavedBaseline(currentContextBaseline);
     }
-  }, [config, seasonName, seasonEnabled, payment, guestEnabled, mobileEnabled, foodPriceEnabled, whatsappCountryCode, quickCheckoutAutoCloseMs, soundEnabled]);
+  }, [config, seasonName, seasonEnabled, payment, freeMealEnabled, mobileEnabled, foodPriceEnabled, whatsappCountryCode, quickCheckoutAutoCloseMs, soundEnabled]);
 
   const updateDay = (id: string, next: Partial<ConfigDay>) => {
     setLocalConfig((current) =>
@@ -533,20 +533,20 @@ export function SettingsScreen() {
     setLocalKidsEnabled(val);
   };
 
-  const validateAndSetGuestEnabled = (val: boolean) => {
+  const validateAndSetFreeMealEnabled = (val: boolean) => {
     if (!val) { // Switching OFF
-      const hasGuestSubscriptions = Object.values(foodMenu || {}).some(dayMenu =>
+      const hasFreeMealSubscriptions = Object.values(foodMenu || {}).some(dayMenu =>
         [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].some(mKey => {
            const m = dayMenu[mKey as keyof typeof dayMenu];
-           return m && ((m.guestVeg || 0) > 0 || (m.guestNonVeg || 0) > 0);
+           return m && ((m.freeMealVeg || 0) > 0 || (m.freeMealNonVeg || 0) > 0);
         })
       );
-      if (hasGuestSubscriptions) {
-        showAlert(UI_TEXT.confirmDisableTitle, UI_TEXT.guestDisabledError);
+      if (hasFreeMealSubscriptions) {
+        showAlert(UI_TEXT.confirmDisableTitle, UI_TEXT.freeMealDisabledError);
         return;
       }
     }
-    setLocalGuestEnabled(val);
+    setLocalFreeMealEnabled(val);
   };
 
   const validateAndSetPaymentEnabled = (val: boolean) => {
@@ -722,7 +722,7 @@ export function SettingsScreen() {
     const changes: string[] = [];
     if (localSeasonName !== seasonName) changes.push(`Name: ${seasonName || 'None'} -> ${localSeasonName}`);
     if (localSeasonEnabled !== seasonEnabled) changes.push(`Status: ${seasonEnabled ? 'Active' : 'Locked'} -> ${localSeasonEnabled ? 'Active' : 'Locked'}`);
-    if (localGuestEnabled !== guestEnabled) changes.push(`Guests: ${guestEnabled ? 'ON' : 'OFF'} -> ${localGuestEnabled ? 'ON' : 'OFF'}`);
+    if (localFreeMealEnabled !== freeMealEnabled) changes.push(`Free Meals: ${freeMealEnabled ? 'ON' : 'OFF'} -> ${localFreeMealEnabled ? 'ON' : 'OFF'}`);
     if (localMobileEnabled !== mobileEnabled) changes.push(`Mobile: ${mobileEnabled ? 'ON' : 'OFF'} -> ${localMobileEnabled ? 'ON' : 'OFF'}`);
     if (localFoodPriceEnabled !== foodPriceEnabled) changes.push(`Pricing: ${foodPriceEnabled ? 'ON' : 'OFF'} -> ${localFoodPriceEnabled ? 'ON' : 'OFF'}`);
     if (localKidsEnabled !== kidsEnabled) changes.push(`Kids: ${kidsEnabled ? 'ON' : 'OFF'} -> ${localKidsEnabled ? 'ON' : 'OFF'}`);
@@ -821,7 +821,7 @@ export function SettingsScreen() {
         seasonName: localSeasonName,
         seasonEnabled: localSeasonEnabled,
         payment: JSON.parse(JSON.stringify(localPayment)),
-        guestEnabled: localGuestEnabled,
+        freeMealEnabled: localFreeMealEnabled,
         mobileEnabled: localMobileEnabled,
         foodPriceEnabled: localFoodPriceEnabled,
         kidsEnabled: localKidsEnabled,
@@ -835,7 +835,7 @@ export function SettingsScreen() {
         seasonEnabled: localSeasonEnabled,
         days: localConfig,
         payment: localPayment,
-        guestEnabled: localGuestEnabled,
+        freeMealEnabled: localFreeMealEnabled,
         mobileEnabled: localMobileEnabled,
         foodPriceEnabled: localFoodPriceEnabled,
         kidsEnabled: localKidsEnabled,
@@ -871,7 +871,7 @@ export function SettingsScreen() {
       localSeasonName !== savedBaseline.seasonName ||
       localSeasonEnabled !== savedBaseline.seasonEnabled ||
       JSON.stringify(localPayment) !== JSON.stringify(savedBaseline.payment) ||
-      localGuestEnabled !== savedBaseline.guestEnabled ||
+      localFreeMealEnabled !== savedBaseline.freeMealEnabled ||
       localMobileEnabled !== savedBaseline.mobileEnabled ||
       localFoodPriceEnabled !== savedBaseline.foodPriceEnabled ||
       localKidsEnabled !== savedBaseline.kidsEnabled ||
@@ -885,7 +885,7 @@ export function SettingsScreen() {
     localSeasonName,
     localSeasonEnabled,
     localPayment,
-    localGuestEnabled,
+    localFreeMealEnabled,
     localMobileEnabled,
     localFoodPriceEnabled,
     localKidsEnabled,
@@ -1002,17 +1002,17 @@ export function SettingsScreen() {
            <View style={{ height: 1, backgroundColor: theme.colors.border, marginVertical: 20 }} />
            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
               <View style={{ flex: 1, marginRight: 10 }}>
-                 <Text style={{ fontSize: 16, fontWeight: '800', color: theme.colors.textPrimary }}>{UI_TEXT.guestManagementLabel}</Text>
-                 <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600' }}>{UI_TEXT.guestManagementHelper}</Text>
+                 <Text style={{ fontSize: 16, fontWeight: '800', color: theme.colors.textPrimary }}>{UI_TEXT.freeMealManagementLabel}</Text>
+                 <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600' }}>{UI_TEXT.freeMealManagementHelper}</Text>
               </View>
               <Switch
                 accessible={true}
                 accessibilityRole="switch"
-                accessibilityLabel={UI_TEXT.guestManagementLabel}
-                accessibilityHint={UI_TEXT.guestManagementHelper}
-                accessibilityState={{ checked: localGuestEnabled }}
-                value={localGuestEnabled}
-                onValueChange={(val) => validateAndSetGuestEnabled(val)}
+                accessibilityLabel={UI_TEXT.freeMealManagementLabel}
+                accessibilityHint={UI_TEXT.freeMealManagementHelper}
+                accessibilityState={{ checked: localFreeMealEnabled }}
+                value={localFreeMealEnabled}
+                onValueChange={(val) => validateAndSetFreeMealEnabled(val)}
                 trackColor={{ true: theme.colors.primary }}
                 style={{ flexShrink: 0 }}
               />

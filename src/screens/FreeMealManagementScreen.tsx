@@ -4,21 +4,21 @@ import { Ionicons } from "@expo/vector-icons";
 import { useStyles } from "../styles";
 import { useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
-import { getDayLabel, isMealEnabled, isMealDone, getSortedMealKeys, isDietaryEnabled, isMealCurrent, getMealLabel, isMealInFuture, getMealVarieties, getMealGuestCounts, isSpecialMeal } from "../constants";
-import { MealMenu, ConfigDay, MealType, DietType, AppThemeMode, ActivityModule, ActivityAction, AppScreen, UserRole, GuestCheckoutSource, DietaryVariety } from "../types";
+import { getDayLabel, isMealEnabled, isMealDone, getSortedMealKeys, isDietaryEnabled, isMealCurrent, getMealLabel, isMealInFuture, getMealVarieties, getMealFreeMealCounts, isSpecialMeal } from "../constants";
+import { MealMenu, ConfigDay, MealType, DietType, AppThemeMode, ActivityModule, ActivityAction, AppScreen, UserRole, FreeMealCheckoutSource } from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
 import { ThemeToggleButton } from "../components/common/ThemeToggleButton";
 import { UserGreeting } from "../components/common/UserGreeting";
 import { CounterInput } from "../components/common/CounterInput";
-import { QuickGuestModal } from "../components/common/QuickGuestModal";
+import { QuickFreeMealModal } from "../components/common/QuickFreeMealModal";
 import { useAuth } from "../context/AuthContext";
 import { useCoreDatabase, useActivityLogs } from "../context/DatabaseContext";
 import { useAppNavigation } from "../context/NavigationContext";
 import { useUI } from "../context/UIContext";
 
-interface GuestMealCardProps {
+interface FreeMealCardProps {
   dayId: string;
   type: MealType;
   menu: MealMenu;
@@ -34,7 +34,7 @@ interface GuestMealCardProps {
   anyCurrentMealEnabled: boolean;
 }
 
-const GuestMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, onUpdate, anyCurrentMealEnabled }: GuestMealCardProps) => {
+const FreeMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, onUpdate, anyCurrentMealEnabled }: FreeMealCardProps) => {
   const styles = useStyles();
   const { theme } = useAppTheme();
   const { width } = useWindowDimensions();
@@ -53,15 +53,15 @@ const GuestMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, onUp
 
   const isMealEditableForAdmin = isAdmin && (!anyCurrentMealEnabled ? !isDone : (isCurrent || isFuture));
 
-  const getGuestCount = (vId: string, kind: "planned" | "served"): number => {
+  const getFreeMealCount = (vId: string, kind: "planned" | "served"): number => {
     if (kind === "planned") {
-      if (vId === "veg_default") return menu.guestVeg || 0;
-      if (vId === "nonVeg_default") return menu.guestNonVeg || 0;
-      return menu.guestCounts?.[vId] || 0;
+      if (vId === "veg_default") return menu.freeMealVeg || 0;
+      if (vId === "nonVeg_default") return menu.freeMealNonVeg || 0;
+      return menu.freeMealCounts?.[vId] || 0;
     } else {
-      if (vId === "veg_default") return menu.guestVegTaken || 0;
-      if (vId === "nonVeg_default") return menu.guestNonVegTaken || 0;
-      return menu.guestTakenCounts?.[vId] || 0;
+      if (vId === "veg_default") return menu.freeMealVegTaken || 0;
+      if (vId === "nonVeg_default") return menu.freeMealNonVegTaken || 0;
+      return menu.freeMealTakenCounts?.[vId] || 0;
     }
   };
 
@@ -69,8 +69,8 @@ const GuestMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, onUp
   let nonVegTotalPlanned = 0, nonVegTotalServed = 0;
 
   varieties.forEach((v) => {
-    const p = getGuestCount(v.id, "planned");
-    const s = getGuestCount(v.id, "served");
+    const p = getFreeMealCount(v.id, "planned");
+    const s = getFreeMealCount(v.id, "served");
     if (v.type === DietType.VEG) {
       vegTotalPlanned += p;
       vegTotalServed += s;
@@ -122,12 +122,12 @@ const GuestMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, onUp
         {varieties.map((v) => {
           if (!isDietaryEnabled(dayId, type, v.type, config)) return null;
 
-          const pCount = getGuestCount(v.id, "planned");
-          const sCount = getGuestCount(v.id, "served");
+          const pCount = getFreeMealCount(v.id, "planned");
+          const sCount = getFreeMealCount(v.id, "served");
           const vColor = v.color || (v.type === DietType.VEG ? theme.colors.veg : theme.colors.nonVeg);
 
-          const plannedField = v.id === "veg_default" ? "guestVeg" : v.id === "nonVeg_default" ? "guestNonVeg" : `gc_${v.id}`;
-          const servedField = v.id === "veg_default" ? "guestVegTaken" : v.id === "nonVeg_default" ? "guestNonVegTaken" : `gt_${v.id}`;
+          const plannedField = v.id === "veg_default" ? "freeMealVeg" : v.id === "nonVeg_default" ? "freeMealNonVeg" : `fmc_${v.id}`;
+          const servedField = v.id === "veg_default" ? "freeMealVegTaken" : v.id === "nonVeg_default" ? "freeMealNonVegTaken" : `fmt_${v.id}`;
 
           return (
             <View
@@ -232,13 +232,13 @@ const GuestMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, onUp
   );
 });
 
-export function GuestManagementScreen() {
+export function FreeMealManagementScreen() {
   const { userRole, handleLogout } = useAuth();
   const {
-    foodMenu, dayConfig, seasonEnabled, updateGuestCountDebounced
+    foodMenu, dayConfig, seasonEnabled, updateFreeMealCountDebounced
   } = useCoreDatabase();
   const { addActivityLog } = useActivityLogs();
-  const { goBack, navigate, isQuickGuestMode, setIsQuickGuestMode } = useAppNavigation();
+  const { goBack, navigate, isQuickFreeMealMode, setIsQuickFreeMealMode } = useAppNavigation();
   const { showAlert: showGlobalAlert } = useUI();
 
   const styles = useStyles();
@@ -264,14 +264,14 @@ export function GuestManagementScreen() {
   const alertShownRef = React.useRef(false);
 
   React.useEffect(() => {
-    if (isQuickGuestMode) {
+    if (isQuickFreeMealMode) {
       if (currentMealInfo) {
         setModalVisible(true);
         alertShownRef.current = false;
       } else if (!alertShownRef.current) {
         alertShownRef.current = true;
         setModalVisible(false);
-        setIsQuickGuestMode(false);
+        setIsQuickFreeMealMode(false);
         showGlobalAlert(UI_TEXT.currentMealClosedTitle, UI_TEXT.currentMealClosed, [
           {
             text: UI_TEXT.ok,
@@ -284,12 +284,12 @@ export function GuestManagementScreen() {
     } else {
       alertShownRef.current = false;
     }
-  }, [isQuickGuestMode, currentMealInfo, setIsQuickGuestMode, showGlobalAlert, navigate]);
+  }, [isQuickFreeMealMode, currentMealInfo, setIsQuickFreeMealMode, showGlobalAlert, navigate]);
 
   const handleCloseModal = React.useCallback(() => {
     setModalVisible(false);
-    setIsQuickGuestMode(false);
-  }, [setIsQuickGuestMode]);
+    setIsQuickFreeMealMode(false);
+  }, [setIsQuickFreeMealMode]);
 
   const activeDays = React.useMemo(() => {
     const active = dayConfig.filter((d) => d.enabled).map((d) => d.id);
@@ -299,7 +299,6 @@ export function GuestManagementScreen() {
       if (aHasCurrent && !bHasCurrent) return -1;
       if (!aHasCurrent && bHasCurrent) return 1;
 
-      // Maintain original order for other days
       const aIdx = dayConfig.findIndex(d => d.id === a);
       const bIdx = dayConfig.findIndex(d => d.id === b);
       return aIdx - bIdx;
@@ -317,8 +316,8 @@ export function GuestManagementScreen() {
     field: string,
     value: number
   ) => {
-    updateGuestCountDebounced(day, type, field, value, GuestCheckoutSource.GUEST_SCREEN);
-  }, [updateGuestCountDebounced]);
+    updateFreeMealCountDebounced(day, type, field, value, FreeMealCheckoutSource.FREE_MEAL_SCREEN);
+  }, [updateFreeMealCountDebounced]);
 
   const handleExportExcel = React.useCallback(async () => {
     if (activeDays.length === 0) return;
@@ -332,9 +331,9 @@ export function GuestManagementScreen() {
       UI_TEXT.nonVegPlannedColumn,
       UI_TEXT.nonVegServedColumn,
       UI_TEXT.nonVegPendingColumn,
-      UI_TEXT.totalGuestPlannedColumn,
-      UI_TEXT.totalGuestServedColumn,
-      UI_TEXT.totalGuestPendingColumn,
+      UI_TEXT.totalfreeMealPlannedColumn,
+      UI_TEXT.totalfreeMealServedColumn,
+      UI_TEXT.totalfreeMealPendingColumn,
     ];
 
     const escapeCell = (val: string | number | undefined | null) => {
@@ -366,14 +365,14 @@ export function GuestManagementScreen() {
           const dayConf = dayConfig.find((d) => d.id === dayId);
           const mConf = dayConf ? dayConf[mKey] : undefined;
           const varieties = getMealVarieties(mConf, dayConf?.vegOnly);
-          const gCounts = getMealGuestCounts(mealMenu, varieties);
+          const fmCounts = getMealFreeMealCounts(mealMenu, varieties);
 
-          const vegPlanned = gCounts.guestVeg;
-          const vegServed = gCounts.guestVegTaken;
+          const vegPlanned = fmCounts.freeMealVeg;
+          const vegServed = fmCounts.freeMealVegTaken;
           const vegPending = Math.max(0, vegPlanned - vegServed);
 
-          const nonVegPlanned = gCounts.guestNonVeg;
-          const nonVegServed = gCounts.guestNonVegTaken;
+          const nonVegPlanned = fmCounts.freeMealNonVeg;
+          const nonVegServed = fmCounts.freeMealNonVegTaken;
           const nonVegPending = Math.max(0, nonVegPlanned - nonVegServed);
 
           const totalPlanned = vegPlanned + nonVegPlanned;
@@ -427,12 +426,12 @@ export function GuestManagementScreen() {
     ];
     const csvContent = csvLines.join("\n");
 
-    const fileName = UI_TEXT.exportGuestFileName.replace("{date}", new Date().toISOString().slice(0, 10));
+    const fileName = UI_TEXT.exportfreeMealFileName.replace("{date}", new Date().toISOString().slice(0, 10));
 
     addActivityLog({
-      module: ActivityModule.GUEST,
+      module: ActivityModule.FREE_MEAL,
       action: Platform.OS === "web" ? ActivityAction.DOWNLOAD : ActivityAction.SHARE,
-      description: UI_TEXT.logExportGuest,
+      description: UI_TEXT.logExportfreeMeal,
     });
 
     try {
@@ -453,7 +452,7 @@ export function GuestManagementScreen() {
         });
       }
     } catch (err) {
-      console.error("Guest export error:", err);
+      console.error("Free Meal export error:", err);
     }
   }, [activeDays, dayConfig, foodMenu, addActivityLog]);
 
@@ -474,7 +473,7 @@ export function GuestManagementScreen() {
         <UserGreeting />
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
           <View style={{ flex: 1, minWidth: 160 }}>
-            <Text style={styles.title}>{UI_TEXT.guestManagement}</Text>
+            <Text style={styles.title}>{UI_TEXT.freeMealManagement}</Text>
             <Text style={styles.subtitle}>{UI_TEXT.dashboardSubtitle}</Text>
           </View>
           {activeDays.length >= 1 && (
@@ -528,7 +527,7 @@ export function GuestManagementScreen() {
               {getSortedMealKeys(day, dayConfig)
                 .filter((mKey) => isMealEnabled(day, mKey, dayConfig))
                 .map((mKey) => (
-                  <GuestMealCard
+                  <FreeMealCard
                     key={mKey}
                     dayId={day}
                     type={mKey}
@@ -549,7 +548,7 @@ export function GuestManagementScreen() {
         </View>
       </ScrollView>
 
-      <QuickGuestModal
+      <QuickFreeMealModal
         visible={modalVisible}
         currentMealInfo={currentMealInfo}
         onClose={handleCloseModal}

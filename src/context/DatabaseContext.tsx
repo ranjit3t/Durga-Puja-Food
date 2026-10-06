@@ -25,7 +25,7 @@ import {
   TakenState,
   UserRole,
   KitchenMetrics,
-  GuestCheckoutSource,
+  FreeMealCheckoutSource,
   FoodPackage,
 } from "../types";
 import { useAuth } from "./AuthContext";
@@ -43,7 +43,7 @@ import {
   formatTakenTime,
   getDietTypeForChoice,
   getMealVarieties,
-  getMealGuestCounts
+  getMealFreeMealCounts
 } from "../constants";
 
 export interface CoreDatabaseContextType {
@@ -59,7 +59,7 @@ export interface CoreDatabaseContextType {
   seasonName: string;
   seasonEnabled: boolean;
   paymentConfig: PaymentConfig;
-  guestEnabled: boolean;
+  freeMealEnabled: boolean;
   mobileEnabled: boolean;
   foodPriceEnabled: boolean;
   kidsEnabled: boolean;
@@ -81,13 +81,13 @@ export interface CoreDatabaseContextType {
   deleteSubscription: (id: string) => Promise<void>;
   updateConfig: (config: AppConfig) => Promise<void>;
   updateMenu: (menu: FoodMenu) => Promise<void>;
-  updateGuestCount: (dayId: string, mealKey: MealType, field: string, value: number) => Promise<void>;
+  updateFreeMealCount: (dayId: string, mealKey: MealType, field: string, value: number) => Promise<void>;
   updateMealMenu: (dayId: string, mealKey: MealType, menu: MealMenu) => Promise<void>;
   updateSubscriptionStatus: (flatId: string, dayId: string, personIndex: number, slot: string, taken: boolean) => Promise<void>;
   checkInPassAtomic: (flatId: string, updatesMap: Record<string, boolean>, metricsIncrements?: Record<string, number>) => Promise<void>;
   getByPasscode: (passcode: string) => Promise<Subscription | undefined>;
   getAuthConfig: () => Promise<any>;
-  updateGuestCountDebounced: (dayId: string, mealKey: MealType, field: string, value: number, source?: GuestCheckoutSource | string) => void;
+  updateFreeMealCountDebounced: (dayId: string, mealKey: MealType, field: string, value: number, source?: FreeMealCheckoutSource | string) => void;
 }
 
 export interface ActivityLogsContextType {
@@ -131,7 +131,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
     enabled: true,
     options: { upi: true, cash: true, bankTransfer: true }
   });
-  const [guestEnabled, setGuestEnabled] = useState(true);
+  const [freeMealEnabled, setFreeMealEnabled] = useState(true);
   const [mobileEnabled, setMobileEnabled] = useState(true);
   const [foodPriceEnabled, setFoodPriceEnabled] = useState(false);
   const [kidsEnabled, setKidsEnabled] = useState(false);
@@ -227,7 +227,8 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       setSeasonName(config.seasonName);
       setSeasonEnabled(config.seasonEnabled !== false);
       if (config.payment) setPaymentConfig(config.payment);
-      setGuestEnabled(config.guestEnabled !== false);
+      const fmActive = config.freeMealEnabled !== undefined ? config.freeMealEnabled !== false : config.freeMealEnabled !== false;
+      setFreeMealEnabled(fmActive);
       setMobileEnabled(config.mobileEnabled !== false);
       setFoodPriceEnabled(config.foodPriceEnabled || false);
       setKidsEnabled(config.kidsEnabled || false);
@@ -272,7 +273,8 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       setSeasonName(config.seasonName || "");
       setSeasonEnabled(config.seasonEnabled !== false);
       if (config.payment) setPaymentConfig(config.payment);
-      setGuestEnabled(config.guestEnabled !== false);
+      const fmActive = config.freeMealEnabled !== undefined ? config.freeMealEnabled !== false : config.freeMealEnabled !== false;
+      setFreeMealEnabled(fmActive);
       setMobileEnabled(config.mobileEnabled !== false);
       setFoodPriceEnabled(config.foodPriceEnabled || false);
       setKidsEnabled(config.kidsEnabled || false);
@@ -435,7 +437,8 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       setSeasonName(config.seasonName || "");
       setSeasonEnabled(config.seasonEnabled !== false);
       if (config.payment) setPaymentConfig(config.payment);
-      setGuestEnabled(config.guestEnabled !== false);
+      const fmActive = config.freeMealEnabled !== undefined ? config.freeMealEnabled !== false : config.freeMealEnabled !== false;
+      setFreeMealEnabled(fmActive);
       setMobileEnabled(config.mobileEnabled !== false);
       setFoodPriceEnabled(config.foodPriceEnabled || false);
       setKidsEnabled(config.kidsEnabled || false);
@@ -549,7 +552,8 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       if (config.seasonName !== undefined) setSeasonName(config.seasonName);
       if (config.seasonEnabled !== undefined) setSeasonEnabled(config.seasonEnabled);
       if (config.payment) setPaymentConfig(config.payment);
-      if (config.guestEnabled !== undefined) setGuestEnabled(config.guestEnabled);
+      if (config.freeMealEnabled !== undefined) setFreeMealEnabled(config.freeMealEnabled);
+      else if (config.freeMealEnabled !== undefined) setFreeMealEnabled(config.freeMealEnabled);
       if (config.mobileEnabled !== undefined) setMobileEnabled(config.mobileEnabled);
       if (config.foodPriceEnabled !== undefined) setFoodPriceEnabled(config.foodPriceEnabled);
       if (config.kidsEnabled !== undefined) setKidsEnabled(config.kidsEnabled);
@@ -584,86 +588,88 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
     }
   }, [addActivityLog]);
 
-  const applyGuestCountUpdate = (mealMenu: MealMenu, field: string, value: number): MealMenu => {
+  const applyFreeMealCountUpdate = (mealMenu: MealMenu, field: string, value: number): MealMenu => {
     const updatedMeal: MealMenu = { ...mealMenu };
 
-    if (field === "guestVeg" || field === "guestNonVeg" || field === "guestVegTaken" || field === "guestNonVegTaken") {
+    if (field === "freeMealVeg" || field === "freeMealNonVeg" || field === "freeMealVegTaken" || field === "freeMealNonVegTaken") {
       (updatedMeal as any)[field] = value;
-    } else if (field.startsWith("gc_")) {
-      const varId = field.replace("gc_", "");
+    } else if (field.startsWith("fmc_") || field.startsWith("gc_")) {
+      const varId = field.replace("fmc_", "").replace("gc_", "");
       if (varId === "veg_default") {
-        updatedMeal.guestVeg = value;
+        updatedMeal.freeMealVeg = value;
       } else if (varId === "nonVeg_default") {
-        updatedMeal.guestNonVeg = value;
+        updatedMeal.freeMealNonVeg = value;
       } else {
-        const guestCounts = { ...(updatedMeal.guestCounts || {}) };
-        guestCounts[varId] = value;
-        updatedMeal.guestCounts = guestCounts;
+        const counts = { ...(updatedMeal.freeMealCounts || {}) };
+        counts[varId] = value;
+        updatedMeal.freeMealCounts = counts;
       }
-    } else if (field.startsWith("gt_")) {
-      const varId = field.replace("gt_", "");
+    } else if (field.startsWith("fmt_") || field.startsWith("gt_")) {
+      const varId = field.replace("fmt_", "").replace("gt_", "");
       if (varId === "veg_default") {
-        updatedMeal.guestVegTaken = value;
+        updatedMeal.freeMealVegTaken = value;
       } else if (varId === "nonVeg_default") {
-        updatedMeal.guestNonVegTaken = value;
+        updatedMeal.freeMealNonVegTaken = value;
       } else {
-        const guestTakenCounts = { ...(updatedMeal.guestTakenCounts || {}) };
-        guestTakenCounts[varId] = value;
-        updatedMeal.guestTakenCounts = guestTakenCounts;
+        const takenCounts = { ...(updatedMeal.freeMealTakenCounts || {}) };
+        takenCounts[varId] = value;
+        updatedMeal.freeMealTakenCounts = takenCounts;
       }
     } else {
       (updatedMeal as any)[field] = value;
     }
 
-    let gTotal = (updatedMeal.guestVeg || 0) + (updatedMeal.guestNonVeg || 0);
-    let gTaken = (updatedMeal.guestVegTaken || 0) + (updatedMeal.guestNonVegTaken || 0);
+    let gTotal = (updatedMeal.freeMealVeg || 0) + (updatedMeal.freeMealNonVeg || 0);
+    let gTaken = (updatedMeal.freeMealVegTaken || 0) + (updatedMeal.freeMealNonVegTaken || 0);
 
-    if (updatedMeal.guestCounts) {
-      Object.entries(updatedMeal.guestCounts).forEach(([vId, cnt]) => {
+    const countsObj = updatedMeal.freeMealCounts;
+    if (countsObj) {
+      Object.entries(countsObj).forEach(([vId, cnt]) => {
         if (vId !== "veg_default" && vId !== "nonVeg_default") {
           gTotal += Number(cnt) || 0;
         }
       });
     }
-    if (updatedMeal.guestTakenCounts) {
-      Object.entries(updatedMeal.guestTakenCounts).forEach(([vId, cnt]) => {
+    const takenCountsObj = updatedMeal.freeMealTakenCounts;
+    if (takenCountsObj) {
+      Object.entries(takenCountsObj).forEach(([vId, cnt]) => {
         if (vId !== "veg_default" && vId !== "nonVeg_default") {
           gTaken += Number(cnt) || 0;
         }
       });
     }
 
-    updatedMeal.guestTotal = gTotal;
-    updatedMeal.guestTaken = gTaken;
+    updatedMeal.freeMealTotal = gTotal;
+    updatedMeal.freeMealTaken = gTaken;
 
     return updatedMeal;
   };
 
-  const buildGuestUpdatePayload = (field: string, value: number, guestTotal: number, guestTaken: number): Record<string, any> => {
+  const buildFreeMealUpdatePayload = (field: string, value: number, freeMealTotal: number, freeMealTaken: number): Record<string, any> => {
     const payload: Record<string, any> = {
-      guestTotal,
-      guestTaken,
+      freeMealTotal,
+      freeMealTaken,
     };
 
-    if (field === "guestVeg" || field === "guestNonVeg" || field === "guestVegTaken" || field === "guestNonVegTaken") {
+    if (field === "freeMealVeg" || field === "freeMealNonVeg" || field === "freeMealVegTaken" || field === "freeMealNonVegTaken") {
       payload[field] = value;
-    } else if (field.startsWith("gc_")) {
-      const varId = field.replace("gc_", "");
+    } else if (field.startsWith("fmc_") || field.startsWith("gc_")) {
+      const varId = field.replace("fmc_", "").replace("gc_", "");
       if (varId === "veg_default") {
-        payload["guestVeg"] = value;
+        payload["freeMealVeg"] = value;
       } else if (varId === "nonVeg_default") {
-        payload["guestNonVeg"] = value;
+        payload["freeMealNonVeg"] = value;
       } else {
-        payload[`guestCounts/${varId}`] = value;
+        payload[`freeMealCounts/${varId}`] = value;
       }
-    } else if (field.startsWith("gt_")) {
-      const varId = field.replace("gt_", "");
+    } else if (field.startsWith("fmt_") || field.startsWith("gt_")) {
+      const varId = field.replace("fmt_", "").replace("gt_", "");
       if (varId === "veg_default") {
-        payload["guestVegTaken"] = value;
+        payload["freeMealVegTaken"] = value;
       } else if (varId === "nonVeg_default") {
-        payload["guestNonVegTaken"] = value;
+        payload["freeMealNonVegTaken"] = value;
       } else {
-        payload[`guestTakenCounts/${varId}`] = value;
+        payload[`freeMealTakenCounts/${varId}`] = value;
       }
     } else {
       payload[field] = value;
@@ -672,7 +678,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
     return payload;
   };
 
-  const updateGuestCount = useCallback(async (dayId: string, mealKey: MealType, field: string, value: number) => {
+  const updateFreeMealCount = useCallback(async (dayId: string, mealKey: MealType, field: string, value: number) => {
     try {
       setFoodMenu(prev => {
         const dayMenu = prev[dayId] || {
@@ -681,7 +687,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
           [MealType.DINNER]: { veg: [], nonVeg: [] },
         };
         const mealMenu = dayMenu[mealKey] || { veg: [], nonVeg: [] };
-        const updatedMeal = applyGuestCountUpdate(mealMenu, field, value);
+        const updatedMeal = applyFreeMealCountUpdate(mealMenu, field, value);
 
         return {
           ...prev,
@@ -694,18 +700,18 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
 
       setFoodMenu(currentMenu => {
         const currentMeal = currentMenu[dayId]?.[mealKey] || { veg: [], nonVeg: [] };
-        const updatedMeal = applyGuestCountUpdate(currentMeal, field, value);
-        const payload = buildGuestUpdatePayload(field, value, updatedMeal.guestTotal || 0, updatedMeal.guestTaken || 0);
+        const updatedMeal = applyFreeMealCountUpdate(currentMeal, field, value);
+        const payload = buildFreeMealUpdatePayload(field, value, updatedMeal.freeMealTotal || 0, updatedMeal.freeMealTaken || 0);
 
-        repository.updateGuestCounts(dayId, mealKey, payload);
+        repository.updateFreeMealCounts(dayId, mealKey, payload);
         return currentMenu;
       });
     } catch (err: any) {
       addActivityLog({
-        module: ActivityModule.GUEST,
+        module: ActivityModule.FREE_MEAL,
         action: ActivityAction.ERROR,
         targetId: `${dayId}-${mealKey}`,
-        description: UI_TEXT.logError.replace("{module}", ActivityModule.GUEST).replace("{message}", err.message || String(err)),
+        description: UI_TEXT.logError.replace("{module}", ActivityModule.FREE_MEAL).replace("{message}", err.message || String(err)),
         stack: err.stack
       });
       throw err;
@@ -917,13 +923,13 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
     }
   }, [foodPackages, addActivityLog]);
 
-  const guestUpdateTimers = useRef<Record<string, any>>({});
+  const freeMealUpdateTimers = useRef<Record<string, any>>({});
 
-  const updateGuestCountDebounced = useCallback((dayId: string, mealKey: MealType, field: string, value: number, source?: GuestCheckoutSource | string) => {
+  const updateFreeMealCountDebounced = useCallback((dayId: string, mealKey: MealType, field: string, value: number, source?: FreeMealCheckoutSource | string) => {
      setFoodMenu(prev => {
         const updatedDay = { ...(prev[dayId] || {}) };
         const mealMenu = updatedDay[mealKey] || { veg: [], nonVeg: [] };
-        const updatedMeal = applyGuestCountUpdate(mealMenu, field, value);
+        const updatedMeal = applyFreeMealCountUpdate(mealMenu, field, value);
 
         return {
           ...prev,
@@ -932,42 +938,42 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
      });
 
      const timerKey = `${dayId}-${mealKey}-${field}`;
-     if (guestUpdateTimers.current[timerKey]) {
-        clearTimeout(guestUpdateTimers.current[timerKey]);
+     if (freeMealUpdateTimers.current[timerKey]) {
+        clearTimeout(freeMealUpdateTimers.current[timerKey]);
      }
 
-     guestUpdateTimers.current[timerKey] = setTimeout(async () => {
+     freeMealUpdateTimers.current[timerKey] = setTimeout(async () => {
         try {
           setFoodMenu(currentMenu => {
              const currentMeal = currentMenu[dayId]?.[mealKey] || { veg: [], nonVeg: [] };
-             const updatedMeal = applyGuestCountUpdate(currentMeal, field, value);
-             const payload = buildGuestUpdatePayload(field, value, updatedMeal.guestTotal || 0, updatedMeal.guestTaken || 0);
+             const updatedMeal = applyFreeMealCountUpdate(currentMeal, field, value);
+             const payload = buildFreeMealUpdatePayload(field, value, updatedMeal.freeMealTotal || 0, updatedMeal.freeMealTaken || 0);
 
-             repository.updateGuestCounts(dayId, mealKey, payload);
+             repository.updateFreeMealCounts(dayId, mealKey, payload);
              return currentMenu;
           });
 
           addActivityLog({
-            module: ActivityModule.GUEST,
+            module: ActivityModule.FREE_MEAL,
             action: ActivityAction.UPDATE,
             targetId: `${dayId}-${mealKey}`,
-            description: UI_TEXT.logUpdateGuest
+            description: UI_TEXT.logUpdateFreeMeal
               .replace("{field}", field)
               .replace("{value}", String(value))
               .replace("{day}", getDayLabel(dayId, dayConfig))
               .replace("{meal}", getMealLabel(mealKey))
-              .replace("{source}", source || GuestCheckoutSource.GUEST_SCREEN)
+              .replace("{source}", source || FreeMealCheckoutSource.FREE_MEAL_SCREEN)
           });
         } catch (err: any) {
           addActivityLog({
-            module: ActivityModule.GUEST,
+            module: ActivityModule.FREE_MEAL,
             action: ActivityAction.ERROR,
             targetId: `${dayId}-${mealKey}`,
-            description: UI_TEXT.logError.replace("{module}", ActivityModule.GUEST).replace("{message}", err.message || String(err)),
+            description: UI_TEXT.logError.replace("{module}", ActivityModule.FREE_MEAL).replace("{message}", err.message || String(err)),
             stack: err.stack
           });
         }
-        delete guestUpdateTimers.current[timerKey];
+        delete freeMealUpdateTimers.current[timerKey];
      }, 1000);
   }, [addActivityLog, dayConfig]);
 
@@ -988,9 +994,9 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       const lVarieties = getMealVarieties(dayConf?.lunch, dayConf?.vegOnly);
       const dVarieties = getMealVarieties(dayConf?.dinner, dayConf?.vegOnly);
 
-      const bGC = getMealGuestCounts(bMenu, bVarieties);
-      const lGC = getMealGuestCounts(lMenu, lVarieties);
-      const dGC = getMealGuestCounts(dMenu, dVarieties);
+      const bFC = getMealFreeMealCounts(bMenu, bVarieties);
+      const lFC = getMealFreeMealCounts(lMenu, lVarieties);
+      const dFC = getMealFreeMealCounts(dMenu, dVarieties);
 
       const initialTotals = {
         dayId: day,
@@ -1001,11 +1007,11 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
         breakfastParcel: 0,
         breakfastParcelTaken: 0,
         breakfastTaken: 0,
-        breakfastGuestVeg: (guestEnabled && isMealEnabled(day, MealType.BREAKFAST, dayConfig) && isDietaryEnabled(day, MealType.BREAKFAST, DietType.VEG, dayConfig)) ? bGC.guestVeg : 0,
-        breakfastGuestNonVeg: (guestEnabled && isMealEnabled(day, MealType.BREAKFAST, dayConfig) && isDietaryEnabled(day, MealType.BREAKFAST, DietType.NON_VEG, dayConfig)) ? bGC.guestNonVeg : 0,
-        breakfastGuestTaken: (guestEnabled && isMealEnabled(day, MealType.BREAKFAST, dayConfig)) ? ((isDietaryEnabled(day, MealType.BREAKFAST, DietType.VEG, dayConfig) ? bGC.guestVegTaken : 0) + (isDietaryEnabled(day, MealType.BREAKFAST, DietType.NON_VEG, dayConfig) ? bGC.guestNonVegTaken : 0)) : 0,
-        breakfastGuestVegTaken: (guestEnabled && isMealEnabled(day, MealType.BREAKFAST, dayConfig) && isDietaryEnabled(day, MealType.BREAKFAST, DietType.VEG, dayConfig)) ? bGC.guestVegTaken : 0,
-        breakfastGuestNonVegTaken: (guestEnabled && isMealEnabled(day, MealType.BREAKFAST, dayConfig) && isDietaryEnabled(day, MealType.BREAKFAST, DietType.NON_VEG, dayConfig)) ? bGC.guestNonVegTaken : 0,
+        breakfastFreeMealVeg: (freeMealEnabled && isMealEnabled(day, MealType.BREAKFAST, dayConfig) && isDietaryEnabled(day, MealType.BREAKFAST, DietType.VEG, dayConfig)) ? bFC.freeMealVeg : 0,
+        breakfastFreeMealNonVeg: (freeMealEnabled && isMealEnabled(day, MealType.BREAKFAST, dayConfig) && isDietaryEnabled(day, MealType.BREAKFAST, DietType.NON_VEG, dayConfig)) ? bFC.freeMealNonVeg : 0,
+        breakfastFreeMealTaken: (freeMealEnabled && isMealEnabled(day, MealType.BREAKFAST, dayConfig)) ? ((isDietaryEnabled(day, MealType.BREAKFAST, DietType.VEG, dayConfig) ? bFC.freeMealVegTaken : 0) + (isDietaryEnabled(day, MealType.BREAKFAST, DietType.NON_VEG, dayConfig) ? bFC.freeMealNonVegTaken : 0)) : 0,
+        breakfastFreeMealVegTaken: (freeMealEnabled && isMealEnabled(day, MealType.BREAKFAST, dayConfig) && isDietaryEnabled(day, MealType.BREAKFAST, DietType.VEG, dayConfig)) ? bFC.freeMealVegTaken : 0,
+        breakfastFreeMealNonVegTaken: (freeMealEnabled && isMealEnabled(day, MealType.BREAKFAST, dayConfig) && isDietaryEnabled(day, MealType.BREAKFAST, DietType.NON_VEG, dayConfig)) ? bFC.freeMealNonVegTaken : 0,
         breakfastFlatVegTaken: 0,
         breakfastFlatNonVegTaken: 0,
         breakfastKidsTotal: 0,
@@ -1021,11 +1027,11 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
         lunchParcel: 0,
         lunchParcelTaken: 0,
         lunchTaken: 0,
-        lunchGuestVeg: (guestEnabled && isMealEnabled(day, MealType.LUNCH, dayConfig) && isDietaryEnabled(day, MealType.LUNCH, DietType.VEG, dayConfig)) ? lGC.guestVeg : 0,
-        lunchGuestNonVeg: (guestEnabled && isMealEnabled(day, MealType.LUNCH, dayConfig) && isDietaryEnabled(day, MealType.LUNCH, DietType.NON_VEG, dayConfig)) ? lGC.guestNonVeg : 0,
-        lunchGuestTaken: (guestEnabled && isMealEnabled(day, MealType.LUNCH, dayConfig)) ? ((isDietaryEnabled(day, MealType.LUNCH, DietType.VEG, dayConfig) ? lGC.guestVegTaken : 0) + (isDietaryEnabled(day, MealType.LUNCH, DietType.NON_VEG, dayConfig) ? lGC.guestNonVegTaken : 0)) : 0,
-        lunchGuestVegTaken: (guestEnabled && isMealEnabled(day, MealType.LUNCH, dayConfig) && isDietaryEnabled(day, MealType.LUNCH, DietType.VEG, dayConfig)) ? lGC.guestVegTaken : 0,
-        lunchGuestNonVegTaken: (guestEnabled && isMealEnabled(day, MealType.LUNCH, dayConfig) && isDietaryEnabled(day, MealType.LUNCH, DietType.NON_VEG, dayConfig)) ? lGC.guestNonVegTaken : 0,
+        lunchFreeMealVeg: (freeMealEnabled && isMealEnabled(day, MealType.LUNCH, dayConfig) && isDietaryEnabled(day, MealType.LUNCH, DietType.VEG, dayConfig)) ? lFC.freeMealVeg : 0,
+        lunchFreeMealNonVeg: (freeMealEnabled && isMealEnabled(day, MealType.LUNCH, dayConfig) && isDietaryEnabled(day, MealType.LUNCH, DietType.NON_VEG, dayConfig)) ? lFC.freeMealNonVeg : 0,
+        lunchFreeMealTaken: (freeMealEnabled && isMealEnabled(day, MealType.LUNCH, dayConfig)) ? ((isDietaryEnabled(day, MealType.LUNCH, DietType.VEG, dayConfig) ? lFC.freeMealVegTaken : 0) + (isDietaryEnabled(day, MealType.LUNCH, DietType.NON_VEG, dayConfig) ? lFC.freeMealNonVegTaken : 0)) : 0,
+        lunchFreeMealVegTaken: (freeMealEnabled && isMealEnabled(day, MealType.LUNCH, dayConfig) && isDietaryEnabled(day, MealType.LUNCH, DietType.VEG, dayConfig)) ? lFC.freeMealVegTaken : 0,
+        lunchFreeMealNonVegTaken: (freeMealEnabled && isMealEnabled(day, MealType.LUNCH, dayConfig) && isDietaryEnabled(day, MealType.LUNCH, DietType.NON_VEG, dayConfig)) ? lFC.freeMealNonVegTaken : 0,
         lunchFlatVegTaken: 0,
         lunchFlatNonVegTaken: 0,
         lunchKidsTotal: 0,
@@ -1041,11 +1047,11 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
         dinnerParcel: 0,
         dinnerParcelTaken: 0,
         dinnerTaken: 0,
-        dinnerGuestVeg: (guestEnabled && isMealEnabled(day, MealType.DINNER, dayConfig) && isDietaryEnabled(day, MealType.DINNER, DietType.VEG, dayConfig)) ? dGC.guestVeg : 0,
-        dinnerGuestNonVeg: (guestEnabled && isMealEnabled(day, MealType.DINNER, dayConfig) && isDietaryEnabled(day, MealType.DINNER, DietType.NON_VEG, dayConfig)) ? dGC.guestNonVeg : 0,
-        dinnerGuestTaken: (guestEnabled && isMealEnabled(day, MealType.DINNER, dayConfig)) ? ((isDietaryEnabled(day, MealType.DINNER, DietType.VEG, dayConfig) ? dGC.guestVegTaken : 0) + (isDietaryEnabled(day, MealType.DINNER, DietType.NON_VEG, dayConfig) ? dGC.guestNonVegTaken : 0)) : 0,
-        dinnerGuestVegTaken: (guestEnabled && isMealEnabled(day, MealType.DINNER, dayConfig) && isDietaryEnabled(day, MealType.DINNER, DietType.VEG, dayConfig)) ? dGC.guestVegTaken : 0,
-        dinnerGuestNonVegTaken: (guestEnabled && isMealEnabled(day, MealType.DINNER, dayConfig) && isDietaryEnabled(day, MealType.DINNER, DietType.NON_VEG, dayConfig)) ? dGC.guestNonVegTaken : 0,
+        dinnerFreeMealVeg: (freeMealEnabled && isMealEnabled(day, MealType.DINNER, dayConfig) && isDietaryEnabled(day, MealType.DINNER, DietType.VEG, dayConfig)) ? dFC.freeMealVeg : 0,
+        dinnerFreeMealNonVeg: (freeMealEnabled && isMealEnabled(day, MealType.DINNER, dayConfig) && isDietaryEnabled(day, MealType.DINNER, DietType.NON_VEG, dayConfig)) ? dFC.freeMealNonVeg : 0,
+        dinnerFreeMealTaken: (freeMealEnabled && isMealEnabled(day, MealType.DINNER, dayConfig)) ? ((isDietaryEnabled(day, MealType.DINNER, DietType.VEG, dayConfig) ? dFC.freeMealVegTaken : 0) + (isDietaryEnabled(day, MealType.DINNER, DietType.NON_VEG, dayConfig) ? dFC.freeMealNonVegTaken : 0)) : 0,
+        dinnerFreeMealVegTaken: (freeMealEnabled && isMealEnabled(day, MealType.DINNER, dayConfig) && isDietaryEnabled(day, MealType.DINNER, DietType.VEG, dayConfig)) ? dFC.freeMealVegTaken : 0,
+        dinnerFreeMealNonVegTaken: (freeMealEnabled && isMealEnabled(day, MealType.DINNER, dayConfig) && isDietaryEnabled(day, MealType.DINNER, DietType.NON_VEG, dayConfig)) ? dFC.freeMealNonVegTaken : 0,
         dinnerFlatVegTaken: 0,
         dinnerFlatNonVegTaken: 0,
         dinnerKidsTotal: 0,
@@ -1053,7 +1059,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
         dinnerKidsNonVeg: 0,
         dinnerKidsTaken: 0,
         dinnerKidsVegTaken: 0,
-        dinnerKidsNonVegTaken: 0,
+        dinnerKidsNonVegTaken: 0
       };
 
       return uniqueSubscriptions.reduce((totals, item) => {
@@ -1193,7 +1199,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
         return totals;
       }, initialTotals);
     });
-  }, [subscriptions, foodMenu, dayConfig, guestEnabled, kidsEnabled]);
+  }, [subscriptions, foodMenu, dayConfig, freeMealEnabled, kidsEnabled]);
 
   const collections = useMemo(() => {
     let total = 0, upi = 0, cash = 0, bankTransfer = 0;
@@ -1223,20 +1229,24 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
 
   const coreValue = useMemo(() => ({
     loading, firebaseError, refreshAllData,
-    subscriptions, foodMenu, dayConfig, seasonName, seasonEnabled, paymentConfig, guestEnabled, mobileEnabled, foodPriceEnabled,
+    subscriptions, foodMenu, dayConfig, seasonName, seasonEnabled, paymentConfig,
+    freeMealEnabled, mobileEnabled, foodPriceEnabled,
     kidsEnabled, whatsappCountryCode, quickCheckoutAutoCloseMs, soundEnabled, remoteAppVersion, androidAppLocation, iosAppLocation, kitchenMetrics,
     dashboardData, collections, totalPeople,
-    upsertSubscription, deleteSubscription, updateConfig, updateMenu, updateGuestCount, updateMealMenu, updateSubscriptionStatus,
+    upsertSubscription, deleteSubscription, updateConfig, updateMenu,
+    updateFreeMealCount, updateMealMenu, updateSubscriptionStatus,
     checkInPassAtomic, getByPasscode,
-    getAuthConfig, updateGuestCountDebounced
+    getAuthConfig, updateFreeMealCountDebounced
   }), [
     loading, firebaseError, refreshAllData,
-    subscriptions, foodMenu, dayConfig, seasonName, seasonEnabled, paymentConfig, guestEnabled, mobileEnabled, foodPriceEnabled,
+    subscriptions, foodMenu, dayConfig, seasonName, seasonEnabled, paymentConfig,
+    freeMealEnabled, mobileEnabled, foodPriceEnabled,
     kidsEnabled, whatsappCountryCode, quickCheckoutAutoCloseMs, soundEnabled, remoteAppVersion, androidAppLocation, iosAppLocation, kitchenMetrics,
     dashboardData, collections, totalPeople,
-    upsertSubscription, deleteSubscription, updateConfig, updateMenu, updateGuestCount, updateMealMenu, updateSubscriptionStatus,
+    upsertSubscription, deleteSubscription, updateConfig, updateMenu,
+    updateFreeMealCount, updateMealMenu, updateSubscriptionStatus,
     checkInPassAtomic, getByPasscode,
-    getAuthConfig, updateGuestCountDebounced
+    getAuthConfig, updateFreeMealCountDebounced
   ]);
 
   const logsValue = useMemo(() => ({

@@ -317,12 +317,14 @@ export function getVarietyForChoice(choice: string | undefined, varieties: Dieta
   return undefined;
 }
 
-export function getMealGuestCounts(
+export function getMealFreeMealCounts(
   mealMenu?: MealMenu,
   varieties?: DietaryVariety[]
 ) {
   if (!mealMenu) {
-    return { guestVeg: 0, guestNonVeg: 0, guestVegTaken: 0, guestNonVegTaken: 0, guestTaken: 0 };
+    return {
+      freeMealVeg: 0, freeMealNonVeg: 0, freeMealVegTaken: 0, freeMealNonVegTaken: 0, freeMealTaken: 0
+    };
   }
 
   let vegP = 0;
@@ -335,14 +337,16 @@ export function getMealGuestCounts(
       let p = 0;
       let s = 0;
       if (v.id === "veg_default") {
-        p = mealMenu.guestVeg || 0;
-        s = mealMenu.guestVegTaken || 0;
+        p = mealMenu.freeMealVeg || 0;
+        s = mealMenu.freeMealVegTaken || 0;
       } else if (v.id === "nonVeg_default") {
-        p = mealMenu.guestNonVeg || 0;
-        s = mealMenu.guestNonVegTaken || 0;
+        p = mealMenu.freeMealNonVeg || 0;
+        s = mealMenu.freeMealNonVegTaken || 0;
       } else {
-        p = Number(mealMenu.guestCounts?.[v.id]) || 0;
-        s = Number(mealMenu.guestTakenCounts?.[v.id]) || 0;
+        const counts = mealMenu.freeMealCounts;
+        const takenCounts = mealMenu.freeMealTakenCounts;
+        p = Number(counts?.[v.id]) || 0;
+        s = Number(takenCounts?.[v.id]) || 0;
       }
 
       if (v.type === DietType.VEG) {
@@ -354,18 +358,18 @@ export function getMealGuestCounts(
       }
     });
   } else {
-    vegP = mealMenu.guestVeg || 0;
-    nonVegP = mealMenu.guestNonVeg || 0;
-    vegS = mealMenu.guestVegTaken || 0;
-    nonVegS = mealMenu.guestNonVegTaken || 0;
+    vegP = mealMenu.freeMealVeg || 0;
+    nonVegP = mealMenu.freeMealNonVeg || 0;
+    vegS = mealMenu.freeMealVegTaken || 0;
+    nonVegS = mealMenu.freeMealNonVegTaken || 0;
   }
 
   return {
-    guestVeg: vegP,
-    guestNonVeg: nonVegP,
-    guestVegTaken: vegS,
-    guestNonVegTaken: nonVegS,
-    guestTaken: vegS + nonVegS,
+    freeMealVeg: vegP,
+    freeMealNonVeg: nonVegP,
+    freeMealVegTaken: vegS,
+    freeMealNonVegTaken: nonVegS,
+    freeMealTaken: vegS + nonVegS,
   };
 }
 
@@ -809,11 +813,11 @@ export const emptyFoodMenu = (config: ConfigDay[]): FoodMenu => {
   const emptyMeal = () => ({
     veg: [],
     nonVeg: [],
-    guestVeg: 0,
-    guestNonVeg: 0,
-    guestTaken: 0,
-    guestVegTaken: 0,
-    guestNonVegTaken: 0,
+    freeMealVeg: 0,
+    freeMealNonVeg: 0,
+    freeMealTaken: 0,
+    freeMealVegTaken: 0,
+    freeMealNonVegTaken: 0,
     kidsVeg: 0,
     kidsNonVeg: 0,
     kidsVegTaken: 0,

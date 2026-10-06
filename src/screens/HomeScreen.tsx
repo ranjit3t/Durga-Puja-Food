@@ -9,7 +9,7 @@ import { useCoreDatabase } from "../context/DatabaseContext";
 import { useUI } from "../context/UIContext";
 import { useAppNavigation } from "../context/NavigationContext";
 import { AppScreen, UserRole, MealType, AppThemeMode, DietaryOption, DietType } from "../types";
-import { getActiveDays, isSeasonDone, isMealCurrent, getDayLabel, isMealEnabled, isDietaryEnabled, getMealLabel, getDietTypeForChoice, getMealVarieties, getMealGuestCounts, isVersionBehind } from "../constants";
+import { getActiveDays, isSeasonDone, isMealCurrent, getDayLabel, isMealEnabled, isDietaryEnabled, getMealLabel, getDietTypeForChoice, getMealVarieties, getMealFreeMealCounts, isVersionBehind } from "../constants";
 import { ActionLabel } from "../components/common/ActionLabel";
 import { LogoutButton } from "../components/common/LogoutButton";
 import { ThemeToggleButton } from "../components/common/ThemeToggleButton";
@@ -21,9 +21,9 @@ export function HomeScreen() {
   const { theme, themeType } = useAppTheme();
   const { userRole, handleLogout, versionAlertShown, markVersionAlertShown } = useAuth();
   const {
-    subscriptions, dayConfig, seasonName, seasonEnabled, guestEnabled, totalPeople, firebaseError, paymentConfig, collections, kidsEnabled, foodMenu, remoteAppVersion, androidAppLocation, iosAppLocation, loading
+    subscriptions, dayConfig, seasonName, seasonEnabled, freeMealEnabled, totalPeople, firebaseError, paymentConfig, collections, kidsEnabled, foodMenu, remoteAppVersion, androidAppLocation, iosAppLocation, loading
   } = useCoreDatabase();
-  const { navigate, startNew, setIsQuickCheckout, setIsQuickGuestMode } = useAppNavigation();
+  const { navigate, startNew, setIsQuickCheckout, setIsQuickFreeMealMode } = useAppNavigation();
   const { showAlert, showGlobalError } = useUI();
   const { width } = useWindowDimensions();
 
@@ -90,8 +90,8 @@ export function HomeScreen() {
       });
     });
 
-    // Add Guest counts if enabled
-    if (guestEnabled) {
+    // Add Free Meal counts if enabled
+    if (freeMealEnabled) {
       Object.keys(foodMenu).forEach(dayId => {
         if (!activeDays.includes(dayId)) return;
         const dayMenu = foodMenu[dayId];
@@ -102,13 +102,13 @@ export function HomeScreen() {
           if (meal) {
             const mConf = dayConf ? dayConf[mType] : undefined;
             const varieties = getMealVarieties(mConf, dayConf?.vegOnly);
-            const gCounts = getMealGuestCounts(meal, varieties);
+            const fmCounts = getMealFreeMealCounts(meal, varieties);
 
             if (isDietaryEnabled(dayId, mType, DietType.VEG, dayConfig)) {
-              vegPlates += gCounts.guestVeg;
+              vegPlates += fmCounts.freeMealVeg;
             }
             if (isDietaryEnabled(dayId, mType, DietType.NON_VEG, dayConfig)) {
-              nonVegPlates += gCounts.guestNonVeg;
+              nonVegPlates += fmCounts.freeMealNonVeg;
             }
           }
         });
@@ -116,7 +116,7 @@ export function HomeScreen() {
     }
 
     return { adults, kids, vegPlates, nonVegPlates, totalPlates: vegPlates + nonVegPlates };
-  }, [subscriptions, dayConfig, foodMenu, guestEnabled]);
+  }, [subscriptions, dayConfig, foodMenu, freeMealEnabled]);
 
   const { isVegEnabledGlobally, isNonVegEnabledGlobally } = React.useMemo(() => {
     return {
@@ -133,7 +133,7 @@ export function HomeScreen() {
     };
   }, [dayConfig]);
 
-  const guestSummary = React.useMemo(() => {
+  const freeMealSummary = React.useMemo(() => {
     let seasonTotal = 0;
     let currentMealTotal = 0;
     const activeDays = getActiveDays(dayConfig);
@@ -148,15 +148,15 @@ export function HomeScreen() {
         if (meal) {
           const mConf = dayConf ? dayConf[mType] : undefined;
           const varieties = getMealVarieties(mConf, dayConf?.vegOnly);
-          const gCounts = getMealGuestCounts(meal, varieties);
+          const fmCounts = getMealFreeMealCounts(meal, varieties);
 
-          const vegG = isDietaryEnabled(dayId, mType, DietType.VEG, dayConfig) ? gCounts.guestVeg : 0;
-          const nonVegG = isDietaryEnabled(dayId, mType, DietType.NON_VEG, dayConfig) ? gCounts.guestNonVeg : 0;
-          const mGuest = vegG + nonVegG;
-          seasonTotal += mGuest;
+          const vegFM = isDietaryEnabled(dayId, mType, DietType.VEG, dayConfig) ? fmCounts.freeMealVeg : 0;
+          const nonVegFM = isDietaryEnabled(dayId, mType, DietType.NON_VEG, dayConfig) ? fmCounts.freeMealNonVeg : 0;
+          const mFreeMeal = vegFM + nonVegFM;
+          seasonTotal += mFreeMeal;
 
           if (isMealCurrent(dayId, mType, dayConfig)) {
-            currentMealTotal = mGuest;
+            currentMealTotal = mFreeMeal;
           }
         }
       });
@@ -238,11 +238,11 @@ export function HomeScreen() {
                 )}
               </View>
 
-              {guestEnabled && (
+              {freeMealEnabled && (
                 <View style={{ flexDirection: "row", alignItems: "center", gap: s(8), flexWrap: 'nowrap' }}>
-                  <Text style={[styles.summaryLabel, { opacity: 0.8, fontSize: labelFontSize }]}>{UI_TEXT.totalGuests}{UI_TEXT.colon}</Text>
+                  <Text style={[styles.summaryLabel, { opacity: 0.8, fontSize: labelFontSize }]}>{UI_TEXT.totalfreeMeals}{UI_TEXT.colon}</Text>
                   <Text style={[styles.summaryNumber, { fontSize: secondaryFontSize, marginTop: 0, lineHeight: secondaryFontSize + 2 }]}>
-                    {guestSummary.seasonTotal}
+                    {freeMealSummary.seasonTotal}
                   </Text>
                 </View>
               )}
@@ -295,26 +295,26 @@ export function HomeScreen() {
 
         <View style={styles.compactActions}>
           {userRole === UserRole.ADMIN && seasonEnabled && !isSeasonDone(dayConfig) && (
-            <Pressable accessible={true} accessibilityRole="button" accessibilityLabel={UI_TEXT.addFlat} onPress={() => startNew(dayConfig, seasonName, paymentConfig, guestEnabled, true, seasonEnabled)} style={[styles.compactSecondary, { backgroundColor: theme.colors.success, borderColor: theme.colors.success }]} disabled={getActiveDays(dayConfig).length === 0}>
+            <Pressable accessible={true} accessibilityRole="button" accessibilityLabel={UI_TEXT.addFlat} onPress={() => startNew(dayConfig, seasonName, paymentConfig, freeMealEnabled, true, seasonEnabled)} style={[styles.compactSecondary, { backgroundColor: theme.colors.success, borderColor: theme.colors.success }]} disabled={getActiveDays(dayConfig).length === 0}>
               <ActionLabel icon="add-circle-outline" label={UI_TEXT.addFlat} color={theme.colors.white} size={iconSize} vertical />
             </Pressable>
           )}
-          {guestEnabled && (
+          {freeMealEnabled && (
             <Pressable
               accessible={true}
               accessibilityRole="button"
-              accessibilityLabel={UI_TEXT.guestButton}
+              accessibilityLabel={UI_TEXT.freeMealButton}
               onPress={() => {
                 if (currentMealInfo) {
-                  setIsQuickGuestMode(true);
+                  setIsQuickFreeMealMode(true);
                 } else {
-                  setIsQuickGuestMode(false);
+                  setIsQuickFreeMealMode(false);
                 }
-                navigate(AppScreen.GUEST_MANAGEMENT);
+                navigate(AppScreen.FREE_MEAL_MANAGEMENT);
               }}
               style={[styles.compactSecondary, { backgroundColor: theme.cardColors[2].accent, borderColor: theme.cardColors[2].accent }]}
             >
-              <ActionLabel icon="people-circle-outline" label={UI_TEXT.guestButton} color={theme.colors.white} size={iconSize} vertical />
+              <ActionLabel icon="people-circle-outline" label={UI_TEXT.freeMealButton} color={theme.colors.white} size={iconSize} vertical />
             </Pressable>
           )}
           <Pressable accessible={true} accessibilityRole="button" accessibilityLabel={UI_TEXT.subscriptions} onPress={() => navigate(AppScreen.SUBSCRIPTION_LIST)} style={[styles.compactSecondary, { backgroundColor: theme.cardColors[1].accent, borderColor: theme.cardColors[1].accent }]}>
