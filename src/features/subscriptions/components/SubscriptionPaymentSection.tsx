@@ -61,30 +61,41 @@ export const SubscriptionPaymentSection: React.FC<SubscriptionPaymentSectionProp
       style={[styles.card, { backgroundColor: theme.cardColors[3].bg, borderColor: theme.cardColors[3].border }]}
     >
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <Text style={[styles.sectionTitle, { fontSize: 18, marginBottom: 0, color: theme.cardColors[3].accent }]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, minWidth: 0, marginRight: 8 }}>
+          <Text
+            numberOfLines={1}
+            adjustsFontSizeToFit={true}
+            style={[styles.sectionTitle, { fontSize: 16, marginBottom: 0, color: theme.cardColors[3].accent }]}
+          >
             {UI_TEXT.paymentDetails}
           </Text>
           {isPackageApplied && (
-            <View
-              style={{
-                backgroundColor: theme.colors.successLight,
-                paddingHorizontal: 8,
-                paddingVertical: 3,
-                borderRadius: 6,
-                borderWidth: 1,
-                borderColor: theme.colors.success,
-              }}
+            <Pressable
+              onPress={!lockIdentity && onOpenApplyPackageModal ? onOpenApplyPackageModal : undefined}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={UI_TEXT.packageAppliedMarker}
+              style={({ pressed }) => [
+                {
+                  backgroundColor: theme.colors.successLight,
+                  paddingHorizontal: 8,
+                  paddingVertical: 3,
+                  borderRadius: 6,
+                  borderWidth: 1,
+                  borderColor: theme.colors.success,
+                },
+                pressed && !lockIdentity && { opacity: 0.7 },
+              ]}
             >
-              <Text style={{ fontSize: 10, fontWeight: '900', color: theme.colors.success }}>
+              <Text style={{ fontSize: 9, fontWeight: '900', color: theme.colors.success }}>
                 {UI_TEXT.packageAppliedMarker}
               </Text>
-            </View>
+            </Pressable>
           )}
         </View>
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          {!lockIdentity && (hasApplicablePackages || isPackageApplied) && onOpenApplyPackageModal && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          {!lockIdentity && !isPackageApplied && hasApplicablePackages && onOpenApplyPackageModal && (
             <Pressable
               onPress={onOpenApplyPackageModal}
               accessible={true}
@@ -96,21 +107,21 @@ export const SubscriptionPaymentSection: React.FC<SubscriptionPaymentSectionProp
                   alignItems: 'center',
                   gap: 4,
                   backgroundColor: theme.colors.primary,
-                  paddingHorizontal: 10,
-                  paddingVertical: 6,
+                  paddingHorizontal: 8,
+                  paddingVertical: 5,
                   borderRadius: 8,
                 },
                 pressed && { opacity: 0.8 },
               ]}
             >
-              <Ionicons name="pricetag-outline" size={14} color={theme.colors.white} />
-              <Text style={{ color: theme.colors.white, fontWeight: '800', fontSize: 12 }}>
-                {isPackageApplied ? UI_TEXT.appliedPackage : UI_TEXT.applyPackage}
+              <Ionicons name="pricetag-outline" size={13} color={theme.colors.white} />
+              <Text style={{ color: theme.colors.white, fontWeight: '800', fontSize: 11 }}>
+                Apply
               </Text>
             </Pressable>
           )}
 
-          <View style={[styles.pill, { backgroundColor: theme.cardColors[3].accentLight }]}>
+          <View style={[styles.pill, { backgroundColor: theme.cardColors[3].accentLight, flexShrink: 0, minWidth: 45 }]}>
             <Text style={[styles.pillText, { color: theme.cardColors[3].accent }]}>{formatCurrencyAmount(totalAmount)}</Text>
           </View>
         </View>

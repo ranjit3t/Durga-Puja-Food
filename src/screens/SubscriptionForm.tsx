@@ -245,6 +245,25 @@ export function SubscriptionForm() {
     return Object.values(perPersonApplicablePackages).some((list) => list && list.length > 0);
   }, [perPersonApplicablePackages]);
 
+  // Auto-prune applied packages if meal deselects make them no longer valid
+  React.useEffect(() => {
+    setAppliedPackages((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      Object.keys(next).forEach((pIdxStr) => {
+        const pIdx = Number(pIdxStr);
+        const validList = perPersonApplicablePackages[pIdx] || [];
+        const currentPkgId = next[pIdx]?.packageId;
+        const isValid = validList.some((pkg) => pkg.packageId === currentPkgId);
+        if (!isValid) {
+          delete next[pIdx];
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, [perPersonApplicablePackages]);
+
   const isPackageApplied = useMemo(() => {
     return Object.keys(appliedPackages).length > 0;
   }, [appliedPackages]);
@@ -1991,8 +2010,8 @@ export function SubscriptionForm() {
                                 </Text>
                               )}
 
-                              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: s(4) }}>
-                                <View style={{ gap: s(2) }}>
+                              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: s(4), flexWrap: "wrap", gap: s(8) }}>
+                                <View style={{ gap: s(2), flex: 1, minWidth: s(130) }}>
                                   <Text style={{ fontSize: s(10), fontWeight: "700", color: theme.colors.textMuted }}>
                                     {UI_TEXT.normalPrice}: {appPkg.normalTotalMealPrice}
                                     {appPkg.totalParcelPrice > 0 ? ` + ${UI_TEXT.parcelPriceLabel}: ${appPkg.totalParcelPrice}` : ""}

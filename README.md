@@ -246,6 +246,7 @@ Quick Checkout can be triggered from 4 distinct application entry methods, track
 - **Dynamic Dietary Coloring for Parcel & Collection Buttons (`SubscriptionForm.tsx`)**: Parcel buttons, food collection buttons, and parcel taken buttons in Add Pass and Edit Pass dynamically reflect the selected dietary type color (`theme.colors.veg`, `theme.colors.nonVeg`, or custom variety colors) rather than hardcoded green.
 - **Auto-Selection of Parcel Taken on Meal Collection (`SubscriptionForm.tsx`)**: In edit pass, selecting the meal taken button automatically auto-selects parcel taken when a parcel is opted for for that meal, ensuring parcel pickup is marked without inadvertent omission.
 - **Missed Parcel Audit Logging (`SubscriptionForm.tsx`)**: Deselecting parcel taken during meal collection when a parcel was opted for triggers inconsistency checking (`checkParcelInconsistency`) upon save, prompting the operator and logging `ActivityAction.MISSED_PARCEL`.
+- **Accessibility-Compliant Interactive Package Tags & Auto-Pruning (`SubscriptionPaymentSection.tsx`, `SubscriptionForm.tsx`)**: Rendered the green `PACKAGE APPLIED` marker as a pressable accessibility-compliant button (`accessible={true}`, `accessibilityRole="button"`) to directly open the Apply Package Modal. Automatically hides the duplicate `Apply` button when a package is applied, and prunes invalid packages automatically when meals are deselected.
 
 ---
 

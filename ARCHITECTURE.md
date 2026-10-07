@@ -216,6 +216,7 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
   - Thoroughly audited and fixed all report hooks and components to ensure guest counts, meals, parcels, and payment collections are tracked and displayed in dedicated guest sections (labeled with the `G` abbreviation / Guest badge) rather than being clubbed into adult data or omitted.
   - Restored auto-focus and auto-selection of the current active enabled meal on report screen load and type change.
 - **View Pass Meal Subscription Plan Integration (`DetailsScreen.tsx`)**: Updated the Meal Subscription Plan section (`vCount` and `nvCount` calculations per day) to correctly aggregate and add up adult, kid, and guest meals so that passes with guests show the complete combined meal count.
+- **Accessibility-Compliant Interactive Package Tags & Auto-Pruning (`SubscriptionPaymentSection.tsx`, `SubscriptionForm.tsx`)**: Rendered the green `PACKAGE APPLIED` marker as a pressable accessibility-compliant button (`accessible={true}`, `accessibilityRole="button"`) to directly open the Apply Package Modal. Automatically hides the duplicate `Apply` button when a package is applied, and prunes invalid packages automatically when meals are deselected.
 
 ---
 

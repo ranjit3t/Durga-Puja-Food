@@ -381,10 +381,14 @@ export function ReportScreen() {
                         style={[
                           styles.selector,
                           isSelected && styles.selectorOn,
-                          { flex: 1, minWidth: 70, paddingVertical: 8, marginBottom: 0 }
+                          { flex: 1, minWidth: 55, paddingHorizontal: 6, paddingVertical: 8, marginBottom: 0 }
                         ]}
                       >
-                        <Text style={[styles.selectorText, isSelected && styles.selectorTextOn, { fontSize: 12, fontWeight: '800' }]}>
+                        <Text
+                          numberOfLines={1}
+                          adjustsFontSizeToFit={true}
+                          style={[styles.selectorText, isSelected && styles.selectorTextOn, { fontSize: 11, fontWeight: '800' }]}
+                        >
                           {cat.label}
                         </Text>
                       </Pressable>

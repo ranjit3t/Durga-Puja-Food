@@ -84,6 +84,12 @@ export function resolveGuestPrice(
   if (guestVal !== undefined && guestVal !== null && guestVal !== '' && !isNaN(Number(guestVal))) {
     return Number(guestVal);
   }
+  if (adultVal !== undefined && adultVal !== null && adultVal !== '' && !isNaN(Number(adultVal))) {
+    return Number(adultVal);
+  }
+  if (confVal !== undefined && confVal !== null && confVal !== '' && !isNaN(Number(confVal))) {
+    return Number(confVal);
+  }
   return 0;
 }
 

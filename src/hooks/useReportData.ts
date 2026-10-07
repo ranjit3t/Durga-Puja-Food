@@ -1,64 +1,55 @@
-import { useMemo, useCallback } from "react";
-import { UI_TEXT } from "../strings";
+import { useState, useMemo, useCallback } from "react";
 import {
-  Subscription,
+  SubscriptionRecord,
   FoodMenu,
   ConfigDay,
   MealType,
   DietType,
   DietaryOption,
   PaymentMode,
-  TakenState,
   ReportType,
-  MealSlot,
+  FoodPackage,
+  TakenState,
   toBool,
-  normalizeChoice,
-} from "../types";
+} from "../domain";
+import { UI_TEXT } from "../strings";
 import {
   getActiveDays,
   isMealEnabled,
   isDietaryEnabled,
   isParcelEnabled,
   isKidsParcelEnabled,
-  isMealCurrent,
   getDietTypeForChoice,
   getMealVarieties,
   getMealFreeMealCounts,
-  getVarietyForChoice,
   isGuestsParcelEnabled,
 } from "../constants";
-import { getAmountDiscrepancyData, resolvePrice, resolveGuestPrice, calculatePersonMealAndParcelCost, DiscrepancyItem } from "../utils/paymentUtils";
+import { getAmountDiscrepancyData, calculatePersonMealAndParcelCost } from "../utils/paymentUtils";
 
 export function useReportData(
-  subscriptions: Subscription[],
+  subscriptions: SubscriptionRecord[],
   foodMenu: FoodMenu,
   dayConfig: ConfigDay[],
   freeMealEnabled: boolean,
   paymentConfig: any,
   kidsEnabled: boolean,
   guestsEnabled: boolean = false,
-  activeReportType?: ReportType
+  activeReportType?: ReportType,
+  foodPackages: Record<string, FoodPackage> = {}
 ) {
-  const sortedActiveDays = useMemo(() => {
-    const active = getActiveDays(dayConfig);
-    return [...active].sort((a, b) => {
-      const aHasCurrent = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].some(m => isMealCurrent(a, m, dayConfig));
-      const bHasCurrent = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].some(m => isMealCurrent(b, m, dayConfig));
-
-      if (aHasCurrent && !bHasCurrent) return -1;
-      if (!aHasCurrent && bHasCurrent) return 1;
-
-      return 0;
-    });
-  }, [dayConfig]);
-
   const activeDays = useMemo(() => getActiveDays(dayConfig), [dayConfig]);
 
-  // 1. Day-Wise Report Calculation (Lazy targeted if activeReportType is DAY or PARCEL)
+  const sortedActiveDays = useMemo(() => {
+    return [...activeDays].sort((a, b) => {
+      const orderA = (dayConfig.find((d) => d.id === a) as any)?.order ?? 999;
+      const orderB = (dayConfig.find((d) => d.id === b) as any)?.order ?? 999;
+      return orderA - orderB;
+    });
+  }, [activeDays, dayConfig]);
+
+  // 1. Day-Wise Report Calculation (Lazy targeted if activeReportType is DAY)
   const dayWiseData = useMemo(() => {
-    if (activeReportType && activeReportType !== ReportType.DAY && activeReportType !== ReportType.PARCEL) {
-      return [];
-    }
+    if (activeReportType && activeReportType !== ReportType.DAY) return [];
     return sortedActiveDays.map((day) => {
       const totals = {
         veg: 0,
@@ -98,35 +89,31 @@ export function useReportData(
         const kCount = kidsEnabled ? (sub.kidsCount || 0) : 0;
         const gCount = guestsEnabled ? (sub.guestsCount || 0) : 0;
 
-        slots.forEach((s, idx) => {
+        slots.forEach((s: any, idx: number) => {
           if (!s) return;
           const isKid = kidsEnabled && idx >= adultCount && idx < adultCount + kCount;
           const isGuest = guestsEnabled && idx >= adultCount + kCount;
 
-          const meals = [
-            { choice: s[MealType.BREAKFAST], type: MealType.BREAKFAST },
-            { choice: s[MealType.LUNCH], type: MealType.LUNCH },
-            { choice: s[MealType.DINNER], type: MealType.DINNER },
-          ] as const;
+          [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].forEach((mType) => {
+            if (!isMealEnabled(day, mType, dayConfig)) return;
 
-          meals.forEach(({ choice, type }) => {
+            const choice = s[mType];
             if (choice === DietaryOption.NONE) return;
-            if (!isMealEnabled(day, type, dayConfig)) return;
 
             const dayConf = (dayConfig || []).find(d => d.id === day);
-            const mConf = dayConf ? dayConf[type] : undefined;
+            const mConf = dayConf ? dayConf[mType] : undefined;
             const diet = getDietTypeForChoice(choice, getMealVarieties(mConf));
-            if (!diet || !isDietaryEnabled(day, type, diet, dayConfig)) return;
+            if (!diet || !isDietaryEnabled(day, mType, diet, dayConfig)) return;
 
             const tState = taken[idx] || {};
-            const isTaken = !!tState[type];
-            const isParcelOpted = toBool(s[`${type}Parcel` as keyof typeof s]);
+            const isTaken = !!tState[mType];
+            const isParcelOpted = toBool(s[`${mType}Parcel` as keyof typeof s]);
             const isParcelAllowed = isParcelOpted && (isGuest
-              ? isGuestsParcelEnabled(day, type, dayConfig, guestsEnabled)
+              ? isGuestsParcelEnabled(day, mType, dayConfig, guestsEnabled)
               : isKid
-              ? isKidsParcelEnabled(day, type, dayConfig, kidsEnabled)
-              : isParcelEnabled(day, type, dayConfig));
-            const isParcelTaken = !!tState[`${type}Parcel` as keyof TakenState];
+              ? isKidsParcelEnabled(day, mType, dayConfig, kidsEnabled)
+              : isParcelEnabled(day, mType, dayConfig));
+            const isParcelTaken = !!tState[`${mType}Parcel` as keyof TakenState];
 
             if (diet === DietType.VEG) {
               if (isGuest) {
@@ -189,12 +176,9 @@ export function useReportData(
 
   // 2. Meal-Wise Report Calculation (Lazy targeted if activeReportType is MEAL)
   const mealWiseData = useMemo(() => {
-    if (activeReportType && activeReportType !== ReportType.MEAL && activeReportType !== ReportType.PARCEL && activeReportType !== ReportType.DAY) {
-      return [];
-    }
+    if (activeReportType && activeReportType !== ReportType.MEAL && activeReportType !== ReportType.PARCEL && activeReportType !== ReportType.FREE_MEAL && activeReportType !== ReportType.DAY) return [];
     return sortedActiveDays.map((dayId) => {
-      const dayConf = (dayConfig || []).find(d => d.id === dayId);
-      const mealsObj: Partial<Record<MealType, any>> = {};
+      const mealsObj: any = {};
 
       [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].forEach((mType) => {
         const stats = {
@@ -236,13 +220,15 @@ export function useReportData(
             const kCount = kidsEnabled ? (sub.kidsCount || 0) : 0;
             const gCount = guestsEnabled ? (sub.guestsCount || 0) : 0;
 
-            slots.forEach((s, idx) => {
+            slots.forEach((s: any, idx: number) => {
               if (!s) return;
               const isKid = kidsEnabled && idx >= adultCount && idx < adultCount + kCount;
               const isGuest = guestsEnabled && idx >= adultCount + kCount;
+
               const choice = s[mType];
               if (choice === DietaryOption.NONE) return;
 
+              const dayConf = (dayConfig || []).find(d => d.id === dayId);
               const mConf = dayConf ? dayConf[mType] : undefined;
               const diet = getDietTypeForChoice(choice, getMealVarieties(mConf));
               if (!diet || !isDietaryEnabled(dayId, mType, diet, dayConfig)) return;
@@ -307,7 +293,7 @@ export function useReportData(
             });
           });
 
-          const fmCounts = getMealFreeMealCounts(foodMenu[dayId]?.[mType], getMealVarieties(dayConf?.[mType]));
+          const fmCounts = getMealFreeMealCounts(foodMenu[dayId]?.[mType], getMealVarieties(dayConfig.find(d => d.id === dayId)?.[mType]));
           stats.freeMealVeg += fmCounts.freeMealVeg;
           stats.freeMealNonVeg += fmCounts.freeMealNonVeg;
         }
@@ -366,7 +352,7 @@ export function useReportData(
               guestsNonVegParcelTaken: 0,
             };
 
-            slots.forEach((s, idx) => {
+            slots.forEach((s: any, idx: number) => {
               if (!s) return;
               const isKid = kidsEnabled && idx >= adultCount && idx < adultCount + kCount;
               const isGuest = guestsEnabled && idx >= adultCount + kCount;
@@ -455,62 +441,14 @@ export function useReportData(
         };
       })
       .sort((a, b) => (a.block || "").localeCompare(b.block || "", undefined, { numeric: true, sensitivity: 'base' }) || (a.flat || "").localeCompare(b.flat || "", undefined, { numeric: true, sensitivity: 'base' }));
-  }, [subscriptions, activeDays, dayConfig, kidsEnabled, guestsEnabled, activeReportType]);
-
-  const getMissedParcelData = useCallback((selectedDayId: string, selectedMealType: MealType) => {
-    return subscriptions
-      .map((sub) => {
-        const slots = sub.mealSlots[selectedDayId] || [];
-        const taken = sub.takenByPerson[selectedDayId] || [];
-
-        let missedParcels = 0;
-
-        slots.forEach((s, idx) => {
-          const adultCount = sub.peopleCount || 0;
-          const kCount = kidsEnabled ? (sub.kidsCount || 0) : 0;
-          const gCount = guestsEnabled ? (sub.guestsCount || 0) : 0;
-          const isKid = kidsEnabled && idx >= adultCount && idx < adultCount + kCount;
-          const isGuest = guestsEnabled && idx >= adultCount + kCount;
-          const isParcelAllowed = isGuest
-            ? isGuestsParcelEnabled(selectedDayId, selectedMealType, dayConfig, guestsEnabled)
-            : isKid
-            ? isKidsParcelEnabled(selectedDayId, selectedMealType, dayConfig, kidsEnabled)
-            : isParcelEnabled(selectedDayId, selectedMealType, dayConfig);
-
-          if (!isParcelAllowed) return;
-
-          const choice = s[selectedMealType];
-          if (choice !== DietaryOption.NONE && s[`${selectedMealType}Parcel` as keyof typeof s]) {
-            const t = taken[idx] || {};
-            const isFoodTaken = !!t[selectedMealType];
-            const isParcelTaken = !!t[`${selectedMealType}Parcel` as keyof TakenState];
-
-            if (isFoodTaken && !isParcelTaken) {
-              missedParcels++;
-            }
-          }
-        });
-
-        return {
-          id: sub.id,
-          block: sub.block,
-          flat: sub.flat,
-          mobile: sub.mobile,
-          count: missedParcels,
-          kids: sub.kidsCount || 0,
-          guests: sub.guestsCount || 0,
-        };
-      })
-      .filter((item) => item.count > 0)
-      .sort((a, b) => (a.block || "").localeCompare(b.block || "", undefined, { numeric: true, sensitivity: 'base' }) || (a.flat || "").localeCompare(b.flat || "", undefined, { numeric: true, sensitivity: 'base' }));
-  }, [subscriptions, dayConfig, kidsEnabled, guestsEnabled]);
+  }, [activeDays, subscriptions, dayConfig, kidsEnabled, guestsEnabled, activeReportType]);
 
   // 4. Payment Summary Report Calculation (Lazy targeted if activeReportType is PAYMENT)
   const paymentData = useMemo(() => {
     if (activeReportType && activeReportType !== ReportType.PAYMENT) {
       return { summary: [], details: [], totalFood: 0, totalAdultFood: 0, totalKidsFood: 0, totalGuestsFood: 0, totalParcel: 0, totalAdultParcel: 0, totalKidsParcel: 0, totalGuestsParcel: 0, discrepancies: [] };
     }
-    const summary: Record<PaymentMode, { count: number; total: number }> = {
+    const summary: Record<string, { count: number; total: number }> = {
       [PaymentMode.UPI]: { count: 0, total: 0 },
       [PaymentMode.CASH]: { count: 0, total: 0 },
       [PaymentMode.BANK_TRANSFER]: { count: 0, total: 0 },
@@ -531,7 +469,7 @@ export function useReportData(
           ? sub.payments
           : [{ amount: sub.amount || "0", mode: sub.paymentMode || PaymentMode.CASH, transactionId: sub.transactionId }];
 
-        pList.forEach((p) => {
+        pList.forEach((p: any) => {
           const amt = parseFloat(p.amount) || 0;
           const mode = p.mode || PaymentMode.CASH;
           if (summary[mode]) {
@@ -540,7 +478,6 @@ export function useReportData(
           }
         });
 
-        // Calculate expected breakdown for food vs parcel using calculatePersonMealAndParcelCost
         let subAdultFood = 0;
         let subKidsFood = 0;
         let subGuestsFood = 0;
@@ -556,6 +493,7 @@ export function useReportData(
         for (let i = 0; i < totalPeople; i++) {
           const isKid = kidsEnabled && i >= sub.peopleCount && i < sub.peopleCount + kCount;
           const isGuest = guestsEnabled && i >= sub.peopleCount + kCount;
+          const personPkg = (sub.appliedPackages as any)?.[i] || (sub.appliedPackages as any)?.[String(i)] || (sub.isPackageApplied && i === 0 ? (sub.appliedPackages as any)?.[0] || (sub.appliedPackages as any)?.[ "0" ] : undefined);
 
           const cost = calculatePersonMealAndParcelCost(
             i,
@@ -619,11 +557,11 @@ export function useReportData(
              attributedAdultParcel = attributedParcel;
            }
 
-           totalFood += calcMealTotal;
+           totalFood += attributedAdultFood + attributedKidsFood + attributedGuestsFood;
            totalAdultFood += attributedAdultFood;
            totalKidsFood += attributedKidsFood;
            totalGuestsFood += attributedGuestsFood;
-           totalParcel += attributedParcel;
+           totalParcel += attributedAdultParcel + attributedKidsParcel + attributedGuestsParcel;
            totalAdultParcel += attributedAdultParcel;
            totalKidsParcel += attributedKidsParcel;
            totalGuestsParcel += attributedGuestsParcel;
@@ -649,7 +587,7 @@ export function useReportData(
     const discrepancies = getAmountDiscrepancyData(subscriptions, foodMenu, dayConfig, kidsEnabled, guestsEnabled);
 
     return { summary: summaryList, details, totalFood, totalAdultFood, totalKidsFood, totalGuestsFood, totalParcel, totalAdultParcel, totalKidsParcel, totalGuestsParcel, discrepancies };
-  }, [subscriptions, paymentConfig, dayConfig, foodMenu, kidsEnabled, guestsEnabled, activeReportType]);
+  }, [subscriptions, paymentConfig, dayConfig, foodMenu, kidsEnabled, guestsEnabled, activeReportType, foodPackages]);
 
   const getNotTakenData = useCallback((selectedDayId: string, selectedMealType: MealType) => {
     const dayConf = (dayConfig || []).find(d => d.id === selectedDayId);
@@ -663,7 +601,7 @@ export function useReportData(
 
         let vegNotTaken = 0, nonVegNotTaken = 0;
 
-        slots.forEach((s, idx) => {
+        slots.forEach((s: any, idx: number) => {
           if (!s) return;
           const choice = s[selectedMealType];
           if (!choice || choice === DietaryOption.NONE || choice === "None" || choice === "none") return;
@@ -673,7 +611,7 @@ export function useReportData(
           if (!diet || !isDietaryEnabled(selectedDayId, selectedMealType, diet, dayConfig)) return;
 
           const tState = taken[idx] || {};
-          const isTaken = !!tState[selectedMealType] || !!tState[`{selectedMealType}Parcel` as keyof TakenState];
+          const isTaken = !!tState[selectedMealType];
 
           if (!isTaken) {
             if (diet === DietType.VEG) vegNotTaken++;
@@ -682,10 +620,16 @@ export function useReportData(
         });
 
         return {
-          id: sub.id, block: sub.block, flat: sub.flat, mobile: sub.mobile,
-          veg: vegNotTaken, nonVeg: nonVegNotTaken, count: vegNotTaken + nonVegNotTaken,
+          id: sub.id,
+          block: sub.block,
+          flat: sub.flat,
+          mobile: sub.mobile,
+          vegNotTaken,
+          nonVegNotTaken,
+          count: vegNotTaken + nonVegNotTaken,
+          veg: vegNotTaken,
+          nonVeg: nonVegNotTaken,
           kids: sub.kidsCount || 0,
-          guests: sub.guestsCount || 0,
         };
       })
       .filter((item) => item.count > 0)
@@ -706,10 +650,12 @@ export function useReportData(
       const kCount = kidsEnabled ? (sub.kidsCount || 0) : 0;
       const gCount = guestsEnabled ? (sub.guestsCount || 0) : 0;
 
-      let veg = 0, nonVeg = 0, vegTaken = 0, nonVegTaken = 0;
-      let vegParcel = 0, nonVegParcel = 0, vegParcelTaken = 0, nonVegParcelTaken = 0;
+      let veg = 0, nonVeg = 0;
+      let vegTaken = 0, nonVegTaken = 0;
+      let vegParcel = 0, nonVegParcel = 0;
+      let vegParcelTaken = 0, nonVegParcelTaken = 0;
 
-      slots.forEach((s, idx) => {
+      slots.forEach((s: any, idx: number) => {
         if (!s) return;
         const isKid = kidsEnabled && idx >= adultCount && idx < adultCount + kCount;
         const isGuest = guestsEnabled && idx >= adultCount + kCount;
@@ -727,20 +673,25 @@ export function useReportData(
 
         const tState = taken[idx] || {};
         const isTaken = !!tState[selectedMealType];
-        const isParcel = toBool(s[`${selectedMealType}Parcel` as keyof MealSlot]);
+        const isParcelOpted = toBool(s[`${selectedMealType}Parcel` as keyof typeof s]);
+        const isParcelAllowed = isParcelOpted && (isGuest
+          ? isGuestsParcelEnabled(selectedDayId, selectedMealType, dayConfig, guestsEnabled)
+          : isKid
+          ? isKidsParcelEnabled(selectedDayId, selectedMealType, dayConfig, kidsEnabled)
+          : isParcelEnabled(selectedDayId, selectedMealType, dayConfig));
         const isParcelTaken = !!tState[`${selectedMealType}Parcel` as keyof TakenState];
 
         if (diet === DietType.VEG) {
           veg++;
           if (isTaken) vegTaken++;
-          if (isParcel) {
+          if (isParcelAllowed) {
             vegParcel++;
             if (isParcelTaken) vegParcelTaken++;
           }
         } else if (diet === DietType.NON_VEG) {
           nonVeg++;
           if (isTaken) nonVegTaken++;
-          if (isParcel) {
+          if (isParcelAllowed) {
             nonVegParcel++;
             if (isParcelTaken) nonVegParcelTaken++;
           }
@@ -767,6 +718,58 @@ export function useReportData(
     });
 
     return list.sort((a, b) => (a.block || "").localeCompare(b.block || "", undefined, { numeric: true, sensitivity: 'base' }) || (a.flat || "").localeCompare(b.flat || "", undefined, { numeric: true, sensitivity: 'base' }));
+  }, [subscriptions, dayConfig, kidsEnabled, guestsEnabled]);
+
+  const getMissedParcelData = useCallback((selectedDayId: string, selectedMealType: MealType) => {
+    return subscriptions
+      .map((sub) => {
+        const slots = sub.mealSlots[selectedDayId] || [];
+        const taken = sub.takenByPerson[selectedDayId] || [];
+        const adultCount = sub.peopleCount || 0;
+        const kCount = kidsEnabled ? (sub.kidsCount || 0) : 0;
+        const gCount = guestsEnabled ? (sub.guestsCount || 0) : 0;
+
+        let count = 0;
+
+        slots.forEach((s: any, idx: number) => {
+          if (!s) return;
+          const isKid = kidsEnabled && idx >= adultCount && idx < adultCount + kCount;
+          const isGuest = guestsEnabled && idx >= adultCount + kCount;
+
+          const choice = s[selectedMealType];
+          if (!choice || choice === DietaryOption.NONE || choice === "None" || choice === "none") return;
+          if (!isMealEnabled(selectedDayId, selectedMealType, dayConfig)) return;
+
+          const isParcelOpted = toBool(s[`${selectedMealType}Parcel` as keyof typeof s]);
+          const isParcelAllowed = isParcelOpted && (isGuest
+            ? isGuestsParcelEnabled(selectedDayId, selectedMealType, dayConfig, guestsEnabled)
+            : isKid
+            ? isKidsParcelEnabled(selectedDayId, selectedMealType, dayConfig, kidsEnabled)
+            : isParcelEnabled(selectedDayId, selectedMealType, dayConfig));
+
+          if (isParcelAllowed) {
+            const tState = taken[idx] || {};
+            const isMealTaken = !!tState[selectedMealType];
+            const isParcelTaken = !!tState[`${selectedMealType}Parcel` as keyof TakenState];
+
+            if (isMealTaken && !isParcelTaken) {
+              count++;
+            }
+          }
+        });
+
+        return {
+          id: sub.id,
+          block: sub.block,
+          flat: sub.flat,
+          mobile: sub.mobile,
+          count,
+          kids: sub.kidsCount || 0,
+          guests: sub.guestsCount || 0,
+        };
+      })
+      .filter((item) => item.count > 0)
+      .sort((a, b) => (a.block || "").localeCompare(b.block || "", undefined, { numeric: true, sensitivity: 'base' }) || (a.flat || "").localeCompare(b.flat || "", undefined, { numeric: true, sensitivity: 'base' }));
   }, [subscriptions, dayConfig, kidsEnabled, guestsEnabled]);
 
   const packagePassesData = useMemo(() => {
