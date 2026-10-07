@@ -198,6 +198,10 @@ export function ReportScreen() {
           </View>
           <Pressable
             onPress={handleShare}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={Platform.OS === 'web' ? UI_TEXT.downloadReport : UI_TEXT.shareReport}
+            accessibilityHint={UI_TEXT.viewPassHint}
             style={({ pressed }) => [
               {
                 flexDirection: 'row',
@@ -251,6 +255,10 @@ export function ReportScreen() {
               <Pressable
                 key={tab.id}
                 onPress={() => onSetReportType(tab.id as ReportType)}
+                accessible={true}
+                accessibilityRole="tab"
+                accessibilityLabel={tab.label}
+                accessibilityState={{ selected: isSelected }}
                 style={[
                   styles.selector,
                   isSelected && styles.selectorOn,
@@ -304,6 +312,10 @@ export function ReportScreen() {
                           dayOffsets.current[day] = e.nativeEvent.layout.x;
                         }}
                         onPress={() => onSetSelectedDayId(day)}
+                        accessible={true}
+                        accessibilityRole="button"
+                        accessibilityLabel={getDayLabel(day, dayConfig)}
+                        accessibilityState={{ selected: isSelected }}
                         style={[
                           styles.selector,
                           isSelected && styles.selectorOn,
@@ -329,6 +341,10 @@ export function ReportScreen() {
                     <Pressable
                       key={mType}
                       onPress={() => onSetSelectedMealType(mType)}
+                      accessible={true}
+                      accessibilityRole="button"
+                      accessibilityLabel={getMealLabel(mType)}
+                      accessibilityState={{ selected: isSelected }}
                       style={[
                         styles.selector,
                         isSelected && styles.selectorOn,
@@ -358,6 +374,10 @@ export function ReportScreen() {
                       <Pressable
                         key={cat.id}
                         onPress={() => setSelectedPersonCategory(cat.id as any)}
+                        accessible={true}
+                        accessibilityRole="button"
+                        accessibilityLabel={cat.label}
+                        accessibilityState={{ selected: isSelected }}
                         style={[
                           styles.selector,
                           isSelected && styles.selectorOn,

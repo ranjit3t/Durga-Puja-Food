@@ -224,13 +224,13 @@ export function HomeScreen() {
                 <Text style={[styles.summaryNumber, { fontSize: mainFontSize, marginTop: 0, lineHeight: mainFontSize + 2 }]}>{subscriptions.length}</Text>
               </View>
 
-              <View style={{ flexDirection: "row", alignItems: "center", gap: s(8), flexWrap: 'nowrap' }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: s(6), flexWrap: 'wrap', flex: 1 }}>
                 <Text style={[styles.summaryLabel, { opacity: 0.8, fontSize: labelFontSize }]}>{UI_TEXT.totalPeopleLabel}:</Text>
                 <Text style={[styles.summaryNumber, { fontSize: secondaryFontSize, marginTop: 0, lineHeight: secondaryFontSize + 2 }]}>
                   {totalPeople}
                 </Text>
                 {(kidsEnabled || guestsEnabled) && (
-                  <Text style={{ fontSize: labelFontSize, color: theme.colors.white, opacity: 0.8, fontWeight: '700' }}>
+                  <Text style={{ fontSize: isNarrow ? 9 : s(11), color: theme.colors.white, opacity: 0.8, fontWeight: '700', flexShrink: 1 }} numberOfLines={2}>
                     {UI_TEXT.openParen}
                     {summaryCounts.adults}{UI_TEXT.space}{summaryCounts.adults === 1 ? UI_TEXT.adult : UI_TEXT.adults}
                     {kidsEnabled && summaryCounts.kids > 0 ? `${UI_TEXT.comma}${UI_TEXT.space}${summaryCounts.kids}${UI_TEXT.space}${summaryCounts.kids === 1 ? UI_TEXT.kid : UI_TEXT.kids}` : ""}
