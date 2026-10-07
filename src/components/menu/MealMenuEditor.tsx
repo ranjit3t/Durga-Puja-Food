@@ -5,7 +5,7 @@ import { useStyles } from "../../styles";
 import { useAppTheme } from "../../theme";
 import { UI_TEXT } from "../../strings";
 import { MealMenu, Day, ConfigDay, MealType, DietType, DietaryVariety, VarietyMenu } from "../../types";
-import { isDietaryEnabled, isMealCurrent, isKidsParcelEnabled, getMealVarieties, isSpecialMeal } from "../../constants";
+import { isDietaryEnabled, isMealCurrent, isKidsParcelEnabled, getMealVarieties, isSpecialMeal, isGuestsParcelEnabled } from "../../constants";
 
 export function MealMenuEditor({
   title,
@@ -19,6 +19,7 @@ export function MealMenuEditor({
   disabled = false,
   foodPriceEnabled,
   kidsEnabled,
+  guestsEnabled,
 }: {
   title: string;
   mealKey: MealType;
@@ -31,6 +32,7 @@ export function MealMenuEditor({
   disabled?: boolean;
   foodPriceEnabled: boolean;
   kidsEnabled: boolean;
+  guestsEnabled?: boolean;
 }) {
   const styles = useStyles();
   const { theme } = useAppTheme();
@@ -60,20 +62,24 @@ export function MealMenuEditor({
     return [];
   };
 
-  const getVarietyPrice = (v: DietaryVariety, field: 'adultPrice' | 'kidsPrice' | 'parcelPrice' | 'kidsParcelPrice'): string => {
+  const getVarietyPrice = (v: DietaryVariety, field: 'adultPrice' | 'kidsPrice' | 'guestPrice' | 'parcelPrice' | 'kidsParcelPrice' | 'guestParcelPrice'): string => {
     if (v.id === "veg_default") {
       if (field === "adultPrice") return value?.vegPrice ?? "";
       if (field === "kidsPrice") return value?.kidsVegPrice ?? "";
+      if (field === "guestPrice") return value?.guestsVegPrice ?? "";
       if (field === "parcelPrice") return value?.vegParcelPrice ?? "";
       if (field === "kidsParcelPrice") return value?.kidsVegParcelPrice ?? "";
+      if (field === "guestParcelPrice") return value?.guestsVegParcelPrice ?? "";
     }
     if (v.id === "nonVeg_default") {
       if (field === "adultPrice") return value?.nonVegPrice ?? "";
       if (field === "kidsPrice") return value?.kidsNonVegPrice ?? "";
+      if (field === "guestPrice") return value?.guestsNonVegPrice ?? "";
       if (field === "parcelPrice") return value?.nonVegParcelPrice ?? "";
       if (field === "kidsParcelPrice") return value?.kidsNonVegParcelPrice ?? "";
+      if (field === "guestParcelPrice") return value?.guestsVegParcelPrice ?? "";
     }
-    const val = value?.varieties?.[v.id]?.[field];
+    const val = value?.varieties?.[v.id]?.[field as keyof VarietyMenu];
     return typeof val === 'string' ? val : "";
   };
 
@@ -94,13 +100,17 @@ export function MealMenuEditor({
     if (v.id === "veg_default") {
       if (field === "adultPrice") nextMenu.vegPrice = val;
       if (field === "kidsPrice") nextMenu.kidsVegPrice = val;
+      if (field === "guestPrice") nextMenu.guestsVegPrice = val;
       if (field === "parcelPrice") nextMenu.vegParcelPrice = val;
       if (field === "kidsParcelPrice") nextMenu.kidsVegParcelPrice = val;
+      if (field === "guestParcelPrice") nextMenu.guestsVegParcelPrice = val;
     } else if (v.id === "nonVeg_default") {
       if (field === "adultPrice") nextMenu.nonVegPrice = val;
       if (field === "kidsPrice") nextMenu.kidsNonVegPrice = val;
+      if (field === "guestPrice") nextMenu.guestsNonVegPrice = val;
       if (field === "parcelPrice") nextMenu.nonVegParcelPrice = val;
       if (field === "kidsParcelPrice") nextMenu.kidsNonVegParcelPrice = val;
+      if (field === "guestParcelPrice") nextMenu.guestsVegParcelPrice = val;
     }
 
     onChange(nextMenu);
@@ -213,8 +223,8 @@ export function MealMenuEditor({
             {/* Pricing Section per Sub-Category */}
             {foodPriceEnabled && (
               <View style={{ gap: 8 }}>
-                <View style={styles.row}>
-                  <View style={styles.fieldHalf}>
+                <View style={[styles.row, { flexWrap: "wrap", gap: 8 }]}>
+                  <View style={{ flex: 1, minWidth: 100 }}>
                     <Text style={{ fontSize: 10, fontWeight: "700", color: theme.colors.textSecondary, marginBottom: 4 }}>
                       {UI_TEXT.adultPriceLabel.toUpperCase()}
                     </Text>
@@ -239,7 +249,7 @@ export function MealMenuEditor({
                   </View>
 
                   {kidsEnabled && (
-                    <View style={styles.fieldHalf}>
+                    <View style={{ flex: 1, minWidth: 100 }}>
                       <Text style={{ fontSize: 10, fontWeight: "700", color: theme.colors.textSecondary, marginBottom: 4 }}>
                         {UI_TEXT.kidsPriceLabel.toUpperCase()}
                       </Text>
@@ -263,11 +273,37 @@ export function MealMenuEditor({
                       />
                     </View>
                   )}
+
+                  {guestsEnabled && (
+                    <View style={{ flex: 1, minWidth: 100 }}>
+                      <Text style={{ fontSize: 10, fontWeight: "700", color: theme.colors.textSecondary, marginBottom: 4 }}>
+                        {UI_TEXT.guestPriceLabel.toUpperCase()}
+                      </Text>
+                      <TextInput
+                        style={{
+                          backgroundColor: theme.colors.surfaceDark,
+                          borderWidth: 1,
+                          borderColor: theme.colors.border,
+                          borderRadius: 8,
+                          paddingHorizontal: 10,
+                          paddingVertical: 8,
+                          fontSize: 14,
+                          color: theme.colors.textPrimary,
+                          fontWeight: "700",
+                        }}
+                        value={getVarietyPrice(v, "guestPrice")}
+                        onChangeText={(val) => updateVarietyField(v, "guestPrice", val.replace(/[^0-9]/g, ""))}
+                        keyboardType="numeric"
+                        placeholder={UI_TEXT.zero}
+                        editable={!disabled}
+                      />
+                    </View>
+                  )}
                 </View>
 
                 {mConf?.parcel && (
-                  <View style={styles.row}>
-                    <View style={styles.fieldHalf}>
+                  <View style={[styles.row, { flexWrap: "wrap", gap: 8 }]}>
+                    <View style={{ flex: 1, minWidth: 100 }}>
                       <Text style={{ fontSize: 10, fontWeight: "700", color: theme.colors.textSecondary, marginBottom: 4 }}>
                         {UI_TEXT.parcelPriceLabel.toUpperCase()}
                       </Text>
@@ -292,7 +328,7 @@ export function MealMenuEditor({
                     </View>
 
                     {kidsEnabled && isKidsParcelEnabled(dayId, mealKey, config, kidsEnabled) && (
-                      <View style={styles.fieldHalf}>
+                      <View style={{ flex: 1, minWidth: 100 }}>
                         <Text style={{ fontSize: 10, fontWeight: "700", color: theme.colors.textSecondary, marginBottom: 4 }}>
                           {UI_TEXT.kidsParcelPriceLabel.toUpperCase()}
                         </Text>
@@ -310,6 +346,32 @@ export function MealMenuEditor({
                           }}
                           value={getVarietyPrice(v, "kidsParcelPrice")}
                           onChangeText={(val) => updateVarietyField(v, "kidsParcelPrice", val.replace(/[^0-9]/g, ""))}
+                          keyboardType="numeric"
+                          placeholder={UI_TEXT.zero}
+                          editable={!disabled}
+                        />
+                      </View>
+                    )}
+
+                    {guestsEnabled && isGuestsParcelEnabled(dayId, mealKey, config, guestsEnabled) && (
+                      <View style={{ flex: 1, minWidth: 100 }}>
+                        <Text style={{ fontSize: 10, fontWeight: "700", color: theme.colors.textSecondary, marginBottom: 4 }}>
+                          {UI_TEXT.guestsParcelPriceLabel.toUpperCase()}
+                        </Text>
+                        <TextInput
+                          style={{
+                            backgroundColor: theme.colors.surfaceDark,
+                            borderWidth: 1,
+                            borderColor: theme.colors.border,
+                            borderRadius: 8,
+                            paddingHorizontal: 10,
+                            paddingVertical: 8,
+                            fontSize: 14,
+                            color: theme.colors.textPrimary,
+                            fontWeight: "700",
+                          }}
+                          value={getVarietyPrice(v, "guestParcelPrice")}
+                          onChangeText={(val) => updateVarietyField(v, "guestParcelPrice", val.replace(/[^0-9]/g, ""))}
                           keyboardType="numeric"
                           placeholder={UI_TEXT.zero}
                           editable={!disabled}

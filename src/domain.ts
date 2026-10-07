@@ -118,9 +118,11 @@ export type VarietyMenu = {
   items: string[];
   adultPrice?: string;
   kidsPrice?: string;
+  guestPrice?: string;
   memberPrice?: string;
   parcelPrice?: string;
   kidsParcelPrice?: string;
+  guestParcelPrice?: string;
 };
 
 export type MealConfig = {
@@ -132,6 +134,8 @@ export type MealConfig = {
   parcelAlert?: boolean;
   kidsParcel?: boolean;
   kidsParcelAlert?: boolean;
+  guestsParcel?: boolean;
+  guestsParcelAlert?: boolean;
   dineInFallbackParcel?: boolean;
   done?: boolean;
   current?: boolean;
@@ -139,6 +143,14 @@ export type MealConfig = {
   nonVegPrice?: string;
   vegParcelPrice?: string;
   nonVegParcelPrice?: string;
+  kidsVegPrice?: string;
+  kidsNonVegPrice?: string;
+  kidsVegParcelPrice?: string;
+  kidsNonVegParcelPrice?: string;
+  guestsVegPrice?: string;
+  guestsNonVegPrice?: string;
+  guestsVegParcelPrice?: string;
+  guestsNonVegParcelPrice?: string;
   varieties?: DietaryVariety[];
 };
 
@@ -168,6 +180,7 @@ export type AppConfig = {
   foodPriceEnabled?: boolean;
   seasonEnabled?: boolean;
   kidsEnabled?: boolean;
+  guestsEnabled?: boolean;
   whatsappCountryCode?: string;
   quickCheckoutAutoCloseMs?: number;
   soundEnabled?: boolean;
@@ -230,7 +243,6 @@ export enum ReportType {
   PARCEL = "parcel",
   FLAT = "flat",
   PAYMENT = "payment",
-  SINGLE = "single",
   NOT_TAKEN = "notTaken",
   MEMBERS_MEAL = "membersMeal",
   MISSED_PARCEL = "missedParcel",
@@ -245,6 +257,8 @@ export enum UserRole {
 export type MealAllocation = Record<DietType, number> & {
   kidsVeg?: number;
   kidsNonVeg?: number;
+  guestsVeg?: number;
+  guestsNonVeg?: number;
 };
 
 export type MealChoice = DietaryOption | string;
@@ -274,10 +288,14 @@ export type MealMenu = {
   nonVegPrice?: string;
   kidsVegPrice?: string;
   kidsNonVegPrice?: string;
+  guestsVegPrice?: string;
+  guestsNonVegPrice?: string;
   vegParcelPrice?: string;
   nonVegParcelPrice?: string;
   kidsVegParcelPrice?: string;
   kidsNonVegParcelPrice?: string;
+  guestsVegParcelPrice?: string;
+  guestsNonVegParcelPrice?: string;
   varieties?: Record<string, VarietyMenu>;
   freeMealCounts?: Record<string, number>;
   freeMealTakenCounts?: Record<string, number>;
@@ -291,6 +309,10 @@ export type MealMenu = {
   kidsNonVeg?: number;
   kidsVegTaken?: number;
   kidsNonVegTaken?: number;
+  guestsVeg?: number;
+  guestsNonVeg?: number;
+  guestsVegTaken?: number;
+  guestsNonVegTaken?: number;
 };
 
 export type DayMenu = Record<MealType, MealMenu>;
@@ -302,6 +324,8 @@ export type MealMetrics = {
   nonVegServed?: number;
   kidsVegServed?: number;
   kidsNonVegServed?: number;
+  guestsVegServed?: number;
+  guestsNonVegServed?: number;
   parcelServed?: number;
 };
 
@@ -314,7 +338,7 @@ export type PaymentEntry = {
   receivedBy?: string;
 };
 
-export type PackageApplicability = "adult" | "kids" | "member";
+export type PackageApplicability = "adult" | "kids" | "member" | "guests";
 
 export type PackageMealItem = {
   mealType: MealType;
@@ -352,6 +376,7 @@ export type SubscriptionRecord = {
   mobile?: number;
   peopleCount: number;
   kidsCount?: number;
+  guestsCount?: number;
   meals: Record<EventDay, MealAllocation>;
   mealByPerson: Record<EventDay, MealChoice[]>;
   mealSlots: Record<EventDay, MealSlot[]>;

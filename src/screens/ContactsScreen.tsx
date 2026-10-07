@@ -30,7 +30,7 @@ import { useAppNavigation } from "../context/NavigationContext";
 
 export function ContactsScreen() {
   const { handleLogout } = useAuth();
-  const { subscriptions, whatsappCountryCode, kidsEnabled } = useCoreDatabase();
+  const { subscriptions, whatsappCountryCode, kidsEnabled, guestsEnabled } = useCoreDatabase();
   const { addActivityLog } = useActivityLogs();
   const { navigate, goBack, setSelectedId, setSelectedRecord } = useAppNavigation();
 
@@ -143,11 +143,17 @@ export function ContactsScreen() {
           <Text style={[styles.flatLabel, { color: colorScheme.accent, marginBottom: 2 }]}>{UI_TEXT.block} {item.block}</Text>
           <Text style={{ fontSize: s(22), fontWeight: '900', color: theme.colors.textPrimary }}>{UI_TEXT.flatUpper} {item.flat}</Text>
           <Text style={{ fontSize: s(14), color: theme.colors.textSecondary, fontWeight: '700', marginTop: 4 }}>
-            {kidsEnabled ? (
-              `${item.peopleCount}${UI_TEXT.space}${item.peopleCount === 1 ? UI_TEXT.adult : UI_TEXT.adults}${item.kidsCount ? `${UI_TEXT.plus}${item.kidsCount}${UI_TEXT.space}${item.kidsCount === 1 ? UI_TEXT.kid : UI_TEXT.kids}` : ""}`
-            ) : (
-              `${item.peopleCount + (item.kidsCount || 0)}${item.peopleCount + (item.kidsCount || 0) === 1 ? UI_TEXT.personSuffix : UI_TEXT.personsSuffix}`
-            )}
+            {(() => {
+              if (kidsEnabled || guestsEnabled) {
+                const parts = [];
+                parts.push(`${item.peopleCount}${UI_TEXT.space}${item.peopleCount === 1 ? UI_TEXT.adult : UI_TEXT.adults}`);
+                if (kidsEnabled && item.kidsCount) parts.push(`${item.kidsCount}${UI_TEXT.space}${item.kidsCount === 1 ? UI_TEXT.kid : UI_TEXT.kids}`);
+                if (guestsEnabled && item.guestsCount) parts.push(`${item.guestsCount}${UI_TEXT.space}${item.guestsCount === 1 ? UI_TEXT.guest : UI_TEXT.guests}`);
+                return parts.join(UI_TEXT.plus);
+              }
+              const total = item.peopleCount + (item.kidsCount || 0) + (item.guestsCount || 0);
+              return `${total}${total === 1 ? UI_TEXT.personSuffix : UI_TEXT.personsSuffix}`;
+            })()}
           </Text>
         </Pressable>
 

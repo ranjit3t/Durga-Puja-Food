@@ -43,7 +43,8 @@ import {
   formatTakenTime,
   getDietTypeForChoice,
   getMealVarieties,
-  getMealFreeMealCounts
+  getMealFreeMealCounts,
+  isGuestsParcelEnabled
 } from "../constants";
 
 export interface CoreDatabaseContextType {
@@ -63,6 +64,7 @@ export interface CoreDatabaseContextType {
   mobileEnabled: boolean;
   foodPriceEnabled: boolean;
   kidsEnabled: boolean;
+  guestsEnabled: boolean;
   whatsappCountryCode: string;
   quickCheckoutAutoCloseMs: number;
   soundEnabled: boolean;
@@ -135,6 +137,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
   const [mobileEnabled, setMobileEnabled] = useState(true);
   const [foodPriceEnabled, setFoodPriceEnabled] = useState(false);
   const [kidsEnabled, setKidsEnabled] = useState(false);
+  const [guestsEnabled, setGuestsEnabled] = useState(false);
   const [whatsappCountryCode, setWhatsappCountryCode] = useState(UI_TEXT.defaultCountryCode);
   const [quickCheckoutAutoCloseMs, setQuickCheckoutAutoCloseMs] = useState<number>(3000);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
@@ -232,6 +235,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       setMobileEnabled(config.mobileEnabled !== false);
       setFoodPriceEnabled(config.foodPriceEnabled || false);
       setKidsEnabled(config.kidsEnabled || false);
+      setGuestsEnabled(config.guestsEnabled || false);
       setWhatsappCountryCode(config.whatsappCountryCode || "91");
       setQuickCheckoutAutoCloseMs(config.quickCheckoutAutoCloseMs ?? 3000);
       setSoundEnabled(config.soundEnabled !== false);
@@ -278,6 +282,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       setMobileEnabled(config.mobileEnabled !== false);
       setFoodPriceEnabled(config.foodPriceEnabled || false);
       setKidsEnabled(config.kidsEnabled || false);
+      setGuestsEnabled(config.guestsEnabled || false);
       setWhatsappCountryCode(config.whatsappCountryCode || "91");
       setQuickCheckoutAutoCloseMs(config.quickCheckoutAutoCloseMs ?? 3000);
       setSoundEnabled(config.soundEnabled !== false);
@@ -557,6 +562,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       if (config.mobileEnabled !== undefined) setMobileEnabled(config.mobileEnabled);
       if (config.foodPriceEnabled !== undefined) setFoodPriceEnabled(config.foodPriceEnabled);
       if (config.kidsEnabled !== undefined) setKidsEnabled(config.kidsEnabled);
+      if (config.guestsEnabled !== undefined) setGuestsEnabled(config.guestsEnabled);
       if (config.whatsappCountryCode !== undefined) setWhatsappCountryCode(config.whatsappCountryCode);
       if (config.quickCheckoutAutoCloseMs !== undefined) setQuickCheckoutAutoCloseMs(config.quickCheckoutAutoCloseMs);
       if (config.soundEnabled !== undefined) setSoundEnabled(config.soundEnabled);
@@ -1020,6 +1026,12 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
         breakfastKidsTaken: 0,
         breakfastKidsVegTaken: 0,
         breakfastKidsNonVegTaken: 0,
+        breakfastGuestsTotal: 0,
+        breakfastGuestsVeg: 0,
+        breakfastGuestsNonVeg: 0,
+        breakfastGuestsTaken: 0,
+        breakfastGuestsVegTaken: 0,
+        breakfastGuestsNonVegTaken: 0,
 
         lunch: 0,
         lunchVeg: 0,
@@ -1040,6 +1052,12 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
         lunchKidsTaken: 0,
         lunchKidsVegTaken: 0,
         lunchKidsNonVegTaken: 0,
+        lunchGuestsTotal: 0,
+        lunchGuestsVeg: 0,
+        lunchGuestsNonVeg: 0,
+        lunchGuestsTaken: 0,
+        lunchGuestsVegTaken: 0,
+        lunchGuestsNonVegTaken: 0,
 
         dinner: 0,
         dinnerVeg: 0,
@@ -1059,7 +1077,13 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
         dinnerKidsNonVeg: 0,
         dinnerKidsTaken: 0,
         dinnerKidsVegTaken: 0,
-        dinnerKidsNonVegTaken: 0
+        dinnerKidsNonVegTaken: 0,
+        dinnerGuestsTotal: 0,
+        dinnerGuestsVeg: 0,
+        dinnerGuestsNonVeg: 0,
+        dinnerGuestsTaken: 0,
+        dinnerGuestsVegTaken: 0,
+        dinnerGuestsNonVegTaken: 0
       };
 
       return uniqueSubscriptions.reduce((totals, item) => {
@@ -1068,7 +1092,10 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
 
         mealSlots.forEach((slots, index) => {
           const taken = takenByPerson?.[index];
-          const isKid = kidsEnabled && index >= item.peopleCount;
+          const kCount = kidsEnabled ? (item.kidsCount || 0) : 0;
+          const gCount = guestsEnabled ? (item.guestsCount || 0) : 0;
+          const isKid = kidsEnabled && index >= item.peopleCount && index < item.peopleCount + kCount;
+          const isGuest = guestsEnabled && index >= item.peopleCount + kCount;
 
           // Breakfast
           if (isMealEnabled(day, MealType.BREAKFAST, dayConfig) && slots?.[MealType.BREAKFAST] && slots[MealType.BREAKFAST] !== DietaryOption.NONE) {
@@ -1076,17 +1103,22 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
             const diet = getDietTypeForChoice(slots[MealType.BREAKFAST], bVarieties);
             if (diet && isDietaryEnabled(day, MealType.BREAKFAST, diet, dayConfig)) {
               totals.breakfast += 1;
-              if (isKid) totals.breakfastKidsTotal += 1;
+              if (isGuest) totals.breakfastGuestsTotal += 1;
+              else if (isKid) totals.breakfastKidsTotal += 1;
 
               if (diet === DietType.VEG) {
-                if (isKid) totals.breakfastKidsVeg += 1;
+                if (isGuest) totals.breakfastGuestsVeg += 1;
+                else if (isKid) totals.breakfastKidsVeg += 1;
                 else totals.breakfastVeg += 1;
               } else {
-                if (isKid) totals.breakfastKidsNonVeg += 1;
+                if (isGuest) totals.breakfastGuestsNonVeg += 1;
+                else if (isKid) totals.breakfastKidsNonVeg += 1;
                 else totals.breakfastNonVeg += 1;
               }
 
-              const isB_ParcelOptEnabled = isKid
+              const isB_ParcelOptEnabled = isGuest
+                ? isGuestsParcelEnabled(day, MealType.BREAKFAST, dayConfig, guestsEnabled)
+                : isKid
                 ? isKidsParcelEnabled(day, MealType.BREAKFAST, dayConfig, kidsEnabled)
                 : isParcelEnabled(day, MealType.BREAKFAST, dayConfig);
 
@@ -1099,13 +1131,16 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
 
               if (isB_Taken) {
                 totals.breakfastTaken += 1;
-                if (isKid) totals.breakfastKidsTaken += 1;
-
-                if (diet === DietType.VEG) {
-                  if (isKid) totals.breakfastKidsVegTaken += 1;
-                  else totals.breakfastFlatVegTaken += 1;
+                if (isGuest) {
+                  totals.breakfastGuestsTaken += 1;
+                  if (diet === DietType.VEG) totals.breakfastGuestsVegTaken += 1;
+                  else totals.breakfastGuestsNonVegTaken += 1;
+                } else if (isKid) {
+                  totals.breakfastKidsTaken += 1;
+                  if (diet === DietType.VEG) totals.breakfastKidsVegTaken += 1;
+                  else totals.breakfastKidsNonVegTaken += 1;
                 } else {
-                  if (isKid) totals.breakfastKidsNonVegTaken += 1;
+                  if (diet === DietType.VEG) totals.breakfastFlatVegTaken += 1;
                   else totals.breakfastFlatNonVegTaken += 1;
                 }
               }
@@ -1118,17 +1153,22 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
             const diet = getDietTypeForChoice(slots[MealType.LUNCH], lVarieties);
             if (diet && isDietaryEnabled(day, MealType.LUNCH, diet, dayConfig)) {
               totals.lunch += 1;
-              if (isKid) totals.lunchKidsTotal += 1;
+              if (isGuest) totals.lunchGuestsTotal += 1;
+              else if (isKid) totals.lunchKidsTotal += 1;
 
               if (diet === DietType.VEG) {
-                if (isKid) totals.lunchKidsVeg += 1;
+                if (isGuest) totals.lunchGuestsVeg += 1;
+                else if (isKid) totals.lunchKidsVeg += 1;
                 else totals.lunchVeg += 1;
               } else {
-                if (isKid) totals.lunchKidsNonVeg += 1;
+                if (isGuest) totals.lunchGuestsNonVeg += 1;
+                else if (isKid) totals.lunchKidsNonVeg += 1;
                 else totals.lunchNonVeg += 1;
               }
 
-              const isL_ParcelOptEnabled = isKid
+              const isL_ParcelOptEnabled = isGuest
+                ? isGuestsParcelEnabled(day, MealType.LUNCH, dayConfig, guestsEnabled)
+                : isKid
                 ? isKidsParcelEnabled(day, MealType.LUNCH, dayConfig, kidsEnabled)
                 : isParcelEnabled(day, MealType.LUNCH, dayConfig);
 
@@ -1141,13 +1181,16 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
 
               if (isL_Taken) {
                 totals.lunchTaken += 1;
-                if (isKid) totals.lunchKidsTaken += 1;
-
-                if (diet === DietType.VEG) {
-                  if (isKid) totals.lunchKidsVegTaken += 1;
-                  else totals.lunchFlatVegTaken += 1;
+                if (isGuest) {
+                  totals.lunchGuestsTaken += 1;
+                  if (diet === DietType.VEG) totals.lunchGuestsVegTaken += 1;
+                  else totals.lunchGuestsNonVegTaken += 1;
+                } else if (isKid) {
+                  totals.lunchKidsTaken += 1;
+                  if (diet === DietType.VEG) totals.lunchKidsVegTaken += 1;
+                  else totals.lunchKidsNonVegTaken += 1;
                 } else {
-                  if (isKid) totals.lunchKidsNonVegTaken += 1;
+                  if (diet === DietType.VEG) totals.lunchFlatVegTaken += 1;
                   else totals.lunchFlatNonVegTaken += 1;
                 }
               }
@@ -1160,17 +1203,22 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
             const diet = getDietTypeForChoice(slots[MealType.DINNER], dVarieties);
             if (diet && isDietaryEnabled(day, MealType.DINNER, diet, dayConfig)) {
               totals.dinner += 1;
-              if (isKid) totals.dinnerKidsTotal += 1;
+              if (isGuest) totals.dinnerGuestsTotal += 1;
+              else if (isKid) totals.dinnerKidsTotal += 1;
 
               if (diet === DietType.VEG) {
-                if (isKid) totals.dinnerKidsVeg += 1;
+                if (isGuest) totals.dinnerGuestsVeg += 1;
+                else if (isKid) totals.dinnerKidsVeg += 1;
                 else totals.dinnerVeg += 1;
               } else {
-                if (isKid) totals.dinnerKidsNonVeg += 1;
+                if (isGuest) totals.dinnerGuestsNonVeg += 1;
+                else if (isKid) totals.dinnerKidsNonVeg += 1;
                 else totals.dinnerNonVeg += 1;
               }
 
-              const isD_ParcelOptEnabled = isKid
+              const isD_ParcelOptEnabled = isGuest
+                ? isGuestsParcelEnabled(day, MealType.DINNER, dayConfig, guestsEnabled)
+                : isKid
                 ? isKidsParcelEnabled(day, MealType.DINNER, dayConfig, kidsEnabled)
                 : isParcelEnabled(day, MealType.DINNER, dayConfig);
 
@@ -1183,13 +1231,16 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
 
               if (isD_Taken) {
                 totals.dinnerTaken += 1;
-                if (isKid) totals.dinnerKidsTaken += 1;
-
-                if (diet === DietType.VEG) {
-                  if (isKid) totals.dinnerKidsVegTaken += 1;
-                  else totals.dinnerFlatVegTaken += 1;
+                if (isGuest) {
+                  totals.dinnerGuestsTaken += 1;
+                  if (diet === DietType.VEG) totals.dinnerGuestsVegTaken += 1;
+                  else totals.dinnerGuestsNonVegTaken += 1;
+                } else if (isKid) {
+                  totals.dinnerKidsTaken += 1;
+                  if (diet === DietType.VEG) totals.dinnerKidsVegTaken += 1;
+                  else totals.dinnerKidsNonVegTaken += 1;
                 } else {
-                  if (isKid) totals.dinnerKidsNonVegTaken += 1;
+                  if (diet === DietType.VEG) totals.dinnerFlatVegTaken += 1;
                   else totals.dinnerFlatNonVegTaken += 1;
                 }
               }
@@ -1224,14 +1275,14 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
   }, [subscriptions]);
 
   const totalPeople = useMemo(() => {
-    return subscriptions.reduce((sum, sub) => sum + (sub.peopleCount || 0) + (sub.kidsCount || 0), 0);
-  }, [subscriptions]);
+    return subscriptions.reduce((sum, sub) => sum + (sub.peopleCount || 0) + (kidsEnabled ? (sub.kidsCount || 0) : 0) + (guestsEnabled ? (sub.guestsCount || 0) : 0), 0);
+  }, [subscriptions, kidsEnabled, guestsEnabled]);
 
   const coreValue = useMemo(() => ({
     loading, firebaseError, refreshAllData,
     subscriptions, foodMenu, dayConfig, seasonName, seasonEnabled, paymentConfig,
     freeMealEnabled, mobileEnabled, foodPriceEnabled,
-    kidsEnabled, whatsappCountryCode, quickCheckoutAutoCloseMs, soundEnabled, remoteAppVersion, androidAppLocation, iosAppLocation, kitchenMetrics,
+    kidsEnabled, guestsEnabled, whatsappCountryCode, quickCheckoutAutoCloseMs, soundEnabled, remoteAppVersion, androidAppLocation, iosAppLocation, kitchenMetrics,
     dashboardData, collections, totalPeople,
     upsertSubscription, deleteSubscription, updateConfig, updateMenu,
     updateFreeMealCount, updateMealMenu, updateSubscriptionStatus,
@@ -1241,7 +1292,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
     loading, firebaseError, refreshAllData,
     subscriptions, foodMenu, dayConfig, seasonName, seasonEnabled, paymentConfig,
     freeMealEnabled, mobileEnabled, foodPriceEnabled,
-    kidsEnabled, whatsappCountryCode, quickCheckoutAutoCloseMs, soundEnabled, remoteAppVersion, androidAppLocation, iosAppLocation, kitchenMetrics,
+    kidsEnabled, guestsEnabled, whatsappCountryCode, quickCheckoutAutoCloseMs, soundEnabled, remoteAppVersion, androidAppLocation, iosAppLocation, kitchenMetrics,
     dashboardData, collections, totalPeople,
     upsertSubscription, deleteSubscription, updateConfig, updateMenu,
     updateFreeMealCount, updateMealMenu, updateSubscriptionStatus,

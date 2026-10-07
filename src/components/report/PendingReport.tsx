@@ -24,6 +24,7 @@ export function PendingReport({
   dayConfig,
   onSelectFlat,
   kidsEnabled,
+  guestsEnabled,
 }: {
   data: PendingItem[];
   selectedDayId: string;
@@ -31,6 +32,7 @@ export function PendingReport({
   dayConfig: ConfigDay[];
   onSelectFlat: (id: string) => void;
   kidsEnabled: boolean;
+  guestsEnabled?: boolean;
 }) {
   const styles = useStyles();
   const { theme } = useAppTheme();

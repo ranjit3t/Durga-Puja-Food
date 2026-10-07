@@ -50,6 +50,7 @@ export enum FilterMode {
   ALL = "all",
   SUBSCRIBED = "subscribed",
   KIDS = "kids",
+  GUESTS = "guests",
   PARCEL = "parcel",
   VEG_ONLY = "vegOnly",
   MISSED = "missed",

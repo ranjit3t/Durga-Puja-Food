@@ -12,18 +12,26 @@ interface FlatDayMeal {
   nonVeg: number;
   kidsVeg: number;
   kidsNonVeg: number;
+  guestsVeg?: number;
+  guestsNonVeg?: number;
   vegTaken: number;
   nonVegTaken: number;
   kidsVegTaken: number;
   kidsNonVegTaken: number;
+  guestsVegTaken?: number;
+  guestsNonVegTaken?: number;
   vegParcel: number;
   nonVegParcel: number;
   kidsVegParcel: number;
   kidsNonVegParcel: number;
+  guestsVegParcel?: number;
+  guestsNonVegParcel?: number;
   vegParcelTaken: number;
   nonVegParcelTaken: number;
   kidsVegParcelTaken: number;
   kidsNonVegParcelTaken: number;
+  guestsVegParcelTaken?: number;
+  guestsNonVegParcelTaken?: number;
 }
 
 interface FlatDayStat {
@@ -37,6 +45,7 @@ interface FlatWiseItem {
   block: string;
   people: number;
   kids: number;
+  guests?: number;
   amount: string;
   dayStats: FlatDayStat[];
 }
@@ -46,11 +55,13 @@ export function FlatWiseReport({
   dayConfig,
   onSelectFlat,
   kidsEnabled,
+  guestsEnabled,
 }: {
   data: FlatWiseItem[];
   dayConfig: ConfigDay[];
   onSelectFlat: (id: string) => void;
   kidsEnabled: boolean;
+  guestsEnabled?: boolean;
 }) {
   const styles = useStyles();
   const { theme } = useAppTheme();
@@ -69,10 +80,16 @@ export function FlatWiseReport({
               <View style={{ alignItems: "flex-end" }}>
                  <Text style={{ color: colorScheme.accent, fontSize: 20, fontWeight: "900" }}>{UI_TEXT.rs}{UI_TEXT.space}{item.amount}</Text>
                  <Text style={{ color: theme.colors.textSecondary, fontWeight: "600", fontSize: 12, marginTop: 4 }}>
-                   {kidsEnabled ? (
-                     `${item.people}${UI_TEXT.adultAbbrLabel}${UI_TEXT.plus}${item.kids}${UI_TEXT.kidsAbbrLabel}`
+                   {kidsEnabled || guestsEnabled ? (
+                     (() => {
+                       const parts = [];
+                       parts.push(`${item.people}${UI_TEXT.adultAbbrLabel}`);
+                       if (kidsEnabled && item.kids) parts.push(`${item.kids}${UI_TEXT.kidsAbbrLabel}`);
+                       if (guestsEnabled && (item.guests || 0)) parts.push(`${item.guests || 0}${UI_TEXT.guestAbbrLabel}`);
+                       return parts.join(UI_TEXT.plus);
+                     })()
                    ) : (
-                     `${item.people + item.kids}${item.people + item.kids === 1 ? UI_TEXT.personSuffix : UI_TEXT.personsSuffix}`
+                     `${item.people + item.kids + (item.guests || 0)}${item.people + item.kids + (item.guests || 0) === 1 ? UI_TEXT.personSuffix : UI_TEXT.personsSuffix}`
                    )}
                  </Text>
               </View>
@@ -87,7 +104,7 @@ export function FlatWiseReport({
                          <Text style={{ fontSize: 13, fontWeight: "800" }}>{getMealLabel(m.type)}</Text>
                          <View style={{ alignItems: 'flex-end' }}>
                            <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.textSecondary }}>
-                             {kidsEnabled ? `${UI_TEXT.adultAbbrLabel}${UI_TEXT.colon}${UI_TEXT.space}` : ""}
+                             {kidsEnabled || guestsEnabled ? `${UI_TEXT.adultAbbrLabel}${UI_TEXT.colon}${UI_TEXT.space}` : ""}
                              {m.vegTaken}{UI_TEXT.slash}{m.veg}{UI_TEXT.vegAbbr}{UI_TEXT.space}{UI_TEXT.pipe}{UI_TEXT.space}{m.nonVegTaken}{UI_TEXT.slash}{m.nonVeg}{UI_TEXT.nonVegAbbr}
                            </Text>
                            {(m.vegParcel + m.nonVegParcel) > 0 && (
@@ -104,6 +121,18 @@ export function FlatWiseReport({
                              {(m.kidsVegParcel + m.kidsNonVegParcel) > 0 && (
                                <Text style={{ fontSize: 10, fontWeight: '800', color: theme.colors.primary, opacity: 0.8, marginTop: 2 }}>
                                  {UI_TEXT.parcelAbbr}{UI_TEXT.colon}{UI_TEXT.space}{m.kidsVegParcelTaken + m.kidsNonVegParcelTaken}{UI_TEXT.slash}{m.kidsVegParcel + m.kidsNonVegParcel}
+                               </Text>
+                             )}
+                           </View>
+                        </View>
+                      )}
+                      {guestsEnabled && (
+                        <View style={{ flexDirection: "row", justifyContent: "flex-end" }}>
+                           <View style={{ alignItems: 'flex-end' }}>
+                             <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.textMuted }}>{UI_TEXT.guestAbbrLabel}{UI_TEXT.colon}{UI_TEXT.space}{m.guestsVegTaken || 0}{UI_TEXT.slash}{m.guestsVeg || 0}{UI_TEXT.vegAbbr}{UI_TEXT.space}{UI_TEXT.pipe}{UI_TEXT.space}{m.guestsNonVegTaken || 0}{UI_TEXT.slash}{m.guestsNonVeg || 0}{UI_TEXT.nonVegAbbr}</Text>
+                             {((m.guestsVegParcel || 0) + (m.guestsNonVegParcel || 0)) > 0 && (
+                               <Text style={{ fontSize: 10, fontWeight: '800', color: theme.colors.primary, opacity: 0.8, marginTop: 2 }}>
+                                 {UI_TEXT.parcelAbbr}{UI_TEXT.colon}{UI_TEXT.space}{(m.guestsVegParcelTaken || 0) + (m.guestsNonVegParcelTaken || 0)}{UI_TEXT.slash}{(m.guestsVegParcel || 0) + (m.guestsNonVegParcel || 0)}
                                </Text>
                              )}
                            </View>

@@ -12,12 +12,14 @@ interface MissedParcelItem {
   mobile?: number;
   count: number;
   kids: number;
+  guests?: number;
 }
 
 export function MissedParcelReport({
   data,
   onSelectFlat,
   kidsEnabled,
+  guestsEnabled,
 }: {
   data: MissedParcelItem[];
   selectedDayId: string;
@@ -25,6 +27,7 @@ export function MissedParcelReport({
   dayConfig: ConfigDay[];
   onSelectFlat: (id: string) => void;
   kidsEnabled: boolean;
+  guestsEnabled?: boolean;
 }) {
   const styles = useStyles();
   const { theme } = useAppTheme();
@@ -50,7 +53,13 @@ export function MissedParcelReport({
               <View style={styles.dashboardCardTop}>
                 <View>
                    <Text style={[styles.dashboardDay, { color: colorScheme.accent }]}>{item.block}{UI_TEXT.hyphen}{item.flat}</Text>
-                   {kidsEnabled && item.kids > 0 && <Text style={{ fontSize: 10, fontWeight: '800', color: theme.colors.textMuted, marginTop: 2 }}>{(item.kids === 1 ? UI_TEXT.kidIncluded : UI_TEXT.kidsIncluded).replace("{count}", String(item.kids))}</Text>}
+                   {(kidsEnabled || guestsEnabled) && (item.kids > 0 || (item.guests || 0) > 0) && (
+                     <Text style={{ fontSize: 10, fontWeight: '800', color: theme.colors.textMuted, marginTop: 2 }}>
+                       {kidsEnabled && item.kids > 0 ? `${(item.kids === 1 ? UI_TEXT.kidIncluded : UI_TEXT.kidsIncluded).replace("{count}", String(item.kids))}` : ""}
+                       {kidsEnabled && item.kids > 0 && guestsEnabled && (item.guests || 0) > 0 ? ", " : ""}
+                       {guestsEnabled && (item.guests || 0) > 0 ? `${(item.guests === 1 ? UI_TEXT.guestIncluded : UI_TEXT.guestsIncluded).replace("{count}", String(item.guests))}` : ""}
+                     </Text>
+                   )}
                 </View>
                 <View style={{ alignItems: 'flex-end' }}>
                   <Text style={[styles.amount, { color: theme.colors.primary, fontWeight: '900' }]}>

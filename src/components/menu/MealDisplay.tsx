@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useStyles } from "../../styles";
 import { useAppTheme } from "../../theme";
 import { MealMenu, Day, ConfigDay, MealType, DietType, DietaryVariety, VarietyMenu } from "../../types";
-import { isDietaryEnabled, isMealCurrent, isKidsParcelEnabled, getMealVarieties, isSpecialMeal } from "../../constants";
+import { isDietaryEnabled, isMealCurrent, isKidsParcelEnabled, getMealVarieties, isSpecialMeal, isGuestsParcelEnabled } from "../../constants";
 import { UI_TEXT } from "../../strings";
 
 /**
@@ -20,6 +20,7 @@ export function MealDisplay({
   menu,
   foodPriceEnabled,
   kidsEnabled,
+  guestsEnabled,
 }: {
   title: string;
   mealKey: MealType;
@@ -29,6 +30,7 @@ export function MealDisplay({
   menu: MealMenu;
   foodPriceEnabled: boolean;
   kidsEnabled: boolean;
+  guestsEnabled?: boolean;
 }) {
   const styles = useStyles();
   const { theme } = useAppTheme();
@@ -61,20 +63,24 @@ export function MealDisplay({
     return [];
   };
 
-  const getVarietyPrice = (v: DietaryVariety, field: 'adultPrice' | 'kidsPrice' | 'parcelPrice' | 'kidsParcelPrice'): string => {
+  const getVarietyPrice = (v: DietaryVariety, field: 'adultPrice' | 'kidsPrice' | 'guestPrice' | 'parcelPrice' | 'kidsParcelPrice' | 'guestParcelPrice'): string => {
     if (v.id === "veg_default") {
       if (field === "adultPrice") return menu?.vegPrice || mConf?.vegPrice || "";
       if (field === "kidsPrice") return menu?.kidsVegPrice || (mConf as any)?.kidsVegPrice || "";
+      if (field === "guestPrice") return menu?.guestsVegPrice || (mConf as any)?.guestsVegPrice || "";
       if (field === "parcelPrice") return menu?.vegParcelPrice || mConf?.vegParcelPrice || "";
       if (field === "kidsParcelPrice") return menu?.kidsVegParcelPrice || (mConf as any)?.kidsVegParcelPrice || "";
+      if (field === "guestParcelPrice") return menu?.guestsVegParcelPrice || (mConf as any)?.guestsVegParcelPrice || "";
     }
     if (v.id === "nonVeg_default") {
       if (field === "adultPrice") return menu?.nonVegPrice || mConf?.nonVegPrice || "";
       if (field === "kidsPrice") return menu?.kidsNonVegPrice || (mConf as any)?.kidsNonVegPrice || "";
+      if (field === "guestPrice") return menu?.guestsNonVegPrice || (mConf as any)?.guestsNonVegPrice || "";
       if (field === "parcelPrice") return menu?.nonVegParcelPrice || mConf?.nonVegParcelPrice || "";
-      if (field === "kidsParcelPrice") return menu?.kidsNonVegParcelPrice || (mConf as any)?.kidsNonVegParcelPrice || "";
+      if (field === "kidsParcelPrice") return menu?.kidsVegParcelPrice || (mConf as any)?.kidsVegParcelPrice || "";
+      if (field === "guestParcelPrice") return menu?.guestsVegParcelPrice || (mConf as any)?.guestsVegParcelPrice || "";
     }
-    const val = menu?.varieties?.[v.id]?.[field];
+    const val = menu?.varieties?.[v.id]?.[field as keyof VarietyMenu];
     return typeof val === 'string' ? val : "";
   };
 
@@ -127,8 +133,10 @@ export function MealDisplay({
           const vColor = v.color || (v.type === DietType.VEG ? theme.colors.veg : theme.colors.nonVeg);
           const adultPrice = getVarietyPrice(v, "adultPrice");
           const kidsPrice = getVarietyPrice(v, "kidsPrice");
+          const guestPrice = getVarietyPrice(v, "guestPrice");
           const parcelPrice = getVarietyPrice(v, "parcelPrice");
           const kidsParcelPrice = getVarietyPrice(v, "kidsParcelPrice");
+          const guestParcelPrice = getVarietyPrice(v, "guestParcelPrice");
 
           return (
             <View key={v.id} style={{ marginBottom: idx < varieties.length - 1 ? 16 : 4 }}>
@@ -163,13 +171,24 @@ export function MealDisplay({
                           </Text>
                         </View>
                       ) : null}
+
+                      {guestsEnabled && guestPrice ? (
+                        <View style={[styles.pill, { backgroundColor: vColor + "22", paddingVertical: 4, paddingHorizontal: 10, borderRadius: 8, borderStyle: "dashed", borderWidth: 1, borderColor: vColor }]}>
+                          <Text style={{ fontSize: 11, fontWeight: "900", color: theme.colors.textPrimary }}>
+                            {UI_TEXT.guestAbbrLabel}{UI_TEXT.colon} {UI_TEXT.rs} {guestPrice}
+                          </Text>
+                        </View>
+                      ) : null}
                     </View>
 
-                    {mConf?.parcel && parcelPrice ? (
+                    {mConf?.parcel && (parcelPrice || kidsParcelPrice || guestParcelPrice) ? (
                       <Text style={{ fontSize: 10, color: theme.colors.textSecondary, fontWeight: "700" }}>
-                        {UI_TEXT.parcelLabel}{UI_TEXT.colon}{UI_TEXT.space}{UI_TEXT.rs}{UI_TEXT.space}{parcelPrice}
+                        {UI_TEXT.parcelLabel}{UI_TEXT.colon}{UI_TEXT.space}{UI_TEXT.rs}{UI_TEXT.space}{parcelPrice || "0"}
                         {kidsEnabled && isKidsParcelEnabled(dayId, mealKey, config, kidsEnabled) && kidsParcelPrice
                           ? `${UI_TEXT.space}${UI_TEXT.openParen}${UI_TEXT.kidsAbbrLabel}${UI_TEXT.colon}${UI_TEXT.space}${UI_TEXT.rs}${UI_TEXT.space}${kidsParcelPrice}${UI_TEXT.closeParen}`
+                          : ""}
+                        {guestsEnabled && isGuestsParcelEnabled(dayId, mealKey, config, guestsEnabled) && guestParcelPrice
+                          ? `${UI_TEXT.space}${UI_TEXT.openParen}${UI_TEXT.guestAbbrLabel}${UI_TEXT.colon}${UI_TEXT.space}${UI_TEXT.rs}${UI_TEXT.space}${guestParcelPrice}${UI_TEXT.closeParen}`
                           : ""}
                       </Text>
                     ) : null}

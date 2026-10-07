@@ -17,7 +17,10 @@ interface SubscriptionBasicInfoSectionProps {
   setPeopleCount: (val: number) => void;
   kidsCount: number;
   setKidsCount: (val: number) => void;
+  guestsCount?: number;
+  setGuestsCount?: (val: number) => void;
   kidsEnabled: boolean;
+  guestsEnabled?: boolean;
   mobileEnabled: boolean;
   isAdmin: boolean;
   canEdit: boolean;
@@ -25,6 +28,7 @@ interface SubscriptionBasicInfoSectionProps {
   hasAnyMealTaken: boolean;
   minPeople: number;
   minKids: number;
+  minGuests?: number;
   pickContact?: () => void;
   theme: any;
   styles: any;
@@ -43,7 +47,10 @@ export const SubscriptionBasicInfoSection: React.FC<SubscriptionBasicInfoSection
   setPeopleCount,
   kidsCount,
   setKidsCount,
+  guestsCount = 0,
+  setGuestsCount,
   kidsEnabled,
+  guestsEnabled = false,
   mobileEnabled,
   isAdmin,
   canEdit,
@@ -51,6 +58,7 @@ export const SubscriptionBasicInfoSection: React.FC<SubscriptionBasicInfoSection
   hasAnyMealTaken,
   minPeople,
   minKids,
+  minGuests = 0,
   pickContact,
   theme,
   styles,
@@ -147,6 +155,16 @@ export const SubscriptionBasicInfoSection: React.FC<SubscriptionBasicInfoSection
           value={kidsCount}
           min={minKids}
           onChange={setKidsCount}
+          disabled={!isAdmin || !canEdit}
+        />
+      )}
+
+      {guestsEnabled && setGuestsCount && (
+        <CounterInput
+          label={UI_TEXT.guestsCount}
+          value={guestsCount}
+          min={minGuests}
+          onChange={setGuestsCount}
           disabled={!isAdmin || !canEdit}
         />
       )}

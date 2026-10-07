@@ -15,18 +15,26 @@ interface DayWiseData {
   nonVeg: number;
   kidsVeg: number;
   kidsNonVeg: number;
+  guestsVeg?: number;
+  guestsNonVeg?: number;
   vegTaken: number;
   nonVegTaken: number;
   kidsVegTaken: number;
   kidsNonVegTaken: number;
+  guestsVegTaken?: number;
+  guestsNonVegTaken?: number;
   vegParcel: number;
   nonVegParcel: number;
   kidsVegParcel: number;
   kidsNonVegParcel: number;
+  guestsVegParcel?: number;
+  guestsNonVegParcel?: number;
   vegParcelTaken: number;
   nonVegParcelTaken: number;
   kidsVegParcelTaken: number;
   kidsNonVegParcelTaken: number;
+  guestsVegParcelTaken?: number;
+  guestsNonVegParcelTaken?: number;
   freeMealVeg: number;
   freeMealNonVeg: number;
   freeMealVegTaken: number;
@@ -38,18 +46,26 @@ interface MealStats {
   nonVeg: number;
   kidsVeg: number;
   kidsNonVeg: number;
+  guestsVeg?: number;
+  guestsNonVeg?: number;
   vegTaken: number;
   nonVegTaken: number;
   kidsVegTaken: number;
   kidsNonVegTaken: number;
+  guestsVegTaken?: number;
+  guestsNonVegTaken?: number;
   vegParcel: number;
   nonVegParcel: number;
   kidsVegParcel: number;
   kidsNonVegParcel: number;
+  guestsVegParcel?: number;
+  guestsNonVegParcel?: number;
   vegParcelTaken: number;
   nonVegParcelTaken: number;
   kidsVegParcelTaken: number;
   kidsNonVegParcelTaken: number;
+  guestsVegParcelTaken?: number;
+  guestsNonVegParcelTaken?: number;
   freeMealVeg: number;
   freeMealNonVeg: number;
   freeMealVegTaken: number;
@@ -68,6 +84,7 @@ export function DayWiseReport({
   mealWiseData = [],
   dayConfig,
   kidsEnabled,
+  guestsEnabled,
   freeMealEnabled,
 }: {
   data: DayWiseData[];
@@ -76,6 +93,7 @@ export function DayWiseReport({
   mealWiseData?: DayData[];
   dayConfig: ConfigDay[];
   kidsEnabled: boolean;
+  guestsEnabled?: boolean;
   freeMealEnabled?: boolean;
 }) {
   const styles = useStyles();
@@ -365,6 +383,13 @@ export function DayWiseReport({
             kidsVegTaken={m?.kidsVegTaken || 0}
             kidsNonVegTaken={m?.kidsNonVegTaken || 0}
             kidsEnabled={kidsEnabled}
+            guestsEnabled={guestsEnabled}
+            guestsTotal={(m?.guestsVeg || 0) + (m?.guestsNonVeg || 0)}
+            guestsTaken={(m?.guestsVegTaken || 0) + (m?.guestsNonVegTaken || 0)}
+            guestsVeg={m?.guestsVeg || 0}
+            guestsNonVeg={m?.guestsNonVeg || 0}
+            guestsVegTaken={m?.guestsVegTaken || 0}
+            guestsNonVegTaken={m?.guestsNonVegTaken || 0}
             freeMealEnabled={!!freeMealEnabled}
             isParcelEnabled={parcelEnabled}
             isBothEnabled={vegEnabled && nonVegEnabled}

@@ -34,6 +34,7 @@ import {
   getMealVarieties,
   getDietTypeForChoice,
   formatTimestamp,
+  isGuestsParcelEnabled,
 } from "../constants";
 import { MealMenu, MealType, DietType, DietaryOption, normalizeChoice, toBool, AppScreen, UserRole, PaymentMode, ReportType, AppThemeMode, ActivityModule, ActivityAction, CheckoutSource, getPassDisplayLabel } from "../types";
 import { BackButton } from "../components/common/BackButton";
@@ -55,7 +56,7 @@ export function DetailsScreen() {
   const { userRole, handleLogout } = useAuth();
   const {
     subscriptions, dayConfig, paymentConfig, seasonEnabled, foodMenu, mobileEnabled,
-    deleteSubscription, whatsappCountryCode, kidsEnabled
+    deleteSubscription, whatsappCountryCode, kidsEnabled, guestsEnabled
   } = useCoreDatabase();
   const { addActivityLog } = useActivityLogs();
   const { showAlert: showGlobalAlert } = useUI();
@@ -97,7 +98,7 @@ export function DetailsScreen() {
     const { dayId, mealType } = currentMealInfo;
     const mealKey = mealType;
 
-    const headcount = subscription.peopleCount + (kidsEnabled ? (subscription.kidsCount || 0) : 0);
+    const headcount = subscription.peopleCount + (kidsEnabled ? (subscription.kidsCount || 0) : 0) + (guestsEnabled ? (subscription.guestsCount || 0) : 0);
     const slots = subscription.mealSlots?.[dayId] || [];
     const taken = subscription.takenByPerson?.[dayId] || [];
 
@@ -330,10 +331,16 @@ export function DetailsScreen() {
           <View style={{ height: 1, backgroundColor: theme.colors.white, opacity: 0.2, marginVertical: 12 }} />
 
           <Text style={[styles.previewMeta, { color: theme.colors.white }]}>
-            {kidsEnabled ? (
-               `${subscription.peopleCount}${UI_TEXT.space}${subscription.peopleCount === 1 ? UI_TEXT.adult : UI_TEXT.adults}${subscription.kidsCount ? `${UI_TEXT.plus}${subscription.kidsCount}${UI_TEXT.space}${subscription.kidsCount === 1 ? UI_TEXT.kid : UI_TEXT.kids}` : ""}`
+            {kidsEnabled || guestsEnabled ? (
+               (() => {
+                 const parts = [];
+                 parts.push(`${subscription.peopleCount}${UI_TEXT.space}${subscription.peopleCount === 1 ? UI_TEXT.adult : UI_TEXT.adults}`);
+                 if (kidsEnabled && subscription.kidsCount) parts.push(`${subscription.kidsCount}${UI_TEXT.space}${subscription.kidsCount === 1 ? UI_TEXT.kid : UI_TEXT.kids}`);
+                 if (guestsEnabled && subscription.guestsCount) parts.push(`${subscription.guestsCount}${UI_TEXT.space}${subscription.guestsCount === 1 ? UI_TEXT.guest : UI_TEXT.guests}`);
+                 return parts.join(UI_TEXT.plus);
+               })()
             ) : (
-               `${subscription.peopleCount + (subscription.kidsCount || 0)}${subscription.peopleCount + (subscription.kidsCount || 0) === 1 ? UI_TEXT.personSuffix : UI_TEXT.personsSuffix}`
+               `${subscription.peopleCount + (subscription.kidsCount || 0) + (subscription.guestsCount || 0)}${subscription.peopleCount + (subscription.kidsCount || 0) + (subscription.guestsCount || 0) === 1 ? UI_TEXT.personSuffix : UI_TEXT.personsSuffix}`
             )}
             {paymentConfig.enabled && `${UI_TEXT.pipe}${UI_TEXT.rs}${UI_TEXT.space}${subscription.amount || UI_TEXT.zero}`}
             {mobileEnabled && subscription.mobile && `${UI_TEXT.pipe}${subscription.mobile}`}
@@ -455,13 +462,19 @@ export function DetailsScreen() {
             const nonVegEnabled = isDietaryEnabledForDay(day, DietType.NON_VEG, dayConfig);
 
             const parts = [];
-            const vCount = subscription.meals[day]?.[DietType.VEG] || 0;
-            const nvCount = subscription.meals[day]?.[DietType.NON_VEG] || 0;
+            const vCount = (subscription.meals[day]?.[DietType.VEG] || 0) +
+                           (subscription.meals[day]?.kidsVeg || 0) +
+                           (subscription.meals[day]?.guestsVeg || 0);
+            const nvCount = (subscription.meals[day]?.[DietType.NON_VEG] || 0) +
+                              (subscription.meals[day]?.kidsNonVeg || 0) +
+                              (subscription.meals[day]?.guestsNonVeg || 0);
 
             // Calculate aggregate parcel count for this day
             let pCount = 0;
+            const kCount = kidsEnabled ? (subscription.kidsCount || 0) : 0;
             (subscription.mealSlots[day] || []).forEach((slot, pIdx) => {
-              const isKid = kidsEnabled && pIdx >= subscription.peopleCount;
+              const isKid = kidsEnabled && pIdx >= subscription.peopleCount && pIdx < subscription.peopleCount + kCount;
+              const isGuest = guestsEnabled && pIdx >= subscription.peopleCount + kCount;
               const meals = [
                 { key: MealType.BREAKFAST, parcelKey: 'breakfastParcel' as const },
                 { key: MealType.LUNCH, parcelKey: 'lunchParcel' as const },
@@ -473,7 +486,9 @@ export function DetailsScreen() {
                 const choice = getValidSlotChoice(day, m.key, slot[m.key], dayConfig);
                 if (choice === DietaryOption.NONE) return;
 
-                const parcelActive = isKid
+                const parcelActive = isGuest
+                  ? isGuestsParcelEnabled(day, m.key, dayConfig, guestsEnabled)
+                  : isKid
                   ? isKidsParcelEnabled(day, m.key, dayConfig, kidsEnabled)
                   : isParcelEnabled(day, m.key, dayConfig);
 
@@ -557,16 +572,18 @@ export function DetailsScreen() {
         {/* Choice Matrix */}
         <Text style={[styles.sectionTitle, { marginBottom: 12 }]}>{UI_TEXT.foodChoiceByPerson}</Text>
         <Text style={styles.helper}>{UI_TEXT.foodChoiceInstruction || UI_TEXT.foodChoiceHelper}</Text>
-        {Array.from({ length: subscription.peopleCount + (kidsEnabled ? (subscription.kidsCount || 0) : 0) }, (_, personIndex) => (
+        {Array.from({ length: subscription.peopleCount + (kidsEnabled ? (subscription.kidsCount || 0) : 0) + (guestsEnabled ? (subscription.guestsCount || 0) : 0) }, (_, personIndex) => (
           <View key={personIndex} style={[styles.card, { backgroundColor: theme.cardColors[2].bg, borderColor: theme.cardColors[2].border }]}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 16 }}>
                <Ionicons name="person-outline" size={18} color={theme.cardColors[2].accent} />
-               <Text style={[styles.sectionTitle, { marginBottom: 0, fontSize: 16, color: theme.cardColors[2].accent }]}>{getMemberLegend(personIndex, subscription.peopleCount, !!kidsEnabled)}</Text>
+               <Text style={[styles.sectionTitle, { marginBottom: 0, fontSize: 16, color: theme.cardColors[2].accent }]}>{getMemberLegend(personIndex, subscription.peopleCount, !!kidsEnabled, subscription.kidsCount || 0, !!guestsEnabled)}</Text>
             </View>
             <View style={styles.personDays}>
               {activeDays.map((day) => {
                 const slots = subscription.mealSlots[day]?.[personIndex];
-                const isKid = kidsEnabled && personIndex >= subscription.peopleCount;
+                const kCount = kidsEnabled ? (subscription.kidsCount || 0) : 0;
+                const isKid = kidsEnabled && personIndex >= subscription.peopleCount && personIndex < subscription.peopleCount + kCount;
+                const isGuest = guestsEnabled && personIndex >= subscription.peopleCount + kCount;
 
                 const getMealParts = () => {
                    if (!slots) return [];
@@ -587,7 +604,9 @@ export function DetailsScreen() {
                      const dietType = getDietTypeForChoice(choice, getMealVarieties(mConf, dayConf?.vegOnly));
                      const color = dietType === DietType.VEG ? theme.colors.veg : (dietType === DietType.NON_VEG ? theme.colors.nonVeg : theme.cardColors[2].accent);
 
-                     const parcelActive = isKid
+                     const parcelActive = isGuest
+                       ? isGuestsParcelEnabled(day, m.key, dayConfig, guestsEnabled)
+                       : isKid
                        ? isKidsParcelEnabled(day, m.key, dayConfig, kidsEnabled)
                        : isParcelEnabled(day, m.key, dayConfig);
                      const hasParcel = parcelActive && toBool(slots[m.parcelKey]);
@@ -636,11 +655,11 @@ export function DetailsScreen() {
         {/* Collection Matrix */}
         <Text style={[styles.sectionTitle, { marginBottom: 12 }]}>{UI_TEXT.foodTakenByPerson}</Text>
         <Text style={styles.helper}>{UI_TEXT.foodTakenHelper}</Text>
-        {Array.from({ length: subscription.peopleCount + (kidsEnabled ? (subscription.kidsCount || 0) : 0) }, (_, personIndex) => (
+        {Array.from({ length: subscription.peopleCount + (kidsEnabled ? (subscription.kidsCount || 0) : 0) + (guestsEnabled ? (subscription.guestsCount || 0) : 0) }, (_, personIndex) => (
           <View key={personIndex} style={[styles.card, { backgroundColor: theme.cardColors[0].bg, borderColor: theme.cardColors[0].border }]}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 16 }}>
                <Ionicons name="checkmark-circle-outline" size={18} color={theme.cardColors[0].accent} />
-               <Text style={[styles.sectionTitle, { marginBottom: 0, fontSize: 16, color: theme.cardColors[0].accent }]}>{getMemberLegend(personIndex, subscription.peopleCount, !!kidsEnabled)}</Text>
+               <Text style={[styles.sectionTitle, { marginBottom: 0, fontSize: 16, color: theme.cardColors[0].accent }]}>{getMemberLegend(personIndex, subscription.peopleCount, !!kidsEnabled, subscription.kidsCount || 0, !!guestsEnabled)}</Text>
             </View>
             <View style={styles.personDays}>
               {activeDays.map((day) => {

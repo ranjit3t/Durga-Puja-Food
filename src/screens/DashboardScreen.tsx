@@ -66,6 +66,13 @@ interface MealSectionProps {
   kidsVegTaken: number;
   kidsNonVegTaken: number;
   kidsEnabled: boolean;
+  guestsEnabled?: boolean;
+  guestsTotal?: number;
+  guestsVeg?: number;
+  guestsNonVeg?: number;
+  guestsTaken?: number;
+  guestsVegTaken?: number;
+  guestsNonVegTaken?: number;
   freeMealVeg: number;
   freeMealNonVeg: number;
   freeMealVegTaken: number;
@@ -113,6 +120,13 @@ const DashboardMealSection = memo(
     kidsVegTaken,
     kidsNonVegTaken,
     kidsEnabled,
+    guestsEnabled,
+    guestsTotal = 0,
+    guestsVeg = 0,
+    guestsNonVeg = 0,
+    guestsTaken = 0,
+    guestsVegTaken = 0,
+    guestsNonVegTaken = 0,
     freeMealVeg,
     freeMealNonVeg,
     freeMealVegTaken,
@@ -291,15 +305,17 @@ const DashboardMealSection = memo(
 
                 <View style={{ flexDirection: "row", flexWrap: "wrap", gap: s(8) }}>
                   {varieties.map((v) => {
-                    let adultP = 0, kidsP = 0, adultS = 0, kidsS = 0, freeMealP = 0, freeMealS = 0;
+                    let adultP = 0, kidsP = 0, guestsP = 0, adultS = 0, kidsS = 0, guestsS = 0, freeMealP = 0, freeMealS = 0;
                     subscriptions.forEach((sub) => {
                       const slots = sub.mealSlots?.[day] || [];
                       const taken = sub.takenByPerson?.[day] || [];
                       const adultCount = sub.peopleCount || 0;
+                      const kCount = kidsEnabled ? (sub.kidsCount || 0) : 0;
                       slots.forEach((sSlot, idx) => {
                         const choice = sSlot[type];
                         if (choice === DietaryOption.NONE) return;
-                        const isKid = kidsEnabled && idx >= adultCount;
+                        const isKid = kidsEnabled && idx >= adultCount && idx < adultCount + kCount;
+                        const isGuest = guestsEnabled && idx >= adultCount + kCount;
                         const isMatch =
                           choice === v.id ||
                           ((v.id === "veg_default" || v.isDefault) && v.type === DietType.VEG && (choice === DietaryOption.VEG || choice === "veg")) ||
@@ -307,7 +323,10 @@ const DashboardMealSection = memo(
 
                         if (isMatch) {
                           const isTaken = toBool(taken[idx]?.[type]);
-                          if (isKid) {
+                          if (isGuest) {
+                            guestsP++;
+                            if (isTaken) guestsS++;
+                          } else if (isKid) {
                             kidsP++;
                             if (isTaken) kidsS++;
                           } else {
@@ -332,8 +351,9 @@ const DashboardMealSection = memo(
                       }
                     }
 
-                    const subTotal = adultP + kidsP + freeMealP;
-                    const subTaken = adultS + kidsS + freeMealS;
+                    const subTotal = adultP + kidsP + guestsP + freeMealP;
+                    const subTaken = adultS + kidsS + guestsS + freeMealS;
+                    if (subTotal === 0) return null;
                     const vColor = v.color || (v.type === DietType.VEG ? theme.colors.veg : theme.colors.nonVeg);
 
                     return (
@@ -361,8 +381,14 @@ const DashboardMealSection = memo(
                         </View>
 
                         <Text style={{ fontSize: s(10), fontWeight: "700", color: theme.colors.textSecondary }}>
-                          {kidsEnabled ? `${adultP}${UI_TEXT.space}${adultP === 1 ? UI_TEXT.adult : UI_TEXT.adults}, ${kidsP}${UI_TEXT.space}${kidsP === 1 ? UI_TEXT.kid : UI_TEXT.kids}` : `${adultP}${UI_TEXT.space}${adultP === 1 ? UI_TEXT.personSuffix : UI_TEXT.personsSuffix}`}
-                          {freeMealEnabled && freeMealP > 0 ? `, ${freeMealP}${UI_TEXT.space}${freeMealP === 1 ? UI_TEXT.freeMeal : UI_TEXT.freeMeals}` : ""}
+                          {(() => {
+                            const parts = [];
+                            parts.push(`${adultP}${UI_TEXT.space}${adultP === 1 ? UI_TEXT.adult : UI_TEXT.adults}`);
+                            if (kidsEnabled && kidsP > 0) parts.push(`${kidsP}${UI_TEXT.space}${kidsP === 1 ? UI_TEXT.kid : UI_TEXT.kids}`);
+                            if (guestsEnabled && guestsP > 0) parts.push(`${guestsP}${UI_TEXT.space}${guestsP === 1 ? UI_TEXT.guest : UI_TEXT.guests}`);
+                            if (freeMealEnabled && freeMealP > 0) parts.push(`${freeMealP}${UI_TEXT.space}${freeMealP === 1 ? UI_TEXT.freeMeal : UI_TEXT.freeMeals}`);
+                            return parts.join(", ");
+                          })()}
                         </Text>
                       </View>
                     );
@@ -391,10 +417,12 @@ const DashboardMealSection = memo(
                 day={day} type={type} total={total} veg={veg} nonVeg={nonVeg}
                 kidsTotal={kidsTotal} kidsVeg={kidsVeg} kidsNonVeg={kidsNonVeg}
                 kidsTaken={kidsTaken} kidsVegTaken={kidsVegTaken} kidsNonVegTaken={kidsNonVegTaken}
+                guestsTotal={guestsTotal} guestsVeg={guestsVeg} guestsNonVeg={guestsNonVeg}
+                guestsTaken={guestsTaken} guestsVegTaken={guestsVegTaken} guestsNonVegTaken={guestsNonVegTaken}
                 parcel={parcel} parcelTaken={parcelTaken} totalVegTaken={totalVegTaken}
                 totalNonVegTaken={totalNonVegTaken} freeMealVeg={freeMealVeg} freeMealNonVeg={freeMealNonVeg}
                 freeMealVegTaken={freeMealVegTaken} freeMealNonVegTaken={freeMealNonVegTaken}
-                totalMealTaken={totalMealTaken} kidsEnabled={kidsEnabled} freeMealEnabled={freeMealEnabled}
+                totalMealTaken={totalMealTaken} kidsEnabled={kidsEnabled} guestsEnabled={guestsEnabled} freeMealEnabled={freeMealEnabled}
                 isParcelEnabled={isParcelEnabled(day, type, config)}
                 isBothEnabled={isBothEnabled} labels={labels as any}
               />
@@ -403,10 +431,12 @@ const DashboardMealSection = memo(
                 day={day} type={type} total={total} veg={veg} nonVeg={nonVeg}
                 kidsTotal={kidsTotal} kidsVeg={kidsVeg} kidsNonVeg={kidsNonVeg}
                 kidsTaken={kidsTaken} kidsVegTaken={kidsVegTaken} kidsNonVegTaken={kidsNonVegTaken}
+                guestsTotal={guestsTotal} guestsVeg={guestsVeg} guestsNonVeg={guestsNonVeg}
+                guestsTaken={guestsTaken} guestsVegTaken={guestsVegTaken} guestsNonVegTaken={guestsNonVegTaken}
                 parcel={parcel} parcelTaken={parcelTaken} totalVegTaken={totalVegTaken}
                 totalNonVegTaken={totalNonVegTaken} freeMealVeg={freeMealVeg} freeMealNonVeg={freeMealNonVeg}
                 freeMealVegTaken={freeMealVegTaken} freeMealNonVegTaken={freeMealNonVegTaken}
-                totalMealTaken={totalMealTaken} kidsEnabled={kidsEnabled} freeMealEnabled={freeMealEnabled}
+                totalMealTaken={totalMealTaken} kidsEnabled={kidsEnabled} guestsEnabled={guestsEnabled} freeMealEnabled={freeMealEnabled}
                 isParcelEnabled={isParcelEnabled(day, type, config)}
                 isBothEnabled={isBothEnabled} labels={labels as any}
                 showPlannedOnly={viewMode === "planned"}
@@ -534,7 +564,7 @@ export function DashboardScreen() {
   const { userRole, handleLogout } = useAuth();
   const {
     foodMenu, dayConfig, seasonName, freeMealEnabled, seasonEnabled,
-    dashboardData, kidsEnabled
+    dashboardData, kidsEnabled, guestsEnabled
   } = useCoreDatabase();
 
   const { navigate, goBack } = useAppNavigation();
@@ -582,6 +612,11 @@ export function DashboardScreen() {
       acc.kidsTotal += (day.breakfastKidsTotal || 0) + (day.lunchKidsTotal || 0) + (day.dinnerKidsTotal || 0);
       acc.kidsTaken += (day.breakfastKidsTaken || 0) + (day.lunchKidsTaken || 0) + (day.dinnerKidsTaken || 0);
 
+      acc.guestsVeg += (day.breakfastGuestsVeg || 0) + (day.lunchGuestsVeg || 0) + (day.dinnerGuestsVeg || 0);
+      acc.guestsNonVeg += (day.breakfastGuestsNonVeg || 0) + (day.lunchGuestsNonVeg || 0) + (day.dinnerGuestsNonVeg || 0);
+      acc.guestsTotal += (day.breakfastGuestsTotal || 0) + (day.lunchGuestsTotal || 0) + (day.dinnerGuestsTotal || 0);
+      acc.guestsTaken += (day.breakfastGuestsTaken || 0) + (day.lunchGuestsTaken || 0) + (day.dinnerGuestsTaken || 0);
+
       acc.parcel += (day.breakfastParcel || 0) + (day.lunchParcel || 0) + (day.dinnerParcel || 0);
       acc.parcelTaken += (day.breakfastParcelTaken || 0) + (day.lunchParcelTaken || 0) + (day.dinnerParcelTaken || 0);
 
@@ -604,7 +639,7 @@ export function DashboardScreen() {
       }
 
       return acc;
-    }, { total: 0, veg: 0, nonVeg: 0, adultTaken: 0, kidsVeg: 0, kidsNonVeg: 0, kidsTotal: 0, kidsTaken: 0, taken: 0, freeMealTotal: 0, freeMealVeg: 0, freeMealNonVeg: 0, freeMealTaken: 0, parcel: 0, parcelTaken: 0 });
+    }, { total: 0, veg: 0, nonVeg: 0, adultTaken: 0, kidsVeg: 0, kidsNonVeg: 0, kidsTotal: 0, kidsTaken: 0, guestsVeg: 0, guestsNonVeg: 0, guestsTotal: 0, guestsTaken: 0, taken: 0, freeMealTotal: 0, freeMealVeg: 0, freeMealNonVeg: 0, freeMealTaken: 0, parcel: 0, parcelTaken: 0 });
   }, [dashboardData, freeMealEnabled]);
 
   const isParcelEnabledGlobally = useMemo(() => {
@@ -626,6 +661,7 @@ export function DashboardScreen() {
           const mLabel = getMealLabel(mType);
 
           let total = 0, veg = 0, nonVeg = 0, taken = 0, kidsVeg = 0, kidsNonVeg = 0, kidsTotal = 0, kidsTaken = 0;
+          let guestsVeg = 0, guestsNonVeg = 0, guestsTotal = 0, guestsTaken = 0;
           let freeMealTotal = 0, freeMealTaken = 0, freeMealVeg = 0, freeMealNonVeg = 0, adultsTaken = 0;
           let parcel = 0, parcelTaken = 0;
 
@@ -637,6 +673,10 @@ export function DashboardScreen() {
             kidsNonVeg = item.breakfastKidsNonVeg || 0;
             kidsTotal = item.breakfastKidsTotal || 0;
             kidsTaken = item.breakfastKidsTaken || 0;
+            guestsVeg = item.breakfastGuestsVeg || 0;
+            guestsNonVeg = item.breakfastGuestsNonVeg || 0;
+            guestsTotal = item.breakfastGuestsTotal || 0;
+            guestsTaken = item.breakfastGuestsTaken || 0;
             taken = item.breakfastTaken || 0;
             freeMealVeg = item.breakfastFreeMealVeg || 0;
             freeMealNonVeg = item.breakfastFreeMealNonVeg || 0;
@@ -653,6 +693,10 @@ export function DashboardScreen() {
             kidsNonVeg = item.lunchKidsNonVeg || 0;
             kidsTotal = item.lunchKidsTotal || 0;
             kidsTaken = item.lunchKidsTaken || 0;
+            guestsVeg = item.lunchGuestsVeg || 0;
+            guestsNonVeg = item.lunchGuestsNonVeg || 0;
+            guestsTotal = item.lunchGuestsTotal || 0;
+            guestsTaken = item.lunchGuestsTaken || 0;
             taken = item.lunchTaken || 0;
             freeMealVeg = item.lunchFreeMealVeg || 0;
             freeMealNonVeg = item.lunchFreeMealNonVeg || 0;
@@ -669,6 +713,10 @@ export function DashboardScreen() {
             kidsNonVeg = item.dinnerKidsNonVeg || 0;
             kidsTotal = item.dinnerKidsTotal || 0;
             kidsTaken = item.dinnerKidsTaken || 0;
+            guestsVeg = item.dinnerGuestsVeg || 0;
+            guestsNonVeg = item.dinnerGuestsNonVeg || 0;
+            guestsTotal = item.dinnerGuestsTotal || 0;
+            guestsTaken = item.dinnerGuestsTaken || 0;
             taken = item.dinnerTaken || 0;
             freeMealVeg = item.dinnerFreeMealVeg || 0;
             freeMealNonVeg = item.dinnerFreeMealNonVeg || 0;
@@ -694,6 +742,10 @@ export function DashboardScreen() {
             kidsNonVeg,
             kidsTotal,
             kidsTaken,
+            guestsVeg,
+            guestsNonVeg,
+            guestsTotal,
+            guestsTaken,
             parcel,
             parcelTaken,
             isParcelEnabled: isParcelEnabled(d.id, mType, dayConfig),
@@ -821,7 +873,19 @@ export function DashboardScreen() {
                     </View>
                   )}
 
-                  {freeMealEnabled && summaryTotals.freeMealTotal > 0 && (
+                  {guestsEnabled && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(6) }}>
+                      <Text style={{ fontSize: s(11), fontWeight: '800', color: theme.colors.white, opacity: 0.9 }}>{UI_TEXT.guests}:</Text>
+                      <Text style={{ fontSize: s(11), fontWeight: '900', color: theme.colors.white, opacity: 0.9 }}>
+                        {summaryTotals.guestsTotal}
+                      </Text>
+                      <Text style={{ fontSize: s(10), fontWeight: '700', color: theme.colors.white, opacity: 0.8 }}>
+                        ({summaryTotals.guestsVeg}{UI_TEXT.vegAbbrLabel}{UI_TEXT.pipe}{summaryTotals.guestsNonVeg}{UI_TEXT.nonVegAbbrLabel}) ({UI_TEXT.taken}{UI_TEXT.colon}{UI_TEXT.space}{summaryTotals.guestsTaken})
+                      </Text>
+                    </View>
+                  )}
+
+                  {freeMealEnabled && (
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(6) }}>
                       <Text style={{ fontSize: s(11), fontWeight: '800', color: theme.colors.white, opacity: 0.9 }}>{UI_TEXT.freeMeal}:</Text>
                       <Text style={{ fontSize: s(11), fontWeight: '900', color: theme.colors.white, opacity: 0.9 }}>
@@ -993,6 +1057,12 @@ export function DashboardScreen() {
                   kidsTaken: item.breakfastKidsTaken || 0,
                   kidsVegTaken: item.breakfastKidsVegTaken || 0,
                   kidsNonVegTaken: item.breakfastKidsNonVegTaken || 0,
+                  guestsTotal: item.breakfastGuestsTotal || 0,
+                  guestsVeg: item.breakfastGuestsVeg || 0,
+                  guestsNonVeg: item.breakfastGuestsNonVeg || 0,
+                  guestsTaken: item.breakfastGuestsTaken || 0,
+                  guestsVegTaken: item.breakfastGuestsVegTaken || 0,
+                  guestsNonVegTaken: item.breakfastGuestsNonVegTaken || 0,
                   parcel: item.breakfastParcel || 0,
                   parcelTaken: item.breakfastParcelTaken || 0,
                   taken: (item.breakfastTaken || 0) + (item.breakfastFreeMealTaken || 0),
@@ -1032,6 +1102,12 @@ export function DashboardScreen() {
                   kidsTaken: item.lunchKidsTaken || 0,
                   kidsVegTaken: item.lunchKidsVegTaken || 0,
                   kidsNonVegTaken: item.lunchKidsNonVegTaken || 0,
+                  guestsTotal: item.lunchGuestsTotal || 0,
+                  guestsVeg: item.lunchGuestsVeg || 0,
+                  guestsNonVeg: item.lunchGuestsNonVeg || 0,
+                  guestsTaken: item.lunchGuestsTaken || 0,
+                  guestsVegTaken: item.lunchGuestsVegTaken || 0,
+                  guestsNonVegTaken: item.lunchGuestsNonVegTaken || 0,
                   parcel: item.lunchParcel || 0,
                   parcelTaken: item.lunchParcelTaken || 0,
                   taken: (item.lunchTaken || 0) + (item.lunchFreeMealTaken || 0),
@@ -1071,6 +1147,12 @@ export function DashboardScreen() {
                   kidsTaken: item.dinnerKidsTaken || 0,
                   kidsVegTaken: item.dinnerKidsVegTaken || 0,
                   kidsNonVegTaken: item.dinnerKidsNonVegTaken || 0,
+                  guestsTotal: item.dinnerGuestsTotal || 0,
+                  guestsVeg: item.dinnerGuestsVeg || 0,
+                  guestsNonVeg: item.dinnerGuestsNonVeg || 0,
+                  guestsTaken: item.dinnerGuestsTaken || 0,
+                  guestsVegTaken: item.dinnerGuestsVegTaken || 0,
+                  guestsNonVegTaken: item.dinnerGuestsNonVegTaken || 0,
                   parcel: item.dinnerParcel || 0,
                   parcelTaken: item.dinnerParcelTaken || 0,
                   taken: (item.dinnerTaken || 0) + (item.dinnerFreeMealTaken || 0),
@@ -1136,6 +1218,13 @@ export function DashboardScreen() {
                       userRole={userRole || UserRole.VENDOR}
                       config={dayConfig}
                       kidsEnabled={!!kidsEnabled}
+                      guestsEnabled={!!guestsEnabled}
+                      guestsTotal={mealProps.guestsTotal}
+                      guestsVeg={mealProps.guestsVeg}
+                      guestsNonVeg={mealProps.guestsNonVeg}
+                      guestsTaken={mealProps.guestsTaken}
+                      guestsVegTaken={mealProps.guestsVegTaken}
+                      guestsNonVegTaken={mealProps.guestsNonVegTaken}
                       freeMealEnabled={freeMealEnabled}
                       seasonEnabled={seasonEnabled}
                       labels={mealProps.labels as any}

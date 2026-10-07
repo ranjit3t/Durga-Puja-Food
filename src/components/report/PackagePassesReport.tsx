@@ -12,10 +12,12 @@ export function PackagePassesReport({
   data,
   onSelectFlat,
   kidsEnabled = false,
+  guestsEnabled = false,
 }: {
   data: SubscriptionRecord[];
   onSelectFlat: (id: string) => void;
   kidsEnabled?: boolean;
+  guestsEnabled?: boolean;
 }) {
   const styles = useStyles();
   const { theme } = useAppTheme();
@@ -82,7 +84,7 @@ export function PackagePassesReport({
 
                   {Object.entries(appliedPackages).map(([pIdxStr, pkgInfo]) => {
                     const pIdx = Number(pIdxStr);
-                    const personLabel = getMemberLegend(pIdx, sub.peopleCount, kidsEnabled);
+                    const personLabel = getMemberLegend(pIdx, sub.peopleCount, kidsEnabled, sub.kidsCount || 0, guestsEnabled);
 
                     return (
                       <View

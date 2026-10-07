@@ -33,7 +33,7 @@ export function ScannerScreen() {
   const [permission, requestPermission] = useCameraPermissions();
 
   const { openScannedValue, goBack, navigate, isQuickCheckout } = useAppNavigation();
-  const { subscriptions, dayConfig, kidsEnabled } = useCoreDatabase();
+  const { subscriptions, dayConfig, kidsEnabled, guestsEnabled } = useCoreDatabase();
   const { addActivityLog } = useActivityLogs();
   const { showAlert } = useUI();
 
@@ -179,7 +179,8 @@ export function ScannerScreen() {
 
     const peopleCount = match.peopleCount;
     const kidsCount = kidsEnabled ? (match.kidsCount || 0) : 0;
-    const headcount = peopleCount + kidsCount;
+    const guestsCount = guestsEnabled ? (match.guestsCount || 0) : 0;
+    const headcount = peopleCount + kidsCount + guestsCount;
 
     const slots = match.mealSlots?.[dayId] || [];
     const taken = match.takenByPerson?.[dayId] || [];
@@ -190,21 +191,29 @@ export function ScannerScreen() {
     let adultsTaken = 0;
     let kidsPlanned = 0;
     let kidsTaken = 0;
+    let guestsPlanned = 0;
+    let guestsTaken = 0;
     let parcelPlanned = 0;
     let parcelTaken = 0;
 
+    const kCount = kidsEnabled ? (match.kidsCount || 0) : 0;
+
     for (let i = 0; i < headcount; i++) {
-      const isKid = kidsEnabled && i >= peopleCount;
+      const isKid = kidsEnabled && i >= peopleCount && i < peopleCount + kCount;
+      const isGuest = guestsEnabled && i >= peopleCount + kCount;
       const isSubscribed = slots[i]?.[mealKey] && slots[i][mealKey] !== DietaryOption.NONE;
       const isMealTaken = !!taken[i]?.[mealKey];
 
       if (isSubscribed) {
-        if (!isKid) {
-          adultsPlanned++;
-          if (isMealTaken) adultsTaken++;
-        } else {
+        if (isGuest) {
+          guestsPlanned++;
+          if (isMealTaken) guestsTaken++;
+        } else if (isKid) {
           kidsPlanned++;
           if (isMealTaken) kidsTaken++;
+        } else {
+          adultsPlanned++;
+          if (isMealTaken) adultsTaken++;
         }
       }
 
@@ -216,7 +225,7 @@ export function ScannerScreen() {
       }
     }
 
-    const subscribedCount = adultsPlanned + kidsPlanned + parcelPlanned;
+    const subscribedCount = adultsPlanned + kidsPlanned + guestsPlanned + parcelPlanned;
 
     const adultsMax = Math.max(0, adultsPlanned - adultsTaken);
     const kidsMax = Math.max(0, kidsPlanned - kidsTaken);

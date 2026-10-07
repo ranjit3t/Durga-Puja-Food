@@ -100,7 +100,7 @@ export function SubscriptionForm() {
   const { userRole, handleLogout } = useAuth();
   const {
     dayConfig, paymentConfig, seasonEnabled, foodPriceEnabled, foodMenu, mobileEnabled,
-    upsertSubscription, deleteSubscription, kidsEnabled, subscriptions
+    upsertSubscription, deleteSubscription, kidsEnabled, guestsEnabled, subscriptions
   } = useCoreDatabase();
   const { addActivityLog } = useActivityLogs();
   const { showAlert: showGlobalAlert } = useUI();
@@ -164,7 +164,13 @@ export function SubscriptionForm() {
       initialValue.kidsCount = 0;
     }
 
-    const totalPeople = initialValue.peopleCount + (initialValue.kidsCount || 0);
+    // If guests support is disabled, merge guests into adults
+    if (!guestsEnabled && (initialValue.guestsCount ?? 0) > 0) {
+      initialValue.peopleCount = initialValue.peopleCount + (initialValue.guestsCount ?? 0);
+      initialValue.guestsCount = 0;
+    }
+
+    const totalPeople = initialValue.peopleCount + (kidsEnabled ? (initialValue.kidsCount || 0) : 0) + (guestsEnabled ? (initialValue.guestsCount || 0) : 0);
 
     // Normalize mealSlots & takenByPerson matrix for all active days
     const normalizedSlots: Record<string, MealSlot[]> = {};
@@ -212,12 +218,14 @@ export function SubscriptionForm() {
   const [selectedDay, setSelectedDay] = useState<Day>(currentDayId || activeDays[0]);
   const [isManualAmount, setIsManualAmount] = useState(lockIdentity);
 
-  const totalPeopleCount = form.peopleCount + (form.kidsCount || 0);
+  const totalPeopleCount = form.peopleCount + (kidsEnabled ? (form.kidsCount || 0) : 0) + (guestsEnabled ? (form.guestsCount || 0) : 0);
 
   const perPersonApplicablePackages = useMemo(() => {
     const map: Record<number, ReturnType<typeof findApplicablePackagesForPerson>> = {};
+    const kCount = kidsEnabled ? (form.kidsCount || 0) : 0;
     for (let i = 0; i < totalPeopleCount; i++) {
-      const isKid = !!kidsEnabled && i >= form.peopleCount;
+      const isKid = !!kidsEnabled && i >= form.peopleCount && i < form.peopleCount + kCount;
+      const isGuest = !!guestsEnabled && i >= form.peopleCount + kCount;
       map[i] = findApplicablePackagesForPerson(
         i,
         form.mealSlots,
@@ -225,7 +233,9 @@ export function SubscriptionForm() {
         foodPackages,
         foodMenu,
         dayConfig,
-        !!kidsEnabled
+        !!kidsEnabled,
+        isGuest,
+        !!guestsEnabled
       );
     }
     return map;
@@ -502,12 +512,14 @@ export function SubscriptionForm() {
     mealSlots: value.mealSlots,
     peopleCount: value.peopleCount,
     kidsCount: value.kidsCount || 0,
+    guestsCount: value.guestsCount || 0,
   });
 
   const hasMealOrParcelChoicesChanged = useMemo(() => {
     if (!lockIdentity) return true;
     if (form.peopleCount !== initialMealSnapshot.current.peopleCount) return true;
     if ((form.kidsCount || 0) !== initialMealSnapshot.current.kidsCount) return true;
+    if ((form.guestsCount || 0) !== initialMealSnapshot.current.guestsCount) return true;
 
     const initSlots = initialMealSnapshot.current.mealSlots || {};
     const currSlots = form.mealSlots || {};
@@ -535,7 +547,7 @@ export function SubscriptionForm() {
     }
 
     return false;
-  }, [lockIdentity, form.peopleCount, form.kidsCount, form.mealSlots]);
+  }, [lockIdentity, form.peopleCount, form.kidsCount, form.guestsCount, form.mealSlots]);
 
   const sanitizeAmountText = useCallback((text: string): string => {
     let sanitized = text.replace(/[^0-9.]/g, "");
@@ -564,6 +576,7 @@ export function SubscriptionForm() {
     mobile: mobileInput.trim(),
     peopleCount: form.peopleCount,
     kidsCount: form.kidsCount || 0,
+    guestsCount: form.guestsCount || 0,
     mealSlots: normalizeForComparison(form.mealSlots),
     takenByPerson: normalizeForComparison(form.takenByPerson),
     payments: normalizeForComparison(payments)
@@ -576,6 +589,7 @@ export function SubscriptionForm() {
     if (mobileInput.trim() !== pristine.current.mobile) return true;
     if (form.peopleCount !== pristine.current.peopleCount) return true;
     if ((form.kidsCount || 0) !== pristine.current.kidsCount) return true;
+    if ((form.guestsCount || 0) !== pristine.current.guestsCount) return true;
 
     // 2. Complex Matrices
     if (normalizeForComparison(form.mealSlots) !== pristine.current.mealSlots) return true;
@@ -585,7 +599,7 @@ export function SubscriptionForm() {
     if (normalizeForComparison(payments) !== pristine.current.payments) return true;
 
     return false;
-  }, [form.block, form.flat, form.peopleCount, form.kidsCount, form.mealSlots, form.takenByPerson, mobileInput, payments, normalizeForComparison]);
+  }, [form.block, form.flat, form.peopleCount, form.kidsCount, form.guestsCount, form.mealSlots, form.takenByPerson, mobileInput, payments, normalizeForComparison]);
 
   const hasAnyMealSelected = useMemo(() => {
     return Object.values(form.mealSlots).some(personSlots =>
@@ -732,7 +746,15 @@ export function SubscriptionForm() {
     mobile: mobileInput ? Number(mobileInput) : undefined,
     flat: form.flat.trim().toUpperCase(),
     id: passId,
-    meals: mealsFromChoices(sanitizedMealSlots, dayConfig, form.peopleCount, !!kidsEnabled),
+    meals: mealsFromChoices(
+      sanitizedMealSlots,
+      dayConfig,
+      form.peopleCount,
+      !!kidsEnabled,
+      form.kidsCount || 0,
+      !!guestsEnabled,
+      form.guestsCount || 0
+    ),
     payments: payments,
     amount: totalAmount.toFixed(0),
     paymentMode: payments[0]?.mode || PaymentMode.CASH,
@@ -754,7 +776,9 @@ export function SubscriptionForm() {
   };
 
   const getEnsureSlots = (dayId: string) => {
-    const totalPeople = form.peopleCount + (form.kidsCount || 0);
+    const kCount = kidsEnabled ? (form.kidsCount || 0) : 0;
+    const gCount = guestsEnabled ? (form.guestsCount || 0) : 0;
+    const totalPeople = form.peopleCount + kCount + gCount;
     const existing = (form.mealSlots?.[dayId] as MealSlot[]) || [];
     if (existing.length >= totalPeople) return existing;
     const filled = [...existing];
@@ -765,7 +789,9 @@ export function SubscriptionForm() {
   };
 
   const getEnsureTaken = (dayId: string) => {
-    const totalPeople = form.peopleCount + (form.kidsCount || 0);
+    const kCount = kidsEnabled ? (form.kidsCount || 0) : 0;
+    const gCount = guestsEnabled ? (form.guestsCount || 0) : 0;
+    const totalPeople = form.peopleCount + kCount + gCount;
     const defaultTaken: TakenState = {
       [MealType.BREAKFAST]: false,
       [MealType.LUNCH]: false,
@@ -965,7 +991,9 @@ export function SubscriptionForm() {
       foodPackages,
       foodMenu,
       dayConfig,
-      !!kidsEnabled
+      !!kidsEnabled,
+      form.guestsCount || 0,
+      !!guestsEnabled
     );
 
     // Only update if we have a single payment entry and it's either a new pass
@@ -985,8 +1013,10 @@ export function SubscriptionForm() {
     payments.length,
     foodMenu,
     kidsEnabled,
+    guestsEnabled,
     form.peopleCount,
     form.kidsCount,
+    form.guestsCount,
     lockIdentity,
     appliedPackages,
     foodPackages
@@ -1041,7 +1071,9 @@ export function SubscriptionForm() {
       foodPackages,
       foodMenu,
       dayConfig,
-      !!kidsEnabled
+      !!kidsEnabled,
+      form.guestsCount || 0,
+      !!guestsEnabled
     );
 
     const shouldCheckDiscrepancy = paymentConfig.enabled && !isPackageApplied && (!lockIdentity || hasMealOrParcelChoicesChanged);
@@ -1185,8 +1217,9 @@ export function SubscriptionForm() {
 
           <Text style={[styles.previewMeta, { color: theme.colors.white }]}>
             {form.peopleCount}
-            {kidsEnabled ? `${UI_TEXT.space}${form.peopleCount === 1 ? UI_TEXT.adult : UI_TEXT.adults}` : (form.peopleCount === 1 ? UI_TEXT.personSuffix : UI_TEXT.personsSuffix)}
+            {kidsEnabled || guestsEnabled ? `${UI_TEXT.space}${form.peopleCount === 1 ? UI_TEXT.adult : UI_TEXT.adults}` : (form.peopleCount === 1 ? UI_TEXT.personSuffix : UI_TEXT.personsSuffix)}
             {kidsEnabled && `${UI_TEXT.pipe}${form.kidsCount || 0}${UI_TEXT.space}${form.kidsCount === 1 ? UI_TEXT.kid : UI_TEXT.kids}`}
+            {guestsEnabled && `${UI_TEXT.pipe}${form.guestsCount || 0}${UI_TEXT.space}${form.guestsCount === 1 ? UI_TEXT.guest : UI_TEXT.guests}`}
             {paymentConfig.enabled && `${UI_TEXT.pipe}${payments[0]?.mode || UI_TEXT.paymentModeNotSet}`}
           </Text>
         </View>
@@ -1204,14 +1237,15 @@ export function SubscriptionForm() {
           setPeopleCount={(count) => {
             const oldPeople = form.peopleCount;
             const kids = form.kidsCount || 0;
+            const guests = form.guestsCount || 0;
             setSelectedPerson((current) =>
-              Math.min(current, Math.max(0, count + kids - 1))
+              Math.min(current, Math.max(0, count + kids + guests - 1))
             );
             setForm({
               ...form,
               peopleCount: count,
-              mealSlots: resizeMealSlots(form.mealSlots, oldPeople, count, kids, kids, dayConfig),
-              takenByPerson: resizeTaken(form.takenByPerson, oldPeople, count, kids, kids, dayConfig),
+              mealSlots: resizeMealSlots(form.mealSlots, oldPeople, count, kids, kids, guests, guests, dayConfig),
+              takenByPerson: resizeTaken(form.takenByPerson, oldPeople, count, kids, kids, guests, guests, dayConfig),
             });
             setIsManualAmount(false);
           }}
@@ -1219,18 +1253,36 @@ export function SubscriptionForm() {
           setKidsCount={(count) => {
             const adults = form.peopleCount;
             const oldKids = form.kidsCount || 0;
+            const guests = form.guestsCount || 0;
             setSelectedPerson((current) =>
-              Math.min(current, Math.max(0, adults + count - 1))
+              Math.min(current, Math.max(0, adults + count + guests - 1))
             );
             setForm({
               ...form,
               kidsCount: count,
-              mealSlots: resizeMealSlots(form.mealSlots, adults, adults, oldKids, count, dayConfig),
-              takenByPerson: resizeTaken(form.takenByPerson, adults, adults, oldKids, count, dayConfig),
+              mealSlots: resizeMealSlots(form.mealSlots, adults, adults, oldKids, count, guests, guests, dayConfig),
+              takenByPerson: resizeTaken(form.takenByPerson, adults, adults, oldKids, count, guests, guests, dayConfig),
+            });
+            setIsManualAmount(false);
+          }}
+          guestsCount={form.guestsCount || 0}
+          setGuestsCount={(count) => {
+            const adults = form.peopleCount;
+            const kids = form.kidsCount || 0;
+            const oldGuests = form.guestsCount || 0;
+            setSelectedPerson((current) =>
+              Math.min(current, Math.max(0, adults + kids + count - 1))
+            );
+            setForm({
+              ...form,
+              guestsCount: count,
+              mealSlots: resizeMealSlots(form.mealSlots, adults, adults, kids, kids, oldGuests, count, dayConfig),
+              takenByPerson: resizeTaken(form.takenByPerson, adults, adults, kids, kids, oldGuests, count, dayConfig),
             });
             setIsManualAmount(false);
           }}
           kidsEnabled={kidsEnabled}
+          guestsEnabled={guestsEnabled}
           mobileEnabled={mobileEnabled}
           isAdmin={isAdmin}
           canEdit={canEdit}
@@ -1238,6 +1290,7 @@ export function SubscriptionForm() {
           hasAnyMealTaken={hasAnyMealTaken}
           minPeople={lockIdentity && hasAnyMealTaken ? value.peopleCount : 1}
           minKids={lockIdentity && hasAnyMealTaken ? (value.kidsCount || 0) : 0}
+          minGuests={lockIdentity && hasAnyMealTaken ? (value.guestsCount || 0) : 0}
           pickContact={pickContact}
           theme={theme}
           styles={styles}
@@ -1252,13 +1305,13 @@ export function SubscriptionForm() {
           <Text style={styles.selectorLabel}>{UI_TEXT.person}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
             <View style={styles.selectorRow}>
-              {Array.from({ length: form.peopleCount + (form.kidsCount || 0) }, (_, index) => (
+              {Array.from({ length: form.peopleCount + (kidsEnabled ? (form.kidsCount || 0) : 0) + (guestsEnabled ? (form.guestsCount || 0) : 0) }, (_, index) => (
                 <Pressable
                   key={index}
                   onPress={() => setSelectedPerson(index)}
                   accessible={true}
                   accessibilityRole="button"
-                  accessibilityLabel={getMemberLegend(index, form.peopleCount, kidsEnabled)}
+                  accessibilityLabel={getMemberLegend(index, form.peopleCount, !!kidsEnabled, form.kidsCount || 0, !!guestsEnabled)}
                   accessibilityState={{ selected: selectedPerson === index }}
                   style={[
                     styles.selector,
@@ -1272,7 +1325,7 @@ export function SubscriptionForm() {
                       selectedPerson === index && styles.selectorTextOn,
                     ]}
                   >
-                    {getMemberLegend(index, form.peopleCount, kidsEnabled)}
+                    {getMemberLegend(index, form.peopleCount, !!kidsEnabled, form.kidsCount || 0, !!guestsEnabled)}
                   </Text>
                 </Pressable>
               ))}

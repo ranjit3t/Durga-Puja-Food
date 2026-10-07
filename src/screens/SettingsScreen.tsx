@@ -280,7 +280,7 @@ export function SettingsScreen() {
   const { handleLogout } = useAuth();
   const {
     dayConfig: config, seasonName, seasonEnabled, paymentConfig: payment, freeMealEnabled, mobileEnabled, foodPriceEnabled,
-    whatsappCountryCode, updateConfig, kidsEnabled, subscriptions, foodMenu, quickCheckoutAutoCloseMs, soundEnabled
+    whatsappCountryCode, updateConfig, kidsEnabled, guestsEnabled, subscriptions, foodMenu, quickCheckoutAutoCloseMs, soundEnabled
   } = useCoreDatabase();
   const { addActivityLog } = useActivityLogs();
   const { showAlert } = useUI();
@@ -300,6 +300,7 @@ export function SettingsScreen() {
   const [localMobileEnabled, setLocalMobileEnabled] = useState(true);
   const [localFoodPriceEnabled, setLocalFoodPriceEnabled] = useState(false);
   const [localKidsEnabled, setLocalKidsEnabled] = useState(false);
+  const [localGuestsEnabled, setLocalGuestsEnabled] = useState(false);
   const [localWhatsappCountryCode, setLocalWhatsappCountryCode] = useState(UI_TEXT.defaultCountryCode);
   const [localQuickCheckoutAutoCloseMs, setLocalQuickCheckoutAutoCloseMs] = useState<number>(3000);
   const [localSoundEnabled, setLocalSoundEnabled] = useState<boolean>(true);
@@ -315,6 +316,7 @@ export function SettingsScreen() {
     mobileEnabled: boolean;
     foodPriceEnabled: boolean;
     kidsEnabled: boolean;
+    guestsEnabled: boolean;
     whatsappCountryCode: string;
     quickCheckoutAutoCloseMs: number;
     soundEnabled: boolean;
@@ -452,6 +454,7 @@ export function SettingsScreen() {
         mobileEnabled,
         foodPriceEnabled,
         kidsEnabled: kidsEnabled || false,
+        guestsEnabled: guestsEnabled || false,
         whatsappCountryCode: whatsappCountryCode || UI_TEXT.defaultCountryCode,
         quickCheckoutAutoCloseMs: quickCheckoutAutoCloseMs ?? 3000,
         soundEnabled: soundEnabled !== false,
@@ -466,6 +469,7 @@ export function SettingsScreen() {
         setLocalMobileEnabled(currentContextBaseline.mobileEnabled);
         setLocalFoodPriceEnabled(currentContextBaseline.foodPriceEnabled);
         setLocalKidsEnabled(currentContextBaseline.kidsEnabled);
+        setLocalGuestsEnabled(currentContextBaseline.guestsEnabled);
         setLocalWhatsappCountryCode(currentContextBaseline.whatsappCountryCode);
         setLocalQuickCheckoutAutoCloseMs(currentContextBaseline.quickCheckoutAutoCloseMs);
         setLocalSoundEnabled(currentContextBaseline.soundEnabled);
@@ -533,6 +537,17 @@ export function SettingsScreen() {
     setLocalKidsEnabled(val);
   };
 
+  const validateAndSetGuestsEnabled = (val: boolean) => {
+    if (!val) { // Switching OFF
+      const hasGuests = (subscriptions || []).some(sub => (sub.guestsCount || 0) > 0);
+      if (hasGuests) {
+        showAlert(UI_TEXT.confirmDisableTitle, UI_TEXT.guestsDisabledError);
+        return;
+      }
+    }
+    setLocalGuestsEnabled(val);
+  };
+
   const validateAndSetFreeMealEnabled = (val: boolean) => {
     if (!val) { // Switching OFF
       const hasFreeMealSubscriptions = Object.values(foodMenu || {}).some(dayMenu =>
@@ -593,7 +608,7 @@ export function SettingsScreen() {
       const hasKidsParcelSub = (subscriptions || []).some(sub => {
         const slots = sub.mealSlots[dayId] || [];
         return slots.some((slot, idx) => {
-          const isKid = (sub.kidsCount || 0) > 0 && idx >= (sub.peopleCount || 0);
+          const isKid = (sub.kidsCount || 0) > 0 && idx >= (sub.peopleCount || 0) && idx < (sub.peopleCount || 0) + (sub.kidsCount || 0);
           const parcelKey = `${meal}Parcel` as keyof MealSlot;
           return isKid && slot[parcelKey];
         });
@@ -604,6 +619,25 @@ export function SettingsScreen() {
       }
     }
     updateMealConfig(dayId, meal, { kidsParcel: val });
+  };
+
+  const validateAndSetGuestsParcel = (dayId: string, meal: MealType, val: boolean) => {
+    if (!val) { // Switching OFF
+      const hasGuestsParcelSub = (subscriptions || []).some(sub => {
+        const slots = sub.mealSlots[dayId] || [];
+        return slots.some((slot, idx) => {
+          const kCount = (sub.kidsCount || 0);
+          const isGuest = (sub.guestsCount || 0) > 0 && idx >= (sub.peopleCount || 0) + kCount;
+          const parcelKey = `${meal}Parcel` as keyof MealSlot;
+          return isGuest && slot[parcelKey];
+        });
+      });
+      if (hasGuestsParcelSub) {
+        showAlert(UI_TEXT.confirmDisableTitle, UI_TEXT.guestsParcelSubscribedError);
+        return;
+      }
+    }
+    updateMealConfig(dayId, meal, { guestsParcel: val });
   };
 
   const validateAndSetDone = (dayId: string, meal: MealType, val: boolean) => {
@@ -726,6 +760,7 @@ export function SettingsScreen() {
     if (localMobileEnabled !== mobileEnabled) changes.push(`Mobile: ${mobileEnabled ? 'ON' : 'OFF'} -> ${localMobileEnabled ? 'ON' : 'OFF'}`);
     if (localFoodPriceEnabled !== foodPriceEnabled) changes.push(`Pricing: ${foodPriceEnabled ? 'ON' : 'OFF'} -> ${localFoodPriceEnabled ? 'ON' : 'OFF'}`);
     if (localKidsEnabled !== kidsEnabled) changes.push(`Kids: ${kidsEnabled ? 'ON' : 'OFF'} -> ${localKidsEnabled ? 'ON' : 'OFF'}`);
+    if (localGuestsEnabled !== guestsEnabled) changes.push(`Guests: ${guestsEnabled ? 'ON' : 'OFF'} -> ${localGuestsEnabled ? 'ON' : 'OFF'}`);
     if (localWhatsappCountryCode !== whatsappCountryCode) changes.push(`WA Code: ${whatsappCountryCode} -> ${localWhatsappCountryCode}`);
     if (localQuickCheckoutAutoCloseMs !== quickCheckoutAutoCloseMs) changes.push(`Splash Timeout: ${quickCheckoutAutoCloseMs ?? 3000}ms -> ${localQuickCheckoutAutoCloseMs}ms`);
     if (localSoundEnabled !== soundEnabled) changes.push(`Sound: ${soundEnabled ? 'ON' : 'OFF'} -> ${localSoundEnabled ? 'ON' : 'OFF'}`);
@@ -825,6 +860,7 @@ export function SettingsScreen() {
         mobileEnabled: localMobileEnabled,
         foodPriceEnabled: localFoodPriceEnabled,
         kidsEnabled: localKidsEnabled,
+        guestsEnabled: localGuestsEnabled,
         whatsappCountryCode: localWhatsappCountryCode,
         quickCheckoutAutoCloseMs: localQuickCheckoutAutoCloseMs,
         soundEnabled: localSoundEnabled,
@@ -839,6 +875,7 @@ export function SettingsScreen() {
         mobileEnabled: localMobileEnabled,
         foodPriceEnabled: localFoodPriceEnabled,
         kidsEnabled: localKidsEnabled,
+        guestsEnabled: localGuestsEnabled,
         whatsappCountryCode: localWhatsappCountryCode,
         quickCheckoutAutoCloseMs: localQuickCheckoutAutoCloseMs,
         soundEnabled: localSoundEnabled,
@@ -875,6 +912,7 @@ export function SettingsScreen() {
       localMobileEnabled !== savedBaseline.mobileEnabled ||
       localFoodPriceEnabled !== savedBaseline.foodPriceEnabled ||
       localKidsEnabled !== savedBaseline.kidsEnabled ||
+      localGuestsEnabled !== savedBaseline.guestsEnabled ||
       localWhatsappCountryCode !== savedBaseline.whatsappCountryCode ||
       localQuickCheckoutAutoCloseMs !== savedBaseline.quickCheckoutAutoCloseMs ||
       localSoundEnabled !== savedBaseline.soundEnabled
@@ -995,6 +1033,24 @@ export function SettingsScreen() {
                 accessibilityState={{ checked: localKidsEnabled }}
                 value={localKidsEnabled}
                 onValueChange={(val) => validateAndSetKidsEnabled(val)}
+                trackColor={{ true: theme.colors.primary }}
+                style={{ flexShrink: 0 }}
+              />
+           </View>
+           <View style={{ height: 1, backgroundColor: theme.colors.border, marginVertical: 20 }} />
+           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <View style={{ flex: 1, marginRight: 10 }}>
+                 <Text style={{ fontSize: 16, fontWeight: '800', color: theme.colors.textPrimary }}>{UI_TEXT.enableGuestsSupport}</Text>
+                 <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600' }}>{UI_TEXT.enableGuestsSupportHelper}</Text>
+              </View>
+              <Switch
+                accessible={true}
+                accessibilityRole="switch"
+                accessibilityLabel={UI_TEXT.enableGuestsSupport}
+                accessibilityHint={UI_TEXT.enableGuestsSupportHelper}
+                accessibilityState={{ checked: localGuestsEnabled }}
+                value={localGuestsEnabled}
+                onValueChange={(val) => validateAndSetGuestsEnabled(val)}
                 trackColor={{ true: theme.colors.primary }}
                 style={{ flexShrink: 0 }}
               />
@@ -1247,6 +1303,22 @@ export function SettingsScreen() {
                                     accessibilityRole="switch"
                                     accessibilityLabel={UI_TEXT.kidsParcelLabel}
                                     accessibilityState={{ checked: !!m.kidsParcel }}
+                                  />
+                               </View>
+                            )}
+                            {m.parcel && localGuestsEnabled && (
+                               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: theme.colors.background, padding: 10, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border }}>
+                                  <Text style={{ fontSize: 12, fontWeight: '800', color: theme.colors.textSecondary, flex: 1, marginRight: 10 }}>{UI_TEXT.guestsParcelLabel.toUpperCase()}</Text>
+                                  <Switch
+                                    value={!!m.guestsParcel}
+                                    disabled={m.done}
+                                    onValueChange={(val) => validateAndSetGuestsParcel(day.id, mKey as MealType, val)}
+                                    trackColor={{ true: theme.colors.primary }}
+                                    style={{ transform: [{ scale: 0.8 }], flexShrink: 0 }}
+                                    accessible={true}
+                                    accessibilityRole="switch"
+                                    accessibilityLabel={UI_TEXT.guestsParcelLabel}
+                                    accessibilityState={{ checked: !!m.guestsParcel }}
                                   />
                                </View>
                             )}

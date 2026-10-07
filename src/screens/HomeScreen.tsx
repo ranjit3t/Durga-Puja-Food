@@ -21,7 +21,7 @@ export function HomeScreen() {
   const { theme, themeType } = useAppTheme();
   const { userRole, handleLogout, versionAlertShown, markVersionAlertShown } = useAuth();
   const {
-    subscriptions, dayConfig, seasonName, seasonEnabled, freeMealEnabled, totalPeople, firebaseError, paymentConfig, collections, kidsEnabled, foodMenu, remoteAppVersion, androidAppLocation, iosAppLocation, loading
+    subscriptions, dayConfig, seasonName, seasonEnabled, freeMealEnabled, totalPeople, firebaseError, paymentConfig, collections, kidsEnabled, guestsEnabled, foodMenu, remoteAppVersion, androidAppLocation, iosAppLocation, loading
   } = useCoreDatabase();
   const { navigate, startNew, setIsQuickCheckout, setIsQuickFreeMealMode } = useAppNavigation();
   const { showAlert, showGlobalError } = useUI();
@@ -60,6 +60,7 @@ export function HomeScreen() {
   const summaryCounts = React.useMemo(() => {
     let adults = 0;
     let kids = 0;
+    let guests = 0;
     let vegPlates = 0;
     let nonVegPlates = 0;
 
@@ -68,6 +69,7 @@ export function HomeScreen() {
     subscriptions.forEach((sub) => {
       adults += (sub.peopleCount || 0);
       kids += (sub.kidsCount || 0);
+      guests += (sub.guestsCount || 0);
 
       activeDays.forEach(dayId => {
         const dayConf = (dayConfig || []).find(d => d.id === dayId);
@@ -115,7 +117,7 @@ export function HomeScreen() {
       });
     }
 
-    return { adults, kids, vegPlates, nonVegPlates, totalPlates: vegPlates + nonVegPlates };
+    return { adults, kids, guests, vegPlates, nonVegPlates, totalPlates: vegPlates + nonVegPlates };
   }, [subscriptions, dayConfig, foodMenu, freeMealEnabled]);
 
   const { isVegEnabledGlobally, isNonVegEnabledGlobally } = React.useMemo(() => {
@@ -227,12 +229,12 @@ export function HomeScreen() {
                 <Text style={[styles.summaryNumber, { fontSize: secondaryFontSize, marginTop: 0, lineHeight: secondaryFontSize + 2 }]}>
                   {totalPeople}
                 </Text>
-                {kidsEnabled && (
+                {(kidsEnabled || guestsEnabled) && (
                   <Text style={{ fontSize: labelFontSize, color: theme.colors.white, opacity: 0.8, fontWeight: '700' }}>
                     {UI_TEXT.openParen}
                     {summaryCounts.adults}{UI_TEXT.space}{summaryCounts.adults === 1 ? UI_TEXT.adult : UI_TEXT.adults}
-                    {UI_TEXT.plus}
-                    {summaryCounts.kids}{UI_TEXT.space}{summaryCounts.kids === 1 ? UI_TEXT.kid : UI_TEXT.kids}
+                    {kidsEnabled && summaryCounts.kids > 0 ? `${UI_TEXT.comma}${UI_TEXT.space}${summaryCounts.kids}${UI_TEXT.space}${summaryCounts.kids === 1 ? UI_TEXT.kid : UI_TEXT.kids}` : ""}
+                    {guestsEnabled && summaryCounts.guests > 0 ? `${UI_TEXT.comma}${UI_TEXT.space}${summaryCounts.guests}${UI_TEXT.space}${summaryCounts.guests === 1 ? UI_TEXT.guest : UI_TEXT.guests}` : ""}
                     {UI_TEXT.closeParen}
                   </Text>
                 )}

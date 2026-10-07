@@ -721,7 +721,7 @@ export function FoodPackageScreen() {
               <View>
                 <Text style={styles.label}>{UI_TEXT.applicability}</Text>
                 <View style={{ flexDirection: "row", gap: s(8), marginTop: s(4) }}>
-                  {(["adult", "kids", "member"] as PackageApplicability[]).map((appOption) => {
+                  {(["adult", "kids", "guests", "member"] as PackageApplicability[]).map((appOption) => {
                     const isSelected = applicability === appOption;
                     return (
                       <Pressable

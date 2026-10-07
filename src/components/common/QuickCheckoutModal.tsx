@@ -8,7 +8,7 @@ import { useUI } from "../../context/UIContext";
 import { useAppNavigation } from "../../context/NavigationContext";
 import { useChat } from "../../context/ChatContext";
 import { Subscription, MealType, DietaryOption, DietType, normalizeChoice, toBool, ActivityModule, ActivityAction, AppThemeMode, AppScreen, TakenState, CheckoutSource, MealSlot } from "../../types";
-import { isParcelEnabled, isKidsParcelEnabled, isDineInFallbackParcelEnabled, isMealCurrent, isMealDone, getMealLabel, formatTakenTime, isVegOnlyDay, isDietaryEnabled, isMealEnabled, getValidSlotChoice, isParcelValidForSlot, getMealVarieties, getVarietyForChoice, getDietTypeForChoice, isSpecialMeal } from "../../constants";
+import { isParcelEnabled, isKidsParcelEnabled, isDineInFallbackParcelEnabled, isMealCurrent, isMealDone, getMealLabel, formatTakenTime, isVegOnlyDay, isDietaryEnabled, isMealEnabled, getValidSlotChoice, isParcelValidForSlot, getMealVarieties, getVarietyForChoice, getDietTypeForChoice, isSpecialMeal, isGuestsParcelEnabled } from "../../constants";
 import { QuickCheckoutHeader } from "../../features/checkout/components/QuickCheckoutHeader";
 import { QuickCheckoutItemCard } from "../../features/checkout/components/QuickCheckoutItemCard";
 
@@ -86,6 +86,7 @@ function playSynthesizedChime() {
 export enum SectionType {
   ADULTS = "adults",
   KIDS = "kids",
+  GUESTS = "guests",
 }
 
 export interface CategoryInfo {
@@ -150,7 +151,7 @@ export function QuickCheckoutModal({
   onSuccess
 }: QuickCheckoutModalProps) {
   const { theme } = useAppTheme();
-  const { dayConfig, kidsEnabled, addActivityLog, upsertSubscription, subscriptions, quickCheckoutAutoCloseMs, soundEnabled } = useDatabase();
+  const { dayConfig, kidsEnabled, guestsEnabled, addActivityLog, upsertSubscription, subscriptions, quickCheckoutAutoCloseMs, soundEnabled } = useDatabase();
   const { showAlert } = useUI();
   const { navigate } = useAppNavigation();
   const { width, height } = useWindowDimensions();
@@ -236,7 +237,8 @@ export function QuickCheckoutModal({
 
     const peopleCount = activeSubscription.peopleCount || 0;
     const kidsCount = kidsEnabled ? (activeSubscription.kidsCount || 0) : 0;
-    const headcount = peopleCount + kidsCount;
+    const guestsCount = guestsEnabled ? (activeSubscription.guestsCount || 0) : 0;
+    const headcount = peopleCount + kidsCount + guestsCount;
 
     const slots = activeSubscription.mealSlots?.[dayId] || [];
     const taken = activeSubscription.takenByPerson?.[dayId] || [];
@@ -255,7 +257,8 @@ export function QuickCheckoutModal({
     let totalParcelTaken = 0;
 
     for (let i = 0; i < headcount; i++) {
-      const isKid = kidsEnabled && i >= peopleCount;
+      const isKid = kidsEnabled && i >= peopleCount && i < peopleCount + kidsCount;
+      const isGuest = guestsEnabled && i >= peopleCount + kidsCount;
       const slot = slots[i];
       const takenRecord = taken[i];
 
@@ -269,7 +272,11 @@ export function QuickCheckoutModal({
       const varName = variety ? variety.name : (choice === DietaryOption.NON_VEG ? "Non-Veg" : "Veg");
       const varColor = variety?.color || (diet === DietType.VEG ? theme.colors.veg : theme.colors.nonVeg);
 
-      const catKey = `${isKid ? "kids" : "adult"}_${varId}`;
+      const sectionTag = isGuest ? "guest" : (isKid ? "kids" : "adult");
+      const catKey = `${sectionTag}_${varId}`;
+
+      const sectionType = isGuest ? SectionType.GUESTS : (isKid ? SectionType.KIDS : SectionType.ADULTS);
+      const labelSuffix = (kidsEnabled || guestsEnabled) ? (isGuest ? " (Guest)" : (isKid ? " (Kid)" : " (Adult)")) : "";
 
       if (!categories[catKey]) {
         categories[catKey] = {
@@ -277,9 +284,9 @@ export function QuickCheckoutModal({
           varietyId: varId,
           varietyName: varName,
           varietyColor: varColor,
-          section: isKid ? SectionType.KIDS : SectionType.ADULTS,
+          section: sectionType,
           subSection: diet,
-          label: `${varName}${kidsEnabled ? (isKid ? " (Kid)" : " (Adult)") : ""}`,
+          label: `${varName}${labelSuffix}`,
           plannedCount: 0,
           servedCount: 0,
           remMealCount: 0,
@@ -304,7 +311,7 @@ export function QuickCheckoutModal({
         cat.remMealCount++;
       }
 
-      const hasParcelOpted = isParcelValidForSlot(dayId, mealType, choice, slot?.[parcelKey as keyof MealSlot], dayConfig, isKid, !!kidsEnabled);
+      const hasParcelOpted = isParcelValidForSlot(dayId, mealType, choice, slot?.[parcelKey as keyof MealSlot], dayConfig, isKid, !!kidsEnabled, isGuest, !!guestsEnabled);
 
       if (hasParcelOpted) {
         cat.parcelPlannedCount++;
@@ -345,7 +352,7 @@ export function QuickCheckoutModal({
       totalParcelMax,
       isPartialCheckoutEarlier
     };
-  }, [activeSubscription, currentMealInfo, kidsEnabled, dayConfig]);
+  }, [activeSubscription, currentMealInfo, kidsEnabled, guestsEnabled, dayConfig]);
 
   // Snapshot initial load partial checkout & parcel pickup state so alerts ONLY show if present PRIOR to opening modal
   const [initialPartialInfo, setInitialPartialInfo] = useState<{
@@ -596,8 +603,19 @@ export function QuickCheckoutModal({
       }
     }
 
+    if (guestsEnabled) {
+      const guestsSubSections = getSubSectionsForSection(SectionType.GUESTS);
+      if (guestsSubSections.length > 0) {
+        sections.push({
+          key: SectionType.GUESTS,
+          title: UI_TEXT.guestsSection,
+          subSections: guestsSubSections,
+        });
+      }
+    }
+
     return sections;
-  }, [quickCheckoutDetails, kidsEnabled]);
+  }, [quickCheckoutDetails, kidsEnabled, guestsEnabled]);
 
   const totalSelectedItems = useMemo(() => {
     let count = 0;
@@ -634,7 +652,8 @@ export function QuickCheckoutModal({
 
     const peopleCount = activeSubscription.peopleCount || 0;
     const kidsCount = kidsEnabled ? (activeSubscription.kidsCount || 0) : 0;
-    const headcount = peopleCount + kidsCount;
+    const guestsCount = guestsEnabled ? (activeSubscription.guestsCount || 0) : 0;
+    const headcount = peopleCount + kidsCount + guestsCount;
 
     const nowTime = formatTakenTime(new Date());
     const timeKey = `${mealKey}Time`;
@@ -682,12 +701,22 @@ export function QuickCheckoutModal({
       let remDineInToAllocate = safeDineInInput;
 
       const isKidCategory = cat.section === SectionType.KIDS;
+      const isGuestCategory = cat.section === SectionType.GUESTS;
       const targetVarId = cat.varietyId;
 
       const isSlotInCat = (i: number) => {
         if (!isMealEnabled(dayId, mealType, dayConfig)) return false;
-        const isKidSlot = kidsEnabled && i >= peopleCount;
-        if (isKidCategory !== isKidSlot) return false;
+        const kCount = kidsEnabled ? (activeSubscription.kidsCount || 0) : 0;
+        const isKidSlot = kidsEnabled && i >= peopleCount && i < peopleCount + kCount;
+        const isGuestSlot = guestsEnabled && i >= peopleCount + kCount;
+
+        if (isGuestCategory) {
+          if (!isGuestSlot) return false;
+        } else if (isKidCategory) {
+          if (!isKidSlot) return false;
+        } else {
+          if (isKidSlot || isGuestSlot) return false;
+        }
 
         const choice = getValidSlotChoice(dayId, mealType, updatedSub.mealSlots[dayId]?.[i]?.[mealKey], dayConfig);
         if (choice === DietaryOption.NONE) return false;
@@ -699,9 +728,11 @@ export function QuickCheckoutModal({
       };
 
       const checkParcelOptedForSlot = (i: number) => {
-        const isKidSlot = kidsEnabled && i >= peopleCount;
+        const kCount = kidsEnabled ? (activeSubscription.kidsCount || 0) : 0;
+        const isKidSlot = kidsEnabled && i >= peopleCount && i < peopleCount + kCount;
+        const isGuestSlot = guestsEnabled && i >= peopleCount + kCount;
         const choice = getValidSlotChoice(dayId, mealType, updatedSub.mealSlots[dayId]?.[i]?.[mealKey], dayConfig);
-        return isParcelValidForSlot(dayId, mealType, choice, updatedSub.mealSlots[dayId]?.[i]?.[parcelKey as keyof MealSlot], dayConfig, isKidSlot, !!kidsEnabled);
+        return isParcelValidForSlot(dayId, mealType, choice, updatedSub.mealSlots[dayId]?.[i]?.[parcelKey as keyof MealSlot], dayConfig, isKidSlot, !!kidsEnabled, isGuestSlot, !!guestsEnabled);
       };
 
       if (remParcelToAllocate > 0) {
@@ -820,10 +851,14 @@ export function QuickCheckoutModal({
 
     let newAdultsTaken = 0;
     let newKidsTaken = 0;
+    let newGuestsTaken = 0;
     let newParcelsTaken = 0;
 
+    const kCount = kidsEnabled ? (activeSubscription.kidsCount || 0) : 0;
+
     for (let i = 0; i < headcount; i++) {
-      const isKid = kidsEnabled && i >= peopleCount;
+      const isKid = kidsEnabled && i >= peopleCount && i < peopleCount + kCount;
+      const isGuest = guestsEnabled && i >= peopleCount + kCount;
       const choice = getValidSlotChoice(dayId, mealType, updatedSub.mealSlots[dayId]?.[i]?.[mealKey], dayConfig);
       const isSubscribed = choice !== DietaryOption.NONE;
 
@@ -831,11 +866,12 @@ export function QuickCheckoutModal({
         const isFoodTaken = toBool(takenList[i]?.[mealKey]);
 
         if (isFoodTaken) {
-          if (!isKid) newAdultsTaken++;
-          else newKidsTaken++;
+          if (isGuest) newGuestsTaken++;
+          else if (isKid) newKidsTaken++;
+          else newAdultsTaken++;
         }
 
-        const isParcelSupportedForSlot = isParcelValidForSlot(dayId, mealType, choice, updatedSub.mealSlots[dayId]?.[i]?.[parcelKey as keyof MealSlot], dayConfig, isKid, !!kidsEnabled);
+        const isParcelSupportedForSlot = isParcelValidForSlot(dayId, mealType, choice, updatedSub.mealSlots[dayId]?.[i]?.[parcelKey as keyof MealSlot], dayConfig, isKid, !!kidsEnabled, isGuest, !!guestsEnabled);
 
         if (isParcelSupportedForSlot) {
           if (toBool(takenList[i]?.[mealKey as keyof TakenState]) && toBool(takenList[i]?.[parcelKey as keyof TakenState])) {
@@ -846,9 +882,10 @@ export function QuickCheckoutModal({
     }
 
     const totalsParts: string[] = [];
-    if (kidsEnabled) {
+    if (kidsEnabled || guestsEnabled) {
       let adultsPlanned = 0;
       let kidsPlanned = 0;
+      let guestsPlanned = 0;
       Object.values(quickCheckoutDetails.categories).forEach((cat) => {
         if (cat.section === SectionType.ADULTS) {
           adultsPlanned += isFallback ? cat.plannedCount : cat.dineInPlannedCount;
@@ -856,9 +893,13 @@ export function QuickCheckoutModal({
         if (cat.section === SectionType.KIDS) {
           kidsPlanned += isFallback ? cat.plannedCount : cat.dineInPlannedCount;
         }
+        if (cat.section === SectionType.GUESTS) {
+          guestsPlanned += isFallback ? cat.plannedCount : cat.dineInPlannedCount;
+        }
       });
       if (adultsPlanned > 0) totalsParts.push(`${UI_TEXT.adults}: ${newAdultsTaken}/${adultsPlanned}`);
-      if (kidsPlanned > 0) totalsParts.push(`${UI_TEXT.kids}: ${newKidsTaken}/${kidsPlanned}`);
+      if (kidsEnabled && kidsPlanned > 0) totalsParts.push(`${UI_TEXT.kids}: ${newKidsTaken}/${kidsPlanned}`);
+      if (guestsEnabled && guestsPlanned > 0) totalsParts.push(`${UI_TEXT.guests}: ${newGuestsTaken}/${guestsPlanned}`);
     } else {
       let totalPlanned = 0;
       Object.values(quickCheckoutDetails.categories).forEach((cat) => {
@@ -1395,18 +1436,17 @@ export function QuickCheckoutModal({
                   <Text style={{ fontSize: 12, fontWeight: "800", color: theme.colors.white }}>
                     {(() => {
                       if (!subscription) return "";
-                      if (kidsEnabled) {
+                      if (kidsEnabled || guestsEnabled) {
                         const adults = subscription.peopleCount || 0;
-                        const kids = subscription.kidsCount || 0;
-                        const adultLabel = adults === 1 ? UI_TEXT.adult : UI_TEXT.adults;
-                        const adultStr = `${adults} ${adultLabel}`;
-                        if (kids > 0) {
-                          const kidLabel = kids === 1 ? UI_TEXT.kid : UI_TEXT.kids;
-                          return `${adultStr}, ${kids} ${kidLabel}`;
-                        }
-                        return adultStr;
+                        const kids = kidsEnabled ? (subscription.kidsCount || 0) : 0;
+                        const guests = guestsEnabled ? (subscription.guestsCount || 0) : 0;
+                        const parts = [];
+                        if (adults > 0) parts.push(`${adults} ${adults === 1 ? UI_TEXT.adult : UI_TEXT.adults}`);
+                        if (kids > 0) parts.push(`${kids} ${kids === 1 ? UI_TEXT.kid : UI_TEXT.kids}`);
+                        if (guests > 0) parts.push(`${guests} ${guests === 1 ? UI_TEXT.guest : UI_TEXT.guests}`);
+                        return parts.join(", ");
                       } else {
-                        const total = (subscription.peopleCount || 0) + (subscription.kidsCount || 0);
+                        const total = (subscription.peopleCount || 0) + (subscription.kidsCount || 0) + (subscription.guestsCount || 0);
                         const memberLabel = total === 1 ? UI_TEXT.generalMember : UI_TEXT.generalMembers;
                         return `${total} ${memberLabel}`;
                       }
@@ -1428,8 +1468,10 @@ export function QuickCheckoutModal({
                       const dinePlanned = isFallback ? cat.plannedCount : cat.dineInPlannedCount;
                       const dineRem = isFallback ? cat.remMealCount : cat.remDineInCount;
                       const isKidCat = cat.section === SectionType.KIDS;
+                      const isGuestCat = cat.section === SectionType.GUESTS;
                       const isKidParcelOpt = isKidsParcelEnabled(quickCheckoutDetails.dayId, quickCheckoutDetails.mealType, dayConfig, kidsEnabled);
-                      const showCatParcel = quickCheckoutDetails.parcelSupported && (isKidCat ? isKidParcelOpt : true);
+                      const isGuestParcelOpt = isGuestsParcelEnabled(quickCheckoutDetails.dayId, quickCheckoutDetails.mealType, dayConfig, guestsEnabled);
+                      const showCatParcel = quickCheckoutDetails.parcelSupported && (isGuestCat ? isGuestParcelOpt : (isKidCat ? isKidParcelOpt : true));
 
                       const hasDineRem = dinePlanned > 0 && dineRem > 0;
                       const hasParcelRem = showCatParcel && cat.parcelPlannedCount > 0 && cat.remParcelCount > 0;
@@ -1438,8 +1480,10 @@ export function QuickCheckoutModal({
                     .map((cat) => {
                       const isFallback = isDineInFallbackParcelEnabled(quickCheckoutDetails.dayId, quickCheckoutDetails.mealType, dayConfig);
                       const isKidCat = cat.section === SectionType.KIDS;
+                      const isGuestCat = cat.section === SectionType.GUESTS;
                       const isKidParcelOpt = isKidsParcelEnabled(quickCheckoutDetails.dayId, quickCheckoutDetails.mealType, dayConfig, kidsEnabled);
-                      const showCatParcel = quickCheckoutDetails.parcelSupported && (isKidCat ? isKidParcelOpt : true);
+                      const isGuestParcelOpt = isGuestsParcelEnabled(quickCheckoutDetails.dayId, quickCheckoutDetails.mealType, dayConfig, guestsEnabled);
+                      const showCatParcel = quickCheckoutDetails.parcelSupported && (isGuestCat ? isGuestParcelOpt : (isKidCat ? isKidParcelOpt : true));
 
                       const parcelLabel = cat.parcelPlannedCount === 1 ? UI_TEXT.parcelSingular : UI_TEXT.parcels;
                       const dinePlanned = isFallback ? cat.plannedCount : cat.dineInPlannedCount;

@@ -30,9 +30,11 @@ interface PaymentData {
   totalFood: number;
   totalAdultFood?: number;
   totalKidsFood?: number;
+  totalGuestsFood?: number;
   totalParcel: number;
   totalAdultParcel?: number;
   totalKidsParcel?: number;
+  totalGuestsParcel?: number;
   discrepancies?: DiscrepancyItem[];
 }
 
@@ -45,10 +47,12 @@ export function PaymentSummaryReport({
   data,
   onSelectFlat,
   kidsEnabled = false,
+  guestsEnabled = false,
 }: {
   data: PaymentData;
   onSelectFlat?: (id: string) => void;
   kidsEnabled?: boolean;
+  guestsEnabled?: boolean;
 }) {
   const styles = useStyles();
   const { theme } = useAppTheme();
@@ -83,11 +87,13 @@ export function PaymentSummaryReport({
   const foodBreakdown = [
     { label: UI_TEXT.adults, amount: data.totalAdultFood ?? data.totalFood },
     { label: UI_TEXT.kids, amount: data.totalKidsFood ?? 0 },
+    ...(guestsEnabled ? [{ label: UI_TEXT.guests, amount: (data as any).totalGuestsFood ?? 0 }] : []),
   ].filter(item => item.amount > 0);
 
   const parcelBreakdown = [
     { label: UI_TEXT.adults, amount: data.totalAdultParcel ?? data.totalParcel },
     { label: UI_TEXT.kids, amount: data.totalKidsParcel ?? 0 },
+    ...(guestsEnabled ? [{ label: UI_TEXT.guests, amount: (data as any).totalGuestsParcel ?? 0 }] : []),
   ].filter(item => item.amount > 0);
 
   return (

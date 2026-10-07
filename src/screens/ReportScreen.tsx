@@ -1,22 +1,10 @@
-/**
- * Report Screen for Admin.
- * Provides various data views like Day wise, Meal wise and Flat wise summaries.
- */
-import React, { useMemo, useRef } from "react";
-import { View, Text, ScrollView, StatusBar, Pressable, Platform } from "react-native";
-import { captureRef } from "react-native-view-shot";
+import React, { useRef, useMemo } from "react";
+import { View, Text, ScrollView, Pressable, Platform, StatusBar } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useStyles, useScaling } from "../styles";
 import { useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
-import {
-  getDayLabel,
-  getDayAbbr,
-  isMealEnabled,
-  getMealLabel,
-  isMealCurrent,
-  isMealInFuture,
-} from "../constants";
+import { getDayLabel, isMealEnabled, isMealCurrent, isMealInFuture, getMealLabel, isParcelEnabled } from "../constants";
 import { ReportType, MealType, AppScreen, AppThemeMode } from "../domain";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
@@ -30,7 +18,6 @@ import { DayWiseReport } from "../components/report/DayWiseReport";
 import { MealWiseReport } from "../components/report/MealWiseReport";
 import { FreeMealWiseReport } from "../components/report/FreeMealWiseReport";
 import { ParcelWiseReport } from "../components/report/ParcelWiseReport";
-import { SingleMealReport } from "../components/report/SingleMealReport";
 import { PendingReport } from "../components/report/PendingReport";
 import { FlatWiseReport } from "../components/report/FlatWiseReport";
 import { PaymentSummaryReport } from "../components/report/PaymentSummaryReport";
@@ -48,7 +35,7 @@ import { useAppNavigation } from "../context/NavigationContext";
 export function ReportScreen() {
   const { handleLogout } = useAuth();
   const {
-    subscriptions, foodMenu, dayConfig, seasonName, paymentConfig, freeMealEnabled, kidsEnabled
+    subscriptions, foodMenu, dayConfig, seasonName, paymentConfig, freeMealEnabled, kidsEnabled, guestsEnabled
   } = useCoreDatabase();
   const { shareQr } = useUI();
   const {
@@ -58,9 +45,9 @@ export function ReportScreen() {
 
   const {
     activeDays, dayWiseData, mealWiseData, flatWiseData, paymentData, getNotTakenData, getMembersMealData, getMissedParcelData, packagePassesData
-  } = useReportData(subscriptions, foodMenu, dayConfig, freeMealEnabled, paymentConfig, !!kidsEnabled, reportType);
+  } = useReportData(subscriptions, foodMenu, dayConfig, freeMealEnabled, paymentConfig, !!kidsEnabled, !!guestsEnabled, reportType);
 
-  const [selectedPersonCategory, setSelectedPersonCategory] = React.useState<"all" | "adult" | "kids">("all");
+  const [selectedPersonCategory, setSelectedPersonCategory] = React.useState<"all" | "adult" | "kids" | "guests">("all");
 
   const styles = useStyles();
   const { s } = useScaling();
@@ -89,7 +76,7 @@ export function ReportScreen() {
 
   const onSetReportType = (type: ReportType) => {
     setReportType(type);
-    if (type === ReportType.DAY || type === ReportType.SINGLE || type === ReportType.NOT_TAKEN || type === ReportType.MEMBERS_MEAL || type === ReportType.PARCEL) {
+    if (type === ReportType.DAY || type === ReportType.NOT_TAKEN || type === ReportType.MEMBERS_MEAL || type === ReportType.PARCEL) {
       const active = activeDays;
       for (const dId of active) {
         for (const mType of [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER]) {
@@ -100,55 +87,66 @@ export function ReportScreen() {
           }
         }
       }
+      if (active.length > 0) {
+        const targetDay = selectedDayId && active.includes(selectedDayId) ? selectedDayId : active[0];
+        onSetSelectedDayId(targetDay);
+        for (const mType of [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER]) {
+          if (isMealEnabled(targetDay, mType, dayConfig)) {
+            onSetSelectedMealType(mType);
+            break;
+          }
+        }
+      }
     }
   };
 
   // Ensure selected day is valid and focuses current active meal if available
   React.useEffect(() => {
     if (activeDays.length > 0) {
-      let foundCurrent = false;
-      for (const dId of activeDays) {
-        for (const mType of [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER]) {
-          if (isMealCurrent(dId, mType, dayConfig) && isMealEnabled(dId, mType, dayConfig)) {
-            onSetSelectedDayId(dId);
-            onSetSelectedMealType(mType);
-            foundCurrent = true;
-            break;
+      const needsMealSelection = reportType === ReportType.DAY || reportType === ReportType.NOT_TAKEN || reportType === ReportType.MEMBERS_MEAL || reportType === ReportType.PARCEL;
+      if (needsMealSelection) {
+        let foundCurrent = false;
+        for (const dId of activeDays) {
+          for (const mType of [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER]) {
+            if (isMealCurrent(dId, mType, dayConfig) && isMealEnabled(dId, mType, dayConfig)) {
+              if (!selectedDayId || !isMealEnabled(selectedDayId, selectedMealType, dayConfig)) {
+                onSetSelectedDayId(dId);
+                onSetSelectedMealType(mType);
+              }
+              foundCurrent = true;
+              break;
+            }
+          }
+          if (foundCurrent) break;
+        }
+        if (!foundCurrent) {
+          const targetDay = selectedDayId && activeDays.includes(selectedDayId) ? selectedDayId : activeDays[0];
+          if (!selectedDayId) onSetSelectedDayId(targetDay);
+          if (!selectedMealType || !isMealEnabled(targetDay, selectedMealType, dayConfig)) {
+            for (const mType of [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER]) {
+              if (isMealEnabled(targetDay, mType, dayConfig)) {
+                onSetSelectedMealType(mType);
+                break;
+              }
+            }
           }
         }
-        if (foundCurrent) break;
-      }
-      if (!foundCurrent && (!selectedDayId || !activeDays.includes(selectedDayId))) {
-        onSetSelectedDayId(activeDays[0]);
       }
     }
-  }, [activeDays, dayConfig, onSetSelectedDayId, onSetSelectedMealType]);
-
-  // Ensure selected meal is valid for the selected day
-  React.useEffect(() => {
-    if (selectedDayId && !isMealEnabled(selectedDayId, selectedMealType, dayConfig)) {
-      const firstAvailable = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].find(
-        (m) => isMealEnabled(selectedDayId, m, dayConfig)
-      );
-      if (firstAvailable) {
-        onSetSelectedMealType(firstAvailable);
-      }
-    }
-  }, [selectedDayId, dayConfig, selectedMealType, onSetSelectedMealType]);
-
-  const reportRef = useRef<View>(null);
+  }, [activeDays, dayConfig, selectedDayId, selectedMealType, reportType, onSetSelectedDayId, onSetSelectedMealType]);
 
   const isParcelEnabledGlobally = useMemo(() => {
-    return dayConfig.some(d => d.enabled && (
-      (d[MealType.BREAKFAST].enabled && d[MealType.BREAKFAST].parcel) ||
-      (d[MealType.LUNCH].enabled && d[MealType.LUNCH].parcel) ||
-      (d[MealType.DINNER].enabled && d[MealType.DINNER].parcel)
-    ));
+    return (dayConfig || []).some(d =>
+      [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].some(m => isParcelEnabled(d.id, m, dayConfig))
+    );
   }, [dayConfig]);
+
+  const reportRef = useRef<View>(null);
 
   const handleShare = async () => {
     if (reportRef.current) {
       try {
+        const { captureRef } = await import("react-native-view-shot");
         const uri = await captureRef(reportRef, {
           format: "png",
           quality: 1,
@@ -161,7 +159,6 @@ export function ReportScreen() {
           reportType === ReportType.FREE_MEAL ? UI_TEXT.freeMealReport :
           reportType === ReportType.MEMBERS_MEAL ? UI_TEXT.membersMealReport :
           reportType === ReportType.PARCEL ? UI_TEXT.parcelReport :
-          reportType === ReportType.SINGLE ? `${getDayLabel(selectedDayId, dayConfig)} - ${getMealLabel(selectedMealType)}` :
           reportType === ReportType.NOT_TAKEN ? UI_TEXT.notTakenReport :
           reportType === ReportType.FLAT ? UI_TEXT.flatWiseReport :
           UI_TEXT.paymentReport;
@@ -240,7 +237,6 @@ export function ReportScreen() {
             { id: ReportType.FREE_MEAL, label: UI_TEXT.freeMealSuffix, icon: "people-circle-outline" },
             { id: ReportType.MEMBERS_MEAL, label: UI_TEXT.members, icon: "people-outline" },
             { id: ReportType.PARCEL, label: UI_TEXT.parcels, icon: "cube-outline" },
-            { id: ReportType.SINGLE, label: UI_TEXT.split, icon: "fast-food-outline" },
             { id: ReportType.NOT_TAKEN, label: UI_TEXT.pending, icon: "alert-circle-outline" },
             { id: ReportType.FLAT, label: UI_TEXT.flat, icon: "business-outline" },
             { id: ReportType.PAYMENT, label: UI_TEXT.payment, icon: "card-outline" },
@@ -249,29 +245,29 @@ export function ReportScreen() {
             (tab.id !== ReportType.PAYMENT || paymentConfig.enabled) &&
             (tab.id !== ReportType.FREE_MEAL || freeMealEnabled) &&
             (tab.id !== ReportType.PARCEL || isParcelEnabledGlobally)
-          ).map((tab) => (
-            <Pressable
-              key={tab.id}
-              onPress={() => onSetReportType(tab.id as ReportType)}
-              style={{
-                backgroundColor: reportType === tab.id ? theme.colors.primary : theme.colors.surface,
-                borderRadius: 12,
-                height: 36,
-                paddingHorizontal: 14,
-                justifyContent: 'center',
-                alignItems: 'center',
-                borderWidth: 1.5,
-                borderColor: theme.colors.primary,
-                flexDirection: 'row',
-              }}
-            >
-              <ActionLabel
-                icon={tab.icon as any}
-                label={tab.label}
-                color={reportType === tab.id ? theme.colors.white : theme.colors.primary}
-              />
-            </Pressable>
-          ))}
+          ).map((tab) => {
+            const isSelected = reportType === tab.id;
+            return (
+              <Pressable
+                key={tab.id}
+                onPress={() => onSetReportType(tab.id as ReportType)}
+                style={[
+                  styles.selector,
+                  isSelected && styles.selectorOn,
+                  { paddingHorizontal: 12, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', gap: 6, minWidth: 100, marginBottom: 0 }
+                ]}
+              >
+                <Ionicons
+                  name={tab.icon as any}
+                  size={16}
+                  color={isSelected ? theme.colors.white : theme.colors.primary}
+                />
+                <Text style={[styles.selectorText, isSelected && styles.selectorTextOn, { fontSize: 13, fontWeight: '800' }]}>
+                  {tab.label}
+                </Text>
+              </Pressable>
+            );
+          })}
         </View>
       </View>
 
@@ -279,7 +275,7 @@ export function ReportScreen() {
         style={{ flex: 1, width: "100%" }}
         contentContainerStyle={[styles.content, { paddingTop: 0 }]}
       >
-        {(reportType === ReportType.DAY || reportType === ReportType.SINGLE || reportType === ReportType.NOT_TAKEN || reportType === ReportType.MEMBERS_MEAL || reportType === ReportType.PARCEL) && (
+        {(reportType === ReportType.DAY || reportType === ReportType.NOT_TAKEN || reportType === ReportType.MEMBERS_MEAL || reportType === ReportType.PARCEL) && (
           <View style={[styles.card, { marginBottom: 24, marginTop: 10 }]}>
             <Text style={[styles.sectionTitle, { fontSize: 16, marginBottom: 12 }]}>{UI_TEXT.reportFilters}</Text>
 
@@ -299,190 +295,139 @@ export function ReportScreen() {
                     const meals = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER];
                     return meals.some(m => isMealEnabled(day, m, dayConfig) && !isMealInFuture(day, m, dayConfig));
                   })
-                  .map((day) => (
-                  <Pressable
-                    key={day}
-                    onLayout={(e) => { dayOffsets.current[day] = e.nativeEvent.layout.x; }}
-                    onPress={() => onSetSelectedDayId(day)}
-                    style={[
-                      styles.selector,
-                      selectedDayId === day && styles.selectorOn,
-                      { minWidth: 60, paddingHorizontal: 12, flexShrink: 0 }
-                    ]}
-                  >
-                    <Text style={[styles.selectorText, selectedDayId === day && styles.selectorTextOn]}>
-                      {getDayAbbr(day, dayConfig)}
-                    </Text>
-                  </Pressable>
-                ))}
+                  .map((day) => {
+                    const isSelected = selectedDayId === day;
+                    return (
+                      <Pressable
+                        key={day}
+                        onLayout={(e) => {
+                          dayOffsets.current[day] = e.nativeEvent.layout.x;
+                        }}
+                        onPress={() => onSetSelectedDayId(day)}
+                        style={[
+                          styles.selector,
+                          isSelected && styles.selectorOn,
+                          { minWidth: s(90), paddingVertical: s(10), marginBottom: 0 }
+                        ]}
+                      >
+                        <Text style={[styles.selectorText, isSelected && styles.selectorTextOn, { fontSize: 13, fontWeight: '800' }]}>
+                          {getDayLabel(day, dayConfig)}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
               </View>
             </ScrollView>
 
             <Text style={styles.selectorLabel}>{UI_TEXT.selectMeal}</Text>
-            <View style={styles.selectorRow}>
+            <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
               {[MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER]
-                .filter((mKey) => {
-                  const enabled = isMealEnabled(selectedDayId, mKey, dayConfig);
-                  if (!enabled) return false;
-                  if (reportType === ReportType.NOT_TAKEN || reportType === ReportType.PARCEL) {
-                    return !isMealInFuture(selectedDayId, mKey, dayConfig);
-                  }
-                  return true;
-                })
-                .map((mKey) => (
-                  <Pressable
-                    key={mKey}
-                    onPress={() => onSetSelectedMealType(mKey)}
-                    style={[
-                      styles.selector,
-                      selectedMealType === mKey && styles.selectorOn,
-                      { minWidth: 80, paddingHorizontal: 10 }
-                    ]}
-                  >
-                    <Text
+                .filter((mType) => isMealEnabled(selectedDayId, mType, dayConfig))
+                .map((mType) => {
+                  const isSelected = selectedMealType === mType;
+                  return (
+                    <Pressable
+                      key={mType}
+                      onPress={() => onSetSelectedMealType(mType)}
                       style={[
-                        styles.selectorText,
-                        selectedMealType === mKey && styles.selectorTextOn,
-                        { fontSize: 12 }
+                        styles.selector,
+                        isSelected && styles.selectorOn,
+                        { flex: 1, minWidth: 90, paddingVertical: 10, marginBottom: 0 }
                       ]}
                     >
-                      {getMealLabel(mKey)}
-                    </Text>
-                  </Pressable>
-                ))}
+                      <Text style={[styles.selectorText, isSelected && styles.selectorTextOn, { fontSize: 13, fontWeight: '800' }]}>
+                        {getMealLabel(mType)}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
             </View>
 
             {reportType === ReportType.MEMBERS_MEAL && (
               <>
-                <Text style={styles.selectorLabel}>{UI_TEXT.selectCategory}</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8, width: '100%' }}>
-                  <View style={[styles.selectorRow, { flexWrap: 'nowrap' }]}>
-                    {[
-                      { id: "all", label: UI_TEXT.allMembers },
-                      { id: "adult", label: UI_TEXT.adults },
-                      ...(kidsEnabled ? [{ id: "kids", label: UI_TEXT.kids }] : []),
-                    ].map((cat) => (
+                <Text style={[styles.selectorLabel, { marginTop: 14 }]}>Person Category</Text>
+                <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
+                  {[
+                    { id: "all", label: UI_TEXT.all },
+                    { id: "adult", label: UI_TEXT.adults },
+                    ...(kidsEnabled ? [{ id: "kids", label: UI_TEXT.kids }] : []),
+                    ...(guestsEnabled ? [{ id: "guests", label: UI_TEXT.guests }] : []),
+                  ].map((cat) => {
+                    const isSelected = selectedPersonCategory === cat.id;
+                    return (
                       <Pressable
                         key={cat.id}
                         onPress={() => setSelectedPersonCategory(cat.id as any)}
-                        accessible={true}
-                        accessibilityRole="tab"
-                        accessibilityLabel={cat.label}
-                        accessibilityState={{ selected: selectedPersonCategory === cat.id }}
                         style={[
                           styles.selector,
-                          selectedPersonCategory === cat.id && styles.selectorOn,
-                          { minWidth: 60, paddingHorizontal: 12, flexShrink: 0 }
+                          isSelected && styles.selectorOn,
+                          { flex: 1, minWidth: 70, paddingVertical: 8, marginBottom: 0 }
                         ]}
                       >
-                        <Text style={[styles.selectorText, selectedPersonCategory === cat.id && styles.selectorTextOn]}>
+                        <Text style={[styles.selectorText, isSelected && styles.selectorTextOn, { fontSize: 12, fontWeight: '800' }]}>
                           {cat.label}
                         </Text>
                       </Pressable>
-                    ))}
-                  </View>
-                </ScrollView>
+                    );
+                  })}
+                </View>
               </>
             )}
           </View>
         )}
 
-        <View
-          ref={reportRef}
-          collapsable={false}
-          style={{
-            backgroundColor: theme.colors.background,
-            padding: s(12),
-            borderRadius: s(16),
-          }}
-        >
-          <View style={[
-            styles.card,
-            {
-              backgroundColor: theme.colors.primary,
-              borderColor: theme.colors.primary,
-              marginBottom: s(24),
-              paddingVertical: s(16)
-            }
-          ]}>
-            <View style={styles.previewTop}>
-              <View>
-                <Text style={[styles.previewLabel, { color: theme.colors.white, opacity: 0.7 }]}>{seasonName}</Text>
-                <Text style={[styles.previewTitle, { color: theme.colors.white, fontSize: 22 }]}>
-                  {reportType === ReportType.DAY && UI_TEXT.dayWiseReport}
-                  {reportType === ReportType.MEAL && UI_TEXT.mealWiseReport}
-                  {reportType === ReportType.FREE_MEAL && UI_TEXT.freeMealReport}
-                  {reportType === ReportType.PARCEL && UI_TEXT.parcelReport}
-                  {reportType === ReportType.SINGLE && `${getDayLabel(selectedDayId, dayConfig)}${UI_TEXT.space}${UI_TEXT.hyphen}${UI_TEXT.space}${getMealLabel(selectedMealType)}`}
-                  {reportType === ReportType.MEMBERS_MEAL && UI_TEXT.membersReport}
-                  {reportType === ReportType.MISSED_PARCEL && UI_TEXT.missedParcelReport}
-                  {reportType === ReportType.NOT_TAKEN && `${UI_TEXT.notTakenReport}`}
-                  {reportType === ReportType.FLAT && UI_TEXT.flatWiseReport}
-                  {reportType === ReportType.PAYMENT && UI_TEXT.paymentReport}
-                  {reportType === ReportType.PACKAGE && UI_TEXT.packageReport}
-                </Text>
-              </View>
-            </View>
-            <View style={{ height: 1, backgroundColor: theme.colors.white, opacity: 0.2, marginVertical: 12 }} />
-            <Text style={{ color: theme.colors.white, fontWeight: "700", fontSize: 13 }}>
-              {new Date().toLocaleDateString()} {UI_TEXT.operationalSummary}
-            </Text>
-          </View>
-
+        {/* Report Content Container (Captured for sharing/download) */}
+        <View ref={reportRef} collapsable={false} style={{ backgroundColor: theme.colors.background, padding: 2, gap: 16 }}>
           {reportType === ReportType.DAY && (
             <DayWiseReport
-              data={dayWiseData as any}
+              data={dayWiseData.map(d => ({ day: d.dayId, ...d.totals }) as any)}
               selectedDayId={selectedDayId}
               selectedMealType={selectedMealType}
-              mealWiseData={mealWiseData as any}
+              mealWiseData={mealWiseData}
               dayConfig={dayConfig}
               kidsEnabled={!!kidsEnabled}
+              guestsEnabled={!!guestsEnabled}
               freeMealEnabled={freeMealEnabled}
             />
           )}
 
           {reportType === ReportType.MEAL && (
             <MealWiseReport
-              data={mealWiseData as any}
+              data={mealWiseData}
               dayConfig={dayConfig}
               kidsEnabled={!!kidsEnabled}
+              guestsEnabled={!!guestsEnabled}
             />
           )}
 
           {reportType === ReportType.FREE_MEAL && (
-            <FreeMealWiseReport activeDays={activeDays} foodMenu={foodMenu} dayConfig={dayConfig} />
+            <FreeMealWiseReport
+              activeDays={activeDays}
+              foodMenu={foodMenu}
+              dayConfig={dayConfig}
+            />
+          )}
+
+          {reportType === ReportType.MEMBERS_MEAL && (
+            <MembersReport
+              data={getMembersMealData(selectedDayId, selectedMealType, selectedPersonCategory)}
+              selectedDayId={selectedDayId}
+              selectedMealType={selectedMealType}
+              dayConfig={dayConfig}
+              onSelectFlat={onSelectFlat}
+            />
           )}
 
           {reportType === ReportType.PARCEL && (
             <ParcelWiseReport
-              data={mealWiseData as any}
+              data={mealWiseData}
               dayConfig={dayConfig}
               getMissedParcelData={getMissedParcelData}
               selectedDayId={selectedDayId}
               selectedMealType={selectedMealType}
               onSelectFlat={onSelectFlat}
               kidsEnabled={!!kidsEnabled}
-            />
-          )}
-
-          {reportType === ReportType.SINGLE && (
-            <SingleMealReport
-              selectedDayId={selectedDayId}
-              selectedMealType={selectedMealType}
-              mealWiseData={mealWiseData as any}
-              dayConfig={dayConfig}
-              freeMealEnabled={freeMealEnabled}
-              kidsEnabled={!!kidsEnabled}
-            />
-          )}
-
-          {reportType === ReportType.MEMBERS_MEAL && (
-            <MembersReport
-              data={getMembersMealData(selectedDayId, selectedMealType, selectedPersonCategory) as any}
-              selectedDayId={selectedDayId}
-              selectedMealType={selectedMealType}
-              dayConfig={dayConfig}
-              onSelectFlat={onSelectFlat}
+              guestsEnabled={!!guestsEnabled}
             />
           )}
 
@@ -492,17 +437,18 @@ export function ReportScreen() {
               selectedDayId={selectedDayId}
               selectedMealType={selectedMealType}
               dayConfig={dayConfig}
-              onSelectFlat={id => onSelectFlat(id)}
+              onSelectFlat={onSelectFlat}
               kidsEnabled={!!kidsEnabled}
             />
           )}
 
           {reportType === ReportType.FLAT && (
             <FlatWiseReport
-              data={flatWiseData as any}
+              data={flatWiseData}
               dayConfig={dayConfig}
               onSelectFlat={onSelectFlat}
               kidsEnabled={!!kidsEnabled}
+              guestsEnabled={!!guestsEnabled}
             />
           )}
 
@@ -511,6 +457,7 @@ export function ReportScreen() {
               data={paymentData}
               onSelectFlat={onSelectFlat}
               kidsEnabled={!!kidsEnabled}
+              guestsEnabled={!!guestsEnabled}
             />
           )}
 
@@ -519,11 +466,9 @@ export function ReportScreen() {
               data={packagePassesData}
               onSelectFlat={onSelectFlat}
               kidsEnabled={!!kidsEnabled}
+              guestsEnabled={!!guestsEnabled}
             />
           )}
-        </View>
-        <View style={styles.footer}>
-           <Text style={styles.footerText}>{UI_TEXT.footerCopyright}</Text>
         </View>
       </ScrollView>
     </View>

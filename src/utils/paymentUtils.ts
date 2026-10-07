@@ -13,7 +13,7 @@ import {
   AppliedPackageInfo,
   PackageMealItem,
 } from "../domain";
-import { isParcelEnabled, isKidsParcelEnabled, isDietaryEnabled, isMealEnabled, getMealVarieties, getDietTypeForChoice, getVarietyForChoice } from "../constants";
+import { isParcelEnabled, isKidsParcelEnabled, isDietaryEnabled, isMealEnabled, getMealVarieties, getDietTypeForChoice, getVarietyForChoice, isGuestsParcelEnabled } from "../constants";
 
 export interface DiscrepancyItem {
   id: string;
@@ -21,6 +21,7 @@ export interface DiscrepancyItem {
   flat: string;
   peopleCount: number;
   kidsCount: number;
+  guestsCount?: number;
   paidAmount: number;
   calculatedAmount: number;
   difference: number; // paidAmount - calculatedAmount
@@ -75,6 +76,17 @@ export function resolvePrice(
   return 0;
 }
 
+export function resolveGuestPrice(
+  guestVal: any,
+  adultVal: any,
+  confVal: any
+): number {
+  if (guestVal !== undefined && guestVal !== null && guestVal !== '' && !isNaN(Number(guestVal))) {
+    return Number(guestVal);
+  }
+  return 0;
+}
+
 /**
  * Resolves the price for a specific meal dietary variety / sub-category.
  */
@@ -83,6 +95,7 @@ export function resolveVarietyPrice(
   mType: MealType,
   varietyId: string,
   isKid: boolean,
+  isGuest: boolean,
   applicability: string,
   dayConfig: any[],
   foodMenu: Record<string, any>
@@ -95,26 +108,37 @@ export function resolveVarietyPrice(
 
   let adultMealPrice: any;
   let kidsMealPrice: any;
+  let guestsMealPrice: any;
 
   if (variety?.id === "veg_default") {
     adultMealPrice = dayMenu?.vegPrice ?? mealConf?.vegPrice;
     kidsMealPrice = dayMenu?.kidsVegPrice;
+    guestsMealPrice = dayMenu?.guestsVegPrice;
   } else if (variety?.id === "nonVeg_default") {
     adultMealPrice = dayMenu?.nonVegPrice ?? mealConf?.nonVegPrice;
     kidsMealPrice = dayMenu?.kidsNonVegPrice;
+    guestsMealPrice = dayMenu?.guestsNonVegPrice;
   } else if (variety) {
     const varMenu = dayMenu?.varieties?.[variety.id];
     const isVeg = variety.type === DietType.VEG;
     const defaultAdultMeal = isVeg ? (dayMenu?.vegPrice ?? mealConf?.vegPrice) : (dayMenu?.nonVegPrice ?? mealConf?.nonVegPrice);
     const defaultKidsMeal = isVeg ? dayMenu?.kidsVegPrice : dayMenu?.kidsNonVegPrice;
+    const defaultGuestsMeal = isVeg ? dayMenu?.guestsVegPrice : dayMenu?.guestsNonVegPrice;
 
     adultMealPrice = (varMenu?.adultPrice !== undefined && varMenu?.adultPrice !== "") ? varMenu.adultPrice : defaultAdultMeal;
     kidsMealPrice = (varMenu?.kidsPrice !== undefined && varMenu?.kidsPrice !== "") ? varMenu.kidsPrice : defaultKidsMeal;
+    guestsMealPrice = (varMenu?.guestsVegPrice !== undefined && varMenu?.guestsVegPrice !== "") ? varMenu.guestsVegPrice :
+                      (varMenu?.guestsNonVegPrice !== undefined && varMenu?.guestsNonVegPrice !== "") ? varMenu.guestsNonVegPrice :
+                      (varMenu?.guestPrice !== undefined && varMenu?.guestPrice !== "") ? varMenu.guestPrice : defaultGuestsMeal;
   } else {
     adultMealPrice = dayMenu?.vegPrice ?? mealConf?.vegPrice;
     kidsMealPrice = dayMenu?.kidsVegPrice;
+    guestsMealPrice = dayMenu?.guestsVegPrice;
   }
 
+  if (isGuest) {
+    return resolveGuestPrice(guestsMealPrice, adultMealPrice, undefined);
+  }
   const shouldUseKidPrice = isKid || applicability === "kids";
   return resolvePrice(shouldUseKidPrice, kidsMealPrice, adultMealPrice, undefined);
 }
@@ -128,7 +152,9 @@ export function calculatePersonMealAndParcelCost(
   isKid: boolean,
   foodMenu: Record<string, any>,
   dayConfig: any[],
-  kidsEnabled: boolean
+  kidsEnabled: boolean,
+  isGuest: boolean = false,
+  guestsEnabled: boolean = false
 ): PersonCostBreakdown {
   let totalMealPrice = 0;
   let totalParcelPrice = 0;
@@ -161,51 +187,72 @@ export function calculatePersonMealAndParcelCost(
 
       const variety = getVarietyForChoice(choice, varieties);
       const isParcel = toBool(personSlot[`${mType}Parcel` as keyof MealSlot]);
-      const isParcelAllowed = isParcel && (isKid
+      const isParcelAllowed = isParcel && (isGuest
+        ? isGuestsParcelEnabled(dayId, mType, dayConfig, guestsEnabled)
+        : isKid
         ? isKidsParcelEnabled(dayId, mType, dayConfig, kidsEnabled)
         : isParcelEnabled(dayId, mType, dayConfig));
 
       let adultMealPrice: any;
       let kidsMealPrice: any;
+      let guestsMealPrice: any;
       let adultParcelPrice: any;
       let kidsParcelPrice: any;
+      let guestsParcelPrice: any;
 
       if (variety?.id === "veg_default") {
         adultMealPrice = dayMenu?.[mType]?.vegPrice ?? mealConf.vegPrice;
         kidsMealPrice = dayMenu?.[mType]?.kidsVegPrice;
+        guestsMealPrice = dayMenu?.[mType]?.guestsVegPrice;
         adultParcelPrice = dayMenu?.[mType]?.vegParcelPrice ?? mealConf.vegParcelPrice;
         kidsParcelPrice = dayMenu?.[mType]?.kidsVegParcelPrice;
+        guestsParcelPrice = dayMenu?.[mType]?.guestsVegParcelPrice;
       } else if (variety?.id === "nonVeg_default") {
         adultMealPrice = dayMenu?.[mType]?.nonVegPrice ?? mealConf.nonVegPrice;
         kidsMealPrice = dayMenu?.[mType]?.kidsNonVegPrice;
+        guestsMealPrice = dayMenu?.[mType]?.guestsNonVegPrice;
         adultParcelPrice = dayMenu?.[mType]?.vegParcelPrice ?? mealConf.vegParcelPrice;
         kidsParcelPrice = dayMenu?.[mType]?.kidsNonVegParcelPrice;
+        guestsParcelPrice = dayMenu?.[mType]?.guestsNonVegParcelPrice;
       } else if (variety) {
         const varMenu = dayMenu?.[mType]?.varieties?.[variety.id];
         const isVeg = variety.type === DietType.VEG;
         const defaultAdultMeal = isVeg ? (dayMenu?.[mType]?.vegPrice ?? mealConf.vegPrice) : (dayMenu?.[mType]?.nonVegPrice ?? mealConf.nonVegPrice);
         const defaultKidsMeal = isVeg ? dayMenu?.[mType]?.kidsVegPrice : dayMenu?.[mType]?.kidsNonVegPrice;
+        const defaultGuestsMeal = isVeg ? dayMenu?.[mType]?.guestsVegPrice : dayMenu?.[mType]?.guestsNonVegPrice;
         const defaultAdultParcel = isVeg ? (dayMenu?.[mType]?.vegParcelPrice ?? mealConf.vegParcelPrice) : (dayMenu?.[mType]?.nonVegParcelPrice ?? mealConf.nonVegParcelPrice);
         const defaultKidsParcel = isVeg ? dayMenu?.[mType]?.kidsVegParcelPrice : dayMenu?.[mType]?.kidsNonVegParcelPrice;
+        const defaultGuestsParcel = isVeg ? dayMenu?.[mType]?.guestsVegParcelPrice : dayMenu?.[mType]?.guestsNonVegParcelPrice;
 
         adultMealPrice = (varMenu?.adultPrice !== undefined && varMenu?.adultPrice !== "") ? varMenu.adultPrice : defaultAdultMeal;
         kidsMealPrice = (varMenu?.kidsPrice !== undefined && varMenu?.kidsPrice !== "") ? varMenu.kidsPrice : defaultKidsMeal;
+        guestsMealPrice = (varMenu?.guestsVegPrice !== undefined && varMenu?.guestsVegPrice !== "") ? varMenu.guestsVegPrice :
+                          (varMenu?.guestsNonVegPrice !== undefined && varMenu?.guestsNonVegPrice !== "") ? varMenu.guestsNonVegPrice :
+                          (varMenu?.guestPrice !== undefined && varMenu?.guestPrice !== "") ? varMenu.guestPrice : defaultGuestsMeal;
         adultParcelPrice = (varMenu?.parcelPrice !== undefined && varMenu?.parcelPrice !== "") ? varMenu.parcelPrice : defaultAdultParcel;
         kidsParcelPrice = (varMenu?.kidsParcelPrice !== undefined && varMenu?.kidsParcelPrice !== "") ? varMenu.kidsParcelPrice : defaultKidsParcel;
+        guestsParcelPrice = (varMenu?.guestsParcelPrice !== undefined && varMenu?.guestsParcelPrice !== "") ? varMenu.guestsParcelPrice :
+                            (varMenu?.guestParcelPrice !== undefined && varMenu?.guestParcelPrice !== "") ? varMenu.guestParcelPrice : defaultGuestsParcel;
       } else {
         const isVeg = diet === DietType.VEG;
         adultMealPrice = isVeg ? (dayMenu?.[mType]?.vegPrice ?? mealConf.vegPrice) : (dayMenu?.[mType]?.nonVegPrice ?? mealConf.nonVegPrice);
         kidsMealPrice = isVeg ? dayMenu?.[mType]?.kidsVegPrice : dayMenu?.[mType]?.kidsNonVegPrice;
+        guestsMealPrice = isVeg ? dayMenu?.[mType]?.guestsVegPrice : dayMenu?.[mType]?.guestsNonVegPrice;
         adultParcelPrice = isVeg ? (dayMenu?.[mType]?.vegParcelPrice ?? mealConf.vegParcelPrice) : (dayMenu?.[mType]?.nonVegParcelPrice ?? mealConf.nonVegParcelPrice);
         kidsParcelPrice = isVeg ? dayMenu?.[mType]?.kidsVegParcelPrice : dayMenu?.[mType]?.kidsNonVegParcelPrice;
+        guestsParcelPrice = isVeg ? dayMenu?.[mType]?.guestsVegParcelPrice : dayMenu?.[mType]?.guestsNonVegParcelPrice;
       }
 
-      const mealPrice = resolvePrice(isKid, kidsMealPrice, adultMealPrice, undefined);
+      const mealPrice = isGuest
+        ? resolveGuestPrice(guestsMealPrice, adultMealPrice, undefined)
+        : resolvePrice(isKid, kidsMealPrice, adultMealPrice, undefined);
       totalMealPrice += mealPrice;
       mealPricesMap[dayId][mType] = mealPrice;
 
       if (isParcelAllowed) {
-        const parcelPrice = resolvePrice(isKid, kidsParcelPrice, adultParcelPrice, undefined);
+        const parcelPrice = isGuest
+          ? resolveGuestPrice(guestsParcelPrice, adultParcelPrice, undefined)
+          : resolvePrice(isKid, kidsParcelPrice, adultParcelPrice, undefined);
         totalParcelPrice += parcelPrice;
       }
     });
@@ -229,14 +276,19 @@ export function calculateSubscriptionAmount(
   kidsCount: number,
   foodMenu: Record<string, any>,
   dayConfig: any[],
-  kidsEnabled: boolean
+  kidsEnabled: boolean,
+  guestsCount: number = 0,
+  guestsEnabled: boolean = false
 ): number {
   let total = 0;
-  const totalPeople = (peopleCount || 0) + (kidsCount || 0);
+  const kCount = kidsEnabled ? (kidsCount || 0) : 0;
+  const gCount = guestsEnabled ? (guestsCount || 0) : 0;
+  const totalPeople = (peopleCount || 0) + kCount + gCount;
 
   for (let i = 0; i < totalPeople; i++) {
-    const isKid = kidsEnabled && i >= peopleCount;
-    const cost = calculatePersonMealAndParcelCost(i, mealSlots, isKid, foodMenu, dayConfig, kidsEnabled);
+    const isKid = kidsEnabled && i >= peopleCount && i < peopleCount + kCount;
+    const isGuest = guestsEnabled && i >= peopleCount + kCount;
+    const cost = calculatePersonMealAndParcelCost(i, mealSlots, isKid, foodMenu, dayConfig, kidsEnabled, isGuest, guestsEnabled);
     total += cost.totalPersonPrice;
   }
 
@@ -254,18 +306,21 @@ export function findApplicablePackagesForPerson(
   foodPackages: FoodPackage[],
   foodMenu: Record<string, any>,
   dayConfig: any[],
-  kidsEnabled: boolean
+  kidsEnabled: boolean,
+  isGuest: boolean = false,
+  guestsEnabled: boolean = false
 ): ApplicablePackageEvaluation[] {
   if (!foodPackages || foodPackages.length === 0) return [];
 
-  const personCost = calculatePersonMealAndParcelCost(personIndex, mealSlots, isKid, foodMenu, dayConfig, kidsEnabled);
+  const personCost = calculatePersonMealAndParcelCost(personIndex, mealSlots, isKid, foodMenu, dayConfig, kidsEnabled, isGuest, guestsEnabled);
   const applicableList: ApplicablePackageEvaluation[] = [];
 
   foodPackages.forEach((pkg) => {
     if (!pkg.enabled) return;
 
-    if (pkg.applicability === "adult" && isKid) return;
+    if (pkg.applicability === "adult" && (isKid || isGuest)) return;
     if (pkg.applicability === "kids" && !isKid) return;
+    if (pkg.applicability === "guests" && !isGuest) return;
 
     const isFlatDiscount = pkg.discountType === "flat_discount" || pkg.discountRate !== undefined;
 
@@ -457,14 +512,19 @@ export function calculatePassTotalWithPackages(
   foodPackages: FoodPackage[],
   foodMenu: Record<string, any>,
   dayConfig: any[],
-  kidsEnabled: boolean
+  kidsEnabled: boolean,
+  guestsCount: number = 0,
+  guestsEnabled: boolean = false
 ): number {
   let totalPassPrice = 0;
-  const totalPeople = (peopleCount || 0) + (kidsCount || 0);
+  const kCount = kidsEnabled ? (kidsCount || 0) : 0;
+  const gCount = guestsEnabled ? (guestsCount || 0) : 0;
+  const totalPeople = (peopleCount || 0) + kCount + gCount;
 
   for (let i = 0; i < totalPeople; i++) {
-    const isKid = kidsEnabled && i >= peopleCount;
-    const personCost = calculatePersonMealAndParcelCost(i, mealSlots, isKid, foodMenu, dayConfig, kidsEnabled);
+    const isKid = kidsEnabled && i >= peopleCount && i < peopleCount + kCount;
+    const isGuest = guestsEnabled && i >= peopleCount + kCount;
+    const personCost = calculatePersonMealAndParcelCost(i, mealSlots, isKid, foodMenu, dayConfig, kidsEnabled, isGuest, guestsEnabled);
 
     const appliedInfo = appliedPackages?.[i];
     if (appliedInfo) {
@@ -547,7 +607,8 @@ export function getAmountDiscrepancyData(
   subscriptions: SubscriptionRecord[],
   foodMenu: Record<string, any>,
   dayConfig: ConfigDay[],
-  kidsEnabled: boolean
+  kidsEnabled: boolean,
+  guestsEnabled: boolean = false
 ): DiscrepancyItem[] {
   return subscriptions
     .filter((sub) => !sub.isPackageApplied)
@@ -559,7 +620,9 @@ export function getAmountDiscrepancyData(
         sub.kidsCount || 0,
         foodMenu,
         dayConfig,
-        kidsEnabled
+        kidsEnabled,
+        sub.guestsCount || 0,
+        guestsEnabled
       );
       const difference = Math.round((paidAmount - calculatedAmount) * 100) / 100;
 
@@ -569,6 +632,7 @@ export function getAmountDiscrepancyData(
         flat: sub.flat,
         peopleCount: sub.peopleCount || 0,
         kidsCount: sub.kidsCount || 0,
+        guestsCount: sub.guestsCount || 0,
         paidAmount,
         calculatedAmount,
         difference,

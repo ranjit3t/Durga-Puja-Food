@@ -39,7 +39,7 @@ import { useUI } from "../context/UIContext";
 export function MenuEditorScreen() {
   const { handleLogout } = useAuth();
   const {
-    foodMenu: menu, dayConfig: config, seasonEnabled, foodPriceEnabled, updateMenu, updateMealMenu, kidsEnabled
+    foodMenu: menu, dayConfig: config, seasonEnabled, foodPriceEnabled, updateMenu, updateMealMenu, kidsEnabled, guestsEnabled
   } = useCoreDatabase();
   const { addActivityLog } = useActivityLogs();
   const { showAlert } = useUI();
@@ -289,6 +289,7 @@ export function MenuEditorScreen() {
                       disabled={!canEdit || isDone || saving}
                       foodPriceEnabled={foodPriceEnabled}
                       kidsEnabled={!!kidsEnabled}
+                      guestsEnabled={!!guestsEnabled}
                     />
                   );
                 })}

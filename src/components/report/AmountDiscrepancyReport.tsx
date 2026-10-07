@@ -9,10 +9,12 @@ export function AmountDiscrepancyReport({
   data,
   onSelectFlat,
   kidsEnabled = false,
+  guestsEnabled = false,
 }: {
   data: DiscrepancyItem[];
   onSelectFlat: (id: string) => void;
   kidsEnabled?: boolean;
+  guestsEnabled?: boolean;
 }) {
   const styles = useStyles();
   const { theme } = useAppTheme();
@@ -50,10 +52,17 @@ export function AmountDiscrepancyReport({
                     {passLabel}
                   </Text>
                   <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.textSecondary, marginTop: 2 }}>
-                    {item.peopleCount}{UI_TEXT.space}{item.peopleCount === 1 ? UI_TEXT.adult : UI_TEXT.adults}
-                    {kidsEnabled && item.kidsCount > 0
-                      ? `${UI_TEXT.comma}${UI_TEXT.space}${(item.kidsCount === 1 ? UI_TEXT.kidIncluded : UI_TEXT.kidsIncluded).replace("{count}", String(item.kidsCount))}`
-                      : ""}
+                    {(() => {
+                      if (kidsEnabled || guestsEnabled) {
+                        const parts = [];
+                        parts.push(`${item.peopleCount}${UI_TEXT.space}${item.peopleCount === 1 ? UI_TEXT.adult : UI_TEXT.adults}`);
+                        if (kidsEnabled && item.kidsCount > 0) parts.push(`${item.kidsCount}${UI_TEXT.space}${item.kidsCount === 1 ? UI_TEXT.kid : UI_TEXT.kids}`);
+                        if (guestsEnabled && (item.guestsCount || 0) > 0) parts.push(`${item.guestsCount || 0}${UI_TEXT.space}${item.guestsCount === 1 ? UI_TEXT.guest : UI_TEXT.guests}`);
+                        return parts.join(UI_TEXT.plus);
+                      }
+                      const total = item.peopleCount + item.kidsCount + (item.guestsCount || 0);
+                      return `${total}${UI_TEXT.space}${total === 1 ? UI_TEXT.personSuffix : UI_TEXT.personsSuffix}`;
+                    })()}
                   </Text>
                 </View>
 

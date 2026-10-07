@@ -28,7 +28,7 @@ import { useAppNavigation } from "../context/NavigationContext";
 export function ViewMenuScreen() {
   const { userRole, handleLogout } = useAuth();
   const {
-    foodMenu, dayConfig, seasonEnabled, foodPriceEnabled, paymentConfig, kidsEnabled
+    foodMenu, dayConfig, seasonEnabled, foodPriceEnabled, paymentConfig, kidsEnabled, guestsEnabled
   } = useCoreDatabase();
   const { addActivityLog } = useActivityLogs();
   const { navigate, goBack, targetDay, setTargetDay, setTargetMeal } = useAppNavigation();
@@ -352,6 +352,7 @@ export function ViewMenuScreen() {
                       menu={dayMenu[mKey] || emptyMeal}
                       foodPriceEnabled={foodPriceEnabled && isPaymentEnabled}
                       kidsEnabled={!!kidsEnabled}
+                      guestsEnabled={!!guestsEnabled}
                     />
                   ))}
               </View>

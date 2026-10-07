@@ -21,6 +21,10 @@ interface MealStats {
   kidsNonVegParcel?: number;
   kidsVegParcelTaken?: number;
   kidsNonVegParcelTaken?: number;
+  guestsVegParcel?: number;
+  guestsNonVegParcel?: number;
+  guestsVegParcelTaken?: number;
+  guestsNonVegParcelTaken?: number;
   freeMealVeg: number;
   freeMealNonVeg: number;
   freeMealVegTaken: number;
@@ -45,6 +49,7 @@ export function ParcelWiseReport({
   selectedMealType,
   onSelectFlat,
   kidsEnabled,
+  guestsEnabled,
 }: {
   data: MealWiseData[];
   dayConfig: ConfigDay[];
@@ -53,6 +58,7 @@ export function ParcelWiseReport({
   selectedMealType: MealType;
   onSelectFlat: (id: string) => void;
   kidsEnabled: boolean;
+  guestsEnabled?: boolean;
 }) {
   const styles = useStyles();
   const { theme } = useAppTheme();
@@ -123,10 +129,10 @@ export function ParcelWiseReport({
               <View style={{ gap: 12 }}>
                 {mealsWithParcels.map((mKey) => {
                   const m = item.meals[mKey];
-                  const tVeg = (m.vegParcel || 0) + (m.kidsVegParcel || 0);
-                  const tNonVeg = (m.nonVegParcel || 0) + (m.kidsNonVegParcel || 0);
-                  const tVegTaken = (m.vegParcelTaken || 0) + (m.kidsVegParcelTaken || 0);
-                  const tNonVegTaken = (m.nonVegParcelTaken || 0) + (m.kidsNonVegParcelTaken || 0);
+                  const tVeg = (m.vegParcel || 0) + (m.kidsVegParcel || 0) + (m.guestsVegParcel || 0);
+                  const tNonVeg = (m.nonVegParcel || 0) + (m.kidsNonVegParcel || 0) + (m.guestsNonVegParcel || 0);
+                  const tVegTaken = (m.vegParcelTaken || 0) + (m.kidsVegParcelTaken || 0) + (m.guestsVegParcelTaken || 0);
+                  const tNonVegTaken = (m.nonVegParcelTaken || 0) + (m.kidsNonVegParcelTaken || 0) + (m.guestsNonVegParcelTaken || 0);
 
                   const totalParcel = tVeg + tNonVeg;
                   const totalParcelTaken = tVegTaken + tNonVegTaken;
@@ -172,6 +178,7 @@ export function ParcelWiseReport({
           dayConfig={dayConfig}
           onSelectFlat={onSelectFlat}
           kidsEnabled={kidsEnabled}
+          guestsEnabled={guestsEnabled}
         />
       )}
     </View>

@@ -203,7 +203,8 @@ export function normalizeRecord(
 ): SubscriptionRecord {
   const peopleCount = Number(value.peopleCount) || 0;
   const kidsCount = Number(value.kidsCount) || 0;
-  const totalPeople = peopleCount + kidsCount;
+  const guestsCount = Number(value.guestsCount) || 0;
+  const totalPeople = peopleCount + kidsCount + guestsCount;
   const block = String(value.block || "");
   const flat = String(value.flat || "");
   const id = String(value.id || "");
@@ -342,17 +343,22 @@ export function normalizeRecord(
     let dNonVegCount = 0;
     let kidsVegCount = 0;
     let kidsNonVegCount = 0;
+    let guestsVegCount = 0;
+    let guestsNonVegCount = 0;
 
     slots.forEach((s, index) => {
-      const isKid = index >= peopleCount;
+      const isKid = index >= peopleCount && index < peopleCount + kidsCount;
+      const isGuest = index >= peopleCount + kidsCount;
       [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].forEach((mKey) => {
         const choice = s[mKey];
         const diet = getDietTypeForChoice(choice);
         if (diet === DietType.VEG) {
-          if (isKid) kidsVegCount++;
+          if (isGuest) guestsVegCount++;
+          else if (isKid) kidsVegCount++;
           else dVegCount++;
         } else if (diet === DietType.NON_VEG) {
-          if (isKid) kidsNonVegCount++;
+          if (isGuest) guestsNonVegCount++;
+          else if (isKid) kidsNonVegCount++;
           else dNonVegCount++;
         }
       });
@@ -383,6 +389,8 @@ export function normalizeRecord(
       [DietType.NON_VEG]: dNonVegCount,
       kidsVeg: kidsVegCount,
       kidsNonVeg: kidsNonVegCount,
+      guestsVeg: guestsVegCount,
+      guestsNonVeg: guestsNonVegCount,
     };
     return result;
   }, {} as Record<EventDay, MealAllocation>);
@@ -403,6 +411,7 @@ export function normalizeRecord(
     mobile,
     peopleCount,
     kidsCount,
+    guestsCount,
     amount: String(storedAmount),
     meals: normalizedMeals,
     mealByPerson: finalMealByPerson,
@@ -600,6 +609,7 @@ export function createFirebaseRepository(): SubscriptionRepository {
           foodPriceEnabled: val.foodPriceEnabled || false,
           seasonEnabled: val.seasonEnabled !== false,
           kidsEnabled: val.kidsEnabled || false,
+          guestsEnabled: val.guestsEnabled || false,
           whatsappCountryCode: val.whatsappCountryCode || "91",
           quickCheckoutAutoCloseMs: val.quickCheckoutAutoCloseMs ?? 3000,
           soundEnabled: val.soundEnabled !== undefined ? Boolean(val.soundEnabled) : true,
@@ -902,6 +912,7 @@ export function createFirebaseRepository(): SubscriptionRepository {
               foodPriceEnabled: val.foodPriceEnabled || false,
               seasonEnabled: val.seasonEnabled !== false,
               kidsEnabled: val.kidsEnabled || false,
+              guestsEnabled: val.guestsEnabled || false,
               whatsappCountryCode: val.whatsappCountryCode || "91",
               quickCheckoutAutoCloseMs: val.quickCheckoutAutoCloseMs ?? 3000,
             });

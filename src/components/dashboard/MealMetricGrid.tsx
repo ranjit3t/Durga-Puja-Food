@@ -31,7 +31,14 @@ export interface MealMetricProps {
   kidsNonVeg: number;
   kidsVegTaken: number;
   kidsNonVegTaken: number;
+  guestsTotal?: number;
+  guestsTaken?: number;
+  guestsVeg?: number;
+  guestsNonVeg?: number;
+  guestsVegTaken?: number;
+  guestsNonVegTaken?: number;
   kidsEnabled: boolean;
+  guestsEnabled?: boolean;
   freeMealEnabled: boolean;
   isParcelEnabled?: boolean;
   isBothEnabled: boolean;
@@ -84,15 +91,24 @@ export function MealMetricGrid(props: MealMetricProps) {
   const freeMealTotal = freeMealVeg + freeMealNonVeg;
   const freeMealTakenTotal = freeMealVegTaken + freeMealNonVegTaken;
 
+  const gVeg = props.guestsVeg || 0;
+  const gNonVeg = props.guestsNonVeg || 0;
+  const gVegTaken = props.guestsVegTaken || 0;
+  const gNonVegTaken = props.guestsNonVegTaken || 0;
+  const gTotal = props.guestsTotal || 0;
+  const gTaken = props.guestsTaken || 0;
+  const guestsEnabled = props.guestsEnabled;
+
   // Calculate adult specific taken counts
-  const adultVegTaken = Math.max(0, totalVegTaken - kidsVegTaken - (freeMealEnabled ? freeMealVegTaken : 0));
-  const adultNonVegTaken = Math.max(0, totalNonVegTaken - kidsNonVegTaken - (freeMealEnabled ? freeMealNonVegTaken : 0));
+  const adultVegTaken = Math.max(0, totalVegTaken - kidsVegTaken - gVegTaken - (freeMealEnabled ? freeMealVegTaken : 0));
+  const adultNonVegTaken = Math.max(0, totalNonVegTaken - kidsNonVegTaken - gNonVegTaken - (freeMealEnabled ? freeMealNonVegTaken : 0));
   const adultTotalTaken = adultVegTaken + adultNonVegTaken;
   const adultTotalPlanned = veg + nonVeg;
 
-  const showKids = kidsEnabled;
+  const showKids = kidsEnabled && kidsTotal > 0;
+  const showGuests = guestsEnabled && gTotal > 0;
   const showFreeMeals = freeMealEnabled && freeMealTotal > 0;
-  const showParcels = isParcelEnabled ?? true;
+  const showParcels = (isParcelEnabled ?? true) && parcel > 0;
 
   const SectionHeader = ({ icon, title, color }: { icon: keyof typeof Ionicons.glyphMap; title: string; color?: string }) => (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6, marginBottom: 2 }}>
@@ -139,15 +155,17 @@ export function MealMetricGrid(props: MealMetricProps) {
         <View style={{ gap: 10 }}>
           <SectionHeader icon="restaurant-outline" title={UI_TEXT.subCategoryBreakdown} color={theme.colors.primary} />
           {varieties.map((v) => {
-            let adultP = 0, kidsP = 0, adultS = 0, kidsS = 0, freeMealP = 0, freeMealS = 0;
+            let adultP = 0, kidsP = 0, guestsP = 0, adultS = 0, kidsS = 0, guestsS = 0, freeMealP = 0, freeMealS = 0;
             subscriptions.forEach((sub) => {
               const slots = sub.mealSlots?.[day] || [];
               const taken = sub.takenByPerson?.[day] || [];
               const adultCount = sub.peopleCount || 0;
+              const kCount = kidsEnabled ? (sub.kidsCount || 0) : 0;
               slots.forEach((sSlot, idx) => {
                 const choice = sSlot[type];
                 if (choice === DietaryOption.NONE) return;
-                const isKid = kidsEnabled && idx >= adultCount;
+                const isKid = kidsEnabled && idx >= adultCount && idx < adultCount + kCount;
+                const isGuest = guestsEnabled && idx >= adultCount + kCount;
                 const isMatch =
                   choice === v.id ||
                   ((v.id === "veg_default" || v.isDefault) && v.type === DietType.VEG && (choice === DietaryOption.VEG || choice === "veg")) ||
@@ -155,7 +173,10 @@ export function MealMetricGrid(props: MealMetricProps) {
 
                 if (isMatch) {
                   const isTaken = toBool(taken[idx]?.[type]);
-                  if (isKid) {
+                  if (isGuest) {
+                    guestsP++;
+                    if (isTaken) guestsS++;
+                  } else if (isKid) {
                     kidsP++;
                     if (isTaken) kidsS++;
                   } else {
@@ -180,8 +201,9 @@ export function MealMetricGrid(props: MealMetricProps) {
               }
             }
 
-            const totalV = adultP + kidsP + freeMealP;
-            const totalS = adultS + kidsS + freeMealS;
+            const totalV = adultP + kidsP + guestsP + freeMealP;
+            const totalS = adultS + kidsS + guestsS + freeMealS;
+            if (totalV === 0) return null;
             const vColor = v.color || (v.type === DietType.VEG ? theme.colors.veg : theme.colors.nonVeg);
 
             return (
@@ -209,6 +231,9 @@ export function MealMetricGrid(props: MealMetricProps) {
                   ) : (
                     <Metric icon="person-outline" label={UI_TEXT.members} value={adultP} color={theme.colors.textSecondary} />
                   )}
+                  {guestsEnabled && guestsP > 0 ? (
+                    <Metric icon="people-outline" label={UI_TEXT.guests} value={guestsP} color={theme.colors.primary} />
+                  ) : null}
                   {freeMealEnabled && freeMealP > 0 ? (
                     <Metric icon="people-circle-outline" label={UI_TEXT.freeMeals} value={freeMealP} color={theme.colors.secondary} />
                   ) : null}
@@ -284,6 +309,38 @@ export function MealMetricGrid(props: MealMetricProps) {
                     <Metric icon="happy-outline" label={showPlannedOnly ? UI_TEXT.total : UI_TEXT.planned} value={kidsTotal} color={theme.colors.primary} />
                     {!showPlannedOnly && (
                       <Metric icon="checkmark-done-outline" label={UI_TEXT.served} value={kidsTaken} color={theme.colors.veg} />
+                    )}
+                  </>
+                )}
+              </View>
+            </View>
+          )}
+
+          {/* 3B. GUESTS SECTION */}
+          {showGuests && (
+            <View style={{ gap: 4 }}>
+              <SectionHeader
+                icon="people-outline"
+                title={UI_TEXT.guests}
+                color={theme.colors.primary}
+              />
+              <View style={styles.metricGrid}>
+                {isBothEnabled ? (
+                  <>
+                    <Metric icon="leaf-outline" label={vegLabel} value={gVeg} color={theme.colors.veg} />
+                    {!showPlannedOnly && (
+                      <Metric icon="checkmark-done-outline" label={UI_TEXT.served} value={gVegTaken} color={theme.colors.veg} />
+                    )}
+                    <Metric icon="flame-outline" label={nonVegLabel} value={gNonVeg} color={theme.colors.nonVeg} />
+                    {!showPlannedOnly && (
+                      <Metric icon="checkmark-done-outline" label={UI_TEXT.served} value={gNonVegTaken} color={theme.colors.nonVeg} />
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <Metric icon="people-outline" label={showPlannedOnly ? UI_TEXT.total : UI_TEXT.planned} value={gTotal} color={theme.colors.primary} />
+                    {!showPlannedOnly && (
+                      <Metric icon="checkmark-done-outline" label={UI_TEXT.served} value={gTaken} color={theme.colors.veg} />
                     )}
                   </>
                 )}

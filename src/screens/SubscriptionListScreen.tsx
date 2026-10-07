@@ -40,6 +40,7 @@ import {
   isSpecialOnlySubscribed,
   hasPackageApplied,
   formatTimestamp,
+  isGuestsParcelEnabled,
 } from "../constants";
 import {
   AppScreen,
@@ -73,6 +74,7 @@ const SubscriptionCard = React.memo(({
   styles,
   s,
   kidsEnabled,
+  guestsEnabled,
   paymentConfig,
   whatsappCountryCode,
   hasCurrentMeal,
@@ -91,6 +93,7 @@ const SubscriptionCard = React.memo(({
   styles: any;
   s: (n: number) => number;
   kidsEnabled: boolean;
+  guestsEnabled: boolean;
   paymentConfig: PaymentConfig;
   whatsappCountryCode: string;
   hasCurrentMeal: boolean;
@@ -196,11 +199,17 @@ const SubscriptionCard = React.memo(({
             </View>
             <Text style={[styles.flatTitle, { color: theme.colors.textPrimary }]}>{UI_TEXT.flatUpper} {item.flat}</Text>
             <Text style={{ color: theme.colors.textSecondary, marginTop: s(4), fontWeight: "600", fontSize: s(14) }}>
-              {kidsEnabled ? (
-                `${item.peopleCount}${UI_TEXT.space}${item.peopleCount === 1 ? UI_TEXT.adult : UI_TEXT.adults}${item.kidsCount ? `${UI_TEXT.plus}${item.kidsCount}${UI_TEXT.space}${item.kidsCount === 1 ? UI_TEXT.kid : UI_TEXT.kids}` : ""}`
-              ) : (
-                `${item.peopleCount + (item.kidsCount || 0)}${item.peopleCount + (item.kidsCount || 0) === 1 ? UI_TEXT.personSuffix : UI_TEXT.personsSuffix}`
-              )}
+              {(() => {
+                if (kidsEnabled || guestsEnabled) {
+                  const parts = [];
+                  parts.push(`${item.peopleCount}${UI_TEXT.space}${item.peopleCount === 1 ? UI_TEXT.adult : UI_TEXT.adults}`);
+                  if (kidsEnabled && item.kidsCount) parts.push(`${item.kidsCount}${UI_TEXT.space}${item.kidsCount === 1 ? UI_TEXT.kid : UI_TEXT.kids}`);
+                  if (guestsEnabled && item.guestsCount) parts.push(`${item.guestsCount}${UI_TEXT.space}${item.guestsCount === 1 ? UI_TEXT.guest : UI_TEXT.guests}`);
+                  return parts.join(UI_TEXT.plus);
+                }
+                const total = item.peopleCount + (item.kidsCount || 0) + (item.guestsCount || 0);
+                return `${total}${total === 1 ? UI_TEXT.personSuffix : UI_TEXT.personsSuffix}`;
+              })()}
             </Text>
           </View>
         </View>
@@ -292,7 +301,7 @@ const SubscriptionCard = React.memo(({
 export function SubscriptionListScreen() {
   const { userRole, handleLogout } = useAuth();
   const {
-    subscriptions, dayConfig, paymentConfig, seasonEnabled, whatsappCountryCode, kidsEnabled, refreshAllData
+    subscriptions, dayConfig, paymentConfig, seasonEnabled, whatsappCountryCode, kidsEnabled, guestsEnabled, refreshAllData
   } = useCoreDatabase();
   const { addActivityLog } = useActivityLogs();
 
@@ -386,6 +395,25 @@ export function SubscriptionListScreen() {
   }, [subscriptions]);
 
   const hasAnyKids = passesWithKidsCount > 0;
+
+  const passesWithGuestsCount = useMemo(() => {
+    return subscriptions.filter(sub => {
+      if ((sub.guestsCount || 0) <= 0) return false;
+      const adultCount = sub.peopleCount || 0;
+      const kCount = kidsEnabled ? (sub.kidsCount || 0) : 0;
+      return Object.values(sub.mealSlots || {}).some(daySlots => {
+        return daySlots.some((slot, idx) => {
+          if (idx < adultCount + kCount) return false;
+          const bDiet = getDietTypeForChoice(slot[MealType.BREAKFAST]);
+          const lDiet = getDietTypeForChoice(slot[MealType.LUNCH]);
+          const dDiet = getDietTypeForChoice(slot[MealType.DINNER]);
+          return bDiet !== undefined || lDiet !== undefined || dDiet !== undefined;
+        });
+      });
+    }).length;
+  }, [subscriptions, kidsEnabled]);
+
+  const hasAnyGuests = passesWithGuestsCount > 0;
 
   const passesWithParcelCount = useMemo(() => {
     return subscriptions.filter(sub =>
@@ -538,13 +566,14 @@ export function SubscriptionListScreen() {
         filtered = filtered.filter(sub => missedIds.includes(sub.id));
       }
 
-      if (activeFilters.includes(FilterMode.KIDS) && kidsEnabled) {
+      if (activeFilters.includes(FilterMode.GUESTS) && guestsEnabled) {
         filtered = filtered.filter(sub => {
-          if ((sub.kidsCount || 0) <= 0) return false;
+          if ((sub.guestsCount || 0) <= 0) return false;
           const adultCount = sub.peopleCount || 0;
+          const kCount = kidsEnabled ? (sub.kidsCount || 0) : 0;
           return Object.values(sub.mealSlots || {}).some(daySlots => {
             return daySlots.some((slot, idx) => {
-              if (idx < adultCount) return false;
+              if (idx < adultCount + kCount) return false;
               const bDiet = getDietTypeForChoice(slot[MealType.BREAKFAST]);
               const lDiet = getDietTypeForChoice(slot[MealType.LUNCH]);
               const dDiet = getDietTypeForChoice(slot[MealType.DINNER]);
@@ -691,6 +720,7 @@ export function SubscriptionListScreen() {
       UI_TEXT.mobileNoColumn,
       UI_TEXT.adultsCountColumn,
       UI_TEXT.kidsCountColumn,
+      UI_TEXT.guestsCountColumn,
       UI_TEXT.totalMembersColumn,
       UI_TEXT.totalAmountColumn,
       UI_TEXT.paymentModeColumn,
@@ -726,6 +756,7 @@ export function SubscriptionListScreen() {
 
     let grandAdults = 0;
     let grandKids = 0;
+    let grandGuests = 0;
     let grandTotalPeople = 0;
     let grandTotalAmount = 0;
 
@@ -737,10 +768,12 @@ export function SubscriptionListScreen() {
     const rows: string[][] = sortedSubscriptions.map((sub) => {
       const adults = sub.peopleCount || 0;
       const kids = sub.kidsCount || 0;
-      const totalPeople = adults + kids;
+      const guests = sub.guestsCount || 0;
+      const totalPeople = adults + kids + guests;
 
       grandAdults += adults;
       grandKids += kids;
+      grandGuests += guests;
       grandTotalPeople += totalPeople;
 
       let totalAmt = sub.amount || "0";
@@ -807,6 +840,7 @@ export function SubscriptionListScreen() {
         sub.mobile ? String(sub.mobile) : "",
         String(adults),
         String(kids),
+        String(guests),
         String(totalPeople),
         totalAmt,
         paymentModeStr,
@@ -832,7 +866,7 @@ export function SubscriptionListScreen() {
             const takenParts: string[] = [];
 
             for (let i = 0; i < totalPeople; i++) {
-              const memberLabel = getMemberLegend(i, adults, !!kidsEnabled);
+              const memberLabel = getMemberLegend(i, adults, !!kidsEnabled, kids, !!guestsEnabled);
               const slot = slots[i];
               const takenItem = takenList[i];
 
@@ -846,8 +880,11 @@ export function SubscriptionListScreen() {
               const parcelKey = `${mType}Parcel` as keyof MealSlot;
               const isParcelOpted = slot ? !!slot[parcelKey] : false;
 
-              const isKidMember = kidsEnabled && i >= adults;
-              const isParcelAllowed = isKidMember
+              const isKidMember = kidsEnabled && i >= adults && i < adults + kids;
+              const isGuestMember = guestsEnabled && i >= adults + kids;
+              const isParcelAllowed = isGuestMember
+                ? isGuestsParcelEnabled(dayId, mType, dayConfig, guestsEnabled)
+                : isKidMember
                 ? isKidsParcelEnabled(dayId, mType, dayConfig, kidsEnabled)
                 : isParcelEnabled(dayId, mType, dayConfig);
 
@@ -977,6 +1014,7 @@ export function SubscriptionListScreen() {
         styles={styles}
         s={s}
         kidsEnabled={!!kidsEnabled}
+        guestsEnabled={!!guestsEnabled}
         paymentConfig={paymentConfig}
         whatsappCountryCode={whatsappCountryCode}
         hasCurrentMeal={!!item._hasCurrentMeal}
@@ -1166,6 +1204,44 @@ export function SubscriptionListScreen() {
                   color: activeFilters.includes(FilterMode.KIDS) ? theme.colors.nonVeg : theme.colors.textSecondary
                 }}>
                   {UI_TEXT.kids} ({passesWithKidsCount})
+                </Text>
+              </Pressable>
+            )}
+
+            {guestsEnabled && hasAnyGuests && (
+              <Pressable
+                onPress={() => toggleFilter(FilterMode.GUESTS)}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityState={{ selected: activeFilters.includes(FilterMode.GUESTS) }}
+                accessibilityLabel={`${UI_TEXT.guests} (${passesWithGuestsCount})`}
+                style={({ pressed }) => [
+                  {
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: s(4),
+                    paddingHorizontal: s(8),
+                    paddingVertical: s(4),
+                    borderRadius: s(12),
+                    borderWidth: 1,
+                    borderColor: activeFilters.includes(FilterMode.GUESTS) ? theme.colors.primary : theme.colors.border,
+                    backgroundColor: activeFilters.includes(FilterMode.GUESTS) ? theme.colors.primary + "22" : theme.colors.surface,
+                    marginBottom: s(4)
+                  },
+                  pressed && { opacity: 0.7 }
+                ]}
+              >
+                <Ionicons
+                  name={activeFilters.includes(FilterMode.GUESTS) ? "people" : "people-outline"}
+                  size={s(13)}
+                  color={activeFilters.includes(FilterMode.GUESTS) ? theme.colors.primary : theme.colors.textSecondary}
+                />
+                <Text style={{
+                  fontSize: s(11),
+                  fontWeight: "700",
+                  color: activeFilters.includes(FilterMode.GUESTS) ? theme.colors.primary : theme.colors.textSecondary
+                }}>
+                  {UI_TEXT.guests} ({passesWithGuestsCount})
                 </Text>
               </Pressable>
             )}
