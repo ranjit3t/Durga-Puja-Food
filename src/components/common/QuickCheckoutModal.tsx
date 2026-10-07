@@ -1604,6 +1604,7 @@ export function QuickCheckoutModal({
                             {quickCheckoutDetails.parcelSupported && cat.remParcelCount > 0 && (
                               <QuickCheckoutItemCard
                                 label={UI_TEXT.parcels}
+                                categoryLabel={cat.label}
                                 plannedCount={cat.parcelPlannedCount}
                                 servedCount={cat.parcelServedCount}
                                 remCount={cat.remParcelCount}
@@ -1618,6 +1619,7 @@ export function QuickCheckoutModal({
                             {dineRem > 0 && (
                               <QuickCheckoutItemCard
                                 label={UI_TEXT.dineIn}
+                                categoryLabel={cat.label}
                                 plannedCount={dinePlanned}
                                 servedCount={dineServed}
                                 remCount={dineRem}

@@ -192,4 +192,20 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
 
 ---
 
+## 5. Automated Testing & Storybook
+
+### Jest
+- `jest-expo` is the Jest preset for the Expo SDK, with React Native Testing Library for component-level assertions.
+- `jest.setup.ts` mocks AsyncStorage, vector icons, Firebase SDK modules, and device-only Expo modules. Unit tests do not initialize cameras, contacts, storage hardware, or network services.
+- `src/__tests__/sourceModules.test.ts` discovers and imports all production TypeScript modules under `src` as well as root `App.tsx` and `index.ts`. These are import-safety smoke checks; behavior is asserted separately in focused tests.
+- The focused behavioral suite covers domain normalization invariants, adult/child/guest pricing resolution, OCR transaction/amount parsing, and accessible stepper interactions. Quick Checkout cases verify adult/kid/guest section separation, correct per-person meal/parcel writes, category-specific input clamping, partial-service/parcel alerts, and the all-served boundary.
+
+### Storybook for React Native Web
+- `@storybook/react-native-web-vite` runs the UI catalog in a browser using React Native Web.
+- `.storybook/storyMocks.ts` supplies predictable context hook fixtures; `.storybook/nativeMocks.tsx` substitutes camera, contacts, image picker, audio, print/share, view-shot, and native OCR APIs in the web preview only.
+- Stories are grouped by common components, dashboards, menus, reports, feature components, and screens. Screen stories use mock auth/database/navigation values and never connect to Firebase.
+- Run `npm run storybook` for interactive UI work or `npm run build-storybook` to verify/build the static catalog. The dev server defaults to port `6006` and selects an available port if it is occupied.
+
+---
+
 © 2026 Eternia Festival Committee — Technical Documentation

@@ -206,6 +206,9 @@ export const ActivityLogItem = memo(({
         <View style={{ marginTop: s(12), marginBottom: s(4) }}>
           <Pressable
             onPress={() => onToggleStack(item.id)}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={expanded ? UI_TEXT.hideStackTrace : UI_TEXT.viewStackTrace}
             style={({ pressed }) => [
               { flexDirection: 'row', alignItems: 'center', gap: s(6), backgroundColor: theme.colors.error + "15", paddingHorizontal: s(10), paddingVertical: s(6), borderRadius: s(8), alignSelf: 'flex-start' },
               pressed && { opacity: 0.7 }

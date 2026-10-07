@@ -5,6 +5,7 @@ import { UI_TEXT } from "../../../strings";
 
 interface QuickCheckoutItemCardProps {
   label: string;
+  categoryLabel?: string;
   plannedCount: number;
   servedCount: number;
   remCount: number;
@@ -18,6 +19,7 @@ interface QuickCheckoutItemCardProps {
 
 export const QuickCheckoutItemCard: React.FC<QuickCheckoutItemCardProps> = ({
   label,
+  categoryLabel,
   plannedCount,
   servedCount,
   remCount,
@@ -28,6 +30,8 @@ export const QuickCheckoutItemCard: React.FC<QuickCheckoutItemCardProps> = ({
   theme,
   s,
 }) => {
+  const controlLabel = categoryLabel ? `${categoryLabel} ${label}` : label;
+
   return (
     <View style={{
       flex: 1,
@@ -80,7 +84,7 @@ export const QuickCheckoutItemCard: React.FC<QuickCheckoutItemCardProps> = ({
           ]}
           accessible={true}
           accessibilityRole="button"
-          accessibilityLabel={`${UI_TEXT.decrease || "Decrease"} ${label}`}
+          accessibilityLabel={`${UI_TEXT.decrease || "Decrease"} ${controlLabel}`}
         >
           <Ionicons name="remove" size={16} color={theme.colors.textPrimary} />
         </Pressable>
@@ -109,7 +113,7 @@ export const QuickCheckoutItemCard: React.FC<QuickCheckoutItemCardProps> = ({
           editable={!disabled}
           selectTextOnFocus
           accessible={true}
-          accessibilityLabel={`${label} ${UI_TEXT.quantity || "quantity"}`}
+          accessibilityLabel={`${controlLabel} ${UI_TEXT.quantity || "quantity"}`}
         />
 
         <Pressable
@@ -129,7 +133,7 @@ export const QuickCheckoutItemCard: React.FC<QuickCheckoutItemCardProps> = ({
           ]}
           accessible={true}
           accessibilityRole="button"
-          accessibilityLabel={`${UI_TEXT.increase || "Increase"} ${label}`}
+          accessibilityLabel={`${UI_TEXT.increase || "Increase"} ${controlLabel}`}
         >
           <Ionicons name="add" size={16} color={theme.colors.textPrimary} />
         </Pressable>

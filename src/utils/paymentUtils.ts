@@ -100,11 +100,11 @@ export function resolveVarietyPrice(
   dayId: string,
   mType: MealType,
   varietyId: string,
-  isKid: boolean,
-  isGuest: boolean,
-  applicability: string,
-  dayConfig: any[],
-  foodMenu: Record<string, any>
+  isKid: boolean = false,
+  isGuest: boolean = false,
+  applicability: string = "member",
+  dayConfig: any[] = [],
+  foodMenu: Record<string, any> = {}
 ): number {
   const dayConf = dayConfig.find((d) => d.id === dayId);
   const mealConf = dayConf ? dayConf[mType] : null;

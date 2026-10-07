@@ -137,6 +137,7 @@ export function FoodPackageScreen() {
           item.mealType,
           item.varietyId,
           isKid,
+          false,
           applicability,
           dayConfig,
           foodMenu

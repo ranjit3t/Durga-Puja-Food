@@ -55,6 +55,14 @@ The application follows a decoupled, context-driven component architecture with 
 
 ---
 
+## 🧪 Testing & Storybook
+
+- Run unit and component tests with `npm test`; use `npm run test:watch` while developing.
+- Tests use `jest-expo` and React Native Testing Library. `jest.setup.ts` mocks storage, icons, Firebase, and native-only Expo APIs so tests do not initialize devices or connect to the backend.
+- `sourceModules.test.ts` verifies that every production `.ts`/`.tsx` module under `src`, plus root `App.tsx` and `index.ts`, can be imported. Behavioral tests cover domain normalization, pricing, OCR parsing, counter interactions, and Quick Checkout allocation across adults, kids, and guests, including parcel, partial-service, and completed-pass states. Import checks are not a substitute for behavior tests.
+- Run the web catalog with `npm run storybook` (default port `6006`; Storybook selects another available port if it is occupied), or create a static build with `npm run build-storybook`.
+- Stories cover shared UI components, feature components, screens, and the app navigator. Storybook uses React Native Web and the real theme provider, with preview-only context and device API mocks to avoid Firebase and hardware access.
+
 ## 🎨 Theme Engine & Design System
 
 ### 1. Festive Royal Theme Palette

@@ -218,6 +218,20 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
 - **View Pass Meal Subscription Plan Integration (`DetailsScreen.tsx`)**: Updated the Meal Subscription Plan section (`vCount` and `nvCount` calculations per day) to correctly aggregate and add up adult, kid, and guest meals so that passes with guests show the complete combined meal count.
 - **Accessibility-Compliant Interactive Package Tags & Auto-Pruning (`SubscriptionPaymentSection.tsx`, `SubscriptionForm.tsx`)**: Rendered the green `PACKAGE APPLIED` marker as a pressable accessibility-compliant button (`accessible={true}`, `accessibilityRole="button"`) to directly open the Apply Package Modal. Automatically hides the duplicate `Apply` button when a package is applied, and prunes invalid packages automatically when meals are deselected.
 
+## 6. Quality Assurance & UI Catalog
+
+### Jest Test Boundary
+- `jest-expo` and React Native Testing Library provide the native-aware Jest environment.
+- `jest.setup.ts` replaces AsyncStorage, vector icons, Firebase SDK entrypoints, and device-only Expo modules with deterministic mocks. Tests therefore do not initialize hardware or access a live backend.
+- `src/__tests__/sourceModules.test.ts` dynamically imports every production `.ts`/`.tsx` module under `src`, plus the root `App.tsx` and `index.ts`. This guards module resolution and import safety; it does not claim behavioral coverage for each module.
+- Focused behavioral tests cover domain normalization, meal pricing, receipt OCR parsing, accessible counter interactions, and Quick Checkout allocation across adult, kid, and guest slots. Checkout tests also cover per-category capacity limits, parcel flags, partial-service alerts, and completed passes. Add behavior assertions alongside the owning module when new logic or UI states are introduced.
+
+### Storybook Web Boundary
+- `@storybook/react-native-web-vite` renders the shared UI, feature components, screens, and `AppNavigator` through React Native Web.
+- `.storybook/storyMocks.ts` supplies deterministic auth, database, navigation, chat, and UI hook values; `.storybook/nativeMocks.tsx` replaces camera, contact, picker, audio, print, sharing, screenshot, and OCR APIs for browser stories only.
+- Stories use the real `ThemeProvider` and representative fixture data. App providers, Firebase behavior, and native APIs remain unchanged in the mobile application.
+- Commands: `npm test`, `npm run test:watch`, `npm run storybook`, and `npm run build-storybook`. Storybook uses port `6006` by default and chooses another free port when needed.
+
 ---
 
 © 2026 Eternia Festival Committee — Architecture Documentation

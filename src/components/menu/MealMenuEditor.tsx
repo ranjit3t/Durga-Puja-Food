@@ -396,6 +396,9 @@ export function MealMenuEditor({
               <Pressable
                 onPress={() => !disabled && addItemForVariety(v)}
                 disabled={disabled}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={`${UI_TEXT.add} ${v.name}`}
                 style={[
                   styles.addSmall,
                   { backgroundColor: vColor, borderWidth: 0 },
@@ -414,6 +417,9 @@ export function MealMenuEditor({
                   <Pressable
                     onPress={() => !disabled && removeItemForVariety(v, i)}
                     disabled={disabled}
+                    accessible={true}
+                    accessibilityRole="button"
+                    accessibilityLabel={UI_TEXT.removeMenuItem.replace("{item}", item)}
                   >
                     <Ionicons name="close-circle" size={14} color={theme.colors.textSecondary} />
                   </Pressable>
