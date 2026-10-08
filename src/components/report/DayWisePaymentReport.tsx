@@ -3,10 +3,11 @@ import { View, Text } from "react-native";
 import { useStyles } from "../../styles";
 import { useAppTheme } from "../../theme";
 import { UI_TEXT } from "../../strings";
-import { getDayLabel } from "../../constants";
+import { getDayLabel, getMealLabel, isMealEnabled } from "../../constants";
 import { ConfigDay, MealType } from "../../domain";
 import { DayPaymentDetail, formatCurrencyAmount } from "../../utils/paymentUtils";
 import { ReportSummaryCard } from "./ReportSummaryCard";
+import { Ionicons } from "@expo/vector-icons";
 
 export function DayWisePaymentReport({
   dayWisePayments = [],
@@ -52,6 +53,10 @@ export function DayWisePaymentReport({
           netPayment: 0,
           meals: {} as any,
         };
+
+        const enabledMeals = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].filter((mKey) =>
+          isMealEnabled(dayObj.id, mKey, dayConfig)
+        );
 
         const dayPortions = Object.values(dayDetail.meals || {}).reduce((acc: number, m: any) => acc + (m.portionCount ?? m.passCount ?? 0), 0);
         const dayParcelCount = Object.values(dayDetail.meals || {}).reduce((acc: number, m: any) => acc + (m.parcelCount ?? 0), 0);
@@ -113,6 +118,40 @@ export function DayWisePaymentReport({
                     </Text>
                   </View>
                 )}
+
+                {/* Individual enabled meal plate counts for this day */}
+                {enabledMeals.map((mType) => {
+                  const mDetail = dayDetail.meals?.[mType];
+                  const mPortions = mDetail ? (mDetail.portionCount ?? mDetail.passCount ?? 0) : 0;
+                  if (mPortions === 0) return null;
+                  const mParcel = mDetail?.parcelCount ?? 0;
+                  const mDineIn = mDetail?.dineInCount ?? mPortions;
+
+                  return (
+                    <View key={mType} style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 2 }}>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                        <Ionicons
+                          name={
+                            mType === MealType.BREAKFAST
+                              ? "sunny-outline"
+                              : mType === MealType.LUNCH
+                              ? "restaurant-outline"
+                              : "moon-outline"
+                          }
+                          size={13}
+                          color={theme.colors.primary}
+                        />
+                        <Text style={{ fontSize: 12, color: theme.colors.textSecondary, fontWeight: "600" }}>
+                          • {getMealLabel(mType)}
+                        </Text>
+                      </View>
+                      <Text style={{ fontSize: 12, color: theme.colors.textPrimary, fontWeight: "700" }}>
+                        {mPortions} {UI_TEXT.plates}
+                        {mParcel > 0 ? ` (${mDineIn} ${UI_TEXT.dineIn}, ${mParcel} ${UI_TEXT.parcel})` : ` (${mDineIn} ${UI_TEXT.dineIn})`}
+                      </Text>
+                    </View>
+                  );
+                })}
 
                 <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
                   <Text style={{ fontSize: 12, color: theme.colors.textSecondary, fontWeight: "600" }}>

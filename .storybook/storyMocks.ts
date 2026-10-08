@@ -12,6 +12,7 @@ import {
   ReportType,
   UserRole,
 } from "../src/domain";
+import { FilterMode } from "../src/types";
 
 const noop = () => undefined;
 const emptyAsync = async () => undefined;
@@ -255,6 +256,8 @@ export function useAppNavigation() {
     setIsQuickFreeMealMode: noop,
     subscriptionSearch: "",
     setSubscriptionSearch: noop,
+    activeFilters: [FilterMode.ALL],
+    setActiveFilters: noop,
     targetDay: "Shashthi",
     setTargetDay: noop,
     targetMeal: MealType.LUNCH,

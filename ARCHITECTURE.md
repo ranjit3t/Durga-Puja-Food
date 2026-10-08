@@ -238,6 +238,10 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
 - **Zero-Flicker Architecture**: When 2+ filter chips are selected (`activeFilters.length > 1`), the static header subtitle updates in-place (`REGISTERED PASSES: 47 • Matching Passes: X`) and an inline `Clear Filters (X)` chip inserts directly into the existing wrapping filter chips row. By eliminating conditional banner views above the search box, the search bar and card list remain completely stationary with **zero layout shifting or flickering**.
 - **100% Theme & Dictionary Compliance**: All labels bind directly to `UI_TEXT.showingMatches` and `UI_TEXT.clearFilters` without hardcoded text or colors.
 
+### AB. Filter State Persistence Across Back Navigation ([`NavigationContext.tsx`](src/context/NavigationContext.tsx), [`SubscriptionListScreen.tsx`](src/screens/SubscriptionListScreen.tsx))
+- **Hoisted Navigation Filter State**: `activeFilters` is hoisted to `NavigationContext`, preserving the last selected filter states and search queries when navigating into pass details (`DetailsScreen`) and pressing Back (`goBack()`), while maintaining real-time data synchronization.
+- **Home Page Reset**: Navigating from the Home Page resets view states back to default `[FilterMode.ALL]`.
+
 ## 6. Quality Assurance & UI Catalog
 
 ### Jest Test Boundary
@@ -249,7 +253,7 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
 ### Storybook Web Boundary
 - `@storybook/react-native-web-vite` renders the shared UI, feature components, screens, and `AppNavigator` through React Native Web.
 - `.storybook/storyMocks.ts` supplies deterministic auth, database, navigation, chat, and UI hook values; `.storybook/nativeMocks.tsx` replaces camera, contact, picker, audio, print, sharing, screenshot, and OCR APIs for browser stories only.
-- Stories use the real `ThemeProvider` and representative fixture data. App providers, Firebase behavior, and native APIs remain unchanged in the mobile application.
+- Stories use the real `ThemeProvider` and representative fixture data, including fully populated mock datasets for Day-Wise, Meal-Wise, Amount Discrepancy (covering both underpaid and overpaid/excess passes), and Payment Summary report stories. App providers, Firebase behavior, and native APIs remain unchanged in the mobile application.
 - Commands: `npm test`, `npm run test:watch`, `npm run storybook`, and `npm run build-storybook`. Storybook uses port `6006` by default and chooses another free port when needed.
 
 ---

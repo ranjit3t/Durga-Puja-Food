@@ -92,6 +92,8 @@ jest.doMock("../context/NavigationContext", () => ({
     reportDayId: "Shashthi",
     reportMealType: "lunch",
     subscriptionSearch: "",
+    activeFilters: ["all"],
+    setActiveFilters: noop,
     isQuickCheckout: false,
     isQuickFreeMealMode: false,
     targetDay: "Shashthi",

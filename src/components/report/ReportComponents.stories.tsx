@@ -10,6 +10,8 @@ import { PackagePassesReport } from "./PackagePassesReport";
 import { ParcelWiseReport } from "./ParcelWiseReport";
 import { PaymentSummaryReport } from "./PaymentSummaryReport";
 import { PendingReport } from "./PendingReport";
+import { MealWisePaymentReport } from "./MealWisePaymentReport";
+import { DayWisePaymentReport } from "./DayWisePaymentReport";
 import { MealType, PaymentMode } from "../../domain";
 import { STORY_FIXTURES } from "../../../.storybook/storyMocks";
 
@@ -53,21 +55,67 @@ const mealWiseData = [{ day: "Shashthi", meals: {
 } }];
 const dayWiseData = [{ day: "Shashthi", ...emptyStats }];
 
+const sampleMealWisePayments = [
+  { dayId: "Shashthi", mealType: MealType.BREAKFAST, menuPrice: 3400, parcelPrice: 100, packageDiscount: 0, excessDeficient: 0, netPayment: 3500, passCount: 34, portionCount: 35, dineInCount: 34, parcelCount: 1 },
+  { dayId: "Shashthi", mealType: MealType.LUNCH, menuPrice: 4200, parcelPrice: 620, packageDiscount: 200, excessDeficient: 30, netPayment: 4650, passCount: 31, portionCount: 31, dineInCount: 0, parcelCount: 31 },
+  { dayId: "Shashthi", mealType: MealType.DINNER, menuPrice: 5100, parcelPrice: 0, packageDiscount: 0, excessDeficient: 0, netPayment: 5100, passCount: 34, portionCount: 34, dineInCount: 34, parcelCount: 0 },
+];
+
+const sampleDayWisePayments = [
+  {
+    dayId: "Shashthi",
+    menuPrice: 12700,
+    parcelPrice: 720,
+    packageDiscount: 200,
+    excessDeficient: 30,
+    netPayment: 13250,
+    meals: {
+      [MealType.BREAKFAST]: sampleMealWisePayments[0],
+      [MealType.LUNCH]: sampleMealWisePayments[1],
+      [MealType.DINNER]: sampleMealWisePayments[2],
+    }
+  }
+];
+
+const sampleSeasonTotalPayment = {
+  menuPrice: 49905,
+  parcelPrice: 860,
+  packageDiscount: 1235,
+  excessDeficient: 90,
+  netPayment: 50400,
+  totalPortions: 641,
+  dineInCount: 514,
+  parcelCount: 127,
+};
+
 export default { title: "UI/Reports", parameters: { controls: { disable: true } } };
 
 export const AmountDiscrepancyReportStory = {
   name: "AmountDiscrepancyReport",
-  render: () => <AmountDiscrepancyReport data={[{
-    id: "sample-pass",
-    block: "A",
-    flat: "101",
-    peopleCount: 1,
-    kidsCount: 0,
-    paidAmount: 60,
-    calculatedAmount: 80,
-    difference: -20,
-    payments: [{ amount: "60", mode: PaymentMode.CASH }],
-  }]} onSelectFlat={noop} />,
+  render: () => <AmountDiscrepancyReport data={[
+    {
+      id: "pass-1",
+      block: "A",
+      flat: "101",
+      peopleCount: 2,
+      kidsCount: 1,
+      paidAmount: 2760,
+      calculatedAmount: 2730,
+      difference: 30,
+      payments: [{ amount: "2760", mode: PaymentMode.UPI }],
+    },
+    {
+      id: "pass-2",
+      block: "B",
+      flat: "202",
+      peopleCount: 4,
+      kidsCount: 0,
+      paidAmount: 5100,
+      calculatedAmount: 5300,
+      difference: -200,
+      payments: [{ amount: "5100", mode: PaymentMode.CASH }],
+    }
+  ]} onSelectFlat={noop} />,
 };
 
 export const DayWiseReportStory = {
@@ -107,6 +155,16 @@ export const FreeMealWiseReportStory = {
 export const MealWiseReportStory = {
   name: "MealWiseReport",
   render: () => <MealWiseReport data={mealWiseData as any} dayConfig={dayConfig} kidsEnabled={false} />,
+};
+
+export const MealWisePaymentReportStory = {
+  name: "MealWisePaymentReport",
+  render: () => <MealWisePaymentReport mealWisePayments={sampleMealWisePayments as any} seasonTotalPayment={sampleSeasonTotalPayment} dayConfig={dayConfig} />,
+};
+
+export const DayWisePaymentReportStory = {
+  name: "DayWisePaymentReport",
+  render: () => <DayWisePaymentReport dayWisePayments={sampleDayWisePayments as any} seasonTotalPayment={sampleSeasonTotalPayment} dayConfig={dayConfig} />,
 };
 
 export const MembersReportStory = {
@@ -165,7 +223,14 @@ export const PaymentSummaryReportStory = {
     details: [{ id: "sample-pass", block: "A", flat: "101", peopleCount: 1, total: 80, payments: [{ amount: "80", mode: PaymentMode.CASH }] }],
     totalFood: 80,
     totalParcel: 0,
-  }} onSelectFlat={noop} />,
+    discrepancies: [
+      { id: "pass-1", block: "A", flat: "101", peopleCount: 2, kidsCount: 1, paidAmount: 2760, calculatedAmount: 2730, difference: 30, payments: [{ amount: "2760", mode: PaymentMode.UPI }] },
+      { id: "pass-2", block: "B", flat: "202", peopleCount: 4, kidsCount: 0, paidAmount: 5100, calculatedAmount: 5300, difference: -200, payments: [{ amount: "5100", mode: PaymentMode.CASH }] }
+    ],
+    mealWisePayments: sampleMealWisePayments as any,
+    dayWisePayments: sampleDayWisePayments as any,
+    seasonTotalPayment: sampleSeasonTotalPayment as any,
+  }} dayConfig={dayConfig} onSelectFlat={noop} kidsEnabled={false} guestsEnabled={false} />,
 };
 
 export const PendingReportStory = {

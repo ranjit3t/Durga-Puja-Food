@@ -25,8 +25,15 @@ export function ReportSummaryCard({ title, iconName, summary }: ReportSummaryCar
   const styles = useStyles();
   const { theme } = useAppTheme();
 
+  const summaryA11yLabel = `${title}: ${summary.totalPortions ?? 0} plates, Menu Price ${summary.menuPrice} rupees, Net Payment ${summary.netPayment} rupees`;
+
   return (
-    <View style={[styles.card, { padding: 18, backgroundColor: theme.colors.primary, borderRadius: 16 }]}>
+    <View
+      style={[styles.card, { padding: 18, backgroundColor: theme.colors.primary, borderRadius: 16 }]}
+      accessible={true}
+      accessibilityRole="summary"
+      accessibilityLabel={summaryA11yLabel}
+    >
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
         <Ionicons name={iconName} size={20} color={theme.colors.white} />
         <Text style={{ color: theme.colors.white, fontWeight: "900", fontSize: 18, flex: 1 }}>
@@ -50,20 +57,20 @@ export function ReportSummaryCard({ title, iconName, summary }: ReportSummaryCar
         )}
 
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-          <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700" }}>
+          <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700", flex: 1, marginRight: 8 }} numberOfLines={1}>
             {UI_TEXT.menuPriceLabel}
           </Text>
-          <Text style={{ color: theme.colors.white, fontSize: 14, fontWeight: "800" }}>
+          <Text style={{ color: theme.colors.white, fontSize: 14, fontWeight: "800", flexShrink: 0 }} numberOfLines={1}>
             {UI_TEXT.rs} {formatCurrencyAmount(summary.menuPrice)}
           </Text>
         </View>
 
         {(summary.parcelPrice ?? 0) > 0 && (
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-            <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700" }}>
+            <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700", flex: 1, marginRight: 8 }} numberOfLines={1}>
               {UI_TEXT.parcelCharges}
             </Text>
-            <Text style={{ color: theme.colors.white, fontSize: 14, fontWeight: "800" }}>
+            <Text style={{ color: theme.colors.white, fontSize: 14, fontWeight: "800", flexShrink: 0 }} numberOfLines={1}>
               + {UI_TEXT.rs} {formatCurrencyAmount(summary.parcelPrice ?? 0)}
             </Text>
           </View>
@@ -71,10 +78,10 @@ export function ReportSummaryCard({ title, iconName, summary }: ReportSummaryCar
 
         {summary.packageDiscount > 0 && (
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-            <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700" }}>
+            <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700", flex: 1, marginRight: 8 }} numberOfLines={1}>
               {UI_TEXT.packageDiscountLabel}
             </Text>
-            <Text style={{ color: theme.colors.white, fontSize: 14, fontWeight: "800" }}>
+            <Text style={{ color: theme.colors.white, fontSize: 14, fontWeight: "800", flexShrink: 0 }} numberOfLines={1}>
               - {UI_TEXT.rs} {formatCurrencyAmount(summary.packageDiscount)}
             </Text>
           </View>
@@ -82,10 +89,10 @@ export function ReportSummaryCard({ title, iconName, summary }: ReportSummaryCar
 
         {summary.excessDeficient !== 0 && (
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-            <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700" }}>
+            <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700", flex: 1, marginRight: 8 }} numberOfLines={1}>
               {UI_TEXT.excessDeficientLabel}
             </Text>
-            <Text style={{ color: theme.colors.white, fontSize: 14, fontWeight: "800" }}>
+            <Text style={{ color: theme.colors.white, fontSize: 14, fontWeight: "800", flexShrink: 0 }} numberOfLines={1}>
               {summary.excessDeficient > 0 ? "+" : "-"} {UI_TEXT.rs}{" "}
               {formatCurrencyAmount(Math.abs(summary.excessDeficient))}
             </Text>

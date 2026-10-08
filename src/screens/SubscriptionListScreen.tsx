@@ -308,9 +308,11 @@ export function SubscriptionListScreen() {
   const { addActivityLog } = useActivityLogs();
 
   const {
-    subscriptionSearch, setSubscriptionSearch, navigate, goBack, startNew,
+    subscriptionSearch, setSubscriptionSearch, activeFilters, setActiveFilters, navigate, goBack, startNew,
     setSelectedId, setSelectedRecord
   } = useAppNavigation();
+
+  const activeFiltersList = activeFilters || [FilterMode.ALL];
 
   const onSelect = useCallback((sub: Subscription) => {
     setSelectedId(sub.id);
@@ -359,7 +361,6 @@ export function SubscriptionListScreen() {
     setQuickCheckoutVisible(true);
   }, [addActivityLog]);
 
-  const [activeFilters, setActiveFilters] = useState<FilterMode[]>([FilterMode.ALL]);
   const [isAscending, setIsAscending] = useState(true);
   const [sortBy, setSortBy] = useState<DirectorySortMode>(DirectorySortMode.BLOCK_FLAT);
 

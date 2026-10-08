@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from "react";
 import { BackHandler, Platform } from "react-native";
-import { Screen, Subscription, Day, ReportType, ConfigDay, PaymentConfig, MealType, AppScreen, PaymentMode } from "../types";
+import { Screen, Subscription, Day, ReportType, ConfigDay, PaymentConfig, MealType, AppScreen, PaymentMode, FilterMode } from "../types";
 import { useAuth } from "./AuthContext";
 import {
   getEnabledPaymentMethods,
@@ -42,9 +42,11 @@ interface NavigationContextType {
   isQuickFreeMealMode: boolean;
   setIsQuickFreeMealMode: (val: boolean) => void;
 
-  // Subscription Search
+  // Subscription Search & Filters
   subscriptionSearch: string;
   setSubscriptionSearch: (text: string) => void;
+  activeFilters: FilterMode[];
+  setActiveFilters: React.Dispatch<React.SetStateAction<FilterMode[]>>;
 
   // Menu Editor Target
   targetDay: Day;
@@ -78,6 +80,7 @@ export function NavigationProvider({ children }: { children: React.ReactNode }) 
   const [reportDayId, setReportDayId] = useState<Day>("");
   const [reportMealType, setReportMealType] = useState<MealType>(MealType.BREAKFAST);
   const [subscriptionSearch, setSubscriptionSearch] = useState("");
+  const [activeFilters, setActiveFilters] = useState<FilterMode[]>([FilterMode.ALL]);
 
   const [targetDay, setTargetDay] = useState<Day>("");
   const [targetMeal, setTargetMeal] = useState<MealType | null>(null);
@@ -138,6 +141,7 @@ export function NavigationProvider({ children }: { children: React.ReactNode }) 
     setReportDayId("");
     setReportMealType(MealType.BREAKFAST);
     setSubscriptionSearch("");
+    setActiveFilters([FilterMode.ALL]);
     setTargetDay("");
     setTargetMeal(null);
     if (!preserveQuickCheckout) {
@@ -219,12 +223,13 @@ export function NavigationProvider({ children }: { children: React.ReactNode }) 
     selectedId, setSelectedId, selectedRecord, setSelectedRecord, editing, setEditing,
     reportType, setReportType, reportDayId, setReportDayId, reportMealType, setReportMealType,
     subscriptionSearch, setSubscriptionSearch,
+    activeFilters, setActiveFilters,
     targetDay, setTargetDay, targetMeal, setTargetMeal,
     isQuickCheckout, setIsQuickCheckout,
     isQuickFreeMealMode, setIsQuickFreeMealMode
   }), [
     screen, history, selectedId, selectedRecord, editing,
-    reportType, reportDayId, reportMealType, subscriptionSearch,
+    reportType, reportDayId, reportMealType, subscriptionSearch, activeFilters,
     targetDay, targetMeal, isQuickCheckout, isQuickFreeMealMode,
     startNew, openScannedValue
   ]);

@@ -18,6 +18,8 @@ export function MealReportItemCard({ mealType, mealLabel, detail, colorScheme }:
   const styles = useStyles();
   const { theme } = useAppTheme();
 
+  const mealA11yLabel = `${mealLabel}: ${(detail.portionCount ?? detail.passCount)} plates, Net Payment ${detail.netPayment} rupees`;
+
   return (
     <View
       style={{
@@ -30,6 +32,9 @@ export function MealReportItemCard({ mealType, mealLabel, detail, colorScheme }:
         borderWidth: 1,
         gap: 8,
       }}
+      accessible={true}
+      accessibilityRole="summary"
+      accessibilityLabel={mealA11yLabel}
     >
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
         <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
@@ -70,40 +75,40 @@ export function MealReportItemCard({ mealType, mealLabel, detail, colorScheme }:
       </View>
 
       <View style={{ gap: 4, marginTop: 4 }}>
-        <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-          <Text style={{ fontSize: 12, color: theme.colors.textSecondary, fontWeight: "600" }}>
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+          <Text style={{ fontSize: 12, color: theme.colors.textSecondary, fontWeight: "600", flex: 1, marginRight: 8 }} numberOfLines={1}>
             • {UI_TEXT.menuPriceLabel}
           </Text>
-          <Text style={{ fontSize: 12, color: theme.colors.textPrimary, fontWeight: "700" }}>
+          <Text style={{ fontSize: 12, color: theme.colors.textPrimary, fontWeight: "700", flexShrink: 0 }} numberOfLines={1}>
             {UI_TEXT.rs} {formatCurrencyAmount(detail.menuPrice)}
           </Text>
         </View>
 
         {detail.parcelPrice > 0 && (
-          <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-            <Text style={{ fontSize: 12, color: theme.colors.textSecondary, fontWeight: "600" }}>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+            <Text style={{ fontSize: 12, color: theme.colors.textSecondary, fontWeight: "600", flex: 1, marginRight: 8 }} numberOfLines={1}>
               • {UI_TEXT.parcelCharges}
             </Text>
-            <Text style={{ fontSize: 12, color: theme.colors.textPrimary, fontWeight: "700" }}>
+            <Text style={{ fontSize: 12, color: theme.colors.textPrimary, fontWeight: "700", flexShrink: 0 }} numberOfLines={1}>
               + {UI_TEXT.rs} {formatCurrencyAmount(detail.parcelPrice)}
             </Text>
           </View>
         )}
 
         {detail.packageDiscount > 0 && (
-          <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-            <Text style={{ fontSize: 12, color: theme.colors.textSecondary, fontWeight: "600" }}>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+            <Text style={{ fontSize: 12, color: theme.colors.textSecondary, fontWeight: "600", flex: 1, marginRight: 8 }} numberOfLines={1}>
               • {UI_TEXT.packageDiscountLabel}
             </Text>
-            <Text style={{ fontSize: 12, color: theme.colors.error, fontWeight: "700" }}>
+            <Text style={{ fontSize: 12, color: theme.colors.error, fontWeight: "700", flexShrink: 0 }} numberOfLines={1}>
               - {UI_TEXT.rs} {formatCurrencyAmount(detail.packageDiscount)}
             </Text>
           </View>
         )}
 
         {detail.excessDeficient !== 0 && (
-          <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-            <Text style={{ fontSize: 12, color: theme.colors.textSecondary, fontWeight: "600" }}>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+            <Text style={{ fontSize: 12, color: theme.colors.textSecondary, fontWeight: "600", flex: 1, marginRight: 8 }} numberOfLines={1}>
               • {UI_TEXT.excessDeficientLabel}
             </Text>
             <Text
@@ -111,7 +116,9 @@ export function MealReportItemCard({ mealType, mealLabel, detail, colorScheme }:
                 fontSize: 12,
                 color: detail.excessDeficient > 0 ? theme.colors.success : theme.colors.error,
                 fontWeight: "700",
+                flexShrink: 0,
               }}
+              numberOfLines={1}
             >
               {detail.excessDeficient > 0 ? "+" : "-"} {UI_TEXT.rs}{" "}
               {formatCurrencyAmount(Math.abs(detail.excessDeficient))}
