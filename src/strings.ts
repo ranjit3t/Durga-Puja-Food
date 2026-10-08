@@ -840,4 +840,5 @@ export const UI_TEXT = {
   sortByBlockFlat: "Block & Flat",
   sortByCreatedTime: "Created Time",
   sortByEditedTime: "Updated Time",
+  sortByAmount: "Paid Amount",
 };

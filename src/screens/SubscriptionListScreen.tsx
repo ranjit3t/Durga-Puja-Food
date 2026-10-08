@@ -60,6 +60,8 @@ import {
   CheckoutSource,
   getPassDisplayLabel,
 } from "../types";
+import { calculatePaidAmount } from "../utils/paymentUtils";
+import { DirectorySortMode } from "../domain";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
@@ -359,7 +361,7 @@ export function SubscriptionListScreen() {
 
   const [activeFilters, setActiveFilters] = useState<FilterMode[]>([FilterMode.ALL]);
   const [isAscending, setIsAscending] = useState(true);
-  const [sortBy, setSortBy] = useState<"blockFlat" | "createdAt" | "updatedAt">("blockFlat");
+  const [sortBy, setSortBy] = useState<DirectorySortMode>(DirectorySortMode.BLOCK_FLAT);
 
   const toggleFilter = useCallback((mode: FilterMode) => {
     if (mode === FilterMode.ALL) {
@@ -651,13 +653,19 @@ export function SubscriptionListScreen() {
     // Sort based on sortBy and isAscending
     const sorted = [...filtered].sort((a, b) => {
       const now = Date.now();
-      if (sortBy === "createdAt") {
+      if (sortBy === DirectorySortMode.AMOUNT) {
+        let amountA = calculatePaidAmount(a);
+        let amountB = calculatePaidAmount(b);
+        if (amountA !== amountB) {
+          return isAscending ? amountA - amountB : amountB - amountA;
+        }
+      } else if (sortBy === DirectorySortMode.CREATED_AT) {
         let createdA = Number(a.createdAt) || Number(a.timestamp) || now;
         let createdB = Number(b.createdAt) || Number(b.timestamp) || now;
         if (createdA !== createdB) {
           return isAscending ? createdA - createdB : createdB - createdA;
         }
-      } else if (sortBy === "updatedAt") {
+      } else if (sortBy === DirectorySortMode.UPDATED_AT) {
         let createdA = Number(a.createdAt) || Number(a.timestamp) || now;
         let createdB = Number(b.createdAt) || Number(b.timestamp) || now;
         let updatedA = Number(a.updatedAt) || createdA || now;
@@ -708,7 +716,7 @@ export function SubscriptionListScreen() {
         });
       });
       const isVegOnly = hasVeg && !hasNonVeg;
-      const hasSpecialMeal = hasSpecialMealSubscribed(item, dayConfig);
+      const hasSpecialMeal = isSpecialOnlySubscribed(item, dayConfig);
       const hasPackage = hasPackageApplied(item);
       const missedItem = missedData.list.find(m => m.id === item.id);
 
@@ -1439,14 +1447,15 @@ export function SubscriptionListScreen() {
               <Pressable
                 onPress={() => {
                   setSortBy(prev => {
-                    if (prev === "blockFlat") return "createdAt";
-                    if (prev === "createdAt") return "updatedAt";
-                    return "blockFlat";
+                    if (prev === DirectorySortMode.BLOCK_FLAT) return DirectorySortMode.CREATED_AT;
+                    if (prev === DirectorySortMode.CREATED_AT) return DirectorySortMode.UPDATED_AT;
+                    if (prev === DirectorySortMode.UPDATED_AT) return DirectorySortMode.AMOUNT;
+                    return DirectorySortMode.BLOCK_FLAT;
                   });
                 }}
                 accessible={true}
                 accessibilityRole="button"
-                accessibilityLabel={`${UI_TEXT.sortByBlockFlat}: ${sortBy === "blockFlat" ? UI_TEXT.block : (sortBy === "createdAt" ? UI_TEXT.createdTime : UI_TEXT.editedTime)}`}
+                accessibilityLabel={`${UI_TEXT.sortByBlockFlat}: ${sortBy === DirectorySortMode.BLOCK_FLAT ? UI_TEXT.block : (sortBy === DirectorySortMode.CREATED_AT ? UI_TEXT.createdTime : (sortBy === DirectorySortMode.UPDATED_AT ? UI_TEXT.editedTime : UI_TEXT.paidAmount))}`}
                 style={({ pressed }) => [
                   {
                     height: s(40),
@@ -1464,7 +1473,7 @@ export function SubscriptionListScreen() {
               >
                 <Ionicons name="swap-vertical-outline" size={s(15)} color={theme.colors.primary} />
                 <Text style={{ fontSize: s(11), fontWeight: "800", color: theme.colors.textPrimary }}>
-                  {sortBy === "blockFlat" ? UI_TEXT.block : (sortBy === "createdAt" ? UI_TEXT.createdTime : UI_TEXT.editedTime)}
+                  {sortBy === DirectorySortMode.BLOCK_FLAT ? UI_TEXT.block : (sortBy === DirectorySortMode.CREATED_AT ? UI_TEXT.createdTime : (sortBy === DirectorySortMode.UPDATED_AT ? UI_TEXT.editedTime : UI_TEXT.paidAmount))}
                 </Text>
               </Pressable>
 

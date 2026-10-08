@@ -254,6 +254,13 @@ export enum UserRole {
   VENDOR = "vendor",
 }
 
+export enum DirectorySortMode {
+  BLOCK_FLAT = "blockFlat",
+  CREATED_AT = "createdAt",
+  UPDATED_AT = "updatedAt",
+  AMOUNT = "amount",
+}
+
 export type MealAllocation = Record<DietType, number> & {
   kidsVeg?: number;
   kidsNonVeg?: number;

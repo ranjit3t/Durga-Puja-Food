@@ -218,6 +218,12 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
 - **View Pass Meal Subscription Plan Integration (`DetailsScreen.tsx`)**: Updated the Meal Subscription Plan section (`vCount` and `nvCount` calculations per day) to correctly aggregate and add up adult, kid, and guest meals so that passes with guests show the complete combined meal count.
 - **Accessibility-Compliant Interactive Package Tags & Auto-Pruning (`SubscriptionPaymentSection.tsx`, `SubscriptionForm.tsx`)**: Rendered the green `PACKAGE APPLIED` marker as a pressable accessibility-compliant button (`accessible={true}`, `accessibilityRole="button"`) to directly open the Apply Package Modal. Automatically hides the duplicate `Apply` button when a package is applied, and prunes invalid packages automatically when meals are deselected.
 
+### Y. Directory Money / Paid Amount Sorting & Enum Refactoring (`DirectorySortMode`, `SubscriptionListScreen.tsx`, `domain.ts`, `strings.ts`)
+- **Directory Sort Mode Enum (`DirectorySortMode`)**: Centralized directory sorting parameters into a typed `DirectorySortMode` enum (`BLOCK_FLAT`, `CREATED_AT`, `UPDATED_AT`, `AMOUNT`).
+- **Paid Amount Sorting (`calculatePaidAmount`)**: Added subscription list sorting by paid amount (money) in ascending or descending order.
+- **100% UI Text Localization**: All sort button labels and accessibility labels bind directly to `UI_TEXT` tokens (`UI_TEXT.block`, `UI_TEXT.createdTime`, `UI_TEXT.editedTime`, `UI_TEXT.paidAmount`).
+- **Strict Special-Meals-Only Pass Card Badges**: Pass card star icon badges strictly reflect passes subscribed exclusively to special meals (`isSpecialOnlySubscribed`), matching the Special Meals Only filter chip count and criteria perfectly.
+
 ## 6. Quality Assurance & UI Catalog
 
 ### Jest Test Boundary
