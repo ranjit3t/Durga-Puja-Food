@@ -106,11 +106,12 @@ The application follows a **Serverless Layered Architecture** built on the **Exp
 - **Pure Theme Token Background Fills**: Binds strictly to pre-defined theme tokens without color hardcoding or string concatenation (`theme.cardColors[0].accentLight` for View, `theme.colors.successLight` for Chat, `theme.colors.primary` for Share), ensuring vibrant rendering across Light and Dark themes.
 - **WCAG 2.1 AA Accessibility Integration**: Implemented full accessibility bindings (`accessible={true}`, `accessibilityRole="button"`, `accessibilityLabel`, `accessibilityHint`) across all action buttons.
 
-### N. Generic Members Report & Multi-Demographic Category Filtering (`MembersReport.tsx`, `useReportData.ts`, `ReportScreen.tsx`)
-- **Universal Pass Member Breakdown**: Replaced single-demographic kids reporting with a unified, generic `MembersReport` engine handling pass members across **Adults** and **Kids**.
-- **3-Tier Report Filtering Architecture**: `ReportScreen` provides 3 synchronized filter rows: **Day**, **Meal Slot**, and **Member Category** (`All Members`, `Adults`, `Kids`).
-- **Dynamic Feature-Based Filter Chip Rendering**: Category options dynamically toggle based on system enablement (`kidsEnabled`). Selecting a category isolates pass member data for that demographic exclusively.
-- **Zero Hardcoded Text & Hardcoded Colors**: Binds 100% to localized string keys (`UI_TEXT`) and theme tokens (`useAppTheme()`).
+### O. Detailed Meal-Wise & Day-Wise Payment Reports Engine ([`MealWisePaymentReport.tsx`](src/components/report/MealWisePaymentReport.tsx), [`DayWisePaymentReport.tsx`](src/components/report/DayWisePaymentReport.tsx), [`paymentUtils.ts`](src/utils/paymentUtils.ts))
+- **Granular Component Breakdowns**: Implemented comprehensive Meal-Wise and Day-Wise payment sub-tabs under Payment Summary Reports. Renders clear itemized breakdowns for Subscribed Menu Price, separate Parcel Charges, proportional Package Discount, and Excess Payment adjustments.
+- **Integer Remainder Allocation (`distributeAmountWithRemainder`)**: Distributes package discounts and excess amounts across meal slots using integer floor division and assigning remaining balance remainders to the final item (e.g., ₹50 discount over 3 meals -> ₹16, ₹16, ₹18) without floating-point decimals.
+- **Strict Excess Allocation & Parcel Fixed Cost**: Excess payments (`paidAmount - calculatedPassTotal`) are allocated strictly across subscribed meals of the pass with excess payment; parcel costs remain fixed as-is and are never distributed or adjusted.
+- **Exact Mathematical Identity**: Total Season Payment Collection = Sum of Day Totals = Sum of Meal Net Payments across all active days/meals, matching the Payment Summary total collection (₹50,170) and total subscribed meals (641 meals with Dine-In vs. Parcel counts).
+- **100% Theme & Dictionary Compliance**: Zero hardcoded strings or hex colors, binding all text to `UI_TEXT` and colors to theme tokens (`theme.colors`, `theme.cardColors`).
 
 ---
 

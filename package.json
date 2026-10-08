@@ -1,6 +1,6 @@
 {
   "name": "durga-puja-food",
-  "version": "1.4.4",
+  "version": "1.4.5",
   "main": "index.ts",
   "dependencies": {
     "@expo/metro-runtime": "~4.0.0",

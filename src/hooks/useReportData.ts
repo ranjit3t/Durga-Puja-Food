@@ -24,7 +24,7 @@ import {
   getMealFreeMealCounts,
   isGuestsParcelEnabled,
 } from "../constants";
-import { getAmountDiscrepancyData, calculatePersonMealAndParcelCost } from "../utils/paymentUtils";
+import { getAmountDiscrepancyData, calculatePersonMealAndParcelCost, calculateDetailedPaymentReportData } from "../utils/paymentUtils";
 
 export function useReportData(
   subscriptions: SubscriptionRecord[],
@@ -35,7 +35,7 @@ export function useReportData(
   kidsEnabled: boolean,
   guestsEnabled: boolean = false,
   activeReportType?: ReportType,
-  foodPackages: Record<string, FoodPackage> = {}
+  foodPackages: FoodPackage[] | Record<string, FoodPackage> = []
 ) {
   const activeDays = useMemo(() => getActiveDays(dayConfig), [dayConfig]);
 
@@ -586,7 +586,29 @@ export function useReportData(
 
     const discrepancies = getAmountDiscrepancyData(subscriptions, foodMenu, dayConfig, kidsEnabled, guestsEnabled);
 
-    return { summary: summaryList, details, totalFood, totalAdultFood, totalKidsFood, totalGuestsFood, totalParcel, totalAdultParcel, totalKidsParcel, totalGuestsParcel, discrepancies };
+    const detailedPayment = calculateDetailedPaymentReportData(
+      subscriptions,
+      foodMenu,
+      dayConfig,
+      kidsEnabled,
+      guestsEnabled,
+      foodPackages
+    );
+
+    return {
+      summary: summaryList,
+      details,
+      totalFood,
+      totalAdultFood,
+      totalKidsFood,
+      totalGuestsFood,
+      totalParcel,
+      totalAdultParcel,
+      totalKidsParcel,
+      totalGuestsParcel,
+      discrepancies,
+      ...detailedPayment,
+    };
   }, [subscriptions, paymentConfig, dayConfig, foodMenu, kidsEnabled, guestsEnabled, activeReportType, foodPackages]);
 
   const getNotTakenData = useCallback((selectedDayId: string, selectedMealType: MealType) => {

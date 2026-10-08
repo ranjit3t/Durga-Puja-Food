@@ -4,10 +4,12 @@ import { Ionicons } from "@expo/vector-icons";
 import { useStyles } from "../../styles";
 import { useAppTheme } from "../../theme";
 import { UI_TEXT } from "../../strings";
-import { PaymentMode, AppThemeMode } from "../../domain";
+import { PaymentMode, AppThemeMode, ConfigDay } from "../../domain";
 import { getPaymentModeLabel } from "../../constants";
 import { AmountDiscrepancyReport } from "./AmountDiscrepancyReport";
-import { DiscrepancyItem } from "../../utils/paymentUtils";
+import { DayWisePaymentReport } from "./DayWisePaymentReport";
+import { MealWisePaymentReport } from "./MealWisePaymentReport";
+import { DiscrepancyItem, DayPaymentDetail, MealPaymentDetail } from "../../utils/paymentUtils";
 
 interface PaymentSummaryItem {
   mode: PaymentMode;
@@ -36,20 +38,32 @@ interface PaymentData {
   totalKidsParcel?: number;
   totalGuestsParcel?: number;
   discrepancies?: DiscrepancyItem[];
+  mealWisePayments?: MealPaymentDetail[];
+  dayWisePayments?: DayPaymentDetail[];
+  seasonTotalPayment?: {
+    menuPrice: number;
+    packageDiscount: number;
+    excessDeficient: number;
+    netPayment: number;
+  };
 }
 
 enum PaymentTab {
   SUMMARY = "summary",
+  DAY_WISE = "day_wise",
+  MEAL_WISE = "meal_wise",
   DISCREPANCY = "discrepancy",
 }
 
 export function PaymentSummaryReport({
   data,
+  dayConfig = [],
   onSelectFlat,
   kidsEnabled = false,
   guestsEnabled = false,
 }: {
   data: PaymentData;
+  dayConfig?: ConfigDay[];
   onSelectFlat?: (id: string) => void;
   kidsEnabled?: boolean;
   guestsEnabled?: boolean;
@@ -59,9 +73,9 @@ export function PaymentSummaryReport({
   const [activeTab, setActiveTab] = useState<PaymentTab>(PaymentTab.SUMMARY);
 
   // Group individual payment entries by mode from ALL subscriptions
-  const transactionsByMode = data.summary.map((s) => {
+  const transactionsByMode = (data.summary || []).map((s) => {
     const entries: any[] = [];
-    data.details.forEach((flat) => {
+    (data.details || []).forEach((flat) => {
       flat.payments.forEach((p) => {
         if (p.mode === s.mode) {
           entries.push({
@@ -88,20 +102,22 @@ export function PaymentSummaryReport({
     { label: UI_TEXT.adults, amount: data.totalAdultFood ?? 0 },
     ...(kidsEnabled ? [{ label: UI_TEXT.kids, amount: data.totalKidsFood ?? 0 }] : []),
     ...(guestsEnabled ? [{ label: UI_TEXT.guests, amount: data.totalGuestsFood ?? 0 }] : []),
-  ].filter(item => item.amount > 0);
+  ].filter((item) => item.amount > 0);
 
   const parcelBreakdown = [
     { label: UI_TEXT.adults, amount: data.totalAdultParcel ?? 0 },
     ...(kidsEnabled ? [{ label: UI_TEXT.kids, amount: data.totalKidsParcel ?? 0 }] : []),
     ...(guestsEnabled ? [{ label: UI_TEXT.guests, amount: data.totalGuestsParcel ?? 0 }] : []),
-  ].filter(item => item.amount > 0);
+  ].filter((item) => item.amount > 0);
 
   return (
     <View style={{ gap: 16 }}>
       {/* Sub-Tabs Navigation */}
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 8, paddingHorizontal: 2 }}>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 8, paddingHorizontal: 2 }}>
         {[
           { id: PaymentTab.SUMMARY, label: UI_TEXT.paymentSummary, icon: "card-outline" },
+          { id: PaymentTab.DAY_WISE, label: UI_TEXT.dayWisePayment, icon: "calendar-outline" },
+          { id: PaymentTab.MEAL_WISE, label: UI_TEXT.mealWisePayment, icon: "restaurant-outline" },
           {
             id: PaymentTab.DISCREPANCY,
             label: `${UI_TEXT.amountDiscrepancyReport}${discrepancyCount > 0 ? ` (${discrepancyCount})` : ""}`,
@@ -118,13 +134,13 @@ export function PaymentSummaryReport({
             style={({ pressed }) => [
               {
                 flex: 1,
-                minWidth: 140,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 6,
+                minWidth: 110,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 5,
                 paddingVertical: 8,
-                paddingHorizontal: 12,
+                paddingHorizontal: 8,
                 borderRadius: 12,
                 backgroundColor: activeTab === tab.id ? theme.colors.primary : theme.colors.surfaceDark,
                 borderWidth: 1,
@@ -135,15 +151,15 @@ export function PaymentSummaryReport({
           >
             <Ionicons
               name={tab.icon as any}
-              size={16}
+              size={15}
               color={activeTab === tab.id ? theme.colors.white : theme.colors.textSecondary}
             />
             <Text
               numberOfLines={1}
               adjustsFontSizeToFit={true}
               style={{
-                fontSize: 12,
-                fontWeight: '800',
+                fontSize: 11,
+                fontWeight: "800",
                 color: activeTab === tab.id ? theme.colors.white : theme.colors.textSecondary,
               }}
             >
@@ -157,7 +173,7 @@ export function PaymentSummaryReport({
         <View style={{ gap: 24 }}>
           {/* 1. Global Financial Summary Card */}
           <View style={[styles.card, { padding: 0, overflow: "hidden" }]}>
-            {data.summary.map((item) => (
+            {(data.summary || []).map((item) => (
               <View
                 key={item.mode}
                 style={{
@@ -186,7 +202,7 @@ export function PaymentSummaryReport({
                 <Text style={{ color: theme.colors.white, fontWeight: "900", fontSize: 24, flexShrink: 0 }}>
                   {UI_TEXT.rs}
                   {UI_TEXT.space}
-                  {data.summary.reduce((acc, curr) => acc + curr.total, 0).toFixed(0)}
+                  {(data.summary || []).reduce((acc, curr) => acc + curr.total, 0).toFixed(0)}
                 </Text>
               </View>
 
@@ -207,7 +223,7 @@ export function PaymentSummaryReport({
                   <Text style={{ color: theme.colors.white, fontSize: 14, fontWeight: "800", flexShrink: 0 }}>
                     {UI_TEXT.rs}
                     {UI_TEXT.space}
-                    {data.totalFood.toFixed(0)}
+                    {(data.totalFood || 0).toFixed(0)}
                   </Text>
                 </View>
                 {foodBreakdown.length > 1 ? (
@@ -231,7 +247,7 @@ export function PaymentSummaryReport({
                     <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700", flexShrink: 0 }}>
                       {UI_TEXT.rs}
                       {UI_TEXT.space}
-                      {data.totalFood.toFixed(0)}
+                      {(data.totalFood || 0).toFixed(0)}
                     </Text>
                   </View>
                 )}
@@ -243,7 +259,7 @@ export function PaymentSummaryReport({
                   <Text style={{ color: theme.colors.white, fontSize: 14, fontWeight: "800", flexShrink: 0 }}>
                     {UI_TEXT.rs}
                     {UI_TEXT.space}
-                    {data.totalParcel.toFixed(0)}
+                    {(data.totalParcel || 0).toFixed(0)}
                   </Text>
                 </View>
                 {parcelBreakdown.length > 1 ? (
@@ -267,7 +283,7 @@ export function PaymentSummaryReport({
                     <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700", flexShrink: 0 }}>
                       {UI_TEXT.rs}
                       {UI_TEXT.space}
-                      {data.totalParcel.toFixed(0)}
+                      {(data.totalParcel || 0).toFixed(0)}
                     </Text>
                   </View>
                 )}
@@ -296,17 +312,17 @@ export function PaymentSummaryReport({
                     }}
                   >
                     <View>
-                      <Text style={[styles.sectionTitle, { fontSize: 16, color: theme.colors.textPrimary, textTransform: 'uppercase' }]}>
+                      <Text style={[styles.sectionTitle, { fontSize: 16, color: theme.colors.textPrimary, textTransform: "uppercase" }]}>
                         {getPaymentModeLabel(group.mode)}
                       </Text>
-                      <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.textSecondary }}>
+                      <Text style={{ fontSize: 11, fontWeight: "700", color: theme.colors.textSecondary }}>
                         {group.entries.length} {UI_TEXT.transactionsLabel}
                       </Text>
                     </View>
                     <View
                       style={[styles.pill, { backgroundColor: groupColor.accentLight, height: 26, paddingHorizontal: 12, borderRadius: 13 }]}
                     >
-                      <Text style={[styles.pillText, { color: groupColor.accent, fontSize: 12, fontWeight: '900' }]}>
+                      <Text style={[styles.pillText, { color: groupColor.accent, fontSize: 12, fontWeight: "900" }]}>
                         {UI_TEXT.rs} {group.total.toFixed(0)}
                       </Text>
                     </View>
@@ -337,24 +353,28 @@ export function PaymentSummaryReport({
                       >
                         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
                           <View style={{ flex: 1 }}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                               <View style={{ width: 4, height: 16, borderRadius: 2, backgroundColor: groupColor.accent }} />
-                               <Text style={{ fontSize: 18, fontWeight: "900", color: theme.colors.textPrimary }}>
-                                 {entry.block}
-                                 {UI_TEXT.hyphen}
-                                 {entry.flat}
-                               </Text>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                              <View style={{ width: 4, height: 16, borderRadius: 2, backgroundColor: groupColor.accent }} />
+                              <Text style={{ fontSize: 18, fontWeight: "900", color: theme.colors.textPrimary }}>
+                                {entry.block}
+                                {UI_TEXT.hyphen}
+                                {entry.flat}
+                              </Text>
                             </View>
 
                             {group.mode === PaymentMode.CASH && entry.receivedBy ? (
-                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6, marginLeft: 12 }}>
-                                 <Text style={{ fontSize: 10, color: theme.colors.textSecondary, fontWeight: '700', textTransform: 'uppercase' }}>{UI_TEXT.receivedByLabel}{UI_TEXT.colon}</Text>
-                                 <Text style={{ fontSize: 12, color: groupColor.accent, fontWeight: '800' }}>{entry.receivedBy}</Text>
+                              <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 6, marginLeft: 12 }}>
+                                <Text style={{ fontSize: 10, color: theme.colors.textSecondary, fontWeight: "700", textTransform: "uppercase" }}>
+                                  {UI_TEXT.receivedByLabel}{UI_TEXT.colon}
+                                </Text>
+                                <Text style={{ fontSize: 12, color: groupColor.accent, fontWeight: "800" }}>{entry.receivedBy}</Text>
                               </View>
-                            ) : (group.mode !== PaymentMode.CASH && entry.transactionId) ? (
-                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6, marginLeft: 12 }}>
-                                 <Text style={{ fontSize: 10, color: theme.colors.textSecondary, fontWeight: '700', textTransform: 'uppercase' }}>{UI_TEXT.transactionIdLabel}{UI_TEXT.colon}</Text>
-                                 <Text style={{ fontSize: 12, color: groupColor.accent, fontWeight: '800' }}>{entry.transactionId}</Text>
+                            ) : group.mode !== PaymentMode.CASH && entry.transactionId ? (
+                              <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 6, marginLeft: 12 }}>
+                                <Text style={{ fontSize: 10, color: theme.colors.textSecondary, fontWeight: "700", textTransform: "uppercase" }}>
+                                  {UI_TEXT.transactionIdLabel}{UI_TEXT.colon}
+                                </Text>
+                                <Text style={{ fontSize: 12, color: groupColor.accent, fontWeight: "800" }}>{entry.transactionId}</Text>
                               </View>
                             ) : null}
                           </View>
@@ -375,6 +395,18 @@ export function PaymentSummaryReport({
             })}
           </View>
         </View>
+      ) : activeTab === PaymentTab.DAY_WISE ? (
+        <DayWisePaymentReport
+          dayWisePayments={data.dayWisePayments || []}
+          seasonTotalPayment={data.seasonTotalPayment}
+          dayConfig={dayConfig}
+        />
+      ) : activeTab === PaymentTab.MEAL_WISE ? (
+        <MealWisePaymentReport
+          mealWisePayments={data.mealWisePayments || []}
+          seasonTotalPayment={data.seasonTotalPayment}
+          dayConfig={dayConfig}
+        />
       ) : (
         <AmountDiscrepancyReport
           data={data.discrepancies || []}

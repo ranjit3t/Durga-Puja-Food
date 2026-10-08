@@ -224,6 +224,13 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
 - **100% UI Text Localization**: All sort button labels and accessibility labels bind directly to `UI_TEXT` tokens (`UI_TEXT.block`, `UI_TEXT.createdTime`, `UI_TEXT.editedTime`, `UI_TEXT.paidAmount`).
 - **Strict Special-Meals-Only Pass Card Badges**: Pass card star icon badges strictly reflect passes subscribed exclusively to special meals (`isSpecialOnlySubscribed`), matching the Special Meals Only filter chip count and criteria perfectly.
 
+### Z. Detailed Meal-Wise & Day-Wise Payment Reports Engine ([`MealWisePaymentReport.tsx`](src/components/report/MealWisePaymentReport.tsx), [`DayWisePaymentReport.tsx`](src/components/report/DayWisePaymentReport.tsx), [`paymentUtils.ts`](src/utils/paymentUtils.ts))
+- **Granular Financial Breakdown**: Renders comprehensive Meal-Wise and Day-Wise payment sub-tabs under Payment Summary Reports. Each meal slot and day card breaks down Subscribed Menu Price, separate Parcel Charges, proportional Package Discount, and Excess Payment adjustments.
+- **Integer Remainder Allocation (`distributeAmountWithRemainder`)**: Distributes package discounts and excess payments across eligible meal slots using integer floor division and assigning remaining balance reminders to the final item (e.g., ₹50 discount over 3 meals -> ₹16, ₹16, ₹18) without floating-point decimals.
+- **Strict Excess Allocation & Parcel Fixed Cost**: Excess payments (`paidAmount - calculatedPassTotal`) are allocated strictly across subscribed meals of the pass with excess payment; parcel costs remain fixed as-is and are never adjusted or distributed.
+- **Exact Mathematical Identity**: Total Season Payment Collection = Sum of Day Totals = Sum of Meal Net Payments across all active days/meals, matching the Payment Summary total collection (₹50,170) and total subscribed meals (641 meals with Dine-In vs. Parcel counts).
+- **100% Theme & Dictionary Compliance**: Zero hardcoded strings or hex colors, binding all labels to `UI_TEXT` and theme tokens (`theme.colors`, `theme.cardColors`).
+
 ## 6. Quality Assurance & UI Catalog
 
 ### Jest Test Boundary

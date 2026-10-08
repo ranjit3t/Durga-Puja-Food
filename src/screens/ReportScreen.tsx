@@ -28,7 +28,7 @@ import { PackagePassesReport } from "../components/report/PackagePassesReport";
 import { useReportData } from "../hooks/useReportData";
 
 import { useAuth } from "../context/AuthContext";
-import { useCoreDatabase } from "../context/DatabaseContext";
+import { useCoreDatabase, useFoodPackages } from "../context/DatabaseContext";
 import { useUI } from "../context/UIContext";
 import { useAppNavigation } from "../context/NavigationContext";
 
@@ -37,6 +37,7 @@ export function ReportScreen() {
   const {
     subscriptions, foodMenu, dayConfig, seasonName, paymentConfig, freeMealEnabled, kidsEnabled, guestsEnabled
   } = useCoreDatabase();
+  const { foodPackages } = useFoodPackages();
   const { shareQr } = useUI();
   const {
     reportType, setReportType, reportDayId: selectedDayId, setReportDayId: onSetSelectedDayId, reportMealType: selectedMealType, setReportMealType: onSetSelectedMealType,
@@ -45,7 +46,7 @@ export function ReportScreen() {
 
   const {
     activeDays, dayWiseData, mealWiseData, flatWiseData, paymentData, getNotTakenData, getMembersMealData, getMissedParcelData, packagePassesData
-  } = useReportData(subscriptions, foodMenu, dayConfig, freeMealEnabled, paymentConfig, !!kidsEnabled, !!guestsEnabled, reportType);
+  } = useReportData(subscriptions, foodMenu, dayConfig, freeMealEnabled, paymentConfig, !!kidsEnabled, !!guestsEnabled, reportType, foodPackages);
 
   const [selectedPersonCategory, setSelectedPersonCategory] = React.useState<"all" | "adult" | "kids" | "guests">("all");
 
@@ -479,6 +480,7 @@ export function ReportScreen() {
           {reportType === ReportType.PAYMENT && (
             <PaymentSummaryReport
               data={paymentData}
+              dayConfig={dayConfig}
               onSelectFlat={onSelectFlat}
               kidsEnabled={!!kidsEnabled}
               guestsEnabled={!!guestsEnabled}
