@@ -1078,7 +1078,12 @@ export function SubscriptionListScreen() {
           </View>
           <UserGreeting />
           <Text style={styles.title}>{UI_TEXT.subscriptions}</Text>
-          <Text style={styles.subtitle}>{UI_TEXT.activePasses}: {subscriptions.length}</Text>
+          <Text style={styles.subtitle}>
+            {UI_TEXT.activePasses}: {subscriptions.length}
+            {(activeFilters.length > 1 || !!subscriptionSearch) && visibleSubscriptions.length !== subscriptions.length && (
+              ` • ${UI_TEXT.showingMatches}: ${visibleSubscriptions.length}`
+            )}
+          </Text>
         </View>
 
         {showFilters && (
@@ -1420,6 +1425,46 @@ export function SubscriptionListScreen() {
                   color: activeFilters.includes(FilterMode.PACKAGE) ? theme.colors.primary : theme.colors.textSecondary
                 }}>
                   {UI_TEXT.packages} ({passesWithPackageCount})
+                </Text>
+              </Pressable>
+            )}
+
+            {activeFilters.length > 1 && !activeFilters.includes(FilterMode.ALL) && (
+              <Pressable
+                onPress={() => {
+                  setActiveFilters([FilterMode.ALL]);
+                  setSubscriptionSearch("");
+                }}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={UI_TEXT.clearFilters}
+                style={({ pressed }) => [
+                  {
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: s(4),
+                    paddingHorizontal: s(8),
+                    paddingVertical: s(4),
+                    borderRadius: s(12),
+                    borderWidth: 1,
+                    borderColor: theme.colors.primary,
+                    backgroundColor: theme.colors.primary + "20",
+                    marginBottom: s(4)
+                  },
+                  pressed && { opacity: 0.7 }
+                ]}
+              >
+                <Ionicons
+                  name="close-circle"
+                  size={s(13)}
+                  color={theme.colors.primary}
+                />
+                <Text style={{
+                  fontSize: s(11),
+                  fontWeight: "800",
+                  color: theme.colors.primary
+                }}>
+                  {UI_TEXT.clearFilters} ({visibleSubscriptions.length})
                 </Text>
               </Pressable>
             )}

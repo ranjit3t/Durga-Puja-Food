@@ -233,6 +233,11 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
 - **Mobile Responsive Vertical Stacking & Overflow Protection**: Season summary and card headers feature vertical stacking (`flexDirection: "column"` on labels/values) and two-tier layouts to guarantee zero touching, crowding, or horizontal overflow on mobile viewports.
 - **100% Theme & Dictionary Compliance**: Zero hardcoded strings or hex colors, binding all labels to `UI_TEXT` and theme tokens (`theme.colors`, `theme.cardColors`).
 
+### AA. Zero-Flicker Multi-Filter Match Indicator ([`SubscriptionListScreen.tsx`](src/screens/SubscriptionListScreen.tsx))
+- **Real-time Combined Filter Count Aggregation**: Computes `visibleSubscriptions.length` reflecting the exact intersection of multi-selected active filter chips and text search queries.
+- **Zero-Flicker Architecture**: When 2+ filter chips are selected (`activeFilters.length > 1`), the static header subtitle updates in-place (`REGISTERED PASSES: 47 • Matching Passes: X`) and an inline `Clear Filters (X)` chip inserts directly into the existing wrapping filter chips row. By eliminating conditional banner views above the search box, the search bar and card list remain completely stationary with **zero layout shifting or flickering**.
+- **100% Theme & Dictionary Compliance**: All labels bind directly to `UI_TEXT.showingMatches` and `UI_TEXT.clearFilters` without hardcoded text or colors.
+
 ## 6. Quality Assurance & UI Catalog
 
 ### Jest Test Boundary

@@ -14,4 +14,20 @@ config.transformer = {
   }),
 };
 
+// Exclude test files, test directories, and storybook assets from production bundle builds
+const customBlockList = [
+  /.*\/__tests__\/.*/,
+  /.*\.test\.[jt]sx?$/,
+  /.*\.stories\.[jt]sx?$/,
+  /.*\/storybook-static\/.*/,
+];
+
+const existingBlockList = config.resolver?.blockList || [];
+config.resolver = {
+  ...config.resolver,
+  blockList: Array.isArray(existingBlockList)
+    ? [...existingBlockList, ...customBlockList]
+    : [existingBlockList, ...customBlockList],
+};
+
 module.exports = config;
