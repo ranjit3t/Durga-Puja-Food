@@ -382,9 +382,10 @@ export function SubscriptionListScreen() {
     return subscriptions.filter(sub => {
       if ((sub.kidsCount || 0) <= 0) return false;
       const adultCount = sub.peopleCount || 0;
+      const kCount = kidsEnabled ? (sub.kidsCount || 0) : 0;
       return Object.values(sub.mealSlots || {}).some(daySlots => {
         return daySlots.some((slot, idx) => {
-          if (idx < adultCount) return false;
+          if (idx < adultCount || idx >= adultCount + kCount) return false;
           const bDiet = getDietTypeForChoice(slot[MealType.BREAKFAST]);
           const lDiet = getDietTypeForChoice(slot[MealType.LUNCH]);
           const dDiet = getDietTypeForChoice(slot[MealType.DINNER]);
@@ -392,7 +393,7 @@ export function SubscriptionListScreen() {
         });
       });
     }).length;
-  }, [subscriptions]);
+  }, [subscriptions, kidsEnabled]);
 
   const hasAnyKids = passesWithKidsCount > 0;
 
@@ -564,6 +565,23 @@ export function SubscriptionListScreen() {
       if (activeFilters.includes(FilterMode.MISSED) && currentMealInfo) {
         const missedIds = missedData.list.map(m => m.id);
         filtered = filtered.filter(sub => missedIds.includes(sub.id));
+      }
+
+      if (activeFilters.includes(FilterMode.KIDS) && kidsEnabled) {
+        filtered = filtered.filter(sub => {
+          if ((sub.kidsCount || 0) <= 0) return false;
+          const adultCount = sub.peopleCount || 0;
+          const kCount = kidsEnabled ? (sub.kidsCount || 0) : 0;
+          return Object.values(sub.mealSlots || {}).some(daySlots => {
+            return daySlots.some((slot, idx) => {
+              if (idx < adultCount || idx >= adultCount + kCount) return false;
+              const bDiet = getDietTypeForChoice(slot[MealType.BREAKFAST]);
+              const lDiet = getDietTypeForChoice(slot[MealType.LUNCH]);
+              const dDiet = getDietTypeForChoice(slot[MealType.DINNER]);
+              return bDiet !== undefined || lDiet !== undefined || dDiet !== undefined;
+            });
+          });
+        });
       }
 
       if (activeFilters.includes(FilterMode.GUESTS) && guestsEnabled) {

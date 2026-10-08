@@ -16,10 +16,16 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 const THEME_STORAGE_KEY = "@app_theme_preference";
 
-export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [themeType, setThemeState] = useState<AppThemeMode>(AppThemeMode.LIGHT);
+export const ThemeProvider: React.FC<{
+  children: React.ReactNode;
+  initialTheme?: AppThemeMode;
+  persist?: boolean;
+}> = ({ children, initialTheme = AppThemeMode.LIGHT, persist = true }) => {
+  const [themeType, setThemeState] = useState<AppThemeMode>(initialTheme);
 
   useEffect(() => {
+    if (!persist) return;
+
     // Load theme preference from local storage
     const loadTheme = async () => {
       try {
@@ -32,14 +38,16 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
     };
     loadTheme();
-  }, []);
+  }, [persist]);
 
   const setTheme = async (type: AppThemeMode) => {
     setThemeState(type);
-    try {
-      await AsyncStorage.setItem(THEME_STORAGE_KEY, type);
-    } catch (e) {
-      console.error("Failed to save theme preference", e);
+    if (persist) {
+      try {
+        await AsyncStorage.setItem(THEME_STORAGE_KEY, type);
+      } catch (e) {
+        console.error("Failed to save theme preference", e);
+      }
     }
   };
 
