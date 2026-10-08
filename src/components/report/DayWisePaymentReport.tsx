@@ -1,12 +1,12 @@
 import React from "react";
 import { View, Text } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import { useStyles } from "../../styles";
 import { useAppTheme } from "../../theme";
 import { UI_TEXT } from "../../strings";
-import { getDayLabel, getMealLabel, isMealEnabled } from "../../constants";
-import { AppThemeMode, ConfigDay, MealType } from "../../domain";
+import { getDayLabel } from "../../constants";
+import { ConfigDay, MealType } from "../../domain";
 import { DayPaymentDetail, formatCurrencyAmount } from "../../utils/paymentUtils";
+import { ReportSummaryCard } from "./ReportSummaryCard";
 
 export function DayWisePaymentReport({
   dayWisePayments = [],
@@ -34,84 +34,13 @@ export function DayWisePaymentReport({
   return (
     <View style={{ gap: 20 }}>
       {/* 1. Global Season Financial Summary Card for Day Payment */}
-      <View style={[styles.card, { padding: 18, backgroundColor: theme.colors.primary, borderRadius: 16 }]}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
-          <Ionicons name="calendar-outline" size={20} color={theme.colors.white} />
-          <Text style={{ color: theme.colors.white, fontWeight: "900", fontSize: 18, flex: 1 }}>
-            {UI_TEXT.dayWisePayment}
-          </Text>
-        </View>
+      <ReportSummaryCard
+        title={UI_TEXT.dayWisePayment}
+        iconName="calendar-outline"
+        summary={seasonTotalPayment}
+      />
 
-        <View style={{ gap: 8, borderTopWidth: 1, borderTopColor: theme.colors.white + "40", paddingTop: 12 }}>
-          {(seasonTotalPayment.totalPortions ?? 0) > 0 && (
-            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
-              <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700" }}>
-                {UI_TEXT.totalSubscribed}
-              </Text>
-              <Text style={{ color: theme.colors.white, fontSize: 13, fontWeight: "800" }}>
-                {seasonTotalPayment.totalPortions} {UI_TEXT.plates}
-                {(seasonTotalPayment.parcelCount ?? 0) > 0
-                  ? ` (${seasonTotalPayment.dineInCount ?? 0} ${UI_TEXT.dineIn}, ${seasonTotalPayment.parcelCount ?? 0} ${UI_TEXT.parcel})`
-                  : ` (${seasonTotalPayment.dineInCount ?? seasonTotalPayment.totalPortions} ${UI_TEXT.dineIn})`}
-              </Text>
-            </View>
-          )}
-
-          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-            <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700" }}>
-              {UI_TEXT.menuPriceLabel}
-            </Text>
-            <Text style={{ color: theme.colors.white, fontSize: 14, fontWeight: "800" }}>
-              {UI_TEXT.rs} {formatCurrencyAmount(seasonTotalPayment.menuPrice)}
-            </Text>
-          </View>
-
-          {seasonTotalPayment.parcelPrice !== undefined && seasonTotalPayment.parcelPrice > 0 && (
-            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-              <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700" }}>
-                {UI_TEXT.parcelCharges}
-              </Text>
-              <Text style={{ color: theme.colors.white, fontSize: 14, fontWeight: "800" }}>
-                + {UI_TEXT.rs} {formatCurrencyAmount(seasonTotalPayment.parcelPrice)}
-              </Text>
-            </View>
-          )}
-
-          {seasonTotalPayment.packageDiscount > 0 && (
-            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-              <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700" }}>
-                {UI_TEXT.packageDiscountLabel}
-              </Text>
-              <Text style={{ color: theme.colors.white, fontSize: 14, fontWeight: "800" }}>
-                - {UI_TEXT.rs} {formatCurrencyAmount(seasonTotalPayment.packageDiscount)}
-              </Text>
-            </View>
-          )}
-
-          {seasonTotalPayment.excessDeficient !== 0 && (
-            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-              <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700" }}>
-                {UI_TEXT.excessDeficientLabel}
-              </Text>
-              <Text style={{ color: theme.colors.white, fontSize: 14, fontWeight: "800" }}>
-                {seasonTotalPayment.excessDeficient > 0 ? "+" : "-"} {UI_TEXT.rs}{" "}
-                {formatCurrencyAmount(Math.abs(seasonTotalPayment.excessDeficient))}
-              </Text>
-            </View>
-          )}
-
-          <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.white + "40", paddingTop: 8, marginTop: 4, flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-            <Text style={{ color: theme.colors.white, fontWeight: "900", fontSize: 16 }}>
-              {UI_TEXT.netPaymentLabel}
-            </Text>
-            <Text style={{ color: theme.colors.white, fontWeight: "900", fontSize: 20 }}>
-              {UI_TEXT.rs} {formatCurrencyAmount(seasonTotalPayment.netPayment)}
-            </Text>
-          </View>
-        </View>
-      </View>
-
-      {/* 2. Day-Wise Payment Cards */}
+      {/* 2. Day-Wise Payment Cards (Aggregated per day) */}
       {activeDays.map((dayObj, dayIdx) => {
         const colorScheme = theme.cardColors[dayIdx % theme.cardColors.length];
         const dayDetail = dayWisePayments.find((d) => d.dayId === dayObj.id) || {
@@ -124,9 +53,9 @@ export function DayWisePaymentReport({
           meals: {} as any,
         };
 
-        const enabledMeals = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].filter((mKey) =>
-          isMealEnabled(dayObj.id, mKey, dayConfig)
-        );
+        const dayPortions = Object.values(dayDetail.meals || {}).reduce((acc: number, m: any) => acc + (m.portionCount ?? m.passCount ?? 0), 0);
+        const dayParcelCount = Object.values(dayDetail.meals || {}).reduce((acc: number, m: any) => acc + (m.parcelCount ?? 0), 0);
+        const dayDineInCount = Object.values(dayDetail.meals || {}).reduce((acc: number, m: any) => acc + (m.dineInCount ?? 0), 0);
 
         return (
           <View
@@ -158,7 +87,7 @@ export function DayWisePaymentReport({
               style={{
                 backgroundColor:
                   theme.colors.surfaceDark +
-                  (theme.themeType === AppThemeMode.DARK ? "66" : "80"),
+                  (theme.themeType === "dark" ? "66" : "80"),
                 borderRadius: 16,
                 padding: 14,
                 borderColor: theme.colors.border,
@@ -171,6 +100,20 @@ export function DayWisePaymentReport({
               </Text>
 
               <View style={{ gap: 4 }}>
+                {dayPortions > 0 && (
+                  <View style={{ gap: 2, marginBottom: 4, borderBottomWidth: 1, borderBottomColor: theme.colors.border, paddingBottom: 6 }}>
+                    <Text style={{ fontSize: 12, color: theme.colors.textSecondary, fontWeight: "600" }}>
+                      • {UI_TEXT.totalSubscribed}
+                    </Text>
+                    <Text style={{ fontSize: 14, color: theme.colors.textPrimary, fontWeight: "900" }}>
+                      {dayPortions} {UI_TEXT.plates}
+                      {dayParcelCount > 0
+                        ? ` (${dayDineInCount} ${UI_TEXT.dineIn}, ${dayParcelCount} ${UI_TEXT.parcel})`
+                        : ` (${dayDineInCount || dayPortions} ${UI_TEXT.dineIn})`}
+                    </Text>
+                  </View>
+                )}
+
                 <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
                   <Text style={{ fontSize: 12, color: theme.colors.textSecondary, fontWeight: "600" }}>
                     • {UI_TEXT.menuPriceLabel}
@@ -183,7 +126,7 @@ export function DayWisePaymentReport({
                 {dayDetail.parcelPrice > 0 && (
                   <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
                     <Text style={{ fontSize: 12, color: theme.colors.textSecondary, fontWeight: "600" }}>
-                      • Parcel Charges
+                      • {UI_TEXT.parcelCharges}
                     </Text>
                     <Text style={{ fontSize: 12, color: theme.colors.textPrimary, fontWeight: "700" }}>
                       + {UI_TEXT.rs} {formatCurrencyAmount(dayDetail.parcelPrice)}
@@ -239,113 +182,6 @@ export function DayWisePaymentReport({
                   </Text>
                 </View>
               </View>
-            </View>
-
-            {/* Meal-by-Meal Breakdown for this Day */}
-            <View style={{ gap: 8 }}>
-              <Text style={{ fontSize: 12, fontWeight: "800", color: theme.colors.textSecondary, textTransform: "uppercase" }}>
-                {UI_TEXT.mealWiseReport}
-              </Text>
-
-              {enabledMeals.map((mType) => {
-                const mealInfo = dayDetail.meals?.[mType] || {
-                  dayId: dayObj.id,
-                  mealType: mType,
-                  menuPrice: 0,
-                  parcelPrice: 0,
-                  packageDiscount: 0,
-                  excessDeficient: 0,
-                  netPayment: 0,
-                  passCount: 0,
-                };
-
-                return (
-                  <View
-                    key={mType}
-                    style={{
-                      backgroundColor: theme.colors.surfaceDark + "40",
-                      borderRadius: 12,
-                      padding: 12,
-                      borderWidth: 1,
-                      borderColor: theme.colors.border,
-                      gap: 6,
-                    }}
-                  >
-                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                        <Ionicons
-                          name={
-                            mType === MealType.BREAKFAST
-                              ? "sunny-outline"
-                              : mType === MealType.LUNCH
-                              ? "restaurant-outline"
-                              : "moon-outline"
-                          }
-                          size={14}
-                          color={theme.colors.primary}
-                        />
-                        <Text style={{ fontSize: 13, fontWeight: "800", color: theme.colors.textPrimary }}>
-                          {getMealLabel(mType)}
-                        </Text>
-                        <Text style={{ fontSize: 11, fontWeight: "600", color: theme.colors.textMuted }}>
-                          ({(mealInfo.portionCount ?? mealInfo.passCount)} {UI_TEXT.planned}
-                          {mealInfo.parcelCount > 0
-                            ? ` • ${mealInfo.dineInCount} ${UI_TEXT.dineIn}, ${mealInfo.parcelCount} ${UI_TEXT.parcel}`
-                            : ` • ${(mealInfo.portionCount ?? mealInfo.passCount)} ${UI_TEXT.dineIn}`})
-                        </Text>
-                      </View>
-
-                      <Text style={{ fontSize: 14, fontWeight: "900", color: colorScheme.accent }}>
-                        {UI_TEXT.rs} {formatCurrencyAmount(mealInfo.netPayment)}
-                      </Text>
-                    </View>
-
-                    <View style={{ gap: 3, marginTop: 2 }}>
-                      <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                        <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: "600" }}>
-                          • {UI_TEXT.menuPriceLabel}
-                        </Text>
-                        <Text style={{ fontSize: 11, color: theme.colors.textPrimary, fontWeight: "700" }}>
-                          {UI_TEXT.rs} {formatCurrencyAmount(mealInfo.menuPrice)}
-                        </Text>
-                      </View>
-
-                      {mealInfo.parcelPrice > 0 && (
-                        <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                          <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: "600" }}>
-                            • {UI_TEXT.parcelCharges}
-                          </Text>
-                          <Text style={{ fontSize: 11, color: theme.colors.textPrimary, fontWeight: "700" }}>
-                            + {UI_TEXT.rs} {formatCurrencyAmount(mealInfo.parcelPrice)}
-                          </Text>
-                        </View>
-                      )}
-
-                      {mealInfo.packageDiscount > 0 && (
-                        <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                          <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: "600" }}>
-                            • {UI_TEXT.packageDiscountLabel}
-                          </Text>
-                          <Text style={{ fontSize: 11, color: theme.colors.error, fontWeight: "700" }}>
-                            - {UI_TEXT.rs} {formatCurrencyAmount(mealInfo.packageDiscount)}
-                          </Text>
-                        </View>
-                      )}
-
-                      {mealInfo.excessDeficient !== 0 && (
-                        <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                          <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: "600" }}>
-                            • {UI_TEXT.excessDeficientLabel}
-                          </Text>
-                          <Text style={{ fontSize: 11, color: theme.colors.success, fontWeight: "700" }}>
-                            + {UI_TEXT.rs} {formatCurrencyAmount(mealInfo.excessDeficient)}
-                          </Text>
-                        </View>
-                      )}
-                    </View>
-                  </View>
-                );
-              })}
             </View>
           </View>
         );
