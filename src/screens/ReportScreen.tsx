@@ -362,7 +362,7 @@ export function ReportScreen() {
 
             {reportType === ReportType.MEMBERS_MEAL && (
               <>
-                <Text style={[styles.selectorLabel, { marginTop: 14 }]}>Person Category</Text>
+                <Text style={[styles.selectorLabel, { marginTop: 14 }]}>{UI_TEXT.personCategory}</Text>
                 <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
                   {[
                     { id: "all", label: UI_TEXT.all },
