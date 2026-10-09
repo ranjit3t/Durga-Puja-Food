@@ -326,7 +326,7 @@ const SubscriptionCard = React.memo(({
           ]}
         >
           <Ionicons name="eye-outline" size={s(16)} color={colorScheme.accent} />
-          <Text style={{ fontSize: s(12), fontWeight: "900", color: colorScheme.accent }}>{UI_TEXT.viewPass}</Text>
+          <Text style={{ fontSize: s(12), fontWeight: "900", color: colorScheme.accent }}>{UI_TEXT.viewPassList}</Text>
         </Pressable>
       </View>
     </View>

@@ -291,7 +291,7 @@ export const UI_TEXT = {
   passSingular: "Pass",
   passPlural: "Passes",
   optedLabel: "Opted",
-  totalPassesOptedPackages: "Passes Opted Packages",
+  totalPassesOptedPackages: "Total Opted Packages",
   totalPeopleCovered: "Members Covered",
   packageBreakdownTitle: "Package Distribution",
   financialComparisonTitle: "Package Financial Comparison",
@@ -363,7 +363,7 @@ export const UI_TEXT = {
   flatIdPrefix: "PASS #",
   passIdentity: "PASS DETAILS",
   passDetails: "Pass Details & Holder Info",
-  viewPass: "View",
+  viewPassList: "View",
   subscriptionSummary: "Subscription Summary",
   detailsSubtitle: "Comprehensive pass and meal preferences.",
   registeredPersonSuffix: " registered member",
@@ -529,7 +529,6 @@ export const UI_TEXT = {
   freeMealTakenError: "Free meal served count cannot exceed total registered free meal count",
 
   // Report Screen
-  personCategory: "Person Category",
   reportTitle: "Analytics & Executive Reports",
   reportSubtitle: "Comprehensive operational summaries and financial breakdowns.",
   dayWiseReport: "Day Wise Summary",
