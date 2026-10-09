@@ -47,6 +47,8 @@ interface NavigationContextType {
   setSubscriptionSearch: (text: string) => void;
   activeFilters: FilterMode[];
   setActiveFilters: React.Dispatch<React.SetStateAction<FilterMode[]>>;
+  selectedBlock: string | null;
+  setSelectedBlock: (block: string | null) => void;
 
   // Menu Editor Target
   targetDay: Day;
@@ -81,6 +83,7 @@ export function NavigationProvider({ children }: { children: React.ReactNode }) 
   const [reportMealType, setReportMealType] = useState<MealType>(MealType.BREAKFAST);
   const [subscriptionSearch, setSubscriptionSearch] = useState("");
   const [activeFilters, setActiveFilters] = useState<FilterMode[]>([FilterMode.ALL]);
+  const [selectedBlock, setSelectedBlock] = useState<string | null>(null);
 
   const [targetDay, setTargetDay] = useState<Day>("");
   const [targetMeal, setTargetMeal] = useState<MealType | null>(null);
@@ -142,6 +145,7 @@ export function NavigationProvider({ children }: { children: React.ReactNode }) 
     setReportMealType(MealType.BREAKFAST);
     setSubscriptionSearch("");
     setActiveFilters([FilterMode.ALL]);
+    setSelectedBlock(null);
     setTargetDay("");
     setTargetMeal(null);
     if (!preserveQuickCheckout) {
@@ -224,12 +228,13 @@ export function NavigationProvider({ children }: { children: React.ReactNode }) 
     reportType, setReportType, reportDayId, setReportDayId, reportMealType, setReportMealType,
     subscriptionSearch, setSubscriptionSearch,
     activeFilters, setActiveFilters,
+    selectedBlock, setSelectedBlock,
     targetDay, setTargetDay, targetMeal, setTargetMeal,
     isQuickCheckout, setIsQuickCheckout,
     isQuickFreeMealMode, setIsQuickFreeMealMode
   }), [
     screen, history, selectedId, selectedRecord, editing,
-    reportType, reportDayId, reportMealType, subscriptionSearch, activeFilters,
+    reportType, reportDayId, reportMealType, subscriptionSearch, activeFilters, selectedBlock,
     targetDay, targetMeal, isQuickCheckout, isQuickFreeMealMode,
     startNew, openScannedValue
   ]);

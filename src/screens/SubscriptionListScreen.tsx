@@ -87,6 +87,7 @@ const SubscriptionCard = React.memo(({
   hasPackage,
   onSelect,
   onOpenQuickCheckout,
+  onSelectBlock,
   addActivityLog,
   missedCount
 }: {
@@ -107,6 +108,7 @@ const SubscriptionCard = React.memo(({
   hasPackage?: boolean;
   onSelect: (sub: Subscription) => void;
   onOpenQuickCheckout?: (sub: Subscription) => void;
+  onSelectBlock?: (block: string) => void;
   addActivityLog: any;
   missedCount?: number;
 }) => {
@@ -158,143 +160,175 @@ const SubscriptionCard = React.memo(({
         </Pressable>
       ) : null}
 
-      <Pressable
-        onPress={() => onSelect(item)}
-        accessible={true}
-        accessibilityRole="button"
-        accessibilityLabel={`${UI_TEXT.flatUpper} ${item.flat}, ${UI_TEXT.block} ${item.block}`}
-      >
-        <View style={styles.cardTop}>
-          <View style={{ flex: 1 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <Text style={[styles.flatLabel, { color: colorScheme.accent, opacity: 0.8 }]}>{UI_TEXT.block} {item.block}</Text>
-              <View style={{ flexDirection: 'row', gap: s(6) }}>
-                {kidsEnabled && item.kidsCount ? (
-                  <View style={{ backgroundColor: theme.colors.nonVeg + "20", padding: s(6), borderRadius: s(12), borderWidth: 1, borderColor: theme.colors.nonVeg + "40" }}>
-                    <Ionicons name="happy" size={s(14)} color={theme.colors.nonVeg} />
-                  </View>
-                ) : null}
-                {hasParcel && (
-                  <View style={{ backgroundColor: theme.colors.secondary + "20", padding: s(6), borderRadius: s(12), borderWidth: 1, borderColor: theme.colors.secondary + "40" }}>
-                    <Ionicons name="briefcase" size={s(14)} color={theme.colors.secondary} />
-                  </View>
-                )}
-                {isVegOnly && (
-                  <View style={{ backgroundColor: theme.colors.veg + "20", padding: s(6), borderRadius: s(12), borderWidth: 1, borderColor: theme.colors.veg + "40" }}>
-                    <Ionicons name="leaf" size={s(14)} color={theme.colors.veg} />
-                  </View>
-                )}
-                {hasSpecialMeal && (
-                  <View style={{ backgroundColor: theme.colors.specialMealBg, padding: s(6), borderRadius: s(12), borderWidth: 1, borderColor: theme.colors.specialMealBorder }}>
-                    <Ionicons name="star" size={s(14)} color={theme.colors.specialMealBorder} />
-                  </View>
-                )}
-                {hasPackage && (
-                  <View style={{ backgroundColor: theme.colors.primary + "20", padding: s(6), borderRadius: s(12), borderWidth: 1, borderColor: theme.colors.primary + "40" }}>
-                    <Ionicons name="cube" size={s(14)} color={theme.colors.primary} />
-                  </View>
-                )}
-                {hasCurrentMeal && (
-                  <View style={{ backgroundColor: theme.colors.successLight, padding: s(6), borderRadius: s(12), borderWidth: 1, borderColor: theme.colors.success + "40" }}>
-                    <Ionicons name="restaurant" size={s(14)} color={theme.colors.success} />
-                  </View>
-                )}
-              </View>
+      <View style={styles.cardTop}>
+        <View style={{ flex: 1 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <Pressable
+              onPress={(e) => {
+                e.stopPropagation();
+                if (onSelectBlock) onSelectBlock(item.block);
+              }}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={`${UI_TEXT.block} ${item.block}`}
+              accessibilityHint="Taps to show only passes belonging to this block"
+              style={({ pressed }) => [
+                { paddingHorizontal: s(6), paddingVertical: s(2), borderRadius: s(6), backgroundColor: colorScheme.accentLight },
+                pressed && { opacity: 0.7 }
+              ]}
+            >
+              <Text style={[styles.flatLabel, { color: colorScheme.accent, opacity: 0.9, fontWeight: '800' }]}>
+                {UI_TEXT.block} {item.block}
+              </Text>
+            </Pressable>
+            <View style={{ flexDirection: 'row', gap: s(6) }}>
+              {kidsEnabled && item.kidsCount ? (
+                <View style={{ backgroundColor: theme.colors.nonVeg + "20", padding: s(6), borderRadius: s(12), borderWidth: 1, borderColor: theme.colors.nonVeg + "40" }}>
+                  <Ionicons name="happy" size={s(14)} color={theme.colors.nonVeg} />
+                </View>
+              ) : null}
+              {hasParcel && (
+                <View style={{ backgroundColor: theme.colors.secondary + "20", padding: s(6), borderRadius: s(12), borderWidth: 1, borderColor: theme.colors.secondary + "40" }}>
+                  <Ionicons name="briefcase" size={s(14)} color={theme.colors.secondary} />
+                </View>
+              )}
+              {isVegOnly && (
+                <View style={{ backgroundColor: theme.colors.veg + "20", padding: s(6), borderRadius: s(12), borderWidth: 1, borderColor: theme.colors.veg + "40" }}>
+                  <Ionicons name="leaf" size={s(14)} color={theme.colors.veg} />
+                </View>
+              )}
+              {hasSpecialMeal && (
+                <View style={{ backgroundColor: theme.colors.specialMealBg, padding: s(6), borderRadius: s(12), borderWidth: 1, borderColor: theme.colors.specialMealBorder }}>
+                  <Ionicons name="star" size={s(14)} color={theme.colors.specialMealBorder} />
+                </View>
+              )}
+              {hasPackage && (
+                <View style={{ backgroundColor: theme.colors.primary + "20", padding: s(6), borderRadius: s(12), borderWidth: 1, borderColor: theme.colors.primary + "40" }}>
+                  <Ionicons name="cube" size={s(14)} color={theme.colors.primary} />
+                </View>
+              )}
+              {hasCurrentMeal && (
+                <View style={{ backgroundColor: theme.colors.successLight, padding: s(6), borderRadius: s(12), borderWidth: 1, borderColor: theme.colors.success + "40" }}>
+                  <Ionicons name="restaurant" size={s(14)} color={theme.colors.success} />
+                </View>
+              )}
             </View>
-            <Text style={[styles.flatTitle, { color: theme.colors.textPrimary }]}>{UI_TEXT.flatUpper} {item.flat}</Text>
-            <Text style={{ color: theme.colors.textSecondary, marginTop: s(4), fontWeight: "600", fontSize: s(14) }}>
-              {(() => {
-                if (kidsEnabled || guestsEnabled) {
-                  const parts = [];
-                  parts.push(`${item.peopleCount}${UI_TEXT.space}${item.peopleCount === 1 ? UI_TEXT.adult : UI_TEXT.adults}`);
-                  if (kidsEnabled && item.kidsCount) parts.push(`${item.kidsCount}${UI_TEXT.space}${item.kidsCount === 1 ? UI_TEXT.kid : UI_TEXT.kids}`);
-                  if (guestsEnabled && item.guestsCount) parts.push(`${item.guestsCount}${UI_TEXT.space}${item.guestsCount === 1 ? UI_TEXT.guest : UI_TEXT.guests}`);
-                  return parts.join(UI_TEXT.plus);
-                }
-                const total = item.peopleCount + (item.kidsCount || 0) + (item.guestsCount || 0);
-                return `${total}${total === 1 ? UI_TEXT.personSuffix : UI_TEXT.personsSuffix}`;
-              })()}
-            </Text>
           </View>
+          <Text style={[styles.flatTitle, { color: theme.colors.textPrimary }]}>{UI_TEXT.flatUpper} {item.flat}</Text>
+          <Text style={{ color: theme.colors.textSecondary, marginTop: s(4), fontWeight: "600", fontSize: s(14) }}>
+            {(() => {
+              if (kidsEnabled || guestsEnabled) {
+                const parts = [];
+                parts.push(`${item.peopleCount}${UI_TEXT.space}${item.peopleCount === 1 ? UI_TEXT.adult : UI_TEXT.adults}`);
+                if (kidsEnabled && item.kidsCount) parts.push(`${item.kidsCount}${UI_TEXT.space}${item.kidsCount === 1 ? UI_TEXT.kid : UI_TEXT.kids}`);
+                if (guestsEnabled && item.guestsCount) parts.push(`${item.guestsCount}${UI_TEXT.space}${item.guestsCount === 1 ? UI_TEXT.guest : UI_TEXT.guests}`);
+                return parts.join(UI_TEXT.plus);
+              }
+              const total = item.peopleCount + (item.kidsCount || 0) + (item.guestsCount || 0);
+              return `${total}${total === 1 ? UI_TEXT.personSuffix : UI_TEXT.personsSuffix}`;
+            })()}
+          </Text>
         </View>
+      </View>
 
-        {isAdmin && paymentConfig.enabled && (
-          <>
-            <View style={{ height: 1, backgroundColor: colorScheme.border, marginVertical: s(16) }} />
-            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: s(6) }}>
-                <Ionicons name="card-outline" size={s(16)} color={colorScheme.accent} />
-                <Text style={{ fontWeight: "700", color: theme.colors.textPrimary, fontSize: s(14) }}>{getPaymentModeLabel(item.payments && item.payments.length > 0 ? item.payments[0].mode : (item.paymentMode as PaymentMode || PaymentMode.CASH))}</Text>
-              </View>
-              <Text style={{ fontSize: s(18), fontWeight: "900", color: colorScheme.accent }}>
-                {UI_TEXT.rs}{UI_TEXT.space}{item.amount || (item.payments && item.payments.reduce((sum: number, p: any) => sum + (parseFloat(p.amount) || 0), 0)) || UI_TEXT.zero}
-              </Text>
-            </View>
-          </>
-        )}
-
-        {(() => {
-          const now = Date.now();
-          let createdTs = Number(item.createdAt) || Number(item.timestamp) || now;
-          let updatedTs = Number(item.updatedAt) || createdTs || now;
-          if (createdTs > updatedTs) createdTs = updatedTs;
-          return (
-            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: s(10), paddingTop: s(8), borderTopWidth: 1, borderTopColor: colorScheme.border + "66", flexWrap: "wrap", gap: s(4) }}>
-              <Text style={{ fontSize: s(11), color: theme.colors.textMuted, fontWeight: "600" }}>
-                {UI_TEXT.createdTime}: {formatTimestamp(createdTs)}
-              </Text>
-              <Text style={{ fontSize: s(11), color: theme.colors.textMuted, fontWeight: "600" }}>
-                {UI_TEXT.editedTime}: {formatTimestamp(updatedTs)}
-              </Text>
-            </View>
-          );
-        })()}
-      </Pressable>
-
-      {isAdmin && item.mobile && (
+      {isAdmin && paymentConfig.enabled && (
         <>
-          <View style={{ height: 1, backgroundColor: colorScheme.border, marginVertical: s(12), opacity: 0.5 }} />
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Pressable
-              onPress={() => {
-                const passLabel = getPassDisplayLabel(item);
-                addActivityLog({
-                  module: ActivityModule.SUBSCRIPTION,
-                  action: ActivityAction.CHAT,
-                  targetId: item.id,
-                  description: UI_TEXT.logChat.replace("{id}", passLabel)
-                });
-                Linking.openURL(`https://wa.me/${whatsappCountryCode || UI_TEXT.defaultCountryCode}${item.mobile}`);
-              }}
-              style={({ pressed }) => [
-                { padding: s(6), borderRadius: s(20), backgroundColor: theme.colors.successLight },
-                pressed && { opacity: 0.7 }
-              ]}
-            >
-              <Ionicons name="logo-whatsapp" size={s(20)} color={theme.colors.success} />
-            </Pressable>
-
-            <Pressable
-              onPress={() => {
-                const passLabel = getPassDisplayLabel(item);
-                addActivityLog({
-                  module: ActivityModule.SUBSCRIPTION,
-                  action: ActivityAction.CALL,
-                  targetId: item.id,
-                  description: UI_TEXT.logCall.replace("{id}", passLabel)
-                });
-                Linking.openURL(`tel:${item.mobile}`);
-              }}
-              style={({ pressed }) => [
-                { padding: s(6), borderRadius: s(20), backgroundColor: theme.colors.surfaceDark },
-                pressed && { opacity: 0.7 }
-              ]}
-            >
-              <Ionicons name="call" size={s(20)} color={theme.colors.primary} />
-            </Pressable>
+          <View style={{ height: 1, backgroundColor: colorScheme.border, marginVertical: s(16) }} />
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: s(6) }}>
+              <Ionicons name="card-outline" size={s(16)} color={colorScheme.accent} />
+              <Text style={{ fontWeight: "700", color: theme.colors.textPrimary, fontSize: s(14) }}>{getPaymentModeLabel(item.payments && item.payments.length > 0 ? item.payments[0].mode : (item.paymentMode as PaymentMode || PaymentMode.CASH))}</Text>
+            </View>
+            <Text style={{ fontSize: s(18), fontWeight: "900", color: colorScheme.accent }}>
+              {UI_TEXT.rs}{UI_TEXT.space}{item.amount || (item.payments && item.payments.reduce((sum: number, p: any) => sum + (parseFloat(p.amount) || 0), 0)) || UI_TEXT.zero}
+            </Text>
           </View>
         </>
       )}
+
+      {(() => {
+        const now = Date.now();
+        let createdTs = Number(item.createdAt) || Number(item.timestamp) || now;
+        let updatedTs = Number(item.updatedAt) || createdTs || now;
+        if (createdTs > updatedTs) createdTs = updatedTs;
+        return (
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: s(10), paddingTop: s(8), borderTopWidth: 1, borderTopColor: colorScheme.border + "66", flexWrap: "wrap", gap: s(4) }}>
+            <Text style={{ fontSize: s(11), color: theme.colors.textMuted, fontWeight: "600" }}>
+              {UI_TEXT.createdTime}: {formatTimestamp(createdTs)}
+            </Text>
+            <Text style={{ fontSize: s(11), color: theme.colors.textMuted, fontWeight: "600" }}>
+              {UI_TEXT.editedTime}: {formatTimestamp(updatedTs)}
+            </Text>
+          </View>
+        );
+      })()}
+
+      <View style={{ height: 1, backgroundColor: colorScheme.border, marginVertical: s(12), opacity: 0.5 }} />
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <View style={{ flexDirection: 'row', gap: s(8), alignItems: 'center' }}>
+          {isAdmin && item.mobile && (
+            <>
+              <Pressable
+                onPress={() => {
+                  const passLabel = getPassDisplayLabel(item);
+                  addActivityLog({
+                    module: ActivityModule.SUBSCRIPTION,
+                    action: ActivityAction.CHAT,
+                    targetId: item.id,
+                    description: UI_TEXT.logChat.replace("{id}", passLabel)
+                  });
+                  Linking.openURL(`https://wa.me/${whatsappCountryCode || UI_TEXT.defaultCountryCode}${item.mobile}`);
+                }}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel="WhatsApp"
+                style={({ pressed }) => [
+                  { padding: s(6), borderRadius: s(20), backgroundColor: theme.colors.successLight },
+                  pressed && { opacity: 0.7 }
+                ]}
+              >
+                <Ionicons name="logo-whatsapp" size={s(20)} color={theme.colors.success} />
+              </Pressable>
+
+              <Pressable
+                onPress={() => {
+                  const passLabel = getPassDisplayLabel(item);
+                  addActivityLog({
+                    module: ActivityModule.SUBSCRIPTION,
+                    action: ActivityAction.CALL,
+                    targetId: item.id,
+                    description: UI_TEXT.logCall.replace("{id}", passLabel)
+                  });
+                  Linking.openURL(`tel:${item.mobile}`);
+                }}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel="Call"
+                style={({ pressed }) => [
+                  { padding: s(6), borderRadius: s(20), backgroundColor: theme.colors.surfaceDark },
+                  pressed && { opacity: 0.7 }
+                ]}
+              >
+                <Ionicons name="call" size={s(20)} color={theme.colors.primary} />
+              </Pressable>
+            </>
+          )}
+        </View>
+
+        <Pressable
+          onPress={() => onSelect(item)}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel={`${UI_TEXT.viewPassHint || "View Pass"} ${getPassDisplayLabel(item)}`}
+          style={({ pressed }) => [
+            { flexDirection: 'row', alignItems: 'center', gap: s(4), paddingHorizontal: s(10), paddingVertical: s(6), borderRadius: s(16), backgroundColor: colorScheme.accentLight },
+            pressed && { opacity: 0.7 }
+          ]}
+        >
+          <Ionicons name="eye-outline" size={s(16)} color={colorScheme.accent} />
+          <Text style={{ fontSize: s(12), fontWeight: "900", color: colorScheme.accent }}>{UI_TEXT.viewMenu || "View"}</Text>
+        </Pressable>
+      </View>
     </View>
   );
 });
@@ -307,7 +341,7 @@ export function SubscriptionListScreen() {
   const { addActivityLog } = useActivityLogs();
 
   const {
-    subscriptionSearch, setSubscriptionSearch, activeFilters, setActiveFilters, navigate, goBack, startNew,
+    subscriptionSearch, setSubscriptionSearch, activeFilters, setActiveFilters, selectedBlock, setSelectedBlock, navigate, goBack, startNew,
     setSelectedId, setSelectedRecord
   } = useAppNavigation();
 
@@ -641,6 +675,10 @@ export function SubscriptionListScreen() {
       }
     }
 
+    if (selectedBlock) {
+      filtered = filtered.filter(sub => sub.block === selectedBlock);
+    }
+
     if (subscriptionSearch) {
       const searchLower = subscriptionSearch.toLowerCase();
       filtered = filtered.filter(
@@ -722,7 +760,7 @@ export function SubscriptionListScreen() {
 
       return { ...item, _hasCurrentMeal: hasCurrentMeal, _hasParcel: hasParcel, _isVegOnly: isVegOnly, _hasSpecialMeal: hasSpecialMeal, _hasPackage: hasPackage, _missedCount: missedItem?.missed };
     });
-  }, [subscriptions, subscriptionSearch, activeFilters, currentMealInfo, kidsEnabled, missedData, isAscending, sortBy, dayConfig, hasPackageApplied]);
+  }, [subscriptions, subscriptionSearch, activeFilters, selectedBlock, currentMealInfo, kidsEnabled, missedData, isAscending, sortBy, dayConfig, hasPackageApplied]);
 
   const handleExportExcel = useCallback(async () => {
     if (visibleSubscriptions.length === 0) return;
@@ -1051,11 +1089,12 @@ export function SubscriptionListScreen() {
         hasPackage={!!item._hasPackage}
         onSelect={onSelect}
         onOpenQuickCheckout={onOpenQuickCheckout}
+        onSelectBlock={setSelectedBlock}
         addActivityLog={addActivityLog}
         missedCount={item._missedCount}
       />
     );
-  }, [theme, styles, s, kidsEnabled, paymentConfig, whatsappCountryCode, isAdmin, onSelect, onOpenQuickCheckout, addActivityLog]);
+  }, [theme, styles, s, kidsEnabled, paymentConfig, whatsappCountryCode, isAdmin, onSelect, onOpenQuickCheckout, setSelectedBlock, addActivityLog]);
 
   const showFilters = (currentMealInfo && hasAnySubscribed) || (kidsEnabled && hasAnyKids) || hasAnyParcel || (isNonVegSeason && hasAnyVegOnly) || (currentMealInfo && hasAnyMissed) || hasAnySpecialOnly || hasAnyPackage;
 
@@ -1469,6 +1508,34 @@ export function SubscriptionListScreen() {
                 </Text>
               </Pressable>
             )}
+            </View>
+          </View>
+        )}
+
+        {selectedBlock && (
+          <View style={[styles.maxWidthWrapper, { marginTop: 6 }]}>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: s(12), paddingVertical: s(6), backgroundColor: theme.colors.surfaceDark, borderRadius: s(12), borderWidth: 1, borderColor: theme.colors.primary + "40" }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: s(6) }}>
+                <Ionicons name="business" size={s(13)} color={theme.colors.primary} />
+                <Text style={{ fontSize: s(11), fontWeight: "800", color: theme.colors.textPrimary }}>
+                  {UI_TEXT.block} {selectedBlock} ({visibleSubscriptions.length})
+                </Text>
+              </View>
+
+              <Pressable
+                onPress={() => setSelectedBlock(null)}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={`Clear Block ${selectedBlock} filter`}
+                style={({ pressed }) => [
+                  { paddingHorizontal: s(8), paddingVertical: s(3), borderRadius: s(8), backgroundColor: theme.colors.primary + "20" },
+                  pressed && { opacity: 0.7 }
+                ]}
+              >
+                <Text style={{ fontSize: s(10), fontWeight: "800", color: theme.colors.primary }}>
+                  {UI_TEXT.clearFilters}
+                </Text>
+              </Pressable>
             </View>
           </View>
         )}
