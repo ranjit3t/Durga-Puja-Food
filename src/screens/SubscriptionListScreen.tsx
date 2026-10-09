@@ -79,6 +79,7 @@ const SubscriptionCard = React.memo(({
   guestsEnabled,
   paymentConfig,
   whatsappCountryCode,
+  isAdmin,
   hasCurrentMeal,
   hasParcel,
   isVegOnly,
@@ -98,6 +99,7 @@ const SubscriptionCard = React.memo(({
   guestsEnabled: boolean;
   paymentConfig: PaymentConfig;
   whatsappCountryCode: string;
+  isAdmin?: boolean;
   hasCurrentMeal: boolean;
   hasParcel: boolean;
   isVegOnly: boolean;
@@ -216,23 +218,20 @@ const SubscriptionCard = React.memo(({
           </View>
         </View>
 
-        <View style={{ height: 1, backgroundColor: colorScheme.border, marginVertical: s(16) }} />
-
-        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: s(6) }}>
-            {paymentConfig.enabled && (
-              <>
+        {isAdmin && paymentConfig.enabled && (
+          <>
+            <View style={{ height: 1, backgroundColor: colorScheme.border, marginVertical: s(16) }} />
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: s(6) }}>
                 <Ionicons name="card-outline" size={s(16)} color={colorScheme.accent} />
                 <Text style={{ fontWeight: "700", color: theme.colors.textPrimary, fontSize: s(14) }}>{getPaymentModeLabel(item.payments && item.payments.length > 0 ? item.payments[0].mode : (item.paymentMode as PaymentMode || PaymentMode.CASH))}</Text>
-              </>
-            )}
-          </View>
-          {paymentConfig.enabled && (
-            <Text style={{ fontSize: s(18), fontWeight: "900", color: colorScheme.accent }}>
-              {UI_TEXT.rs}{UI_TEXT.space}{item.amount || (item.payments && item.payments.reduce((sum: number, p: any) => sum + (parseFloat(p.amount) || 0), 0)) || UI_TEXT.zero}
-            </Text>
-          )}
-        </View>
+              </View>
+              <Text style={{ fontSize: s(18), fontWeight: "900", color: colorScheme.accent }}>
+                {UI_TEXT.rs}{UI_TEXT.space}{item.amount || (item.payments && item.payments.reduce((sum: number, p: any) => sum + (parseFloat(p.amount) || 0), 0)) || UI_TEXT.zero}
+              </Text>
+            </View>
+          </>
+        )}
 
         {(() => {
           const now = Date.now();
@@ -252,7 +251,7 @@ const SubscriptionCard = React.memo(({
         })()}
       </Pressable>
 
-      {item.mobile && (
+      {isAdmin && item.mobile && (
         <>
           <View style={{ height: 1, backgroundColor: colorScheme.border, marginVertical: s(12), opacity: 0.5 }} />
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1044,6 +1043,7 @@ export function SubscriptionListScreen() {
         guestsEnabled={!!guestsEnabled}
         paymentConfig={paymentConfig}
         whatsappCountryCode={whatsappCountryCode}
+        isAdmin={isAdmin}
         hasCurrentMeal={!!item._hasCurrentMeal}
         hasParcel={!!item._hasParcel}
         isVegOnly={!!item._isVegOnly}
@@ -1055,7 +1055,7 @@ export function SubscriptionListScreen() {
         missedCount={item._missedCount}
       />
     );
-  }, [theme, styles, s, kidsEnabled, paymentConfig, whatsappCountryCode, onSelect, onOpenQuickCheckout, addActivityLog]);
+  }, [theme, styles, s, kidsEnabled, paymentConfig, whatsappCountryCode, isAdmin, onSelect, onOpenQuickCheckout, addActivityLog]);
 
   const showFilters = (currentMealInfo && hasAnySubscribed) || (kidsEnabled && hasAnyKids) || hasAnyParcel || (isNonVegSeason && hasAnyVegOnly) || (currentMealInfo && hasAnyMissed) || hasAnySpecialOnly || hasAnyPackage;
 

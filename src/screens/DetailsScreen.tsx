@@ -275,9 +275,11 @@ export function DetailsScreen() {
                   </View>
                 )}
               </View>
-              <Text style={{ fontSize: 13, fontWeight: "700", color: theme.colors.white, opacity: 0.9, marginTop: 4 }}>
-                {UI_TEXT.passCodeLabel}: {subscription.passcode || generateUniquePasscode(subscriptions, subscription.id, subscription.id)}
-              </Text>
+              {isAdmin && (
+                <Text style={{ fontSize: 13, fontWeight: "700", color: theme.colors.white, opacity: 0.9, marginTop: 4 }}>
+                  {UI_TEXT.passCodeLabel}: {subscription.passcode || generateUniquePasscode(subscriptions, subscription.id, subscription.id)}
+                </Text>
+              )}
               {(() => {
                 const now = Date.now();
                 let createdTs = subscription.createdAt || subscription.timestamp || now;
@@ -296,7 +298,7 @@ export function DetailsScreen() {
               })()}
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 0, alignSelf: "flex-start" }}>
-              {paymentConfig.enabled && (
+              {isAdmin && paymentConfig.enabled && (
                 <Text style={[styles.previewAmount, { color: theme.colors.white, fontSize: 22 }]}>
                   {UI_TEXT.rs}{UI_TEXT.space}{subscription.amount || UI_TEXT.zero}
                 </Text>
@@ -342,11 +344,11 @@ export function DetailsScreen() {
             ) : (
                `${subscription.peopleCount + (subscription.kidsCount || 0) + (subscription.guestsCount || 0)}${subscription.peopleCount + (subscription.kidsCount || 0) + (subscription.guestsCount || 0) === 1 ? UI_TEXT.personSuffix : UI_TEXT.personsSuffix}`
             )}
-            {paymentConfig.enabled && `${UI_TEXT.pipe}${UI_TEXT.rs}${UI_TEXT.space}${subscription.amount || UI_TEXT.zero}`}
-            {mobileEnabled && subscription.mobile && `${UI_TEXT.pipe}${subscription.mobile}`}
+            {isAdmin && paymentConfig.enabled && `${UI_TEXT.pipe}${UI_TEXT.rs}${UI_TEXT.space}${subscription.amount || UI_TEXT.zero}`}
+            {isAdmin && mobileEnabled && subscription.mobile && `${UI_TEXT.pipe}${subscription.mobile}`}
           </Text>
 
-          {subscription.mobile && (
+          {isAdmin && subscription.mobile && (
             <>
               <View style={{ height: 1, backgroundColor: theme.colors.white, opacity: 0.2, marginVertical: 12 }} />
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -392,7 +394,7 @@ export function DetailsScreen() {
           )}
         </View>
         {/* Quick Overview Card */}
-        {paymentConfig.enabled && (
+        {isAdmin && paymentConfig.enabled && (
           <Pressable
             onPress={() => {
               setReportType(ReportType.PAYMENT);
@@ -780,15 +782,17 @@ export function DetailsScreen() {
             </Pressable>
           )}
           <View style={{ flexDirection: "row", gap: 12 }}>
-            <Pressable
-              onPress={onQr}
-              accessible={true}
-              accessibilityRole="button"
-              accessibilityLabel={UI_TEXT.showQr}
-              style={[styles.primary, { flex: 1, backgroundColor: theme.colors.primary, marginTop: 0, height: 52, borderRadius: 16 }]}
-            >
-               <ActionLabel icon="qr-code-outline" label={UI_TEXT.showQr} color={theme.colors.white} />
-            </Pressable>
+            {isAdmin && (
+              <Pressable
+                onPress={onQr}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={UI_TEXT.showQr}
+                style={[styles.primary, { flex: 1, backgroundColor: theme.colors.primary, marginTop: 0, height: 52, borderRadius: 16 }]}
+              >
+                 <ActionLabel icon="qr-code-outline" label={UI_TEXT.showQr} color={theme.colors.white} />
+              </Pressable>
+            )}
             {isAdmin && canEdit && (
                <Pressable
                   disabled={!canDeletePass}

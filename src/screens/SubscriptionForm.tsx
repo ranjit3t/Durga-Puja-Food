@@ -94,8 +94,6 @@ import {
   calculatePassTotalWithPackages,
 } from "../utils/paymentUtils";
 
-export { calculateSubscriptionAmount };
-
 export function SubscriptionForm() {
   const { userRole, handleLogout } = useAuth();
   const {
@@ -762,7 +760,7 @@ export function SubscriptionForm() {
     ...form,
     mealSlots: sanitizedMealSlots,
     takenByPerson: stampedTakenByPerson,
-    mobile: mobileInput ? Number(mobileInput) : undefined,
+    mobile: !isAdmin && value ? value.mobile : (mobileInput ? Number(mobileInput) : undefined),
     flat: form.flat.trim().toUpperCase(),
     id: passId,
     meals: mealsFromChoices(
@@ -774,11 +772,11 @@ export function SubscriptionForm() {
       !!guestsEnabled,
       form.guestsCount || 0
     ),
-    payments: payments,
-    amount: totalAmount.toFixed(0),
-    paymentMode: payments[0]?.mode || PaymentMode.CASH,
-    transactionId: payments[0]?.transactionId || "",
-    passcode: form.passcode || generateUniquePasscode(subscriptions, passId, passId),
+    payments: !isAdmin && value?.payments !== undefined ? value.payments : payments,
+    amount: !isAdmin && value?.amount !== undefined ? value.amount : totalAmount.toFixed(0),
+    paymentMode: !isAdmin && value?.paymentMode !== undefined ? value.paymentMode : (payments[0]?.mode || PaymentMode.CASH),
+    transactionId: !isAdmin && value?.transactionId !== undefined ? value.transactionId : (payments[0]?.transactionId || ""),
+    passcode: !isAdmin && value?.passcode ? value.passcode : (form.passcode || generateUniquePasscode(subscriptions, passId, passId)),
   };
 
   if (prepared.mobile === undefined) {
@@ -1048,7 +1046,7 @@ export function SubscriptionForm() {
       showGlobalAlert(UI_TEXT.error, UI_TEXT.flatNoRequired);
       return;
     }
-    if (mobileInput && mobileInput.trim().length !== 10) {
+    if (isAdmin && mobileInput && mobileInput.trim().length !== 10) {
       showGlobalAlert(UI_TEXT.error, UI_TEXT.mobileInvalid);
       return;
     }
@@ -1074,12 +1072,12 @@ export function SubscriptionForm() {
       ...prepared,
       createdAt: createdTs,
       updatedAt: updatedTs,
-      payments: sanitizedPayments,
-      amount: currentTotalAmount.toFixed(0),
-      paymentMode: sanitizedPayments[0]?.mode || PaymentMode.CASH,
-      transactionId: sanitizedPayments[0]?.transactionId || "",
-      isPackageApplied,
-      appliedPackages: isPackageApplied ? appliedPackages : undefined,
+      payments: !isAdmin && value?.payments !== undefined ? value.payments : sanitizedPayments,
+      amount: !isAdmin && value?.amount !== undefined ? value.amount : currentTotalAmount.toFixed(0),
+      paymentMode: !isAdmin && value?.paymentMode !== undefined ? value.paymentMode : (sanitizedPayments[0]?.mode || PaymentMode.CASH),
+      transactionId: !isAdmin && value?.transactionId !== undefined ? value.transactionId : (sanitizedPayments[0]?.transactionId || ""),
+      isPackageApplied: !isAdmin && value ? (value.isPackageApplied || false) : isPackageApplied,
+      appliedPackages: !isAdmin && value ? value.appliedPackages : (isPackageApplied ? appliedPackages : undefined),
     };
 
     const calculatedExpectedAmount = calculatePassTotalWithPackages(
@@ -1095,7 +1093,7 @@ export function SubscriptionForm() {
       !!guestsEnabled
     );
 
-    const shouldCheckDiscrepancy = paymentConfig.enabled && !isPackageApplied && (!lockIdentity || hasMealOrParcelChoicesChanged);
+    const shouldCheckDiscrepancy = isAdmin && paymentConfig.enabled && !isPackageApplied && (!lockIdentity || hasMealOrParcelChoicesChanged);
     const isDiscrepancy = shouldCheckDiscrepancy && Math.abs(currentTotalAmount - calculatedExpectedAmount) > 0.01;
 
     const proceedToSave = () => {
@@ -1209,7 +1207,7 @@ export function SubscriptionForm() {
                   </View>
                 )}
               </View>
-              {summaryPasscode ? (
+              {isAdmin && summaryPasscode ? (
                 <Text style={{ fontSize: 13, fontWeight: "700", color: theme.colors.white, opacity: 0.9, marginTop: 4 }}>
                   {UI_TEXT.passCodeLabel}: {summaryPasscode}
                 </Text>
@@ -1223,7 +1221,7 @@ export function SubscriptionForm() {
                 </Text>
               </View>
             </View>
-            {paymentConfig.enabled && (
+            {isAdmin && paymentConfig.enabled && (
               <View style={{ flexShrink: 0, alignSelf: "flex-start" }}>
                 <Text style={[styles.previewAmount, { color: theme.colors.white, fontSize: 22 }]}>
                   {totalAmount.toFixed(0)}
@@ -1239,7 +1237,7 @@ export function SubscriptionForm() {
             {kidsEnabled || guestsEnabled ? `${UI_TEXT.space}${form.peopleCount === 1 ? UI_TEXT.adult : UI_TEXT.adults}` : (form.peopleCount === 1 ? UI_TEXT.personSuffix : UI_TEXT.personsSuffix)}
             {kidsEnabled && `${UI_TEXT.pipe}${form.kidsCount || 0}${UI_TEXT.space}${form.kidsCount === 1 ? UI_TEXT.kid : UI_TEXT.kids}`}
             {guestsEnabled && `${UI_TEXT.pipe}${form.guestsCount || 0}${UI_TEXT.space}${form.guestsCount === 1 ? UI_TEXT.guest : UI_TEXT.guests}`}
-            {paymentConfig.enabled && `${UI_TEXT.pipe}${payments[0]?.mode || UI_TEXT.paymentModeNotSet}`}
+            {isAdmin && paymentConfig.enabled && `${UI_TEXT.pipe}${payments[0]?.mode || UI_TEXT.paymentModeNotSet}`}
           </Text>
         </View>
 
@@ -1725,7 +1723,7 @@ export function SubscriptionForm() {
         </View>
 
         {/* Financials */}
-        {paymentConfig.enabled && (
+        {isAdmin && paymentConfig.enabled && (
           <SubscriptionPaymentSection
             payments={payments}
             totalAmount={totalAmount}

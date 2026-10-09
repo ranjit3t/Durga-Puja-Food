@@ -12,6 +12,8 @@ const menu: MealMenu = {
   nonVeg: ["Fish Curry"],
   vegPrice: "80",
   nonVegPrice: "120",
+  freeMealVegPrice: "80",
+  freeMealNonVegPrice: "120",
   vegParcelPrice: "20",
   nonVegParcelPrice: "30",
 };
@@ -41,6 +43,7 @@ function MenuEditorExample({ special = false, extendedPricing = false, disabled 
       foodPriceEnabled
       kidsEnabled={extendedPricing}
       guestsEnabled={extendedPricing}
+      freeMealEnabled
     />
   );
 }
@@ -60,6 +63,7 @@ export const MealDisplayStory = {
       foodPriceEnabled
       kidsEnabled={false}
       guestsEnabled={false}
+      freeMealEnabled
     />
   ),
 };

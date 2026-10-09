@@ -20,6 +20,7 @@ export function MealMenuEditor({
   foodPriceEnabled,
   kidsEnabled,
   guestsEnabled,
+  freeMealEnabled,
 }: {
   title: string;
   mealKey: MealType;
@@ -33,6 +34,7 @@ export function MealMenuEditor({
   foodPriceEnabled: boolean;
   kidsEnabled: boolean;
   guestsEnabled?: boolean;
+  freeMealEnabled?: boolean;
 }) {
   const styles = useStyles();
   const { theme } = useAppTheme();
@@ -62,7 +64,7 @@ export function MealMenuEditor({
     return [];
   };
 
-  const getVarietyPrice = (v: DietaryVariety, field: 'adultPrice' | 'kidsPrice' | 'guestPrice' | 'parcelPrice' | 'kidsParcelPrice' | 'guestParcelPrice'): string => {
+  const getVarietyPrice = (v: DietaryVariety, field: 'adultPrice' | 'kidsPrice' | 'guestPrice' | 'parcelPrice' | 'kidsParcelPrice' | 'guestParcelPrice' | 'freeMealPrice'): string => {
     if (v.id === "veg_default") {
       if (field === "adultPrice") return value?.vegPrice ?? "";
       if (field === "kidsPrice") return value?.kidsVegPrice ?? "";
@@ -70,6 +72,7 @@ export function MealMenuEditor({
       if (field === "parcelPrice") return value?.vegParcelPrice ?? "";
       if (field === "kidsParcelPrice") return value?.kidsVegParcelPrice ?? "";
       if (field === "guestParcelPrice") return value?.guestsVegParcelPrice ?? "";
+      if (field === "freeMealPrice") return value?.freeMealVegPrice ?? "";
     }
     if (v.id === "nonVeg_default") {
       if (field === "adultPrice") return value?.nonVegPrice ?? "";
@@ -78,6 +81,7 @@ export function MealMenuEditor({
       if (field === "parcelPrice") return value?.nonVegParcelPrice ?? "";
       if (field === "kidsParcelPrice") return value?.kidsNonVegParcelPrice ?? "";
       if (field === "guestParcelPrice") return value?.guestsVegParcelPrice ?? "";
+      if (field === "freeMealPrice") return value?.freeMealNonVegPrice ?? "";
     }
     const val = value?.varieties?.[v.id]?.[field as keyof VarietyMenu];
     return typeof val === 'string' ? val : "";
@@ -104,6 +108,7 @@ export function MealMenuEditor({
       if (field === "parcelPrice") nextMenu.vegParcelPrice = val;
       if (field === "kidsParcelPrice") nextMenu.kidsVegParcelPrice = val;
       if (field === "guestParcelPrice") nextMenu.guestsVegParcelPrice = val;
+      if (field === "freeMealPrice") nextMenu.freeMealVegPrice = val;
     } else if (v.id === "nonVeg_default") {
       if (field === "adultPrice") nextMenu.nonVegPrice = val;
       if (field === "kidsPrice") nextMenu.kidsNonVegPrice = val;
@@ -111,6 +116,7 @@ export function MealMenuEditor({
       if (field === "parcelPrice") nextMenu.nonVegParcelPrice = val;
       if (field === "kidsParcelPrice") nextMenu.kidsNonVegParcelPrice = val;
       if (field === "guestParcelPrice") nextMenu.guestsVegParcelPrice = val;
+      if (field === "freeMealPrice") nextMenu.freeMealNonVegPrice = val;
     }
 
     onChange(nextMenu);
@@ -293,6 +299,32 @@ export function MealMenuEditor({
                         }}
                         value={getVarietyPrice(v, "guestPrice")}
                         onChangeText={(val) => updateVarietyField(v, "guestPrice", val.replace(/[^0-9]/g, ""))}
+                        keyboardType="numeric"
+                        placeholder={UI_TEXT.zero}
+                        editable={!disabled}
+                      />
+                    </View>
+                  )}
+
+                  {freeMealEnabled && (
+                    <View style={{ flex: 1, minWidth: 100 }}>
+                      <Text style={{ fontSize: 10, fontWeight: "700", color: theme.colors.textSecondary, marginBottom: 4 }}>
+                        {UI_TEXT.freeMealPriceLabel.toUpperCase()}
+                      </Text>
+                      <TextInput
+                        style={{
+                          backgroundColor: theme.colors.surfaceDark,
+                          borderWidth: 1,
+                          borderColor: theme.colors.border,
+                          borderRadius: 8,
+                          paddingHorizontal: 10,
+                          paddingVertical: 8,
+                          fontSize: 14,
+                          color: theme.colors.textPrimary,
+                          fontWeight: "700",
+                        }}
+                        value={getVarietyPrice(v, "freeMealPrice" as any)}
+                        onChangeText={(val) => updateVarietyField(v, "freeMealPrice" as any, val.replace(/[^0-9]/g, ""))}
                         keyboardType="numeric"
                         placeholder={UI_TEXT.zero}
                         editable={!disabled}

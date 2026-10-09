@@ -493,6 +493,9 @@ export function ReportScreen() {
               onSelectFlat={onSelectFlat}
               kidsEnabled={!!kidsEnabled}
               guestsEnabled={!!guestsEnabled}
+              dayConfig={dayConfig}
+              foodMenu={foodMenu}
+              foodPackages={foodPackages}
             />
           )}
         </View>

@@ -18,7 +18,15 @@ export function MealReportItemCard({ mealType, mealLabel, detail, colorScheme }:
   const styles = useStyles();
   const { theme } = useAppTheme();
 
-  const mealA11yLabel = `${mealLabel}: ${(detail.portionCount ?? detail.passCount)} plates, Net Payment ${detail.netPayment} rupees`;
+  const categoryBreakdownStr = (detail.adultPortionCount || detail.kidsPortionCount || detail.guestsPortionCount)
+    ? ` [${[
+        detail.adultPortionCount ? `${detail.adultPortionCount} ${UI_TEXT.adults}` : null,
+        detail.kidsPortionCount ? `${detail.kidsPortionCount} ${UI_TEXT.kids}` : null,
+        detail.guestsPortionCount ? `${detail.guestsPortionCount} ${UI_TEXT.guests}` : null,
+      ].filter(Boolean).join(", ")}]`
+    : "";
+
+  const mealA11yLabel = `${mealLabel}: ${detail.passCount} ${detail.passCount === 1 ? UI_TEXT.passSingular : UI_TEXT.passPlural} ${UI_TEXT.optedLabel}, ${(detail.portionCount ?? detail.passCount)} plates${categoryBreakdownStr}, Net Payment ${detail.netPayment} rupees`;
 
   return (
     <View
@@ -54,11 +62,15 @@ export function MealReportItemCard({ mealType, mealLabel, detail, colorScheme }:
               {mealLabel}
             </Text>
           </View>
-          <Text style={{ fontSize: 13, fontWeight: "900", color: colorScheme.accent, paddingLeft: 22 }} numberOfLines={2}>
+          <Text style={{ fontSize: 12, fontWeight: "700", color: colorScheme.accent, paddingLeft: 22 }}>
+            {detail.passCount} {detail.passCount === 1 ? UI_TEXT.passSingular : UI_TEXT.passPlural} {UI_TEXT.optedLabel}
+          </Text>
+          <Text style={{ fontSize: 13, fontWeight: "900", color: colorScheme.accent, paddingLeft: 22 }}>
             {(detail.portionCount ?? detail.passCount)} {UI_TEXT.plates}
             {detail.parcelCount > 0
               ? ` (${detail.dineInCount} ${UI_TEXT.dineIn}, ${detail.parcelCount} ${UI_TEXT.parcel})`
               : ` (${detail.portionCount ?? detail.passCount} ${UI_TEXT.dineIn})`}
+            {categoryBreakdownStr}
           </Text>
         </View>
 

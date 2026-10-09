@@ -21,6 +21,7 @@ export function MealDisplay({
   foodPriceEnabled,
   kidsEnabled,
   guestsEnabled,
+  freeMealEnabled,
 }: {
   title: string;
   mealKey: MealType;
@@ -31,6 +32,7 @@ export function MealDisplay({
   foodPriceEnabled: boolean;
   kidsEnabled: boolean;
   guestsEnabled?: boolean;
+  freeMealEnabled?: boolean;
 }) {
   const styles = useStyles();
   const { theme } = useAppTheme();
@@ -63,7 +65,7 @@ export function MealDisplay({
     return [];
   };
 
-  const getVarietyPrice = (v: DietaryVariety, field: 'adultPrice' | 'kidsPrice' | 'guestPrice' | 'parcelPrice' | 'kidsParcelPrice' | 'guestParcelPrice'): string => {
+  const getVarietyPrice = (v: DietaryVariety, field: 'adultPrice' | 'kidsPrice' | 'guestPrice' | 'parcelPrice' | 'kidsParcelPrice' | 'guestParcelPrice' | 'freeMealPrice'): string => {
     if (v.id === "veg_default") {
       if (field === "adultPrice") return menu?.vegPrice || mConf?.vegPrice || "";
       if (field === "kidsPrice") return menu?.kidsVegPrice || (mConf as any)?.kidsVegPrice || "";
@@ -71,6 +73,7 @@ export function MealDisplay({
       if (field === "parcelPrice") return menu?.vegParcelPrice || mConf?.vegParcelPrice || "";
       if (field === "kidsParcelPrice") return menu?.kidsVegParcelPrice || (mConf as any)?.kidsVegParcelPrice || "";
       if (field === "guestParcelPrice") return menu?.guestsVegParcelPrice || (mConf as any)?.guestsVegParcelPrice || "";
+      if (field === "freeMealPrice") return menu?.freeMealVegPrice || "";
     }
     if (v.id === "nonVeg_default") {
       if (field === "adultPrice") return menu?.nonVegPrice || mConf?.nonVegPrice || "";
@@ -79,6 +82,7 @@ export function MealDisplay({
       if (field === "parcelPrice") return menu?.nonVegParcelPrice || mConf?.nonVegParcelPrice || "";
       if (field === "kidsParcelPrice") return menu?.kidsVegParcelPrice || (mConf as any)?.kidsVegParcelPrice || "";
       if (field === "guestParcelPrice") return menu?.guestsVegParcelPrice || (mConf as any)?.guestsVegParcelPrice || "";
+      if (field === "freeMealPrice") return menu?.freeMealNonVegPrice || "";
     }
     const val = menu?.varieties?.[v.id]?.[field as keyof VarietyMenu];
     return typeof val === 'string' ? val : "";
@@ -137,6 +141,7 @@ export function MealDisplay({
           const parcelPrice = getVarietyPrice(v, "parcelPrice");
           const kidsParcelPrice = getVarietyPrice(v, "kidsParcelPrice");
           const guestParcelPrice = getVarietyPrice(v, "guestParcelPrice");
+          const freeMealPrice = getVarietyPrice(v, "freeMealPrice" as any);
 
           return (
             <View key={v.id} style={{ marginBottom: idx < varieties.length - 1 ? 16 : 4 }}>
@@ -176,6 +181,14 @@ export function MealDisplay({
                         <View style={[styles.pill, { backgroundColor: vColor + "22", paddingVertical: 4, paddingHorizontal: 10, borderRadius: 8, borderStyle: "dashed", borderWidth: 1, borderColor: vColor }]}>
                           <Text style={{ fontSize: 11, fontWeight: "900", color: theme.colors.textPrimary }}>
                             {UI_TEXT.guestAbbrLabel}{UI_TEXT.colon} {UI_TEXT.rs} {guestPrice}
+                          </Text>
+                        </View>
+                      ) : null}
+
+                      {freeMealEnabled && freeMealPrice ? (
+                        <View style={[styles.pill, { backgroundColor: vColor + "22", paddingVertical: 4, paddingHorizontal: 10, borderRadius: 8, borderStyle: "dotted", borderWidth: 1, borderColor: vColor }]}>
+                          <Text style={{ fontSize: 11, fontWeight: "900", color: theme.colors.textPrimary }}>
+                            {UI_TEXT.freeMeal}{UI_TEXT.colon} {UI_TEXT.rs} {freeMealPrice}
                           </Text>
                         </View>
                       ) : null}

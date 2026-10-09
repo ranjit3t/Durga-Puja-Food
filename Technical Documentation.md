@@ -120,6 +120,13 @@ The application follows a **Serverless Layered Architecture** built on the **Exp
 - **Zero-Flicker Architecture**: When 2+ filter chips are selected (`activeFilters.length > 1`), the static header subtitle updates in-place (`REGISTERED PASSES: 47 • Matching Passes: X`) and an inline `Clear Filters (X)` chip inserts directly into the existing wrapping filter chips row. By eliminating conditional banner views above the search box, the search bar and card list remain completely stationary with **zero layout shifting or flickering**.
 - **100% Theme & Dictionary Compliance**: All labels bind directly to `UI_TEXT.showingMatches` and `UI_TEXT.clearFilters` without hardcoded text or colors.
 
+### G. Community-Sponsored Free Meal Pricing, Cost Incurred Engine & Season Summary (`FreeMealWiseReport.tsx`, `MealMenuEditor.tsx`, `MealDisplay.tsx`, `domain.ts`, `ReportComponents.stories.tsx`)
+- **Community-Sponsored Free Meal Concept**: Free meals represent community-sponsored meals with real food costs. When Free Meal support is enabled (`freeMealEnabled`), administrators can configure free meal prices per dietary category (`freeMealVegPrice`, `freeMealNonVegPrice`, `freeMealPrice`) in the Edit Menu (`MealMenuEditor.tsx`), which are securely displayed in View Menu (`MealDisplay.tsx`) strictly to administrators (`isAdmin`). When Free Meal is disabled, all free meal price fields and report options are conditionally hidden across the app.
+- **Cost Incurred Calculation**: In the Free Meal Report (`FreeMealWiseReport.tsx`), food costs are strictly incurred ONLY when free meals are served (`servedCount > 0`), ensuring planned/unserved meals do not pollute cost metrics. Each meal card dynamically calculates and displays its aggregated cost incurred when meals are served (`Cost Incurred: ₹<amount>`).
+- **Top Season Summary Card**: Renders a season-wide Free Meal Summary Card on top of the Free Meal Report displaying total season free meals planned, total served, and total aggregated cost incurred across all active festival days and meals.
+- **Shashthi to Dashami Storybook Mock Data**: Storybook reports (`ReportComponents.stories.tsx`) feature complete dummy data from Shashthi through Dashami with active free meal served counts and pricing to allow full visual inspection of cards, cost incurrence badges, and season summary cards.
+- **100% WCAG 2.1 AA & Mobile Responsiveness**: All free meal report cards and summary elements feature full accessibility compliance (`accessibilityRole="summary"`, `accessibilityLabel`), responsive wrapping (`flexWrap: "wrap"`), and mobile viewport optimization.
+
 ---
 
 ## 3. Database Security & Indexing Configuration (`database.rules.json`)
@@ -189,7 +196,36 @@ The application follows a **Serverless Layered Architecture** built on the **Exp
 
 ---
 
-## 4. Feature-Based Modularization & Component Architecture
+## 4. Non-Admin Role Restrictions & Role-Based Access Control (RBAC)
+
+The application enforces strict role-based access control (RBAC) distinguishing between administrators (`UserRole.ADMIN`) and non-admin users (`UserRole.VENDOR` / volunteers).
+
+### Key Non-Admin Restrictions & Safeguards:
+1. **Home Page (`HomeScreen.tsx`)**:
+   - Total Payment Collection in summary card is hidden for non-admin users.
+   - Report button is hidden for non-admin users.
+2. **View Pass (`DetailsScreen.tsx`)**:
+   - Pass code, mobile numbers, UPI/payment info, and payment types/modes are hidden in the summary card and identity headers.
+   - Subscription Summary card is hidden.
+   - Show QR button is hidden for non-admin users.
+3. **Edit Pass (`SubscriptionForm.tsx`)**:
+   - Pass code, mobile numbers, UPI/payment info, and payment types/modes are hidden in the real-time summary card.
+   - Mobile Number field and contact picker are hidden.
+   - Payment Information card and payment section are hidden.
+   - **Secure Field Preservation on Save**: When non-admin users edit a pass (e.g. updating meal choices or headcounts), all hidden admin fields (`mobile`, `passcode`, `payments`, `amount`, `paymentMode`, `transactionId`, `isPackageApplied`, `appliedPackages`) are securely preserved as their original/existing values, ensuring edit saves never fail and never overwrite or corrupt admin financial and contact data.
+4. **Subscription Directory / List (`SubscriptionListScreen.tsx`)**:
+   - Payment information in card headers (payment mode and amount) is hidden for non-admin users.
+   - WhatsApp chat and mobile call action buttons on subscription cards are hidden.
+5. **Quick Checkout Modal (`QuickCheckoutHeader.tsx`)**:
+   - Pass code in the Quick Checkout header is hidden for non-admin users.
+6. **View Menu (`ViewMenuScreen.tsx`)**:
+   - Meal prices and parcel fees (`foodPriceEnabled`) are hidden for non-admin users, ensuring no pricing or parcel amounts are displayed on the menu.
+7. **Team Notes (`NotesScreen.tsx`)**:
+   - Non-admin users can view, edit, and delete only the notes they have personally created (`note.userName === userName`), filtering out notes created by other users.
+
+---
+
+## 5. Feature-Based Modularization & Component Architecture
 
 To prevent monolithic God components and ensure maximum maintainability, testability, and scalability across large teams, the codebase follows a strict **Feature-Based Modular Architecture** under `src/features/`:
 
@@ -200,13 +236,14 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
 
 ---
 
-## 5. Automated Testing & Storybook
+## 6. Automated Testing & Storybook
 
 ### Jest
 - `jest-expo` is the Jest preset for the Expo SDK, with React Native Testing Library for component-level assertions.
 - `jest.setup.ts` mocks AsyncStorage, vector icons, Firebase SDK modules, and device-only Expo modules. Unit tests do not initialize cameras, contacts, storage hardware, or network services.
 - `src/__tests__/sourceModules.test.ts` discovers and imports all production TypeScript modules under `src` as well as root `App.tsx` and `index.ts`. These are import-safety smoke checks; behavior is asserted separately in focused tests.
 - The focused behavioral suite covers domain normalization invariants, adult/child/guest pricing resolution, OCR transaction/amount parsing, and accessible stepper interactions. Quick Checkout cases verify adult/kid/guest section separation, correct per-person meal/parcel writes, category-specific input clamping, partial-service/parcel alerts, and the all-served boundary.
+- `src/__tests__/roleRestrictions.test.ts` asserts that non-admin edits preserve all hidden financial and contact fields without validation failure.
 
 ### Storybook for React Native Web
 - `@storybook/react-native-web-vite` runs the UI catalog in a browser using React Native Web, utilizing fully populated mock datasets for Day-Wise, Meal-Wise, Amount Discrepancy (covering both underpaid and overpaid/excess passes), and Payment Summary reports.

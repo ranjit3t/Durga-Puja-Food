@@ -97,7 +97,7 @@ export const SubscriptionBasicInfoSection: React.FC<SubscriptionBasicInfoSection
         </View>
       </View>
 
-      {mobileEnabled && (
+      {isAdmin && mobileEnabled && (
         <>
           <Text style={styles.label}>{UI_TEXT.mobileNo}</Text>
           <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>

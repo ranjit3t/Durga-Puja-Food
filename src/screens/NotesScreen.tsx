@@ -150,15 +150,22 @@ export function NotesScreen() {
     }
   }, [isReadOnly, editingNote, addActivityLog]);
 
+  const isAdmin = userRole === UserRole.ADMIN;
+
   const userOptions = useMemo(() => {
     const users = new Set<string>();
     users.add(UI_TEXT.all);
-    notes.forEach(note => users.add(note.userName));
+    notes.forEach(note => {
+      if (isAdmin || note.userName === userName) {
+        users.add(note.userName);
+      }
+    });
     return Array.from(users).sort();
-  }, [notes]);
+  }, [notes, isAdmin, userName]);
 
   const filteredNotes = useMemo(() => {
     let result = notes.filter(note => {
+      if (!isAdmin && note.userName !== userName) return false;
       if (selectedUser !== UI_TEXT.all && note.userName !== selectedUser) return false;
       if (searchText && !(note.subject?.toLowerCase().includes(searchText.toLowerCase()) || note.content?.toLowerCase().includes(searchText.toLowerCase()))) return false;
       return true;
@@ -171,7 +178,7 @@ export function NotesScreen() {
     }
 
     return result.slice(0, limit);
-  }, [notes, selectedUser, searchText, limit, isAscending]);
+  }, [notes, selectedUser, searchText, limit, isAscending, isAdmin, userName]);
 
   const handleViewNote = (note: Note) => {
     setEditingNote(note);

@@ -69,6 +69,7 @@ const sampleDayWisePayments = [
     packageDiscount: 200,
     excessDeficient: 30,
     netPayment: 13250,
+    passCount: 35,
     meals: {
       [MealType.BREAKFAST]: sampleMealWisePayments[0],
       [MealType.LUNCH]: sampleMealWisePayments[1],
@@ -86,6 +87,7 @@ const sampleSeasonTotalPayment = {
   totalPortions: 641,
   dineInCount: 514,
   parcelCount: 127,
+  seasonTotalPasses: 46,
 };
 
 export default { title: "UI/Reports", parameters: { controls: { disable: true } } };
@@ -149,7 +151,49 @@ export const FlatWiseReportStory = {
 
 export const FreeMealWiseReportStory = {
   name: "FreeMealWiseReport",
-  render: () => <FreeMealWiseReport activeDays={["Shashthi"]} foodMenu={foodMenu} dayConfig={dayConfig} />,
+  render: () => {
+    const storyDays = ["Shashthi", "Saptami", "Ashtami", "Navami", "Dashami"];
+    const storyConfig = storyDays.map((dayId) => ({
+      id: dayId,
+      label: dayId,
+      abbr: dayId.slice(0, 3),
+      enabled: true,
+      breakfast: { enabled: false, veg: true, nonVeg: true, parcel: false },
+      lunch: { enabled: true, veg: true, nonVeg: true, parcel: true },
+      dinner: { enabled: true, veg: true, nonVeg: true, parcel: true },
+    }));
+    const storyMenu = Object.fromEntries(storyDays.map(dayId => [
+      dayId,
+      {
+        breakfast: { veg: [], nonVeg: [] },
+        lunch: {
+          veg: ["Khichdi", "Labra", "Beguni", "Payesh"],
+          nonVeg: ["Fish Fry", "Mutton Curry"],
+          vegPrice: "100",
+          nonVegPrice: "150",
+          freeMealVeg: 20,
+          freeMealNonVeg: 15,
+          freeMealVegTaken: 18,
+          freeMealNonVegTaken: 12,
+          freeMealVegPrice: "100",
+          freeMealNonVegPrice: "150",
+        },
+        dinner: {
+          veg: ["Puri", "Alur Dom"],
+          nonVeg: ["Chicken Curry"],
+          vegPrice: "80",
+          nonVegPrice: "120",
+          freeMealVeg: 15,
+          freeMealNonVeg: 10,
+          freeMealVegTaken: 15,
+          freeMealNonVegTaken: 10,
+          freeMealVegPrice: "80",
+          freeMealNonVegPrice: "120",
+        }
+      }
+    ]));
+    return <FreeMealWiseReport activeDays={storyDays} foodMenu={storyMenu} dayConfig={storyConfig as any} />;
+  },
 };
 
 export const MealWiseReportStory = {
@@ -200,7 +244,69 @@ export const MissedParcelReportStory = {
 
 export const PackagePassesReportStory = {
   name: "PackagePassesReport",
-  render: () => <PackagePassesReport data={[]} onSelectFlat={noop} />,
+  render: () => <PackagePassesReport
+    data={[
+      {
+        id: "pass-pkg-1",
+        block: "A",
+        flat: "101",
+        peopleCount: 2,
+        kidsCount: 1,
+        amount: "3000",
+        paymentMode: PaymentMode.UPI,
+        payments: [{ amount: "3000", mode: PaymentMode.UPI }],
+        meals: {},
+        mealByPerson: {},
+        takenByPerson: {},
+        isPackageApplied: true,
+        appliedPackages: {
+          "0": { packageId: "gold-pkg", packageName: "Gold Festival Pack", packagePrice: 1500 },
+          "1": { packageId: "gold-pkg", packageName: "Gold Festival Pack", packagePrice: 1500 },
+        },
+        mealSlots: {
+          "Shashthi": [
+            { breakfast: "veg_default", lunch: "veg_default", dinner: "none", breakfastParcel: false, lunchParcel: false, dinnerParcel: false },
+            { breakfast: "veg_default", lunch: "veg_default", dinner: "none", breakfastParcel: false, lunchParcel: false, dinnerParcel: false },
+            { breakfast: "veg_default", lunch: "veg_default", dinner: "none", breakfastParcel: false, lunchParcel: false, dinnerParcel: false },
+          ]
+        }
+      },
+      {
+        id: "pass-pkg-2",
+        block: "B",
+        flat: "202",
+        peopleCount: 4,
+        kidsCount: 0,
+        amount: "4800",
+        paymentMode: PaymentMode.UPI,
+        payments: [{ amount: "4800", mode: PaymentMode.UPI }],
+        meals: {},
+        mealByPerson: {},
+        takenByPerson: {},
+        isPackageApplied: true,
+        appliedPackages: {
+          "0": { packageId: "family-pack", packageName: "Family Festival Pack", packagePrice: 4800 },
+        },
+        mealSlots: {
+          "Shashthi": [
+            { breakfast: "nonVeg_default", lunch: "nonVeg_default", dinner: "nonVeg_default", breakfastParcel: false, lunchParcel: false, dinnerParcel: false },
+            { breakfast: "nonVeg_default", lunch: "nonVeg_default", dinner: "nonVeg_default", breakfastParcel: false, lunchParcel: false, dinnerParcel: false },
+            { breakfast: "nonVeg_default", lunch: "nonVeg_default", dinner: "nonVeg_default", breakfastParcel: false, lunchParcel: false, dinnerParcel: false },
+            { breakfast: "nonVeg_default", lunch: "nonVeg_default", dinner: "nonVeg_default", breakfastParcel: false, lunchParcel: false, dinnerParcel: false },
+          ]
+        }
+      }
+    ]}
+    onSelectFlat={noop}
+    kidsEnabled={true}
+    guestsEnabled={false}
+    dayConfig={dayConfig}
+    foodMenu={foodMenu}
+    foodPackages={[
+      { id: "gold-pkg", name: "Gold Festival Pack", description: "Gold Festival Pack", applicability: "adult", enabled: true, timestamp: Date.now(), packagePrice: 1500, discountType: "meal_package" },
+      { id: "family-pack", name: "Family Festival Pack", description: "Family Festival Pack", applicability: "adult", enabled: true, timestamp: Date.now(), packagePrice: 4800, discountType: "meal_package" }
+    ]}
+  />,
 };
 
 export const ParcelWiseReportStory = {

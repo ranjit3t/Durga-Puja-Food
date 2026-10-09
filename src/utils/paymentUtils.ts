@@ -670,6 +670,9 @@ export interface MealPaymentDetail {
   portionCount: number;    // total subscribed meal portions (Dine In + Parcel)
   dineInCount: number;     // Dine In portion count
   parcelCount: number;     // Parcel portion count
+  adultPortionCount: number;
+  kidsPortionCount: number;
+  guestsPortionCount: number;
 }
 
 export interface DayPaymentDetail {
@@ -680,6 +683,10 @@ export interface DayPaymentDetail {
   excessDeficient: number;
   netPayment: number;
   meals: Record<MealType, MealPaymentDetail>;
+  passCount: number;
+  adultPortionCount: number;
+  kidsPortionCount: number;
+  guestsPortionCount: number;
 }
 
 export interface DetailedPaymentBreakdown {
@@ -694,6 +701,7 @@ export interface DetailedPaymentBreakdown {
     totalPortions: number;
     dineInCount: number;
     parcelCount: number;
+    seasonTotalPasses: number;
   };
 }
 
@@ -775,6 +783,29 @@ export function calculateDetailedPaymentReportData(
   const activeDayIds = Array.from(allDayIdsSet);
   const mealTypes = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER];
 
+  const seasonUniquePassesSet = new Set<string>();
+  subscriptions.forEach((sub) => {
+    let hasAnyMeal = false;
+    Object.keys(sub.mealSlots || {}).forEach((dayId) => {
+      const slots = sub.mealSlots?.[dayId] || [];
+      const opted = slots.some((personSlot) => {
+        if (!personSlot) return false;
+        return mealTypes.some((mType) => {
+          if (!isMealEnabled(dayId, mType, dayConfig)) return false;
+          return normalizeChoice(personSlot[mType]) !== DietaryOption.NONE;
+        });
+      });
+      if (opted) hasAnyMeal = true;
+    });
+    if (!hasAnyMeal && (calculatePaidAmount(sub) > 0 || (sub.peopleCount || 0) > 0)) {
+      hasAnyMeal = true;
+    }
+    if (hasAnyMeal) {
+      seasonUniquePassesSet.add(sub.id);
+    }
+  });
+  const seasonTotalPasses = seasonUniquePassesSet.size > 0 ? seasonUniquePassesSet.size : subscriptions.length;
+
   const mealMap: Record<
     string,
     {
@@ -787,10 +818,16 @@ export function calculateDetailedPaymentReportData(
       portionCount: number;
       dineInCount: number;
       parcelCount: number;
+      adultPortionCount: number;
+      kidsPortionCount: number;
+      guestsPortionCount: number;
     }
   > = {};
 
+  const dayPassIdsMap: Record<string, Set<string>> = {};
+
   activeDayIds.forEach((dayId) => {
+    dayPassIdsMap[dayId] = new Set<string>();
     mealTypes.forEach((mType) => {
       mealMap[`${dayId}_${mType}`] = {
         menuPrice: 0,
@@ -802,11 +839,27 @@ export function calculateDetailedPaymentReportData(
         portionCount: 0,
         dineInCount: 0,
         parcelCount: 0,
+        adultPortionCount: 0,
+        kidsPortionCount: 0,
+        guestsPortionCount: 0,
       };
     });
   });
 
   subscriptions.forEach((sub) => {
+    activeDayIds.forEach((dayId) => {
+      const slots = sub.mealSlots?.[dayId] || [];
+      const hasMeal = slots.some((personSlot) => {
+        if (!personSlot) return false;
+        return mealTypes.some((mType) => {
+          if (!isMealEnabled(dayId, mType, dayConfig)) return false;
+          return normalizeChoice(personSlot[mType]) !== DietaryOption.NONE;
+        });
+      });
+      if (hasMeal) {
+        dayPassIdsMap[dayId].add(sub.id);
+      }
+    });
     const paidAmount = calculatePaidAmount(sub);
     const kCount = kidsEnabled ? (sub.kidsCount || 0) : 0;
     const gCount = guestsEnabled ? (sub.guestsCount || 0) : 0;
@@ -822,6 +875,7 @@ export function calculateDetailedPaymentReportData(
       dayId: string;
       mealType: MealType;
       personIndex: number;
+      category: "adult" | "kid" | "guest";
       menuPrice: number;
       parcelPrice: number;
       slotTotalPrice: number;
@@ -841,8 +895,10 @@ export function calculateDetailedPaymentReportData(
 
         const isKid = kidsEnabled && i >= sub.peopleCount && i < sub.peopleCount + kCount;
         const isGuest = guestsEnabled && i >= sub.peopleCount + kCount;
+        const category = isGuest ? "guest" : isKid ? "kid" : "adult";
 
         mealTypes.forEach((mType) => {
+          if (!isMealEnabled(dayId, mType, dayConfig)) return;
           const choice = normalizeChoice(personSlot[mType]);
           if (choice === DietaryOption.NONE) return;
 
@@ -887,6 +943,7 @@ export function calculateDetailedPaymentReportData(
             dayId,
             mealType: mType,
             personIndex: i,
+            category,
             menuPrice: mFoodPrice,
             parcelPrice: mParcelPrice,
             slotTotalPrice,
@@ -908,6 +965,7 @@ export function calculateDetailedPaymentReportData(
             dayId,
             mealType: mType,
             personIndex: 0,
+            category: "adult",
             menuPrice: 0,
             parcelPrice: 0,
             slotTotalPrice: 0,
@@ -1005,7 +1063,12 @@ export function calculateDetailedPaymentReportData(
         mealMap[key].excessDeficient += m.excessDeficient;
         mealMap[key].netPayment += m.netPayment;
         mealMap[key].passIds.add(sub.id);
+
         mealMap[key].portionCount++;
+        if (m.category === "guest") mealMap[key].guestsPortionCount++;
+        else if (m.category === "kid") mealMap[key].kidsPortionCount++;
+        else mealMap[key].adultPortionCount++;
+
         if (m.parcelPrice > 0) {
           mealMap[key].parcelCount++;
         } else {
@@ -1026,6 +1089,9 @@ export function calculateDetailedPaymentReportData(
     let dayPkgSum = 0;
     let dayExcessSum = 0;
     let dayNetSum = 0;
+    let dayAdultPortionCount = 0;
+    let dayKidsPortionCount = 0;
+    let dayGuestsPortionCount = 0;
 
     mealTypes.forEach((mType) => {
       const key = `${dayId}_${mType}`;
@@ -1039,6 +1105,9 @@ export function calculateDetailedPaymentReportData(
         portionCount: 0,
         dineInCount: 0,
         parcelCount: 0,
+        adultPortionCount: 0,
+        kidsPortionCount: 0,
+        guestsPortionCount: 0,
       };
 
       const detail: MealPaymentDetail = {
@@ -1053,6 +1122,9 @@ export function calculateDetailedPaymentReportData(
         portionCount: item.portionCount,
         dineInCount: item.dineInCount,
         parcelCount: item.parcelCount,
+        adultPortionCount: item.adultPortionCount,
+        kidsPortionCount: item.kidsPortionCount,
+        guestsPortionCount: item.guestsPortionCount,
       };
 
       mealWisePayments.push(detail);
@@ -1063,6 +1135,10 @@ export function calculateDetailedPaymentReportData(
       dayPkgSum += detail.packageDiscount;
       dayExcessSum += detail.excessDeficient;
       dayNetSum += detail.netPayment;
+
+      dayAdultPortionCount += detail.adultPortionCount;
+      dayKidsPortionCount += detail.kidsPortionCount;
+      dayGuestsPortionCount += detail.guestsPortionCount;
     });
 
     dayWisePaymentsMap[dayId] = {
@@ -1073,6 +1149,10 @@ export function calculateDetailedPaymentReportData(
       excessDeficient: Math.round(dayExcessSum * 100) / 100,
       netPayment: Math.round(dayNetSum * 100) / 100,
       meals: dayMealDetails,
+      passCount: (dayPassIdsMap[dayId] || new Set()).size,
+      adultPortionCount: dayAdultPortionCount,
+      kidsPortionCount: dayKidsPortionCount,
+      guestsPortionCount: dayGuestsPortionCount,
     };
   });
 
@@ -1091,12 +1171,110 @@ export function calculateDetailedPaymentReportData(
     totalPortions,
     dineInCount,
     parcelCount,
+    seasonTotalPasses,
   };
 
   return {
     mealWisePayments,
     dayWisePayments,
     seasonTotalPayment,
+  };
+}
+
+export interface PackageReportSummary {
+  totalPasses: number;
+  totalPeopleCovered: number;
+  packageCounts: Record<string, { packageName: string; count: number }>;
+  expectedCostWithoutPackage: number;
+  costAfterPackage: number;
+  totalSavings: number;
+}
+
+export function calculatePackageReportSummary(
+  subscriptions: SubscriptionRecord[],
+  foodMenu: Record<string, any>,
+  dayConfig: ConfigDay[],
+  kidsEnabled: boolean,
+  guestsEnabled: boolean,
+  foodPackages: FoodPackage[] | Record<string, FoodPackage>
+): PackageReportSummary {
+  const pkgList: FoodPackage[] = Array.isArray(foodPackages)
+    ? foodPackages
+    : Object.values(foodPackages || {});
+
+  const packagedSubs = subscriptions.filter(
+    (sub) => sub.isPackageApplied || (sub.appliedPackages && Object.keys(sub.appliedPackages).length > 0)
+  );
+
+  const totalPasses = packagedSubs.length;
+  let totalPeopleCovered = 0;
+  const packageCounts: Record<string, { packageName: string; count: number }> = {};
+  let expectedCostWithoutPackage = 0;
+  let costAfterPackage = 0;
+
+  const mealTypes = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER];
+
+  packagedSubs.forEach((sub) => {
+    const appliedPackages = sub.appliedPackages || {};
+    Object.entries(appliedPackages).forEach(([pIdxStr, appliedInfo]) => {
+      const pIdx = Number(pIdxStr);
+      const pkgId = appliedInfo.packageId;
+      const pkgName = appliedInfo.packageName || pkgId;
+      const pkgPrice = appliedInfo.packagePrice ?? 0;
+
+      if (!packageCounts[pkgId]) {
+        packageCounts[pkgId] = { packageName: pkgName, count: 0 };
+      }
+      packageCounts[pkgId].count++;
+      totalPeopleCovered++;
+      costAfterPackage += pkgPrice;
+
+      const pkg = pkgList.find((p) => p.id === pkgId || p.id.trim() === pkgId.trim());
+      const isKid = kidsEnabled && pIdx >= sub.peopleCount && pIdx < sub.peopleCount + (sub.kidsCount || 0);
+      const isGuest = guestsEnabled && pIdx >= sub.peopleCount + (sub.kidsCount || 0);
+
+      let personExpectedCost = 0;
+      Object.keys(sub.mealSlots || {}).forEach((dayId) => {
+        const slots = sub.mealSlots?.[dayId] || [];
+        const personSlot = slots[pIdx];
+        if (!personSlot) return;
+
+        mealTypes.forEach((mType) => {
+          if (!isMealEnabled(dayId, mType, dayConfig)) return;
+          const choice = normalizeChoice(personSlot[mType]);
+          if (choice === DietaryOption.NONE) return;
+
+          let isMealInPackage = true;
+          if (pkg) {
+            const mealItemsMap = pkg.selectedMealItems || {};
+            const legacyMealsMap = pkg.selectedMeals || {};
+            const pkgDays = Object.keys(mealItemsMap).length > 0 ? Object.keys(mealItemsMap) : Object.keys(legacyMealsMap);
+            if (pkgDays.length > 0) {
+              const targetItems = mealItemsMap[dayId] || (legacyMealsMap[dayId] || []).map((t: any) => ({ mealType: t }));
+              isMealInPackage = targetItems.some((item: any) => item.mealType === mType);
+            }
+          }
+
+          if (isMealInPackage) {
+            const mFoodPrice = resolveVarietyPrice(dayId, mType, choice, isKid, isGuest, "member", dayConfig, foodMenu);
+            personExpectedCost += mFoodPrice;
+          }
+        });
+      });
+
+      expectedCostWithoutPackage += personExpectedCost;
+    });
+  });
+
+  const totalSavings = Math.max(0, expectedCostWithoutPackage - costAfterPackage);
+
+  return {
+    totalPasses,
+    totalPeopleCovered,
+    packageCounts,
+    expectedCostWithoutPackage: Math.round(expectedCostWithoutPackage * 100) / 100,
+    costAfterPackage: Math.round(costAfterPackage * 100) / 100,
+    totalSavings: Math.round(totalSavings * 100) / 100,
   };
 }
 

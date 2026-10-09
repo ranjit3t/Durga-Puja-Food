@@ -218,6 +218,13 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
 - **View Pass Meal Subscription Plan Integration (`DetailsScreen.tsx`)**: Updated the Meal Subscription Plan section (`vCount` and `nvCount` calculations per day) to correctly aggregate and add up adult, kid, and guest meals so that passes with guests show the complete combined meal count.
 - **Accessibility-Compliant Interactive Package Tags & Auto-Pruning (`SubscriptionPaymentSection.tsx`, `SubscriptionForm.tsx`)**: Rendered the green `PACKAGE APPLIED` marker as a pressable accessibility-compliant button (`accessible={true}`, `accessibilityRole="button"`) to directly open the Apply Package Modal. Automatically hides the duplicate `Apply` button when a package is applied, and prunes invalid packages automatically when meals are deselected.
 
+### Y. Community-Sponsored Free Meal Pricing, Cost Incurred Engine & Season Summary (`FreeMealWiseReport.tsx`, `MealMenuEditor.tsx`, `MealDisplay.tsx`, `domain.ts`, `ReportComponents.stories.tsx`)
+- **Community-Sponsored Free Meal Concept**: Free meals represent community-sponsored meals with real food costs. When Free Meal support is enabled (`freeMealEnabled`), administrators can configure free meal prices per dietary category (`freeMealVegPrice`, `freeMealNonVegPrice`, `freeMealPrice`) in the Edit Menu (`MealMenuEditor.tsx`), which are securely displayed in View Menu (`MealDisplay.tsx`) strictly to administrators (`isAdmin`). When Free Meal is disabled, all free meal price fields and report options are conditionally hidden across the app.
+- **Cost Incurred Calculation**: In the Free Meal Report (`FreeMealWiseReport.tsx`), food costs are strictly incurred ONLY when free meals are served (`servedCount > 0`), ensuring planned/unserved meals do not pollute cost metrics. Each meal card dynamically calculates and displays its aggregated cost incurred when meals are served (`Cost Incurred: ₹<amount>`).
+- **Top Season Summary Card**: Renders a season-wide Free Meal Summary Card on top of the Free Meal Report displaying total season free meals planned, total served, and total aggregated cost incurred across all active festival days and meals.
+- **Shashthi to Dashami Storybook Mock Data**: Storybook reports (`ReportComponents.stories.tsx`) feature complete dummy data from Shashthi through Dashami with active free meal served counts and pricing to allow full visual inspection of cards, cost incurrence badges, and season summary cards.
+- **100% WCAG 2.1 AA & Mobile Responsiveness**: All free meal report cards and summary elements feature full accessibility compliance (`accessibilityRole="summary"`, `accessibilityLabel`), responsive wrapping (`flexWrap: "wrap"`), and mobile viewport optimization.
+
 ### Y. Directory Money / Paid Amount Sorting & Enum Refactoring (`DirectorySortMode`, `SubscriptionListScreen.tsx`, `domain.ts`, `strings.ts`)
 - **Directory Sort Mode Enum (`DirectorySortMode`)**: Centralized directory sorting parameters into a typed `DirectorySortMode` enum (`BLOCK_FLAT`, `CREATED_AT`, `UPDATED_AT`, `AMOUNT`).
 - **Paid Amount Sorting (`calculatePaidAmount`)**: Added subscription list sorting by paid amount (money) in ascending or descending order.
@@ -226,12 +233,12 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
 
 ### Z. Detailed Meal-Wise & Day-Wise Payment Reports Engine ([`MealWisePaymentReport.tsx`](src/components/report/MealWisePaymentReport.tsx), [`DayWisePaymentReport.tsx`](src/components/report/DayWisePaymentReport.tsx), [`ReportSummaryCard.tsx`](src/components/report/ReportSummaryCard.tsx), [`MealReportItemCard.tsx`](src/components/report/MealReportItemCard.tsx), [`paymentUtils.ts`](src/utils/paymentUtils.ts))
 - **Modularized Report Architecture**: Reusable shared report card components (`ReportSummaryCard` and `MealReportItemCard`) cleanly modularize the presentation layer across both Meal-Wise and Day-Wise payment reports.
-- **Granular Financial Breakdown**: Meal-Wise provides full meal-level component breakdowns (Menu Price, separate Parcel Charges, Package Discounts, Excess Amounts, and Dine-In vs. Parcel portion counts), while Day-Wise aggregates financial totals and subscriber breakdowns cleanly per day.
+- **Granular Financial Breakdown & Category Portions**: Meal-Wise and Day-Wise reports provide full meal-level component breakdowns (Menu Price, separate Parcel Charges, Package Discounts, Excess Amounts, and category-specific portion counts across Adults, Kids, and Guests when active).
 - **Integer Remainder Allocation (`distributeAmountWithRemainder`)**: Distributes package discounts and excess payments across eligible meal slots using integer floor division and assigning remaining balance reminders to the final item (e.g., ₹50 discount over 3 meals -> ₹16, ₹16, ₹18) without floating-point decimals.
 - **Strict Excess Allocation & Parcel Fixed Cost**: Excess payments (`paidAmount - calculatedPassTotal`) are allocated strictly across subscribed meals of the pass with excess payment; parcel costs remain fixed as-is and are never adjusted or distributed.
 - **Exact Mathematical Identity**: Total Season Payment Collection = Sum of Day Totals = Sum of Meal Net Payments across all active days/meals, matching the Payment Summary total collection (₹50,170) and total subscribed meals (641 meals with Dine-In vs. Parcel counts).
 - **Mobile Responsive Vertical Stacking & Overflow Protection**: Season summary and card headers feature vertical stacking (`flexDirection: "column"` on labels/values) and two-tier layouts to guarantee zero touching, crowding, or horizontal overflow on mobile viewports.
-- **100% Theme & Dictionary Compliance**: Zero hardcoded strings or hex colors, binding all labels to `UI_TEXT` and theme tokens (`theme.colors`, `theme.cardColors`).
+- **100% Theme & Dictionary Compliance & WCAG 2.1 AA Accessibility**: Zero hardcoded strings or hex colors, binding all labels to `UI_TEXT` and theme tokens, paired with full WCAG 2.1 AA accessibility compliance (`accessible={true}`, `accessibilityRole="summary"`, `accessibilityLabel`).
 
 ### AA. Zero-Flicker Multi-Filter Match Indicator ([`SubscriptionListScreen.tsx`](src/screens/SubscriptionListScreen.tsx))
 - **Real-time Combined Filter Count Aggregation**: Computes `visibleSubscriptions.length` reflecting the exact intersection of multi-selected active filter chips and text search queries.
@@ -241,6 +248,16 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
 ### AB. Filter State Persistence Across Back Navigation ([`NavigationContext.tsx`](src/context/NavigationContext.tsx), [`SubscriptionListScreen.tsx`](src/screens/SubscriptionListScreen.tsx))
 - **Hoisted Navigation Filter State**: `activeFilters` is hoisted to `NavigationContext`, preserving the last selected filter states and search queries when navigating into pass details (`DetailsScreen`) and pressing Back (`goBack()`), while maintaining real-time data synchronization.
 - **Home Page Reset**: Navigating from the Home Page resets view states back to default `[FilterMode.ALL]`.
+
+### AC. Non-Admin Role Restrictions & Role-Based Access Control (RBAC)
+- **Granular View & Edit Control**: Non-admin users (`UserRole.VENDOR`) have restricted visibility and edit capabilities across the application:
+  - **Home Page**: Total Payment Collection in summary card and Report button are hidden.
+  - **View Pass & Quick Checkout Modal**: Pass code, mobile numbers, UPI/payment info, payment types/modes, Subscription Summary card, and Show QR button are hidden.
+  - **Edit Pass**: Pass code, mobile numbers, UPI/payment info, payment types/modes, Mobile Number field, and Payment Information card are hidden.
+  - **Secure Field Preservation on Save**: When non-admin users edit a pass, all hidden admin-only fields (`mobile`, `passcode`, `payments`, `amount`, `paymentMode`, `transactionId`, `isPackageApplied`, `appliedPackages`) are securely preserved as their original/existing values.
+  - **Subscription Directory**: Payment information in card headers and WhatsApp/call action buttons are hidden.
+  - **View Menu**: Meal prices and parcel fees (`foodPriceEnabled`) are hidden.
+  - **Team Notes**: Non-admin users can view, edit, and delete only the notes created by themselves (`note.userName === userName`).
 
 ## 6. Quality Assurance & UI Catalog
 

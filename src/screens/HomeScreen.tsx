@@ -63,6 +63,11 @@ export function HomeScreen() {
     let guests = 0;
     let vegPlates = 0;
     let nonVegPlates = 0;
+    const mealPlates: Record<MealType, number> = {
+      [MealType.BREAKFAST]: 0,
+      [MealType.LUNCH]: 0,
+      [MealType.DINNER]: 0,
+    };
 
     const activeDays = getActiveDays(dayConfig);
 
@@ -84,8 +89,10 @@ export function HomeScreen() {
 
             if (diet === DietType.VEG && isDietaryEnabled(dayId, mType, DietType.VEG, dayConfig)) {
               vegPlates++;
+              mealPlates[mType]++;
             } else if (diet === DietType.NON_VEG && isDietaryEnabled(dayId, mType, DietType.NON_VEG, dayConfig)) {
               nonVegPlates++;
+              mealPlates[mType]++;
             }
           });
         });
@@ -108,17 +115,33 @@ export function HomeScreen() {
 
             if (isDietaryEnabled(dayId, mType, DietType.VEG, dayConfig)) {
               vegPlates += fmCounts.freeMealVeg;
+              mealPlates[mType] += fmCounts.freeMealVeg;
             }
             if (isDietaryEnabled(dayId, mType, DietType.NON_VEG, dayConfig)) {
               nonVegPlates += fmCounts.freeMealNonVeg;
+              mealPlates[mType] += fmCounts.freeMealNonVeg;
             }
           }
         });
       });
     }
 
-    return { adults, kids, guests, vegPlates, nonVegPlates, totalPlates: vegPlates + nonVegPlates };
+    return { adults, kids, guests, vegPlates, nonVegPlates, mealPlates, totalPlates: vegPlates + nonVegPlates };
   }, [subscriptions, dayConfig, foodMenu, freeMealEnabled]);
+
+  const activeMealSegregations = React.useMemo(() => {
+    const meals = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER];
+    return meals
+      .filter(mType => {
+        const isEnabled = dayConfig.some(d => d.enabled && isMealEnabled(d.id, mType, dayConfig));
+        const count = summaryCounts.mealPlates[mType] || 0;
+        return isEnabled && count > 0;
+      })
+      .map(mType => {
+        const count = summaryCounts.mealPlates[mType];
+        return `${count}${UI_TEXT.space}${getMealLabel(mType)}`;
+      });
+  }, [dayConfig, summaryCounts.mealPlates]);
 
   const { isVegEnabledGlobally, isNonVegEnabledGlobally } = React.useMemo(() => {
     return {
@@ -249,13 +272,13 @@ export function HomeScreen() {
                 </View>
               )}
 
-              <View style={{ flexDirection: "row", alignItems: "center", gap: s(6), flexWrap: 'nowrap' }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: s(6), flexWrap: 'wrap' }}>
                 <Text style={[styles.summaryLabel, { opacity: 0.8, fontSize: labelFontSize }]}>{UI_TEXT.totalPlates.toUpperCase()}:</Text>
                 <Text style={[styles.summaryNumber, { fontSize: secondaryFontSize, marginTop: 0, lineHeight: secondaryFontSize + 2 }]}>
                   {summaryCounts.totalPlates}
                 </Text>
                 {isVegEnabledGlobally && isNonVegEnabledGlobally && (
-                  <Text style={{ fontSize: labelFontSize, color: theme.colors.white, opacity: 0.8, fontWeight: '700' }}>
+                  <Text style={{ fontSize: labelFontSize, color: theme.colors.white, opacity: 0.8, fontWeight: '700', flexShrink: 1 }}>
                     {UI_TEXT.openParen}
                     {summaryCounts.vegPlates}{UI_TEXT.space}{UI_TEXT.vegLabel}
                     {UI_TEXT.pipe}
@@ -263,9 +286,16 @@ export function HomeScreen() {
                     {UI_TEXT.closeParen}
                   </Text>
                 )}
+                {activeMealSegregations.length > 0 && (
+                  <Text style={{ fontSize: labelFontSize, color: theme.colors.white, opacity: 0.8, fontWeight: '700', flexShrink: 1 }}>
+                    {UI_TEXT.openParen}
+                    {activeMealSegregations.join(UI_TEXT.pipe)}
+                    {UI_TEXT.closeParen}
+                  </Text>
+                )}
               </View>
 
-              {paymentConfig?.enabled && (
+              {userRole === UserRole.ADMIN && paymentConfig?.enabled && (
                 <View style={{ flexDirection: "row", alignItems: "center", gap: s(8), flexWrap: 'nowrap' }}>
                   <Text style={[styles.summaryLabel, { opacity: 0.8, fontSize: labelFontSize }]}>{UI_TEXT.totalCollection}{UI_TEXT.colon}</Text>
                   <Text style={[styles.summaryNumber, { fontSize: secondaryFontSize, marginTop: 0, lineHeight: secondaryFontSize + 2 }]}>{UI_TEXT.rs}{UI_TEXT.space}{collections.total.toLocaleString()}</Text>
@@ -357,15 +387,17 @@ export function HomeScreen() {
           >
             <ActionLabel icon="stats-chart-outline" label={UI_TEXT.dashboard} color={theme.colors.white} size={iconSize} vertical />
           </Pressable>
-          <Pressable
-            accessible={true}
-            accessibilityRole="button"
-            accessibilityLabel={UI_TEXT.report}
-            onPress={() => navigate(AppScreen.REPORT)}
-            style={[styles.compactSecondary, { backgroundColor: theme.cardColors[5].accent, borderColor: theme.cardColors[5].accent }]}
-          >
-            <ActionLabel icon="document-text-outline" label={UI_TEXT.report} color={theme.colors.white} size={iconSize} vertical />
-          </Pressable>
+          {userRole === UserRole.ADMIN && (
+            <Pressable
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={UI_TEXT.report}
+              onPress={() => navigate(AppScreen.REPORT)}
+              style={[styles.compactSecondary, { backgroundColor: theme.cardColors[5].accent, borderColor: theme.cardColors[5].accent }]}
+            >
+              <ActionLabel icon="document-text-outline" label={UI_TEXT.report} color={theme.colors.white} size={iconSize} vertical />
+            </Pressable>
+          )}
           <Pressable
             accessible={true}
             accessibilityRole="button"

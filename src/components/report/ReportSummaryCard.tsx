@@ -18,6 +18,7 @@ export interface ReportSummaryCardProps {
     totalPortions?: number;
     dineInCount?: number;
     parcelCount?: number;
+    seasonTotalPasses?: number;
   };
 }
 
@@ -42,6 +43,17 @@ export function ReportSummaryCard({ title, iconName, summary }: ReportSummaryCar
       </View>
 
       <View style={{ gap: 8, borderTopWidth: 1, borderTopColor: theme.colors.white + "40", paddingTop: 12 }}>
+        {(summary.seasonTotalPasses ?? 0) > 0 && (
+          <View style={{ gap: 3, marginBottom: 4, borderBottomWidth: 1, borderBottomColor: theme.colors.white + "20", paddingBottom: 8 }}>
+            <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700" }}>
+              {UI_TEXT.totalPassesLabel}
+            </Text>
+            <Text style={{ color: theme.colors.white, fontSize: 14, fontWeight: "900" }}>
+              {summary.seasonTotalPasses} {summary.seasonTotalPasses === 1 ? UI_TEXT.passSingular : UI_TEXT.passPlural}
+            </Text>
+          </View>
+        )}
+
         {(summary.totalPortions ?? 0) > 0 && (
           <View style={{ gap: 3, marginBottom: 4, borderBottomWidth: 1, borderBottomColor: theme.colors.white + "20", paddingBottom: 8 }}>
             <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700" }}>

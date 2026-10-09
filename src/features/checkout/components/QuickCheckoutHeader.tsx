@@ -4,6 +4,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { UI_TEXT } from "../../../strings";
 import { Subscription } from "../../../types";
 
+import { useAuth } from "../../../context/AuthContext";
+import { UserRole } from "../../../domain";
+
 interface QuickCheckoutHeaderProps {
   subscription: Subscription | null;
   currentMealLabel: string;
@@ -19,6 +22,14 @@ export const QuickCheckoutHeader: React.FC<QuickCheckoutHeaderProps> = ({
   theme,
   s,
 }) => {
+  let isAdmin = true;
+  try {
+    const auth = useAuth();
+    isAdmin = auth.userRole === UserRole.ADMIN;
+  } catch (e) {
+    // Fallback if rendered outside AuthProvider
+  }
+
   if (!subscription) return null;
 
   const blockFlatStr = (subscription.block && subscription.flat)
@@ -42,7 +53,7 @@ export const QuickCheckoutHeader: React.FC<QuickCheckoutHeaderProps> = ({
               {UI_TEXT.quickCheckout.toUpperCase()}
             </Text>
           </View>
-          {subscription.passcode ? (
+          {isAdmin && subscription.passcode ? (
             <Text style={{ fontSize: s(11), fontWeight: "700", color: theme.colors.textSecondary }}>
               {UI_TEXT.passCodeLabel}: {subscription.passcode}
             </Text>

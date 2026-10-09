@@ -66,7 +66,7 @@ export function MealWisePaymentReport({
             </View>
 
             {dayMeals.map((mType) => {
-              const detail = mealWisePayments.find(
+              const detail: MealPaymentDetail = mealWisePayments.find(
                 (m) => m.dayId === dayObj.id && m.mealType === mType
               ) || {
                 dayId: dayObj.id,
@@ -80,6 +80,9 @@ export function MealWisePaymentReport({
                 portionCount: 0,
                 dineInCount: 0,
                 parcelCount: 0,
+                adultPortionCount: 0,
+                kidsPortionCount: 0,
+                guestsPortionCount: 0,
               };
 
               return (

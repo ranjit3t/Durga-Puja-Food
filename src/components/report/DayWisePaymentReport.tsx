@@ -44,15 +44,20 @@ export function DayWisePaymentReport({
       {/* 2. Day-Wise Payment Cards (Aggregated per day) */}
       {activeDays.map((dayObj, dayIdx) => {
         const colorScheme = theme.cardColors[dayIdx % theme.cardColors.length];
-        const dayDetail = dayWisePayments.find((d) => d.dayId === dayObj.id) || {
+        const fallbackDetail: DayPaymentDetail = {
           dayId: dayObj.id,
           menuPrice: 0,
           parcelPrice: 0,
           packageDiscount: 0,
           excessDeficient: 0,
           netPayment: 0,
+          passCount: 0,
+          adultPortionCount: 0,
+          kidsPortionCount: 0,
+          guestsPortionCount: 0,
           meals: {} as any,
         };
+        const dayDetail = dayWisePayments.find((d) => d.dayId === dayObj.id) || fallbackDetail;
 
         const enabledMeals = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].filter((mKey) =>
           isMealEnabled(dayObj.id, mKey, dayConfig)
@@ -105,6 +110,17 @@ export function DayWisePaymentReport({
               </Text>
 
               <View style={{ gap: 4 }}>
+                {(dayDetail.passCount ?? 0) > 0 && (
+                  <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                    <Text style={{ fontSize: 12, color: theme.colors.textSecondary, fontWeight: "600" }}>
+                      • {UI_TEXT.passesOpted}
+                    </Text>
+                    <Text style={{ fontSize: 12, color: theme.colors.textPrimary, fontWeight: "700" }}>
+                      {dayDetail.passCount} {dayDetail.passCount === 1 ? UI_TEXT.passSingular : UI_TEXT.passPlural}
+                    </Text>
+                  </View>
+                )}
+
                 {dayPortions > 0 && (
                   <View style={{ gap: 2, marginBottom: 4, borderBottomWidth: 1, borderBottomColor: theme.colors.border, paddingBottom: 6 }}>
                     <Text style={{ fontSize: 12, color: theme.colors.textSecondary, fontWeight: "600" }}>
@@ -115,6 +131,13 @@ export function DayWisePaymentReport({
                       {dayParcelCount > 0
                         ? ` (${dayDineInCount} ${UI_TEXT.dineIn}, ${dayParcelCount} ${UI_TEXT.parcel})`
                         : ` (${dayDineInCount || dayPortions} ${UI_TEXT.dineIn})`}
+                      {(dayDetail.adultPortionCount || dayDetail.kidsPortionCount || dayDetail.guestsPortionCount) ? (
+                        ` [${[
+                          dayDetail.adultPortionCount ? `${dayDetail.adultPortionCount} ${UI_TEXT.adults}` : null,
+                          dayDetail.kidsPortionCount ? `${dayDetail.kidsPortionCount} ${UI_TEXT.kids}` : null,
+                          dayDetail.guestsPortionCount ? `${dayDetail.guestsPortionCount} ${UI_TEXT.guests}` : null,
+                        ].filter(Boolean).join(", ")}]`
+                      ) : ""}
                     </Text>
                   </View>
                 )}
@@ -126,10 +149,17 @@ export function DayWisePaymentReport({
                   if (mPortions === 0) return null;
                   const mParcel = mDetail?.parcelCount ?? 0;
                   const mDineIn = mDetail?.dineInCount ?? mPortions;
+                  const mCategoryStr = (mDetail?.adultPortionCount || mDetail?.kidsPortionCount || mDetail?.guestsPortionCount)
+                    ? ` [${[
+                        mDetail?.adultPortionCount ? `${mDetail.adultPortionCount} ${UI_TEXT.adults}` : null,
+                        mDetail?.kidsPortionCount ? `${mDetail.kidsPortionCount} ${UI_TEXT.kids}` : null,
+                        mDetail?.guestsPortionCount ? `${mDetail.guestsPortionCount} ${UI_TEXT.guests}` : null,
+                      ].filter(Boolean).join(", ")}]`
+                    : "";
 
                   return (
-                    <View key={mType} style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 2 }}>
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                    <View key={mType} style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 2, flexWrap: "wrap", gap: 4 }}>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flex: 1, minWidth: 100 }}>
                         <Ionicons
                           name={
                             mType === MealType.BREAKFAST
@@ -141,13 +171,14 @@ export function DayWisePaymentReport({
                           size={13}
                           color={theme.colors.primary}
                         />
-                        <Text style={{ fontSize: 12, color: theme.colors.textSecondary, fontWeight: "600" }}>
+                        <Text style={{ fontSize: 12, color: theme.colors.textSecondary, fontWeight: "600" }} numberOfLines={1}>
                           • {getMealLabel(mType)}
                         </Text>
                       </View>
-                      <Text style={{ fontSize: 12, color: theme.colors.textPrimary, fontWeight: "700" }}>
+                      <Text style={{ fontSize: 12, color: theme.colors.textPrimary, fontWeight: "700", flexShrink: 0 }}>
                         {mPortions} {UI_TEXT.plates}
                         {mParcel > 0 ? ` (${mDineIn} ${UI_TEXT.dineIn}, ${mParcel} ${UI_TEXT.parcel})` : ` (${mDineIn} ${UI_TEXT.dineIn})`}
+                        {mCategoryStr}
                       </Text>
                     </View>
                   );

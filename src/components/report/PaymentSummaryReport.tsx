@@ -45,7 +45,9 @@ interface PaymentData {
     packageDiscount: number;
     excessDeficient: number;
     netPayment: number;
+    seasonTotalPasses?: number;
   };
+  seasonTotalPasses?: number;
 }
 
 enum PaymentTab {
@@ -194,7 +196,12 @@ export function PaymentSummaryReport({
                 </Text>
               </View>
             ))}
-            <View style={{ backgroundColor: theme.colors.primary, padding: 16 }}>
+            <View
+              style={{ backgroundColor: theme.colors.primary, padding: 16 }}
+              accessible={true}
+              accessibilityRole="summary"
+              accessibilityLabel={`${UI_TEXT.totalCollection}: ${(data.summary || []).reduce((acc, curr) => acc + curr.total, 0).toFixed(0)} rupees, Total Passes: ${(data.seasonTotalPayment?.seasonTotalPasses ?? data.seasonTotalPasses ?? data.details?.length ?? 0)}`}
+            >
               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
                 <Text style={{ color: theme.colors.white, fontWeight: "900", fontSize: 18, flex: 1, minWidth: 140 }}>
                   {UI_TEXT.totalCollection}
@@ -216,6 +223,20 @@ export function PaymentSummaryReport({
                   gap: 8,
                 }}
               >
+                {((data.seasonTotalPayment?.seasonTotalPasses ?? data.seasonTotalPasses ?? data.details?.length) || 0) > 0 && (
+                  <View style={{ gap: 3, marginBottom: 4, borderBottomWidth: 1, borderBottomColor: theme.colors.white + "20", paddingBottom: 8 }}>
+                    <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700" }}>
+                      {UI_TEXT.totalPassesLabel}
+                    </Text>
+                    <Text style={{ color: theme.colors.white, fontSize: 14, fontWeight: "900" }}>
+                      {(() => {
+                        const pCount = data.seasonTotalPayment?.seasonTotalPasses ?? data.seasonTotalPasses ?? data.details?.length ?? 0;
+                        return `${pCount} ${pCount === 1 ? UI_TEXT.passSingular : UI_TEXT.passPlural}`;
+                      })()}
+                    </Text>
+                  </View>
+                )}
+
                 <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 4 }}>
                   <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700", flex: 1, minWidth: 120 }}>
                     {UI_TEXT.foodCollection}
