@@ -259,6 +259,11 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
   - **View Menu**: Meal prices and parcel fees (`foodPriceEnabled`) are hidden.
   - **Team Notes**: Non-admin users can view, edit, and delete only the notes created by themselves (`note.userName === userName`).
 
+### AD. Admin-Only Mobile Search Fallback & Block-Level Filtering ([`SubscriptionListScreen.tsx`](src/screens/SubscriptionListScreen.tsx), [`NavigationContext.tsx`](src/context/NavigationContext.tsx))
+- **Block-Level Filtering**: Tapping the block badge on any pass card instantly filters the directory to show passes belonging strictly to that block, accompanied by a removable block filter chip with match count.
+- **Admin-Only Mobile Search Fallback**: When block/flat searches yield no matches, entering 4 or more consecutive numeric digits automatically triggers a fallback search matching mobile numbers by numeric substring (without requiring country code or `+` signs). Restricted strictly to administrators (`isAdmin`) as a privacy guard for sensitive phone number data.
+- **DOM Hydration Compliance**: Uses non-nested sibling layouts (`e.stopPropagation()`) entirely eliminating `<button>` inside `<button>` HTML nesting errors.
+
 ## 6. Quality Assurance & UI Catalog
 
 ### Jest Test Boundary

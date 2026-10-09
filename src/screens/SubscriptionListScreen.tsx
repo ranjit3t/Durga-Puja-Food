@@ -681,11 +681,26 @@ export function SubscriptionListScreen() {
 
     if (subscriptionSearch) {
       const searchLower = subscriptionSearch.toLowerCase();
-      filtered = filtered.filter(
+      const cleanDigits = subscriptionSearch.replace(/\D/g, "");
+      const isNumeric4Plus = isAdmin && cleanDigits.length >= 4;
+
+      const blockFlatFiltered = filtered.filter(
         (s) =>
           s.flat.toLowerCase().includes(searchLower) ||
           s.block.toLowerCase().includes(searchLower)
       );
+
+      if (blockFlatFiltered.length > 0) {
+        filtered = blockFlatFiltered;
+      } else if (isNumeric4Plus) {
+        filtered = filtered.filter((s) => {
+          if (!s.mobile) return false;
+          const mobileClean = String(s.mobile).replace(/\D/g, "");
+          return mobileClean.includes(cleanDigits);
+        });
+      } else {
+        filtered = blockFlatFiltered;
+      }
     }
 
     // Sort based on sortBy and isAscending
@@ -1547,13 +1562,13 @@ export function SubscriptionListScreen() {
               <TextInput
                 value={subscriptionSearch}
                 onChangeText={setSubscriptionSearch}
-                placeholder={UI_TEXT.searchPlaceholder}
+                placeholder={isAdmin ? UI_TEXT.searchPlaceholderAdmin : UI_TEXT.searchPlaceholderVendor}
                 placeholderTextColor={theme.colors.textMuted}
                 style={[styles.searchInput, { fontSize: s(13) }]}
                 autoCapitalize="characters"
                 clearButtonMode="while-editing"
                 accessible={true}
-                accessibilityLabel={UI_TEXT.searchPlaceholder}
+                accessibilityLabel={isAdmin ? UI_TEXT.searchPlaceholderAdmin : UI_TEXT.searchPlaceholderVendor}
               />
             </View>
             <View style={{ flexDirection: 'row', gap: s(6), alignItems: 'center', flexShrink: 0 }}>

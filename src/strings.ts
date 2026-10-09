@@ -347,6 +347,8 @@ export const UI_TEXT = {
   fullGrid: "Grid",
   chartView: "Chart",
   addFlat: "Register Pass",
+  searchPlaceholderAdmin: "Search by Pass No., Flat, or Mobile...",
+  searchPlaceholderVendor: "Search by Block or Flat No...",
   searchPlaceholder: "Search by Pass No., Flat, or Mobile...",
   noRecords: "No pass records registered yet.",
   noMatches: "No matching pass records found.",
