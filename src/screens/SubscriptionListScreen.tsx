@@ -214,7 +214,17 @@ const SubscriptionCard = React.memo(({
               )}
             </View>
           </View>
-          <Text style={[styles.flatTitle, { color: theme.colors.textPrimary }]}>{UI_TEXT.flatUpper} {item.flat}</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: s(8), marginTop: s(2) }}>
+            <Text style={[styles.flatTitle, { color: theme.colors.textPrimary }]}>{UI_TEXT.flatUpper} {item.flat}</Text>
+            {isAdmin && item.mobile && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(4) }}>
+                <Ionicons name="call-outline" size={s(13)} color={theme.colors.textSecondary} />
+                <Text style={{ fontSize: s(12), fontWeight: '700', color: theme.colors.textSecondary }}>
+                  {item.mobile}
+                </Text>
+              </View>
+            )}
+          </View>
           <Text style={{ color: theme.colors.textSecondary, marginTop: s(4), fontWeight: "600", fontSize: s(14) }}>
             {(() => {
               if (kidsEnabled || guestsEnabled) {
@@ -264,8 +274,8 @@ const SubscriptionCard = React.memo(({
       })()}
 
       <View style={{ height: 1, backgroundColor: colorScheme.border, marginVertical: s(12), opacity: 0.5 }} />
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <View style={{ flexDirection: 'row', gap: s(8), alignItems: 'center' }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: s(8) }}>
+        <View style={{ flexDirection: 'row', gap: s(8), alignItems: 'center', flexWrap: 'wrap' }}>
           {isAdmin && item.mobile && (
             <>
               <Pressable
