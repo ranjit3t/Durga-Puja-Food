@@ -301,6 +301,7 @@ export const UI_TEXT = {
   members: "Members",
   member: "Member",
   platesLabel: "Plates",
+  viewPass: "View Pass",
   adultNonVeg: "Adult Non-Veg",
   adultVegTaken: "Adult Veg Served",
   adultNonVegTaken: "Adult Non-Veg Served",
