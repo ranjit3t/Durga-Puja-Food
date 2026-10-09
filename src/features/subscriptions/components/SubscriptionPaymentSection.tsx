@@ -71,7 +71,7 @@ export const SubscriptionPaymentSection: React.FC<SubscriptionPaymentSectionProp
           </Text>
           {isPackageApplied && (
             <Pressable
-              onPress={!lockIdentity && onOpenApplyPackageModal ? onOpenApplyPackageModal : undefined}
+              onPress={onOpenApplyPackageModal}
               accessible={true}
               accessibilityRole="button"
               accessibilityLabel={UI_TEXT.packageAppliedMarker}
@@ -84,7 +84,7 @@ export const SubscriptionPaymentSection: React.FC<SubscriptionPaymentSectionProp
                   borderWidth: 1,
                   borderColor: theme.colors.success,
                 },
-                pressed && !lockIdentity && { opacity: 0.7 },
+                pressed && { opacity: 0.7 },
               ]}
             >
               <Text style={{ fontSize: 9, fontWeight: '900', color: theme.colors.success }}>
@@ -95,7 +95,7 @@ export const SubscriptionPaymentSection: React.FC<SubscriptionPaymentSectionProp
         </View>
 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-          {!lockIdentity && !isPackageApplied && hasApplicablePackages && onOpenApplyPackageModal && (
+          {onOpenApplyPackageModal && (
             <Pressable
               onPress={onOpenApplyPackageModal}
               accessible={true}
@@ -116,7 +116,7 @@ export const SubscriptionPaymentSection: React.FC<SubscriptionPaymentSectionProp
             >
               <Ionicons name="pricetag-outline" size={13} color={theme.colors.white} />
               <Text style={{ color: theme.colors.white, fontWeight: '800', fontSize: 11 }}>
-                Apply
+                {isPackageApplied ? UI_TEXT.edit || "Update" : UI_TEXT.apply || "Apply"}
               </Text>
             </Pressable>
           )}
@@ -128,7 +128,7 @@ export const SubscriptionPaymentSection: React.FC<SubscriptionPaymentSectionProp
       </View>
 
       {/* Edit Pass Applied Package Details Section */}
-      {lockIdentity && isPackageApplied && appliedPackages && Object.keys(appliedPackages).length > 0 && (
+      {isPackageApplied && appliedPackages && Object.keys(appliedPackages).length > 0 && (
         <View
           style={{
             backgroundColor: theme.colors.surfaceDark,
@@ -168,11 +168,11 @@ export const SubscriptionPaymentSection: React.FC<SubscriptionPaymentSectionProp
                 </Text>
 
                 <Pressable
-                  onPress={() => onViewAppliedPackage && onViewAppliedPackage(pkgInfo.packageId)}
+                  onPress={onOpenApplyPackageModal}
                   accessible={true}
                   accessibilityRole="button"
-                  accessibilityLabel={`${UI_TEXT.viewFoodPackage} ${pkgInfo.packageName}`}
-                  accessibilityHint="Click to view package details"
+                  accessibilityLabel={`${UI_TEXT.applyPackage} ${pkgInfo.packageName}`}
+                  accessibilityHint="Click to update or change package"
                   style={({ pressed }) => [
                     {
                       flexDirection: 'row',
@@ -186,7 +186,7 @@ export const SubscriptionPaymentSection: React.FC<SubscriptionPaymentSectionProp
                     pressed && { opacity: 0.7 },
                   ]}
                 >
-                  <Ionicons name="information-circle-outline" size={14} color={theme.colors.primary} />
+                  <Ionicons name="create-outline" size={14} color={theme.colors.primary} />
                   <Text style={{ fontSize: 12, fontWeight: '900', color: theme.colors.primary, textDecorationLine: 'underline' }}>
                     {pkgInfo.packageName}
                   </Text>

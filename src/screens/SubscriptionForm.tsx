@@ -1093,7 +1093,7 @@ export function SubscriptionForm() {
       !!guestsEnabled
     );
 
-    const shouldCheckDiscrepancy = isAdmin && paymentConfig.enabled && !isPackageApplied && (!lockIdentity || hasMealOrParcelChoicesChanged);
+    const shouldCheckDiscrepancy = isAdmin && paymentConfig.enabled;
     const isDiscrepancy = shouldCheckDiscrepancy && Math.abs(currentTotalAmount - calculatedExpectedAmount) > 0.01;
 
     const proceedToSave = () => {

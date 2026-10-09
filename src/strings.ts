@@ -303,6 +303,8 @@ export const UI_TEXT = {
   platesLabel: "Plates",
   viewPass: "View Pass",
   personCategory: "Person Category",
+  edit: "Edit",
+  apply: "Apply",
   adultNonVeg: "Adult Non-Veg",
   adultVegTaken: "Adult Veg Served",
   adultNonVegTaken: "Adult Non-Veg Served",

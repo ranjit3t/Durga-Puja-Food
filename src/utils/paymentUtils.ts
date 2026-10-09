@@ -614,22 +614,40 @@ export function getAmountDiscrepancyData(
   foodMenu: Record<string, any>,
   dayConfig: ConfigDay[],
   kidsEnabled: boolean,
-  guestsEnabled: boolean = false
+  guestsEnabled: boolean = false,
+  foodPackages: FoodPackage[] | Record<string, FoodPackage> = []
 ): DiscrepancyItem[] {
+  const pkgList = Array.isArray(foodPackages)
+    ? foodPackages
+    : Object.values(foodPackages || {});
+
   return subscriptions
-    .filter((sub) => !sub.isPackageApplied)
     .map((sub) => {
       const paidAmount = calculatePaidAmount(sub);
-      const calculatedAmount = calculateSubscriptionAmount(
-        sub.mealSlots,
-        sub.peopleCount,
-        sub.kidsCount || 0,
-        foodMenu,
-        dayConfig,
-        kidsEnabled,
-        sub.guestsCount || 0,
-        guestsEnabled
-      );
+      const isPkgApplied = sub.isPackageApplied || (sub.appliedPackages && Object.keys(sub.appliedPackages).length > 0);
+      const calculatedAmount = isPkgApplied
+        ? calculatePassTotalWithPackages(
+            sub.mealSlots,
+            sub.peopleCount || 0,
+            sub.kidsCount || 0,
+            sub.appliedPackages,
+            pkgList,
+            foodMenu,
+            dayConfig,
+            kidsEnabled,
+            sub.guestsCount || 0,
+            guestsEnabled
+          )
+        : calculateSubscriptionAmount(
+            sub.mealSlots,
+            sub.peopleCount,
+            sub.kidsCount || 0,
+            foodMenu,
+            dayConfig,
+            kidsEnabled,
+            sub.guestsCount || 0,
+            guestsEnabled
+          );
       const difference = Math.round((paidAmount - calculatedAmount) * 100) / 100;
 
       return {
