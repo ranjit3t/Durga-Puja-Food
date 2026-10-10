@@ -95,7 +95,7 @@ export const SubscriptionPaymentSection: React.FC<SubscriptionPaymentSectionProp
         </View>
 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-          {onOpenApplyPackageModal && (
+          {!isPackageApplied && hasApplicablePackages && onOpenApplyPackageModal && (
             <Pressable
               onPress={onOpenApplyPackageModal}
               accessible={true}
@@ -116,7 +116,7 @@ export const SubscriptionPaymentSection: React.FC<SubscriptionPaymentSectionProp
             >
               <Ionicons name="pricetag-outline" size={13} color={theme.colors.white} />
               <Text style={{ color: theme.colors.white, fontWeight: '800', fontSize: 11 }}>
-                {isPackageApplied ? UI_TEXT.edit || "Update" : UI_TEXT.apply || "Apply"}
+                {UI_TEXT.applyPackage}
               </Text>
             </Pressable>
           )}

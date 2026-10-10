@@ -10,6 +10,7 @@ import { useUI } from "../context/UIContext";
 import { useAppNavigation } from "../context/NavigationContext";
 import { AppScreen, UserRole, MealType, AppThemeMode, DietaryOption, DietType } from "../types";
 import { getActiveDays, isSeasonDone, isMealCurrent, getDayLabel, isMealEnabled, isDietaryEnabled, getMealLabel, getDietTypeForChoice, getMealVarieties, getMealFreeMealCounts, isVersionBehind } from "../constants";
+import { calculatePaidAmount, calculateSubscriptionAmount, calculatePassTotalWithPackages } from "../utils/paymentUtils";
 import { ActionLabel } from "../components/common/ActionLabel";
 import { LogoutButton } from "../components/common/LogoutButton";
 import { ThemeToggleButton } from "../components/common/ThemeToggleButton";
@@ -21,7 +22,7 @@ export function HomeScreen() {
   const { theme, themeType } = useAppTheme();
   const { userRole, handleLogout, versionAlertShown, markVersionAlertShown } = useAuth();
   const {
-    subscriptions, dayConfig, seasonName, seasonEnabled, freeMealEnabled, totalPeople, firebaseError, paymentConfig, collections, kidsEnabled, guestsEnabled, foodMenu, remoteAppVersion, androidAppLocation, iosAppLocation, loading
+    subscriptions, dayConfig, seasonName, seasonEnabled, freeMealEnabled, totalPeople, firebaseError, paymentConfig, collections, kidsEnabled, guestsEnabled, foodMenu, foodPackages, remoteAppVersion, androidAppLocation, iosAppLocation, loading
   } = useCoreDatabase();
   const { navigate, startNew, setIsQuickCheckout, setIsQuickFreeMealMode } = useAppNavigation();
   const { showAlert, showGlobalError } = useUI();
@@ -190,6 +191,16 @@ export function HomeScreen() {
     return { seasonTotal, currentMealTotal };
   }, [foodMenu, dayConfig]);
 
+  const { paidPassesCount, unpaidPassesCount } = React.useMemo(() => {
+    let paid = 0;
+    subscriptions.forEach((sub) => {
+      if (calculatePaidAmount(sub) > 0) {
+        paid++;
+      }
+    });
+    return { paidPassesCount: paid, unpaidPassesCount: subscriptions.length - paid };
+  }, [subscriptions]);
+
   const currentMealInfo = React.useMemo(() => {
     const active = getActiveDays(dayConfig);
     for (const dId of active) {
@@ -242,9 +253,16 @@ export function HomeScreen() {
             {!!seasonName && <Text style={[styles.summaryLabel, { marginBottom: isNarrow ? 6 : s(8), color: theme.colors.secondary, fontSize: isNarrow ? 9 : s(11) }]}>{seasonName}</Text>}
 
             <View style={{ gap: rowGap }}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: s(8), flexWrap: 'nowrap' }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: s(6), flexWrap: 'wrap' }}>
                 <Text style={[styles.summaryLabel, { fontSize: labelFontSize }]}>{UI_TEXT.activePasses}:</Text>
                 <Text style={[styles.summaryNumber, { fontSize: mainFontSize, marginTop: 0, lineHeight: mainFontSize + 2 }]}>{subscriptions.length}</Text>
+                <Text style={{ fontSize: labelFontSize, color: theme.colors.white, opacity: 0.8, fontWeight: '700', flexShrink: 1 }}>
+                  {UI_TEXT.openParen}
+                  {paidPassesCount}{UI_TEXT.space}{UI_TEXT.paidPasses}
+                  {UI_TEXT.pipe}
+                  {unpaidPassesCount}{UI_TEXT.space}{UI_TEXT.unpaidPasses}
+                  {UI_TEXT.closeParen}
+                </Text>
               </View>
 
               <View style={{ flexDirection: "row", alignItems: "center", gap: s(6), flexWrap: 'wrap', flex: 1 }}>

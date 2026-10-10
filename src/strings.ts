@@ -305,6 +305,8 @@ export const UI_TEXT = {
   personCategory: "Person Category",
   edit: "Edit",
   apply: "Apply",
+  paidPasses: "Paid",
+  unpaidPasses: "Non-Paid",
   adultNonVeg: "Adult Non-Veg",
   adultVegTaken: "Adult Veg Served",
   adultNonVegTaken: "Adult Non-Veg Served",
