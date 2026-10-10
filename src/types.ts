@@ -60,6 +60,33 @@ export enum FilterMode {
   PACKAGE = "package",
 }
 
+export enum SectionType {
+  ADULTS = "adults",
+  KIDS = "kids",
+  GUESTS = "guests",
+}
+
+export interface CategoryInfo {
+  key: string;
+  varietyId?: string;
+  varietyName?: string;
+  varietyColor?: string;
+  section: SectionType;
+  subSection: DietType;
+  label: string;
+  plannedCount: number;
+  servedCount: number;
+  remMealCount: number;
+  parcelPlannedCount: number;
+  parcelServedCount: number;
+  remParcelCount: number;
+  dineInPlannedCount: number;
+  dineInServedCount: number;
+  remDineInCount: number;
+}
+
+export type CategoryInputs = Record<string, { parcel: number; dineIn: number }>;
+
 export type Day = string;
 export type Screen = AppScreen;
 

@@ -7,7 +7,7 @@ import { useDatabase } from "../../context/DatabaseContext";
 import { useUI } from "../../context/UIContext";
 import { useAppNavigation } from "../../context/NavigationContext";
 import { useChat } from "../../context/ChatContext";
-import { Subscription, MealType, DietaryOption, DietType, normalizeChoice, toBool, ActivityModule, ActivityAction, AppThemeMode, AppScreen, TakenState, CheckoutSource, MealSlot } from "../../types";
+import { Subscription, MealType, DietaryOption, DietType, normalizeChoice, toBool, ActivityModule, ActivityAction, AppThemeMode, AppScreen, TakenState, CheckoutSource, MealSlot, SectionType, CategoryInfo, CategoryInputs } from "../../types";
 import { isParcelEnabled, isKidsParcelEnabled, isDineInFallbackParcelEnabled, isMealCurrent, isMealDone, getMealLabel, formatTakenTime, isVegOnlyDay, isDietaryEnabled, isMealEnabled, getValidSlotChoice, isParcelValidForSlot, getMealVarieties, getVarietyForChoice, getDietTypeForChoice, isSpecialMeal, isGuestsParcelEnabled } from "../../constants";
 import { QuickCheckoutHeader } from "../../features/checkout/components/QuickCheckoutHeader";
 import { QuickCheckoutItemCard } from "../../features/checkout/components/QuickCheckoutItemCard";
@@ -83,32 +83,7 @@ function playSynthesizedChime() {
   }
 }
 
-export enum SectionType {
-  ADULTS = "adults",
-  KIDS = "kids",
-  GUESTS = "guests",
-}
 
-export interface CategoryInfo {
-  key: string;
-  varietyId?: string;
-  varietyName?: string;
-  varietyColor?: string;
-  section: SectionType;
-  subSection: DietType;
-  label: string;
-  plannedCount: number;
-  servedCount: number;
-  remMealCount: number;
-  parcelPlannedCount: number;
-  parcelServedCount: number;
-  remParcelCount: number;
-  dineInPlannedCount: number;
-  dineInServedCount: number;
-  remDineInCount: number;
-}
-
-export type CategoryInputs = Record<string, { parcel: number; dineIn: number }>;
 
 interface QuickCheckoutModalProps {
   visible: boolean;
