@@ -1180,6 +1180,9 @@ export function calculateDetailedPaymentReportData(
   const dineInCount = mealWisePayments.reduce((acc, m) => acc + (m.dineInCount ?? 0), 0);
   const parcelCount = mealWisePayments.reduce((acc, m) => acc + (m.parcelCount ?? 0), 0);
 
+  const paidPassesCount = subscriptions.filter((sub) => calculatePaidAmount(sub) > 0).length;
+  const unpaidPassesCount = seasonTotalPasses - paidPassesCount;
+
   const seasonTotalPayment = {
     menuPrice: Math.round(dayWisePayments.reduce((acc, d) => acc + d.menuPrice, 0) * 100) / 100,
     parcelPrice: Math.round(dayWisePayments.reduce((acc, d) => acc + d.parcelPrice, 0) * 100) / 100,
@@ -1190,6 +1193,8 @@ export function calculateDetailedPaymentReportData(
     dineInCount,
     parcelCount,
     seasonTotalPasses,
+    paidPassesCount,
+    unpaidPassesCount,
   };
 
   return {

@@ -19,6 +19,8 @@ export interface ReportSummaryCardProps {
     dineInCount?: number;
     parcelCount?: number;
     seasonTotalPasses?: number;
+    paidPassesCount?: number;
+    unpaidPassesCount?: number;
   };
 }
 
@@ -48,9 +50,20 @@ export function ReportSummaryCard({ title, iconName, summary }: ReportSummaryCar
             <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700" }}>
               {UI_TEXT.totalPassesLabel}
             </Text>
-            <Text style={{ color: theme.colors.white, fontSize: 14, fontWeight: "900" }}>
-              {summary.seasonTotalPasses} {summary.seasonTotalPasses === 1 ? UI_TEXT.passSingular : UI_TEXT.passPlural}
-            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+              <Text style={{ color: theme.colors.white, fontSize: 14, fontWeight: "900" }}>
+                {summary.seasonTotalPasses} {summary.seasonTotalPasses === 1 ? UI_TEXT.passSingular : UI_TEXT.passPlural}
+              </Text>
+              {summary.paidPassesCount !== undefined && summary.unpaidPassesCount !== undefined && (
+                <Text style={{ color: theme.colors.white + "DD", fontSize: 13, fontWeight: "700" }}>
+                  {UI_TEXT.openParen}
+                  {summary.paidPassesCount}{UI_TEXT.space}{UI_TEXT.paidPasses}
+                  {UI_TEXT.pipe}
+                  {summary.unpaidPassesCount}{UI_TEXT.space}{UI_TEXT.unpaidPasses}
+                  {UI_TEXT.closeParen}
+                </Text>
+              )}
+            </View>
           </View>
         )}
 

@@ -46,6 +46,8 @@ interface PaymentData {
     excessDeficient: number;
     netPayment: number;
     seasonTotalPasses?: number;
+    paidPassesCount?: number;
+    unpaidPassesCount?: number;
   };
   seasonTotalPasses?: number;
 }
@@ -228,12 +230,28 @@ export function PaymentSummaryReport({
                     <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700" }}>
                       {UI_TEXT.totalPassesLabel}
                     </Text>
-                    <Text style={{ color: theme.colors.white, fontSize: 14, fontWeight: "900" }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                      <Text style={{ color: theme.colors.white, fontSize: 14, fontWeight: "900" }}>
+                        {(() => {
+                          const pCount = data.seasonTotalPayment?.seasonTotalPasses ?? data.seasonTotalPasses ?? data.details?.length ?? 0;
+                          return `${pCount} ${pCount === 1 ? UI_TEXT.passSingular : UI_TEXT.passPlural}`;
+                        })()}
+                      </Text>
                       {(() => {
-                        const pCount = data.seasonTotalPayment?.seasonTotalPasses ?? data.seasonTotalPasses ?? data.details?.length ?? 0;
-                        return `${pCount} ${pCount === 1 ? UI_TEXT.passSingular : UI_TEXT.passPlural}`;
+                        const totalCount = data.seasonTotalPayment?.seasonTotalPasses ?? data.seasonTotalPasses ?? data.details?.length ?? 0;
+                        const paidCount = data.seasonTotalPayment?.paidPassesCount ?? (data.details || []).filter((flat) => flat.total > 0).length;
+                        const unpaidCount = totalCount - paidCount;
+                        return (
+                          <Text style={{ color: theme.colors.white + "DD", fontSize: 13, fontWeight: "700" }}>
+                            {UI_TEXT.openParen}
+                            {paidCount}{UI_TEXT.space}{UI_TEXT.paidPasses}
+                            {UI_TEXT.pipe}
+                            {unpaidCount}{UI_TEXT.space}{UI_TEXT.unpaidPasses}
+                            {UI_TEXT.closeParen}
+                          </Text>
+                        );
                       })()}
-                    </Text>
+                    </View>
                   </View>
                 )}
 
