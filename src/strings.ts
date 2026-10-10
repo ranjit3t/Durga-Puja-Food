@@ -307,6 +307,7 @@ export const UI_TEXT = {
   apply: "Apply",
   paidPasses: "Paid",
   unpaidPasses: "Non-Paid",
+  specialMealDemand: "SPECIAL MEAL DEMAND",
   adultNonVeg: "Adult Non-Veg",
   adultVegTaken: "Adult Veg Served",
   adultNonVegTaken: "Adult Non-Veg Served",

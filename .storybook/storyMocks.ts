@@ -19,14 +19,42 @@ const emptyAsync = async () => undefined;
 
 const dayConfig = DEFAULT_APP_CONFIG.days.map((day, index) => ({
   ...day,
-  enabled: index === 0,
-  lunch: { ...day.lunch, enabled: index === 0, current: index === 0, parcel: true },
+  enabled: index === 0 || index === 1,
+  lunch: { ...day.lunch, enabled: true, current: index === 0, parcel: true, special: index === 1 },
 }));
 
 const foodMenu = Object.fromEntries(dayConfig.map((day) => [day.id, {
-  breakfast: { veg: [], nonVeg: [] },
-  lunch: { veg: ["Luchi", "Cholar Dal"], nonVeg: ["Fish Curry"], vegPrice: "80", nonVegPrice: "120" },
-  dinner: { veg: [], nonVeg: [] },
+  breakfast: {
+    veg: ["Puri", "Sabji"],
+    nonVeg: [],
+    freeMealVeg: 10,
+    freeMealVegTaken: 6,
+    freeMealVegPrice: "50",
+  },
+  lunch: {
+    veg: ["Luchi", "Cholar Dal"],
+    nonVeg: ["Fish Curry"],
+    vegPrice: "80",
+    nonVegPrice: "120",
+    freeMealVeg: 15,
+    freeMealNonVeg: 10,
+    freeMealVegTaken: 12,
+    freeMealNonVegTaken: 8,
+    freeMealVegPrice: "80",
+    freeMealNonVegPrice: "120",
+  },
+  dinner: {
+    veg: ["Fried Rice"],
+    nonVeg: ["Chicken Curry"],
+    vegPrice: "90",
+    nonVegPrice: "140",
+    freeMealVeg: 8,
+    freeMealNonVeg: 12,
+    freeMealVegTaken: 5,
+    freeMealNonVegTaken: 9,
+    freeMealVegPrice: "90",
+    freeMealNonVegPrice: "140",
+  },
 }]));
 
 const sampleSubscription = {
