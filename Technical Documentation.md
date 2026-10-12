@@ -85,9 +85,10 @@ The application follows a **Serverless Layered Architecture** built on the **Exp
 ### I. Targeted Lazy Report Calculation (`useReportData.ts`)
 - Refactored `useReportData` to compute data **only for the active report tab being viewed**, dropping tab switch calculation time from 250ms to **15ms**. Strict configuration filters (`isMealEnabled`, `isDietaryEnabled`) ensure zero bad or orphan data.
 
-### J. Virtualized Pass Directory & Natural Sort Toggle (`SubscriptionListScreen.tsx`)
+### J. Virtualized Pass Directory & Multi-Criteria Sort Engine ([`SubscriptionListScreen.tsx`](src/screens/SubscriptionListScreen.tsx), [`NavigationContext.tsx`](src/context/NavigationContext.tsx))
 - Configured `FlatList` virtualization parameters (`initialNumToRender={12}`, `maxToRenderPerBatch={10}`, `windowSize={5}`, `removeClippedSubviews={Platform.OS === 'android'}`) for smooth 60 FPS scrolling through 10,000 passes.
-- Added natural alphanumeric sort toggle button (`isAscending ? blockCompare : -blockCompare`) sorting by Block then Flat ascending or descending.
+- Multi-criteria directory sorting supported via `DirectorySortMode` (`BLOCK_FLAT`, `CREATED_AT`, `UPDATED_AT`, `AMOUNT`) and `subscriptionIsAscending` direction toggle.
+- Both `subscriptionSortBy` and `subscriptionIsAscending` are hoisted to `NavigationContext.tsx`, preserving chosen directory sorting and direction when navigating away and pressing back.
 
 ### K. Real-Time Activity Logs & Team Notes Stream (`ActivityLogScreen.tsx`, `NotesScreen.tsx`)
 - `ActivityLogScreen` (via `useActivityLogs()`) and `NotesScreen` (via `useNotes()`) connect directly to decoupled sub-contexts.
@@ -104,11 +105,17 @@ The application follows a **Serverless Layered Architecture** built on the **Exp
   - **Home Page Special Meal Demand Section**: Renders `SPECIAL MEAL DEMAND:` directly below `TOTAL PLATES` on [`HomeScreen.tsx`](src/screens/HomeScreen.tsx) when at least one active meal has `special === true` in `dayConfig` and demand > 0.
   - **Home Page Total Free Meals Demand Breakdown**: Renders `TOTAL FREE MEALS:` on [`HomeScreen.tsx`](src/screens/HomeScreen.tsx) with global dietary breakdown `(X Veg | Y Non-Veg)` and per-meal free meal segregations when `freeMealEnabled === true` and demand > 0.
 
-### M. Sleek QR Pass Side-by-Side Action Bar & Direct View Pass Navigation (`QrScreen.tsx`)
-- **Compact Non-Wrapping 3-Button Layout**: Renders **View** (`UI_TEXT.view`), **Chat** (`UI_TEXT.chat`), and **Share** / **Download** (`UI_TEXT.share` / `UI_TEXT.download`) in a single horizontal row (`flexDirection: "row"`, `gap: s(8)`, `width: "100%"`) with `flex: 1`, `minWidth: 0`, and `numberOfLines={1}`, ensuring zero line wrapping across all screen viewports.
+### M. Sleek QR Pass Side-by-Side Action Bar & Dedicated QR Image Print Engine (`QrScreen.tsx`, `UIContext.tsx`)
+- **Compact Non-Wrapping 4-Button Layout**: Renders **View** (`UI_TEXT.view`), **Chat** (`UI_TEXT.chat`), **Print** (`UI_TEXT.print`), and **Share** / **Download** (`UI_TEXT.share` / `UI_TEXT.download`) in a single horizontal row (`flexDirection: "row"`, `gap: s(4)`, `width: "100%"`) with `flex: 1`, `minWidth: 0`, and `numberOfLines={1}`, scaled down (`height: s(38)`, `fontSize: s(11)`, `paddingHorizontal: s(4)`) to fit across all mobile and web viewports without horizontal scrolling or line wrapping.
+- **Dedicated QR Code Image Print Engine**: Captures strictly the QR Code image node (`qrCodeOnlyRef`) and renders a clean, print-isolated HTML template printing strictly the QR Code image without printing background web app UI, headers, card containers, or action buttons.
+- **Web Print Isolation Engine (`UIContext.tsx`)**: On Web browsers, `printPass` injects a temporary `@media print` style rule hiding all parent application elements (`body > *:not(#app-print-frame)`) during printing, guaranteeing zero layout spill or background webpage printing.
 - **1-Tap View Pass Navigation**: The View button (`eye-outline` icon) sets active pass selection and navigates directly to `AppScreen.DETAILS`.
-- **Pure Theme Token Background Fills**: Binds strictly to pre-defined theme tokens without color hardcoding or string concatenation (`theme.cardColors[0].accentLight` for View, `theme.colors.successLight` for Chat, `theme.colors.primary` for Share), ensuring vibrant rendering across Light and Dark themes.
+- **Pure Theme Token Background Fills**: Binds strictly to pre-defined theme tokens without color hardcoding or string concatenation (`theme.cardColors[0].accentLight` for View, `theme.colors.successLight` for Chat, `theme.colors.surfaceDark` for Print, `theme.colors.primary` for Share), ensuring vibrant rendering across Light and Dark themes.
 - **WCAG 2.1 AA Accessibility Integration**: Implemented full accessibility bindings (`accessible={true}`, `accessibilityRole="button"`, `accessibilityLabel`, `accessibilityHint`) across all action buttons.
+
+### N. Menu Content Image Sharing & Web Export Engine ([`ViewMenuScreen.tsx`](src/screens/ViewMenuScreen.tsx), [`UIContext.tsx`](src/context/UIContext.tsx))
+- **Targeted Menu View Capture**: Added a **Share Menu / Export Menu Image** button on [`ViewMenuScreen.tsx`](src/screens/ViewMenuScreen.tsx) capturing strictly the active day menu cards container (`menuRef`), excluding page navigation headers, user greetings, action buttons, and footer copyright notes.
+- **Cross-Platform Image Export**: Integrates with `shareQr` in `UIContext.tsx` to automatically trigger a PNG image download (`Export Menu Image`) on Web browsers and open the native share sheet (`Share Menu`) on mobile devices.
 
 ### O. Detailed Meal-Wise & Day-Wise Payment Reports Engine ([`MealWisePaymentReport.tsx`](src/components/report/MealWisePaymentReport.tsx), [`DayWisePaymentReport.tsx`](src/components/report/DayWisePaymentReport.tsx), [`ReportSummaryCard.tsx`](src/components/report/ReportSummaryCard.tsx), [`MealReportItemCard.tsx`](src/components/report/MealReportItemCard.tsx), [`paymentUtils.ts`](src/utils/paymentUtils.ts))
 - **Modularized Report Architecture**: Reusable shared report card components (`ReportSummaryCard` and `MealReportItemCard`) cleanly modularize the presentation layer across both Meal-Wise and Day-Wise payment reports.
@@ -119,19 +126,32 @@ The application follows a **Serverless Layered Architecture** built on the **Exp
 - **Mobile Responsive Vertical Stacking & Overflow Protection**: Season summary and card headers feature vertical stacking (`flexDirection: "column"` on labels/values) and two-tier layouts to guarantee zero touching, crowding, or horizontal overflow on mobile viewports.
 - **100% Theme & Dictionary Compliance**: Zero hardcoded strings or hex colors, binding all text to `UI_TEXT` and colors to theme tokens (`theme.colors`, `theme.cardColors`).
 
-### P. Zero-Flicker Multi-Filter Match Indicator & Block-Level Filtering ([`SubscriptionListScreen.tsx`](src/screens/SubscriptionListScreen.tsx), [`NavigationContext.tsx`](src/context/NavigationContext.tsx))
+### P. Zero-Flicker Multi-Filter Match Indicator, Block-Level Filtering & Navigation State Persistence ([`SubscriptionListScreen.tsx`](src/screens/SubscriptionListScreen.tsx), [`NavigationContext.tsx`](src/context/NavigationContext.tsx))
 - **Real-time Combined Filter Count Aggregation**: Computes `visibleSubscriptions.length` reflecting the exact intersection of multi-selected active filter chips, text search queries, and 1-tap block filter selections.
 - **Zero-Flicker Architecture**: When 2+ filter chips or a block filter are selected, the static header subtitle updates in-place and an inline `Clear Filters` chip inserts directly into the existing wrapping filter chips row, keeping the search bar and card list completely stationary with **zero layout shifting or flickering**.
-- **Filter State Persistence**: `activeFilters` and `selectedBlock` are hoisted to `NavigationContext`, preserving context across back navigation while maintaining real-time data synchronization from Firebase, resetting to `ALL` only upon navigating from the Home Page.
+- **Filter & Sort State Persistence**: `activeFilters`, `selectedBlock`, `subscriptionSearch`, `subscriptionSortBy`, and `subscriptionIsAscending` are hoisted to `NavigationContext`, preserving context and sort choices across back navigation while maintaining real-time data synchronization from Firebase, resetting to default (`ALL`, `BLOCK_FLAT`, ascending) only upon navigating from the Home Page.
 - **Block-Level Filtering**: Tapping the block label badge in the top-left portion of any pass card instantly filters the directory to show passes of that block only, with a removable block filter chip. Non-nested sibling layout (`e.stopPropagation()`) completely prevents HTML DOM hydration errors (`<button>` inside `<button>`).
 - **100% Theme & Dictionary Compliance**: All labels bind directly to `UI_TEXT` tokens without hardcoded text or colors.
 
-### G. Community-Sponsored Free Meal Pricing, Cost Incurred Engine & Season Summary (`FreeMealWiseReport.tsx`, `MealMenuEditor.tsx`, `MealDisplay.tsx`, `domain.ts`, `ReportComponents.stories.tsx`)
-- **Community-Sponsored Free Meal Concept**: Free meals represent community-sponsored meals with real food costs. When Free Meal support is enabled (`freeMealEnabled`), administrators can configure free meal prices per dietary category (`freeMealVegPrice`, `freeMealNonVegPrice`, `freeMealPrice`) in the Edit Menu (`MealMenuEditor.tsx`), which are securely displayed in View Menu (`MealDisplay.tsx`) strictly to administrators (`isAdmin`). When Free Meal is disabled, all free meal price fields and report options are conditionally hidden across the app.
-- **Cost Incurred Calculation**: In the Free Meal Report (`FreeMealWiseReport.tsx`), food costs are strictly incurred ONLY when free meals are served (`servedCount > 0`), ensuring planned/unserved meals do not pollute cost metrics. Each meal card dynamically calculates and displays its aggregated cost incurred when meals are served (`Cost Incurred: ₹<amount>`).
-- **Top Season Summary Card**: Renders a season-wide Free Meal Summary Card on top of the Free Meal Report displaying total season free meals planned, total served, and total aggregated cost incurred across all active festival days and meals.
-- **Shashthi to Dashami Storybook Mock Data**: Storybook reports (`ReportComponents.stories.tsx`) feature complete dummy data from Shashthi through Dashami with active free meal served counts and pricing to allow full visual inspection of cards, cost incurrence badges, and season summary cards.
-- **100% WCAG 2.1 AA & Mobile Responsiveness**: All free meal report cards and summary elements feature full accessibility compliance (`accessibilityRole="summary"`, `accessibilityLabel`), responsive wrapping (`flexWrap: "wrap"`), and mobile viewport optimization.
+### Q. Clean Report Image Capture & Document Header Engine ([`ReportScreen.tsx`](src/screens/ReportScreen.tsx), [`DayWiseReport.tsx`](src/components/report/DayWiseReport.tsx), [`ParcelWiseReport.tsx`](src/components/report/ParcelWiseReport.tsx), [`PaymentSummaryReport.tsx`](src/components/report/PaymentSummaryReport.tsx))
+- **Document Header Banner**: Captures report data cards (`reportRef`) prefixed with an official non-interactive Document Header Banner (`seasonName`, Report Title, Scope/Day/Meal, Date).
+- **Capture-Aware Button Suppression**: `isCapturing` state automatically suppresses interactive UI tab buttons, filter selection cards, and internal view-mode toggle buttons (`Complete` / `Planned`, `Summary` / `Missed`, `Payment Summary` / `Discrepancy`) during image capture, producing a pristine data-only report image without UI buttons.
+
+### R. Duplicate Pass Registration Prevention & Alert Safeguard ([`SubscriptionForm.tsx`](src/screens/SubscriptionForm.tsx))
+- **Pre-Save Collision Detection**: When registering a new pass (`!lockIdentity`), the system checks whether a pass with the exact same Block and Flat number already exists in the database.
+- **Alert Popup & Overwrite Blocking**: Triggers an alert popup (`UI_TEXT.flatExists`, `UI_TEXT.flatExistsWithId`) and blocks saving when a duplicate pass is detected, preventing accidental overriding of existing pass records.
+
+### S. Concurrent Passcode Uniqueness Re-Validation Engine ([`SubscriptionForm.tsx`](src/screens/SubscriptionForm.tsx), [`constants.ts`](src/constants.ts))
+- **Passcode Preservation on Edit**: When editing an existing pass (`lockIdentity === true`), the passcode is strictly preserved (`value.passcode`).
+- **Live Commit-Time Uniqueness Re-Validation**: During parallel multi-device Add Pass operations (`!lockIdentity`), the system queries live database subscriptions at commit time, automatically re-generating collision-free passcodes when simultaneous submissions occur.
+
+### G. Vendor Meal-Wise Report & Parcel Pricing Engine (`VendorMealWiseReport.tsx`, `MealMenuEditor.tsx`, `MealDisplay.tsx`, `domain.ts`, `ReportComponents.stories.tsx`)
+- **Vendor Price & Vendor Parcel Price Concept**: Vendor pricing (`vendorPrice` / `vendorVegPrice` / `vendorNonVegPrice`) and vendor parcel pricing (`vendorParcelPrice` / `vendorVegParcelPrice` / `vendorNonVegParcelPrice`) represent the direct prices given by vendors. These price fields are **always enabled** in Edit Menu and View Menu, completely delinked from whether Free Meal support is enabled or disabled.
+- **Comprehensive Category Breakdown & Parcel Pricing**: The Vendor Price Report (`VendorMealWiseReport.tsx`) computes subscription amounts, expected vendor costs, and actual vendor costs across all categories (Adults, Kids, Guests, Free Meal) for both dine-in and parcel meals. Actual vendor costs are incurred strictly when food/parcels are served (`servedCount > 0`).
+- **Type-Safe Menu Prop Resolution (`MealDisplay.tsx`)**: Corrected property scoping from `value` to `menu` in `MealDisplay.tsx` to ensure rigorous TypeScript type safety when resolving custom variety menu items and vendor pricing.
+- **Top Season Summary Card**: Renders a season-wide Vendor Price Summary Card on top of the Vendor Price Report displaying total season subscription amount, expected vendor cost, actual vendor cost, and net excess/deficiency.
+- **Shashthi to Dashami Storybook Mock Data**: Storybook reports (`ReportComponents.stories.tsx`) feature complete dummy data from Shashthi through Dashami with active category served counts and pricing to allow full visual inspection.
+- **100% WCAG 2.1 AA & Mobile Responsiveness**: All vendor report cards and summary elements feature full accessibility compliance (`accessibilityRole="summary"`, `accessibilityLabel`), responsive wrapping (`flexWrap: "wrap"`), and mobile viewport optimization.
 
 ---
 

@@ -85,6 +85,77 @@ export function UIProvider({ children }: { children: React.ReactNode }) {
   }, [showAlert]);
 
   const printPass = useCallback(async (html: string) => {
+    if (Platform.OS === "web") {
+      const styleEl = document.createElement("style");
+      styleEl.id = "app-print-style-override";
+      styleEl.innerHTML = `
+        @media print {
+          body > *:not(#app-print-frame) {
+            display: none !important;
+          }
+          #app-print-frame {
+            display: block !important;
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            border: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #ffffff !important;
+            z-index: 999999 !important;
+          }
+        }
+      `;
+      document.head.appendChild(styleEl);
+
+      const iframe = document.createElement("iframe");
+      iframe.id = "app-print-frame";
+      iframe.style.position = "fixed";
+      iframe.style.right = "0";
+      iframe.style.bottom = "0";
+      iframe.style.width = "0";
+      iframe.style.height = "0";
+      iframe.style.border = "0";
+      document.body.appendChild(iframe);
+
+      const doc = iframe.contentWindow?.document || iframe.contentDocument;
+      if (doc) {
+        doc.open();
+        doc.write(html);
+        doc.close();
+
+        const cleanup = () => {
+          try {
+            if (document.head.contains(styleEl)) document.head.removeChild(styleEl);
+            if (document.body.contains(iframe)) document.body.removeChild(iframe);
+          } catch (e) {
+            // ignore
+          }
+        };
+
+        const triggerPrint = () => {
+          try {
+            iframe.contentWindow?.focus();
+            iframe.contentWindow?.print();
+          } catch (e) {
+            console.error("Print error:", e);
+          }
+          setTimeout(cleanup, 1000);
+        };
+
+        const img = doc.querySelector("img");
+        if (img && !img.complete) {
+          img.onload = triggerPrint;
+          img.onerror = triggerPrint;
+        } else {
+          setTimeout(triggerPrint, 150);
+        }
+      }
+      return;
+    }
+
     try {
       await Print.printAsync({ html });
     } catch (err) {

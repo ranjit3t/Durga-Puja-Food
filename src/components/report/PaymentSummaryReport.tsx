@@ -65,12 +65,14 @@ export function PaymentSummaryReport({
   onSelectFlat,
   kidsEnabled = false,
   guestsEnabled = false,
+  isCapturing,
 }: {
   data: PaymentData;
   dayConfig?: ConfigDay[];
   onSelectFlat?: (id: string) => void;
   kidsEnabled?: boolean;
   guestsEnabled?: boolean;
+  isCapturing?: boolean;
 }) {
   const styles = useStyles();
   const { theme } = useAppTheme();
@@ -117,6 +119,7 @@ export function PaymentSummaryReport({
   return (
     <View style={{ gap: 16 }}>
       {/* Sub-Tabs Navigation */}
+      {!isCapturing && (
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 8, paddingHorizontal: 2 }}>
         {[
           { id: PaymentTab.SUMMARY, label: UI_TEXT.paymentSummary, icon: "card-outline" },
@@ -172,6 +175,7 @@ export function PaymentSummaryReport({
           </Pressable>
         ))}
       </View>
+      )}
 
       {activeTab === PaymentTab.SUMMARY ? (
         <View style={{ gap: 24 }}>

@@ -23,21 +23,42 @@ import { MealDisplay } from "../components/menu/MealDisplay";
 
 import { useAuth } from "../context/AuthContext";
 import { useCoreDatabase, useActivityLogs } from "../context/DatabaseContext";
+import { useUI } from "../context/UIContext";
 import { useAppNavigation } from "../context/NavigationContext";
 
 export function ViewMenuScreen() {
   const { userRole, handleLogout } = useAuth();
   const {
-    foodMenu, dayConfig, seasonEnabled, foodPriceEnabled, paymentConfig, kidsEnabled, guestsEnabled, freeMealEnabled
+    foodMenu, dayConfig, seasonName, seasonEnabled, foodPriceEnabled, paymentConfig, kidsEnabled, guestsEnabled, freeMealEnabled
   } = useCoreDatabase();
   const { addActivityLog } = useActivityLogs();
+  const { shareQr } = useUI();
   const { navigate, goBack, targetDay, setTargetDay, setTargetMeal } = useAppNavigation();
 
   const styles = useStyles();
   const { theme, themeType } = useAppTheme();
 
   const scrollRef = useRef<ScrollView>(null);
+  const menuRef = useRef<View>(null);
   const layouts = useRef<Record<string, number>>({});
+
+  const handleShareMenu = async () => {
+    if (menuRef.current) {
+      try {
+        const { captureRef } = await import("react-native-view-shot");
+        const uri = await captureRef(menuRef, {
+          format: "png",
+          quality: 1,
+          result: "tmpfile",
+        });
+
+        const message = `${seasonName || UI_TEXT.headerTitle} - ${UI_TEXT.foodMenu}\n${UI_TEXT.day}: ${new Date().toLocaleDateString()}`;
+        shareQr(uri, message);
+      } catch (err) {
+        console.error("Failed to capture menu image", err);
+      }
+    }
+  };
 
   const onEdit = (day?: Day, meal?: MealType) => {
     addActivityLog({
@@ -260,39 +281,75 @@ export function ViewMenuScreen() {
             )}
 
             {sortedActiveDays.length >= 1 && (
-              <Pressable
-                onPress={handleExportExcel}
-                accessible={true}
-                accessibilityRole="button"
-                accessibilityLabel={UI_TEXT.exportExcel}
-                style={({ pressed }) => [
-                  {
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 6,
-                    backgroundColor: theme.colors.primary,
-                    paddingHorizontal: 12,
-                    paddingVertical: 8,
-                    borderRadius: 12,
-                    elevation: 2,
-                    shadowColor: theme.colors.primary,
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.2,
-                    shadowRadius: 4,
-                    alignSelf: 'flex-start',
-                  },
-                  pressed && { opacity: 0.8 }
-                ]}
-              >
-                <Ionicons
-                  name={Platform.OS === 'web' ? "download-outline" : "share-outline"}
-                  size={18}
-                  color={theme.colors.white}
-                />
-                <Text style={{ color: theme.colors.white, fontWeight: '800', fontSize: 13 }}>
-                  {UI_TEXT.exportExcel}
-                </Text>
-              </Pressable>
+              <>
+                <Pressable
+                  onPress={handleShareMenu}
+                  accessible={true}
+                  accessibilityRole="button"
+                  accessibilityLabel={Platform.OS === 'web' ? UI_TEXT.downloadMenu : UI_TEXT.shareMenu}
+                  style={({ pressed }) => [
+                    {
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 6,
+                      backgroundColor: theme.colors.primary,
+                      paddingHorizontal: 12,
+                      paddingVertical: 8,
+                      borderRadius: 12,
+                      elevation: 2,
+                      shadowColor: theme.colors.primary,
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.2,
+                      shadowRadius: 4,
+                      alignSelf: 'flex-start',
+                    },
+                    pressed && { opacity: 0.8 }
+                  ]}
+                >
+                  <Ionicons
+                    name={Platform.OS === 'web' ? "download-outline" : "share-social-outline"}
+                    size={18}
+                    color={theme.colors.white}
+                  />
+                  <Text style={{ color: theme.colors.white, fontWeight: '800', fontSize: 13 }}>
+                    {Platform.OS === 'web' ? UI_TEXT.downloadMenu : UI_TEXT.shareMenu}
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={handleExportExcel}
+                  accessible={true}
+                  accessibilityRole="button"
+                  accessibilityLabel={UI_TEXT.exportExcel}
+                  style={({ pressed }) => [
+                    {
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 6,
+                      backgroundColor: theme.colors.primary,
+                      paddingHorizontal: 12,
+                      paddingVertical: 8,
+                      borderRadius: 12,
+                      elevation: 2,
+                      shadowColor: theme.colors.primary,
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.2,
+                      shadowRadius: 4,
+                      alignSelf: 'flex-start',
+                    },
+                    pressed && { opacity: 0.8 }
+                  ]}
+                >
+                  <Ionicons
+                    name={Platform.OS === 'web' ? "download-outline" : "share-outline"}
+                    size={18}
+                    color={theme.colors.white}
+                  />
+                  <Text style={{ color: theme.colors.white, fontWeight: '800', fontSize: 13 }}>
+                    {UI_TEXT.exportExcel}
+                  </Text>
+                </Pressable>
+              </>
             )}
           </View>
         </View>
@@ -302,64 +359,66 @@ export function ViewMenuScreen() {
         style={{ flex: 1, width: "100%" }}
         contentContainerStyle={styles.content}
       >
-        {sortedActiveDays.map((day, index) => {
-          const dayMenu = foodMenu[day] || {
-            [MealType.BREAKFAST]: emptyMeal,
-            [MealType.LUNCH]: emptyMeal,
-            [MealType.DINNER]: emptyMeal,
-          };
-          const colorScheme = theme.cardColors[index % theme.cardColors.length];
-          return (
-            <View
-              key={day}
-              onLayout={(e) => {
-                layouts.current[day] = e.nativeEvent.layout.y;
-              }}
-              style={[styles.menuDayCard, { backgroundColor: colorScheme.bg, borderColor: colorScheme.border, borderWidth: 1.5 }]}
-            >
-              <View style={[styles.menuDayHeader, { backgroundColor: colorScheme.accentLight, borderBottomColor: colorScheme.border, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
-                <Text style={[styles.menuDayTitle, { color: colorScheme.accent }]}>{getDayLabel(day, dayConfig)}</Text>
-                {isAdmin && seasonEnabled && (
-                  <Pressable
-                    onPress={() => onEdit(day)}
-                    accessible={true}
-                    accessibilityRole="button"
-                    accessibilityLabel={`${UI_TEXT.editPass} ${getDayLabel(day, dayConfig)}`}
-                    style={({ pressed }) => [
-                      {
-                        padding: 6,
-                        borderRadius: 20,
-                        backgroundColor: colorScheme.accentLight
-                      },
-                      pressed && { opacity: 0.7 }
-                    ]}
-                  >
-                    <Ionicons name="pencil" size={18} color={colorScheme.accent} />
-                  </Pressable>
-                )}
+        <View ref={menuRef} collapsable={false} style={{ backgroundColor: theme.colors.background, padding: 2, gap: 16, width: "100%" }}>
+          {sortedActiveDays.map((day, index) => {
+            const dayMenu = foodMenu[day] || {
+              [MealType.BREAKFAST]: emptyMeal,
+              [MealType.LUNCH]: emptyMeal,
+              [MealType.DINNER]: emptyMeal,
+            };
+            const colorScheme = theme.cardColors[index % theme.cardColors.length];
+            return (
+              <View
+                key={day}
+                onLayout={(e) => {
+                  layouts.current[day] = e.nativeEvent.layout.y;
+                }}
+                style={[styles.menuDayCard, { backgroundColor: colorScheme.bg, borderColor: colorScheme.border, borderWidth: 1.5 }]}
+              >
+                <View style={[styles.menuDayHeader, { backgroundColor: colorScheme.accentLight, borderBottomColor: colorScheme.border, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
+                  <Text style={[styles.menuDayTitle, { color: colorScheme.accent }]}>{getDayLabel(day, dayConfig)}</Text>
+                  {isAdmin && seasonEnabled && (
+                    <Pressable
+                      onPress={() => onEdit(day)}
+                      accessible={true}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${UI_TEXT.editPass} ${getDayLabel(day, dayConfig)}`}
+                      style={({ pressed }) => [
+                        {
+                          padding: 6,
+                          borderRadius: 20,
+                          backgroundColor: colorScheme.accentLight
+                        },
+                        pressed && { opacity: 0.7 }
+                      ]}
+                    >
+                      <Ionicons name="pencil" size={18} color={colorScheme.accent} />
+                    </Pressable>
+                  )}
+                </View>
+                <View style={styles.menuDayBody}>
+                  {[MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER]
+                    .filter((mKey) => isMealEnabled(day, mKey, dayConfig))
+                    .map((mKey) => (
+                      <MealDisplay
+                        key={mKey}
+                        title={mKey === MealType.BREAKFAST ? UI_TEXT.breakfast : mKey === MealType.LUNCH ? UI_TEXT.lunch : UI_TEXT.dinner}
+                        mealKey={mKey}
+                        dayId={day}
+                        config={dayConfig}
+                        icon={mKey === MealType.BREAKFAST ? "sunny-outline" : mKey === MealType.LUNCH ? "restaurant-outline" : "moon-outline"}
+                        menu={dayMenu[mKey] || emptyMeal}
+                        foodPriceEnabled={isAdmin && foodPriceEnabled && isPaymentEnabled}
+                        kidsEnabled={!!kidsEnabled}
+                        guestsEnabled={!!guestsEnabled}
+                        freeMealEnabled={!!freeMealEnabled}
+                      />
+                    ))}
+                </View>
               </View>
-              <View style={styles.menuDayBody}>
-                {[MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER]
-                  .filter((mKey) => isMealEnabled(day, mKey, dayConfig))
-                  .map((mKey) => (
-                    <MealDisplay
-                      key={mKey}
-                      title={mKey === MealType.BREAKFAST ? UI_TEXT.breakfast : mKey === MealType.LUNCH ? UI_TEXT.lunch : UI_TEXT.dinner}
-                      mealKey={mKey}
-                      dayId={day}
-                      config={dayConfig}
-                      icon={mKey === MealType.BREAKFAST ? "sunny-outline" : mKey === MealType.LUNCH ? "restaurant-outline" : "moon-outline"}
-                      menu={dayMenu[mKey] || emptyMeal}
-                      foodPriceEnabled={isAdmin && foodPriceEnabled && isPaymentEnabled}
-                      kidsEnabled={!!kidsEnabled}
-                      guestsEnabled={!!guestsEnabled}
-                      freeMealEnabled={!!freeMealEnabled}
-                    />
-                  ))}
-              </View>
-            </View>
-          );
-        })}
+            );
+          })}
+        </View>
 
         {isAdmin && seasonEnabled && (
           <View style={{ marginTop: 24, paddingHorizontal: 4 }}>

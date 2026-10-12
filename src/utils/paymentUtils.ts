@@ -1301,3 +1301,5 @@ export function calculatePackageReportSummary(
   };
 }
 
+
+export { toBool };

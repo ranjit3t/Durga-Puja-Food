@@ -25,7 +25,7 @@ export function QrScreen() {
     seasonName, seasonEnabled, mobileEnabled, subscriptions, whatsappCountryCode, kidsEnabled
   } = useCoreDatabase();
   const { addActivityLog } = useActivityLogs();
-  const { shareQr } = useUI();
+  const { shareQr, printPass } = useUI();
   const { selectedId, selectedRecord, setSelectedId, setSelectedRecord, goBack, navigate } = useAppNavigation();
 
   const subscription = subscriptions.find(s => s.id === selectedId) || selectedRecord;
@@ -36,6 +36,7 @@ export function QrScreen() {
   const { theme, themeType } = useAppTheme();
   const { width } = useWindowDimensions();
   const qrRef = useRef<View>(null);
+  const qrCodeOnlyRef = useRef<View>(null);
 
   const qrSize = width > 768 ? 220 : Math.min(width * 0.5, 180);
   const canShare = seasonEnabled && userRole === "admin";
@@ -52,6 +53,65 @@ export function QrScreen() {
       });
       // Share only the image for the generic share button
       shareQr(uri);
+    }
+  };
+
+  const printQrCodeOnly = async () => {
+    if (qrCodeOnlyRef.current && canShare) {
+      try {
+        const passLabel = getPassDisplayLabel(subscription);
+        const uri = await captureRef(qrCodeOnlyRef, { format: "png", quality: 1, result: "data-uri" });
+        addActivityLog({
+          module: ActivityModule.QR,
+          action: ActivityAction.PRINT,
+          targetId: subscription.id,
+          description: UI_TEXT.logPrintQr.replace("{id}", passLabel)
+        });
+
+        const html = `
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <style>
+                @page {
+                  size: auto;
+                  margin: 10mm;
+                }
+                body {
+                  margin: 0;
+                  padding: 0;
+                  display: flex;
+                  justify-content: center;
+                  align-items: center;
+                  min-height: 100vh;
+                  background-color: #ffffff;
+                }
+                .qr-container {
+                  display: flex;
+                  justify-content: center;
+                  align-items: center;
+                  padding: 20px;
+                }
+                img {
+                  width: 300px;
+                  height: 300px;
+                  object-fit: contain;
+                }
+              </style>
+            </head>
+            <body>
+              <div class="qr-container">
+                <img src="${uri}" alt="QR Code" />
+              </div>
+            </body>
+          </html>
+        `;
+
+        await printPass(html);
+      } catch (err) {
+        console.error("Print QR error:", err);
+      }
     }
   };
 
@@ -82,12 +142,14 @@ export function QrScreen() {
               <Text style={styles.qrPassTitle}>{UI_TEXT.foodPass}</Text>
             </View>
 
-            <QRCode
-              value={qrValueFor(subscription.id)}
-              size={qrSize}
-              color={theme.colors.shadow}
-              backgroundColor={theme.colors.white}
-            />
+            <View ref={qrCodeOnlyRef} collapsable={false} style={{ padding: s(6), backgroundColor: theme.colors.white, borderRadius: s(8) }}>
+              <QRCode
+                value={qrValueFor(subscription.id)}
+                size={qrSize}
+                color={theme.colors.shadow}
+                backgroundColor={theme.colors.white}
+              />
+            </View>
 
             <View style={{ marginTop: 15, alignItems: 'center' }}>
               <Text style={{
@@ -113,13 +175,13 @@ export function QrScreen() {
             </View>
           </View>
           
-          {/* Sleek, Perfectly Horizontally Aligned Action Buttons */}
+          {/* Sleek, Perfectly Horizontally Aligned Compact Action Buttons */}
           <View style={{
             flexDirection: "row",
             alignItems: "center",
             width: "100%",
             marginTop: s(16),
-            gap: s(8),
+            gap: s(4),
           }}>
             {/* 1. View Pass Button */}
             <Pressable
@@ -132,16 +194,16 @@ export function QrScreen() {
                 {
                   flex: 1,
                   minWidth: 0,
-                  height: s(44),
+                  height: s(38),
                   borderRadius: theme.sizes.borderRadiusSmall,
-                  borderWidth: 1.5,
+                  borderWidth: 1,
                   borderColor: theme.colors.primary,
                   backgroundColor: theme.cardColors[0].accentLight,
                   flexDirection: "row",
                   alignItems: "center",
                   justifyContent: "center",
-                  gap: s(6),
-                  paddingHorizontal: s(8),
+                  gap: s(3),
+                  paddingHorizontal: s(4),
                 },
                 pressed && { opacity: 0.8, transform: [{ scale: 0.97 }] },
               ]}
@@ -150,9 +212,9 @@ export function QrScreen() {
               accessibilityLabel={UI_TEXT.view}
               accessibilityHint={UI_TEXT.viewPassHint}
             >
-              <Ionicons name="eye-outline" size={s(16)} color={theme.colors.primary} />
+              <Ionicons name="eye-outline" size={s(14)} color={theme.colors.primary} />
               <Text style={{
-                fontSize: s(13),
+                fontSize: s(11),
                 fontWeight: "800",
                 color: theme.colors.primary,
               }} numberOfLines={1}>
@@ -186,16 +248,16 @@ export function QrScreen() {
                   {
                     flex: 1,
                     minWidth: 0,
-                    height: s(44),
+                    height: s(38),
                     borderRadius: theme.sizes.borderRadiusSmall,
-                    borderWidth: 1.5,
+                    borderWidth: 1,
                     borderColor: theme.colors.whatsapp,
                     backgroundColor: theme.colors.successLight,
                     flexDirection: "row",
                     alignItems: "center",
                     justifyContent: "center",
-                    gap: s(6),
-                    paddingHorizontal: s(8),
+                    gap: s(3),
+                    paddingHorizontal: s(4),
                   },
                   pressed && { opacity: 0.8, transform: [{ scale: 0.97 }] },
                 ]}
@@ -204,9 +266,9 @@ export function QrScreen() {
                 accessibilityLabel={UI_TEXT.chat}
                 accessibilityHint="Opens WhatsApp chat to share digital pass details"
               >
-                <Ionicons name="logo-whatsapp" size={s(16)} color={theme.colors.whatsapp} />
+                <Ionicons name="logo-whatsapp" size={s(14)} color={theme.colors.whatsapp} />
                 <Text style={{
-                  fontSize: s(13),
+                  fontSize: s(11),
                   fontWeight: "800",
                   color: theme.colors.whatsapp,
                 }} numberOfLines={1}>
@@ -215,7 +277,44 @@ export function QrScreen() {
               </Pressable>
             ) : null}
 
-            {/* 3. Share / Download Pass Card Button */}
+            {/* 3. Print QR Code Only Button */}
+            {canShare && (
+              <Pressable
+                onPress={printQrCodeOnly}
+                style={({ pressed }) => [
+                  {
+                    flex: 1,
+                    minWidth: 0,
+                    height: s(38),
+                    borderRadius: theme.sizes.borderRadiusSmall,
+                    borderWidth: 1,
+                    borderColor: theme.colors.secondary,
+                    backgroundColor: theme.colors.surfaceDark,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: s(3),
+                    paddingHorizontal: s(4),
+                  },
+                  pressed && { opacity: 0.8, transform: [{ scale: 0.97 }] },
+                ]}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={UI_TEXT.print}
+                accessibilityHint="Prints the QR Code image"
+              >
+                <Ionicons name="print-outline" size={s(14)} color={theme.colors.secondary} />
+                <Text style={{
+                  fontSize: s(11),
+                  fontWeight: "800",
+                  color: theme.colors.secondary,
+                }} numberOfLines={1}>
+                  {UI_TEXT.print}
+                </Text>
+              </Pressable>
+            )}
+
+            {/* 4. Share / Download Pass Card Button */}
             {canShare && (
               <Pressable
                 onPress={shareImage}
@@ -223,14 +322,14 @@ export function QrScreen() {
                   {
                     flex: 1,
                     minWidth: 0,
-                    height: s(44),
+                    height: s(38),
                     borderRadius: theme.sizes.borderRadiusSmall,
                     backgroundColor: theme.colors.primary,
                     flexDirection: "row",
                     alignItems: "center",
                     justifyContent: "center",
-                    gap: s(6),
-                    paddingHorizontal: s(8),
+                    gap: s(3),
+                    paddingHorizontal: s(4),
                   },
                   pressed && { opacity: 0.9, transform: [{ scale: 0.97 }] },
                 ]}
@@ -241,11 +340,11 @@ export function QrScreen() {
               >
                 <Ionicons
                   name={Platform.OS === "web" ? "download-outline" : "share-social-outline"}
-                  size={s(16)}
+                  size={s(14)}
                   color={theme.colors.white}
                 />
                 <Text style={{
-                  fontSize: s(13),
+                  fontSize: s(11),
                   fontWeight: "800",
                   color: theme.colors.white,
                 }} numberOfLines={1}>

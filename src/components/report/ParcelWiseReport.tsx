@@ -50,6 +50,7 @@ export function ParcelWiseReport({
   onSelectFlat,
   kidsEnabled,
   guestsEnabled,
+  isCapturing,
 }: {
   data: MealWiseData[];
   dayConfig: ConfigDay[];
@@ -59,6 +60,7 @@ export function ParcelWiseReport({
   onSelectFlat: (id: string) => void;
   kidsEnabled: boolean;
   guestsEnabled?: boolean;
+  isCapturing?: boolean;
 }) {
   const styles = useStyles();
   const { theme } = useAppTheme();
@@ -71,6 +73,7 @@ export function ParcelWiseReport({
   return (
     <View style={{ gap: 16 }}>
       {/* Sub-Tabs */}
+      {!isCapturing && (
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 8, paddingHorizontal: 2 }}>
         {[
           { id: ParcelTab.SUMMARY, label: UI_TEXT.dayWiseReport, icon: "list-outline" },
@@ -112,6 +115,7 @@ export function ParcelWiseReport({
           </Pressable>
         ))}
       </View>
+      )}
 
       {activeTab === ParcelTab.SUMMARY ? (
         data.map((item, index) => {

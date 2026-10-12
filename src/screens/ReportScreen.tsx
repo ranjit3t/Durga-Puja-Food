@@ -16,7 +16,7 @@ import { ActionLabel } from "../components/common/ActionLabel";
 // Modular Report Components
 import { DayWiseReport } from "../components/report/DayWiseReport";
 import { MealWiseReport } from "../components/report/MealWiseReport";
-import { FreeMealWiseReport } from "../components/report/FreeMealWiseReport";
+import { VendorMealWiseReport } from "../components/report/VendorMealWiseReport";
 import { ParcelWiseReport } from "../components/report/ParcelWiseReport";
 import { PendingReport } from "../components/report/PendingReport";
 import { FlatWiseReport } from "../components/report/FlatWiseReport";
@@ -143,10 +143,47 @@ export function ReportScreen() {
   }, [dayConfig]);
 
   const reportRef = useRef<View>(null);
+  const [isCapturing, setIsCapturing] = React.useState(false);
+
+  const getReportTitle = (type: ReportType) => {
+    switch (type) {
+      case ReportType.DAY: return UI_TEXT.dayWiseReport;
+      case ReportType.MEAL: return UI_TEXT.mealWiseReport;
+      case ReportType.FREE_MEAL: return UI_TEXT.vendorPriceReport;
+      case ReportType.MEMBERS_MEAL: return UI_TEXT.membersMealReport;
+      case ReportType.PARCEL: return UI_TEXT.parcelReport;
+      case ReportType.NOT_TAKEN: return UI_TEXT.notTakenReport;
+      case ReportType.FLAT: return UI_TEXT.flatWiseReport;
+      case ReportType.PAYMENT: return UI_TEXT.paymentReport;
+      case ReportType.PACKAGE: return UI_TEXT.packageReport;
+      default: return UI_TEXT.reportTitle;
+    }
+  };
+
+  const getReportScopeSubtitle = (
+    type: ReportType,
+    dayId: string,
+    mealType: MealType,
+    category: string
+  ) => {
+    const parts: string[] = [];
+    if (type === ReportType.DAY || type === ReportType.NOT_TAKEN || type === ReportType.MEMBERS_MEAL || type === ReportType.PARCEL) {
+      if (dayId) parts.push(getDayLabel(dayId, dayConfig));
+      if (mealType) parts.push(getMealLabel(mealType));
+      if (type === ReportType.MEMBERS_MEAL && category && category !== "all") {
+        parts.push(category === "adult" ? UI_TEXT.adults : category === "kids" ? UI_TEXT.kids : UI_TEXT.guests);
+      }
+    }
+    parts.push(new Date().toLocaleDateString());
+    return parts.join(" • ");
+  };
 
   const handleShare = async () => {
     if (reportRef.current) {
       try {
+        setIsCapturing(true);
+        await new Promise((resolve) => setTimeout(resolve, 80));
+
         const { captureRef } = await import("react-native-view-shot");
         const uri = await captureRef(reportRef, {
           format: "png",
@@ -154,20 +191,13 @@ export function ReportScreen() {
           result: "tmpfile",
         });
 
-        const reportTitle =
-          reportType === ReportType.DAY ? UI_TEXT.dayWiseReport :
-          reportType === ReportType.MEAL ? UI_TEXT.mealWiseReport :
-          reportType === ReportType.FREE_MEAL ? UI_TEXT.freeMealReport :
-          reportType === ReportType.MEMBERS_MEAL ? UI_TEXT.membersMealReport :
-          reportType === ReportType.PARCEL ? UI_TEXT.parcelReport :
-          reportType === ReportType.NOT_TAKEN ? UI_TEXT.notTakenReport :
-          reportType === ReportType.FLAT ? UI_TEXT.flatWiseReport :
-          UI_TEXT.paymentReport;
-
+        const reportTitle = getReportTitle(reportType);
         const message = `${seasonName || UI_TEXT.headerTitle} - ${reportTitle}\n${UI_TEXT.day}: ${new Date().toLocaleDateString()}`;
         shareQr(uri, message);
       } catch (err) {
         console.error("Failed to capture report", err);
+      } finally {
+        setIsCapturing(false);
       }
     }
   };
@@ -239,7 +269,7 @@ export function ReportScreen() {
           {[
             { id: ReportType.DAY, label: UI_TEXT.day, icon: "calendar-outline" },
             { id: ReportType.MEAL, label: UI_TEXT.meal, icon: "restaurant-outline" },
-            { id: ReportType.FREE_MEAL, label: UI_TEXT.freeMealSuffix, icon: "people-circle-outline" },
+            { id: ReportType.FREE_MEAL, label: UI_TEXT.vendorPriceReport, icon: "receipt-outline" },
             { id: ReportType.MEMBERS_MEAL, label: UI_TEXT.members, icon: "people-outline" },
             { id: ReportType.PARCEL, label: UI_TEXT.parcels, icon: "cube-outline" },
             { id: ReportType.NOT_TAKEN, label: UI_TEXT.pending, icon: "alert-circle-outline" },
@@ -248,7 +278,6 @@ export function ReportScreen() {
             { id: ReportType.PACKAGE, label: UI_TEXT.packageReport, icon: "pricetag-outline" },
           ].filter(tab =>
             (tab.id !== ReportType.PAYMENT || paymentConfig.enabled) &&
-            (tab.id !== ReportType.FREE_MEAL || freeMealEnabled) &&
             (tab.id !== ReportType.PARCEL || isParcelEnabledGlobally)
           ).map((tab) => {
             const isSelected = reportType === tab.id;
@@ -402,7 +431,32 @@ export function ReportScreen() {
         )}
 
         {/* Report Content Container (Captured for sharing/download) */}
-        <View ref={reportRef} collapsable={false} style={{ backgroundColor: theme.colors.background, padding: 2, gap: 16 }}>
+        <View ref={reportRef} collapsable={false} style={{ backgroundColor: theme.colors.background, padding: 4, gap: 16 }}>
+          {/* Document Header Banner for Captured Image */}
+          <View style={{
+            backgroundColor: theme.colors.surfaceDark,
+            paddingHorizontal: s(14),
+            paddingVertical: s(10),
+            borderRadius: s(12),
+            borderWidth: 1.5,
+            borderColor: theme.colors.primary + "40",
+            marginBottom: s(4)
+          }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: s(8) }}>
+              <View style={{ flex: 1, minWidth: 160 }}>
+                <Text style={{ fontSize: s(15), fontWeight: "900", color: theme.colors.primary }}>
+                  {seasonName || UI_TEXT.headerTitle}
+                </Text>
+                <Text style={{ fontSize: s(13), fontWeight: "800", color: theme.colors.textPrimary, marginTop: s(2) }}>
+                  {getReportTitle(reportType)}
+                </Text>
+              </View>
+              <Text style={{ fontSize: s(11), fontWeight: "700", color: theme.colors.textSecondary }}>
+                {getReportScopeSubtitle(reportType, selectedDayId, selectedMealType, selectedPersonCategory)}
+              </Text>
+            </View>
+          </View>
+
           {reportType === ReportType.DAY && (
             <DayWiseReport
               data={dayWiseData.map(d => ({ day: d.dayId, ...d.totals }) as any)}
@@ -413,6 +467,7 @@ export function ReportScreen() {
               kidsEnabled={!!kidsEnabled}
               guestsEnabled={!!guestsEnabled}
               freeMealEnabled={freeMealEnabled}
+              isCapturing={isCapturing}
             />
           )}
 
@@ -426,10 +481,14 @@ export function ReportScreen() {
           )}
 
           {reportType === ReportType.FREE_MEAL && (
-            <FreeMealWiseReport
+            <VendorMealWiseReport
               activeDays={activeDays}
               foodMenu={foodMenu}
               dayConfig={dayConfig}
+              subscriptions={subscriptions}
+              kidsEnabled={!!kidsEnabled}
+              guestsEnabled={!!guestsEnabled}
+              foodPackages={foodPackages}
             />
           )}
 
@@ -453,6 +512,7 @@ export function ReportScreen() {
               onSelectFlat={onSelectFlat}
               kidsEnabled={!!kidsEnabled}
               guestsEnabled={!!guestsEnabled}
+              isCapturing={isCapturing}
             />
           )}
 
@@ -484,6 +544,7 @@ export function ReportScreen() {
               onSelectFlat={onSelectFlat}
               kidsEnabled={!!kidsEnabled}
               guestsEnabled={!!guestsEnabled}
+              isCapturing={isCapturing}
             />
           )}
 

@@ -222,12 +222,13 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
 - **View Pass Meal Subscription Plan Integration (`DetailsScreen.tsx`)**: Updated the Meal Subscription Plan section (`vCount` and `nvCount` calculations per day) to correctly aggregate and add up adult, kid, and guest meals so that passes with guests show the complete combined meal count.
 - **Accessibility-Compliant Interactive Package Tags & Auto-Pruning (`SubscriptionPaymentSection.tsx`, `SubscriptionForm.tsx`)**: Rendered the green `PACKAGE APPLIED` marker as a pressable accessibility-compliant button (`accessible={true}`, `accessibilityRole="button"`) to directly open the Apply Package Modal. Automatically hides the duplicate `Apply` button when a package is applied, and prunes invalid packages automatically when meals are deselected.
 
-### Y. Community-Sponsored Free Meal Pricing, Cost Incurred Engine & Season Summary (`FreeMealWiseReport.tsx`, `MealMenuEditor.tsx`, `MealDisplay.tsx`, `domain.ts`, `ReportComponents.stories.tsx`)
-- **Community-Sponsored Free Meal Concept**: Free meals represent community-sponsored meals with real food costs. When Free Meal support is enabled (`freeMealEnabled`), administrators can configure free meal prices per dietary category (`freeMealVegPrice`, `freeMealNonVegPrice`, `freeMealPrice`) in the Edit Menu (`MealMenuEditor.tsx`), which are securely displayed in View Menu (`MealDisplay.tsx`) strictly to administrators (`isAdmin`). When Free Meal is disabled, all free meal price fields and report options are conditionally hidden across the app.
-- **Cost Incurred Calculation**: In the Free Meal Report (`FreeMealWiseReport.tsx`), food costs are strictly incurred ONLY when free meals are served (`servedCount > 0`), ensuring planned/unserved meals do not pollute cost metrics. Each meal card dynamically calculates and displays its aggregated cost incurred when meals are served (`Cost Incurred: ₹<amount>`).
-- **Top Season Summary Card**: Renders a season-wide Free Meal Summary Card on top of the Free Meal Report displaying total season free meals planned, total served, and total aggregated cost incurred across all active festival days and meals.
-- **Shashthi to Dashami Storybook Mock Data**: Storybook reports (`ReportComponents.stories.tsx`) feature complete dummy data from Shashthi through Dashami with active free meal served counts and pricing to allow full visual inspection of cards, cost incurrence badges, and season summary cards.
-- **100% WCAG 2.1 AA & Mobile Responsiveness**: All free meal report cards and summary elements feature full accessibility compliance (`accessibilityRole="summary"`, `accessibilityLabel`), responsive wrapping (`flexWrap: "wrap"`), and mobile viewport optimization.
+### Y. Vendor Meal-Wise Report & Parcel Pricing Engine (`VendorMealWiseReport.tsx`, `MealMenuEditor.tsx`, `MealDisplay.tsx`, `domain.ts`, `ReportComponents.stories.tsx`)
+- **Vendor Price & Vendor Parcel Price Concept**: Vendor pricing (`vendorPrice` / `vendorVegPrice` / `vendorNonVegPrice`) and vendor parcel pricing (`vendorParcelPrice` / `vendorVegParcelPrice` / `vendorNonVegParcelPrice`) represent the direct prices given by vendors. These price fields are **always enabled** in Edit Menu and View Menu, completely delinked from whether Free Meal support is enabled or disabled.
+- **Comprehensive Category Breakdown & Parcel Pricing**: The Vendor Price Report (`VendorMealWiseReport.tsx`) computes subscription amounts, expected vendor costs, and actual vendor costs across all categories (Adults, Kids, Guests, Free Meal) for both dine-in and parcel meals. Actual vendor costs are incurred strictly when food/parcels are served (`servedCount > 0`).
+- **Type-Safe Menu Prop Resolution (`MealDisplay.tsx`)**: Corrected property scoping from `value` to `menu` in `MealDisplay.tsx` to ensure rigorous TypeScript type safety when resolving custom variety menu items and vendor pricing.
+- **Top Season Summary Card**: Renders a season-wide Vendor Price Summary Card on top of the Vendor Price Report displaying total season subscription amount, expected vendor cost, actual vendor cost, and net excess/deficiency.
+- **Shashthi to Dashami Storybook Mock Data**: Storybook reports (`ReportComponents.stories.tsx`) feature complete dummy data from Shashthi through Dashami with active category served counts and pricing to allow full visual inspection.
+- **100% WCAG 2.1 AA & Mobile Responsiveness**: All vendor report cards and summary elements feature full accessibility compliance (`accessibilityRole="summary"`, `accessibilityLabel`), responsive wrapping (`flexWrap: "wrap"`), and mobile viewport optimization.
 
 ### Y. Directory Money / Paid Amount Sorting & Enum Refactoring (`DirectorySortMode`, `SubscriptionListScreen.tsx`, `domain.ts`, `strings.ts`)
 - **Directory Sort Mode Enum (`DirectorySortMode`)**: Centralized directory sorting parameters into a typed `DirectorySortMode` enum (`BLOCK_FLAT`, `CREATED_AT`, `UPDATED_AT`, `AMOUNT`).
@@ -249,9 +250,9 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
 - **Zero-Flicker Architecture**: When 2+ filter chips are selected (`activeFilters.length > 1`), the static header subtitle updates in-place (`REGISTERED PASSES: 47 • Matching Passes: X`) and an inline `Clear Filters (X)` chip inserts directly into the existing wrapping filter chips row. By eliminating conditional banner views above the search box, the search bar and card list remain completely stationary with **zero layout shifting or flickering**.
 - **100% Theme & Dictionary Compliance**: All labels bind directly to `UI_TEXT.showingMatches` and `UI_TEXT.clearFilters` without hardcoded text or colors.
 
-### AB. Filter State Persistence Across Back Navigation ([`NavigationContext.tsx`](src/context/NavigationContext.tsx), [`SubscriptionListScreen.tsx`](src/screens/SubscriptionListScreen.tsx))
-- **Hoisted Navigation Filter State**: `activeFilters` is hoisted to `NavigationContext`, preserving the last selected filter states and search queries when navigating into pass details (`DetailsScreen`) and pressing Back (`goBack()`), while maintaining real-time data synchronization.
-- **Home Page Reset**: Navigating from the Home Page resets view states back to default `[FilterMode.ALL]`.
+### AB. Filter & Sort State Persistence Across Back Navigation ([`NavigationContext.tsx`](src/context/NavigationContext.tsx), [`SubscriptionListScreen.tsx`](src/screens/SubscriptionListScreen.tsx))
+- **Hoisted Navigation Filter & Sort State**: `activeFilters`, `selectedBlock`, `subscriptionSearch`, `subscriptionSortBy`, and `subscriptionIsAscending` are hoisted to `NavigationContext`, preserving the operator's active search query, selected filter chips, block filter, directory sort mode (Block/Flat, Created Time, Edited Time, Paid Amount), and sort direction (Ascending/Descending) when navigating into pass details (`DetailsScreen`), pass form (`SubscriptionForm`), or QR views, and returning back via `goBack()`.
+- **Home Page Reset**: Navigating from the Home Page or logging out resets view states and sorting parameters back to default (`[FilterMode.ALL]`, `DirectorySortMode.BLOCK_FLAT`, ascending).
 
 ### AC. Non-Admin Role Restrictions & Role-Based Access Control (RBAC)
 - **Granular View & Edit Control**: Non-admin users (`UserRole.VENDOR`) have restricted visibility and edit capabilities across the application:
@@ -267,6 +268,27 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
 - **Block-Level Filtering**: Tapping the block badge on any pass card instantly filters the directory to show passes belonging strictly to that block, accompanied by a removable block filter chip with match count.
 - **Admin-Only Mobile Search Fallback**: When block/flat searches yield no matches, entering 4 or more consecutive numeric digits automatically triggers a fallback search matching mobile numbers by numeric substring (without requiring country code or `+` signs). Restricted strictly to administrators (`isAdmin`) as a privacy guard for sensitive phone number data.
 - **DOM Hydration Compliance**: Uses non-nested sibling layouts (`e.stopPropagation()`) entirely eliminating `<button>` inside `<button>` HTML nesting errors.
+
+### AE. Dedicated QR Code Image Print Engine & Compact Action Bar ([`QrScreen.tsx`](src/screens/QrScreen.tsx), [`UIContext.tsx`](src/context/UIContext.tsx))
+- **QR Image Only Print**: Added a **Print** action button on `QrScreen.tsx` capturing strictly the QR Code image node (`qrCodeOnlyRef`) and rendering a print-isolated HTML template printing strictly the QR Code image without printing background web app UI, headers, or buttons.
+- **Web Print Isolation Engine**: On Web browsers, `printPass` injects a temporary `@media print` style rule hiding all parent application elements (`body > *:not(#app-print-frame)`) during printing, guaranteeing zero layout spill or background webpage printing.
+- **Compact Mobile-Responsive Action Bar**: Scaled down action button dimensions (`height: s(38)`, `paddingHorizontal: s(4)`, `fontSize: s(11)`) to fit all 4 action buttons (View, Chat, Print, Share/Download) side-by-side cleanly across all mobile and web viewports without horizontal scrolling.
+
+### AF. Menu Content Image Sharing & Web Export Engine ([`ViewMenuScreen.tsx`](src/screens/ViewMenuScreen.tsx), [`UIContext.tsx`](src/context/UIContext.tsx))
+- **Targeted Menu View Capture**: Added a **Share Menu / Export Menu Image** button on [`ViewMenuScreen.tsx`](src/screens/ViewMenuScreen.tsx) capturing strictly the active day menu cards container (`menuRef`), excluding page navigation headers, user greetings, action buttons, and footer copyright notes.
+- **Cross-Platform Image Export**: Integrates with `shareQr` in `UIContext.tsx` to automatically trigger a PNG image download (`Export Menu Image`) on Web browsers and open the native share sheet (`Share Menu`) on mobile devices.
+
+### AG. Clean Report Image Capture & Document Header Engine ([`ReportScreen.tsx`](src/screens/ReportScreen.tsx), [`DayWiseReport.tsx`](src/components/report/DayWiseReport.tsx), [`ParcelWiseReport.tsx`](src/components/report/ParcelWiseReport.tsx), [`PaymentSummaryReport.tsx`](src/components/report/PaymentSummaryReport.tsx))
+- **Document Header Banner**: Captures report data cards (`reportRef`) prefixed with an official non-interactive Document Header Banner (`seasonName`, Report Title, Scope/Day/Meal, Date).
+- **Capture-Aware Button Suppression**: `isCapturing` state automatically suppresses interactive UI tab buttons, filter selection cards, and internal view-mode toggle buttons (`Complete` / `Planned`, `Summary` / `Missed`, `Payment Summary` / `Discrepancy`) during image capture, producing a pristine data-only report image without UI buttons.
+
+### AH. Duplicate Pass Registration Prevention & Alert Safeguard ([`SubscriptionForm.tsx`](src/screens/SubscriptionForm.tsx))
+- **Pre-Save Collision Detection**: When registering a new pass (`!lockIdentity`), the system checks whether a pass with the exact same Block and Flat number already exists in the database.
+- **Alert Popup & Overwrite Blocking**: Triggers an alert popup (`UI_TEXT.flatExists`) and blocks saving when a duplicate pass is detected, preventing accidental overriding of existing pass records.
+
+### AI. Concurrent Passcode Uniqueness Re-Validation Engine ([`SubscriptionForm.tsx`](src/screens/SubscriptionForm.tsx), [`constants.ts`](src/constants.ts))
+- **Passcode Preservation on Edit**: When editing an existing pass (`lockIdentity === true`), the passcode is strictly preserved (`value.passcode`).
+- **Live Commit-Time Uniqueness Re-Validation**: During parallel multi-device Add Pass operations (`!lockIdentity`), the system queries live database subscriptions at commit time, automatically re-generating collision-free passcodes when simultaneous submissions occur.
 
 ## 6. Quality Assurance & UI Catalog
 

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from "react";
 import { BackHandler, Platform } from "react-native";
 import { Screen, Subscription, Day, ReportType, ConfigDay, PaymentConfig, MealType, AppScreen, PaymentMode, FilterMode } from "../types";
+import { DirectorySortMode } from "../domain";
 import { useAuth } from "./AuthContext";
 import {
   getEnabledPaymentMethods,
@@ -41,14 +42,17 @@ interface NavigationContextType {
   // Quick Free Meal Mode State
   isQuickFreeMealMode: boolean;
   setIsQuickFreeMealMode: (val: boolean) => void;
-
-  // Subscription Search & Filters
+  // Subscription Search & Filters & Sorting
   subscriptionSearch: string;
   setSubscriptionSearch: (text: string) => void;
   activeFilters: FilterMode[];
   setActiveFilters: React.Dispatch<React.SetStateAction<FilterMode[]>>;
   selectedBlock: string | null;
   setSelectedBlock: (block: string | null) => void;
+  subscriptionSortBy: DirectorySortMode;
+  setSubscriptionSortBy: React.Dispatch<React.SetStateAction<DirectorySortMode>>;
+  subscriptionIsAscending: boolean;
+  setSubscriptionIsAscending: React.Dispatch<React.SetStateAction<boolean>>;
 
   // Menu Editor Target
   targetDay: Day;
@@ -84,6 +88,8 @@ export function NavigationProvider({ children }: { children: React.ReactNode }) 
   const [subscriptionSearch, setSubscriptionSearch] = useState("");
   const [activeFilters, setActiveFilters] = useState<FilterMode[]>([FilterMode.ALL]);
   const [selectedBlock, setSelectedBlock] = useState<string | null>(null);
+  const [subscriptionSortBy, setSubscriptionSortBy] = useState<DirectorySortMode>(DirectorySortMode.BLOCK_FLAT);
+  const [subscriptionIsAscending, setSubscriptionIsAscending] = useState(true);
 
   const [targetDay, setTargetDay] = useState<Day>("");
   const [targetMeal, setTargetMeal] = useState<MealType | null>(null);
@@ -146,6 +152,8 @@ export function NavigationProvider({ children }: { children: React.ReactNode }) 
     setSubscriptionSearch("");
     setActiveFilters([FilterMode.ALL]);
     setSelectedBlock(null);
+    setSubscriptionSortBy(DirectorySortMode.BLOCK_FLAT);
+    setSubscriptionIsAscending(true);
     setTargetDay("");
     setTargetMeal(null);
     if (!preserveQuickCheckout) {
@@ -229,12 +237,15 @@ export function NavigationProvider({ children }: { children: React.ReactNode }) 
     subscriptionSearch, setSubscriptionSearch,
     activeFilters, setActiveFilters,
     selectedBlock, setSelectedBlock,
+    subscriptionSortBy, setSubscriptionSortBy,
+    subscriptionIsAscending, setSubscriptionIsAscending,
     targetDay, setTargetDay, targetMeal, setTargetMeal,
     isQuickCheckout, setIsQuickCheckout,
     isQuickFreeMealMode, setIsQuickFreeMealMode
   }), [
     screen, history, selectedId, selectedRecord, editing,
     reportType, reportDayId, reportMealType, subscriptionSearch, activeFilters, selectedBlock,
+    subscriptionSortBy, subscriptionIsAscending,
     targetDay, targetMeal, isQuickCheckout, isQuickFreeMealMode,
     startNew, openScannedValue
   ]);

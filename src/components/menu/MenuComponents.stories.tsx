@@ -12,8 +12,8 @@ const menu: MealMenu = {
   nonVeg: ["Fish Curry"],
   vegPrice: "80",
   nonVegPrice: "120",
-  freeMealVegPrice: "80",
-  freeMealNonVegPrice: "120",
+  vendorVegPrice: "80",
+  vendorNonVegPrice: "120",
   vegParcelPrice: "20",
   nonVegParcelPrice: "30",
 };

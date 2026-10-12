@@ -86,6 +86,7 @@ export function DayWiseReport({
   kidsEnabled,
   guestsEnabled,
   freeMealEnabled,
+  isCapturing,
 }: {
   data: DayWiseData[];
   selectedDayId?: string;
@@ -95,6 +96,7 @@ export function DayWiseReport({
   kidsEnabled: boolean;
   guestsEnabled?: boolean;
   freeMealEnabled?: boolean;
+  isCapturing?: boolean;
 }) {
   const styles = useStyles();
   const { theme } = useAppTheme();
@@ -173,6 +175,7 @@ export function DayWiseReport({
         </View>
 
         {/* View Mode Switcher Toggle Bar */}
+        {!isCapturing && (
         <View
           style={{
             flexDirection: "row",
@@ -291,6 +294,7 @@ export function DayWiseReport({
             </Text>
           </Pressable>
         </View>
+        )}
 
         {/* Content based on View Mode */}
         <View style={{ marginTop: 16, gap: 12 }}>

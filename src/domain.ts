@@ -123,7 +123,8 @@ export type VarietyMenu = {
   parcelPrice?: string;
   kidsParcelPrice?: string;
   guestParcelPrice?: string;
-  freeMealPrice?: string;
+  vendorPrice?: string;
+  vendorParcelPrice?: string;
 };
 
 export type MealConfig = {
@@ -304,8 +305,10 @@ export type MealMenu = {
   kidsNonVegParcelPrice?: string;
   guestsVegParcelPrice?: string;
   guestsNonVegParcelPrice?: string;
-  freeMealVegPrice?: string;
-  freeMealNonVegPrice?: string;
+  vendorVegPrice?: string;
+  vendorNonVegPrice?: string;
+  vendorVegParcelPrice?: string;
+  vendorNonVegParcelPrice?: string;
   varieties?: Record<string, VarietyMenu>;
   freeMealCounts?: Record<string, number>;
   freeMealTakenCounts?: Record<string, number>;

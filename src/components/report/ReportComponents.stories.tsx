@@ -2,7 +2,7 @@ import React from "react";
 import { AmountDiscrepancyReport } from "./AmountDiscrepancyReport";
 import { DayWiseReport } from "./DayWiseReport";
 import { FlatWiseReport } from "./FlatWiseReport";
-import { FreeMealWiseReport } from "./FreeMealWiseReport";
+import { VendorMealWiseReport } from "./VendorMealWiseReport";
 import { MealWiseReport } from "./MealWiseReport";
 import { MembersReport } from "./MembersReport";
 import { MissedParcelReport } from "./MissedParcelReport";
@@ -149,8 +149,8 @@ export const FlatWiseReportStory = {
   }]} dayConfig={dayConfig} onSelectFlat={noop} kidsEnabled={false} />,
 };
 
-export const FreeMealWiseReportStory = {
-  name: "FreeMealWiseReport",
+export const VendorMealWiseReportStory = {
+  name: "VendorMealWiseReport",
   render: () => {
     const storyDays = ["Shashthi", "Saptami", "Ashtami", "Navami", "Dashami"];
     const storyConfig = storyDays.map((dayId) => ({
@@ -171,28 +171,42 @@ export const FreeMealWiseReportStory = {
           nonVeg: ["Fish Fry", "Mutton Curry"],
           vegPrice: "100",
           nonVegPrice: "150",
+          kidsVegPrice: "80",
+          kidsNonVegPrice: "120",
+          guestsVegPrice: "120",
+          guestsNonVegPrice: "180",
+          vegParcelPrice: "20",
+          nonVegParcelPrice: "30",
           freeMealVeg: 20,
           freeMealNonVeg: 15,
           freeMealVegTaken: 18,
           freeMealNonVegTaken: 12,
-          freeMealVegPrice: "100",
-          freeMealNonVegPrice: "150",
+          vendorVegPrice: "90",
+          vendorNonVegPrice: "140",
+          vendorParcelPrice: "25",
         },
         dinner: {
           veg: ["Puri", "Alur Dom"],
           nonVeg: ["Chicken Curry"],
           vegPrice: "80",
           nonVegPrice: "120",
+          kidsVegPrice: "60",
+          kidsNonVegPrice: "90",
+          guestsVegPrice: "100",
+          guestsNonVegPrice: "150",
+          vegParcelPrice: "15",
+          nonVegParcelPrice: "25",
           freeMealVeg: 15,
           freeMealNonVeg: 10,
           freeMealVegTaken: 15,
           freeMealNonVegTaken: 10,
-          freeMealVegPrice: "80",
-          freeMealNonVegPrice: "120",
+          vendorVegPrice: "75",
+          vendorNonVegPrice: "110",
+          vendorParcelPrice: "20",
         }
       }
     ]));
-    return <FreeMealWiseReport activeDays={storyDays} foodMenu={storyMenu} dayConfig={storyConfig as any} />;
+    return <VendorMealWiseReport activeDays={storyDays} foodMenu={storyMenu} dayConfig={storyConfig as any} subscriptions={STORY_FIXTURES.subscriptions} kidsEnabled={true} guestsEnabled={true} />;
   },
 };
 

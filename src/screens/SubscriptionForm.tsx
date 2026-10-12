@@ -1080,6 +1080,23 @@ export function SubscriptionForm() {
       appliedPackages: !isAdmin && value ? value.appliedPackages : (isPackageApplied ? appliedPackages : undefined),
     };
 
+    const passId = lockIdentity ? value.id : `${updatedPrepared.block}-${updatedPrepared.flat.trim().toUpperCase()}`;
+    const duplicateMatch = subscriptions.find(s => s.id === passId && (!lockIdentity || s.id !== value?.id));
+
+    if (duplicateMatch) {
+      showGlobalAlert(
+        UI_TEXT.flatExists,
+        UI_TEXT.flatExistsWithId.replace("{id}", duplicateMatch.id)
+      );
+      return;
+    }
+
+    let finalPasscode = !isAdmin && value?.passcode ? value.passcode : (updatedPrepared.passcode || generateUniquePasscode(subscriptions, passId, passId));
+    while (subscriptions.some(s => s.passcode === finalPasscode && s.id !== passId)) {
+      finalPasscode = generateUniquePasscode(subscriptions, passId, passId + "_" + Math.floor(Math.random() * 10000));
+    }
+    updatedPrepared.passcode = finalPasscode;
+
     const calculatedExpectedAmount = calculatePassTotalWithPackages(
       form.mealSlots,
       form.peopleCount,
