@@ -770,7 +770,7 @@ export const UI_TEXT = {
   vendorPriceLabel: "Vendor Price",
   vendorParcelPriceLabel: "Vendor Parcel Price",
   costIncurred: "Cost Incurred",
-  vendorPriceReport: "Vendor Price Report",
+  vendorPriceReport: "Vendor Price",
   vendorPriceSeasonSummary: "Vendor Price Season Summary",
   expectedVendorCost: "Expected Vendor Cost",
   actualVendorCost: "Actual Vendor Cost",
