@@ -103,7 +103,7 @@ export function SubscriptionForm() {
   const { addActivityLog } = useActivityLogs();
   const { showAlert: showGlobalAlert } = useUI();
   const {
-    editing: value, navigate, goBack, setSelectedId, setSelectedRecord
+    editing: value, navigate, goBack, setSelectedId, setSelectedRecord, setEditing
   } = useAppNavigation();
 
   const { foodPackages } = useFoodPackages();
@@ -1098,6 +1098,7 @@ export function SubscriptionForm() {
             onPress: () => {
               setSelectedId(duplicateMatch.id);
               setSelectedRecord(duplicateMatch);
+              setEditing(duplicateMatch);
               navigate(AppScreen.DETAILS);
             },
           },

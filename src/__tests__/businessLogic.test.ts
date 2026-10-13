@@ -190,30 +190,4 @@ describe("remainder distribution and detailed payment report calculation", () =>
       expect(sumDay1Meals).toBe(day1.netPayment);
     }
   });
-
-  it("calculates real DB dump report correctly showing exact season excess", () => {
-    const fs = require("fs");
-    const dumpPath =
-      "C:/Users/ranji/AppData/Local/Google/AndroidStudio2026.1.4/projects/durga-puja-food.735d10b4/.artifacts/b2cb853c-840d-4702-8bb8-96ea4d1352e1/scratch/db_dump.json";
-    const dump = JSON.parse(fs.readFileSync(dumpPath, "utf8"));
-
-    const subs = Object.values(dump.subscriptions || {});
-    const dayConfig = dump.config.days;
-    const foodMenu = dump.menu;
-    const foodPackages = dump.food_packages;
-    const kidsEnabled = !!dump.config.kidsEnabled;
-    const guestsEnabled = !!dump.config.guestsEnabled;
-
-    const report = calculateDetailedPaymentReportData(
-      subs as any,
-      foodMenu,
-      dayConfig,
-      kidsEnabled,
-      guestsEnabled,
-      foodPackages
-    );
-
-    expect(report.seasonTotalPayment.totalPortions).toBe(641);
-    expect(report.seasonTotalPayment.excessDeficient).toBe(90);
-  });
 });

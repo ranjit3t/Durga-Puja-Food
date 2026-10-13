@@ -35,186 +35,8 @@ import {
   resolveGuestPrice,
   distributeAmountWithRemainder,
   calculatePaidAmount,
+  calculatePassMealBreakdown,
 } from "../../utils/paymentUtils";
-
-function calculatePassMealBreakdown(
-  sub: SubscriptionRecord,
-  foodMenu: Record<string, any>,
-  dayConfig: ConfigDay[],
-  kidsEnabled: boolean,
-  guestsEnabled: boolean = false,
-  foodPackages: FoodPackage[] | Record<string, FoodPackage> = []
-) {
-  const pkgList: FoodPackage[] = Array.isArray(foodPackages)
-    ? foodPackages
-    : Object.values(foodPackages || {});
-
-  const mealTypes = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER];
-  const kCount = kidsEnabled ? (sub.kidsCount || 0) : 0;
-  const gCount = guestsEnabled ? (sub.guestsCount || 0) : 0;
-  let maxPeople = (sub.peopleCount || 0) + kCount + gCount;
-  Object.values(sub.mealSlots || {}).forEach((slots: any) => {
-    if (Array.isArray(slots) && slots.length > maxPeople) {
-      maxPeople = slots.length;
-    }
-  });
-  const totalPeople = maxPeople;
-
-  const passMeals: any[] = [];
-
-  Object.keys(sub.mealSlots || {}).forEach((dayId) => {
-    const slots = sub.mealSlots?.[dayId] || [];
-    const taken = sub.takenByPerson?.[dayId] || [];
-
-    slots.forEach((personSlot: any, i: number) => {
-      if (!personSlot) return;
-
-      const isKid = kidsEnabled && i >= sub.peopleCount && i < sub.peopleCount + kCount;
-      const isGuest = guestsEnabled && i >= sub.peopleCount + kCount && i < sub.peopleCount + kCount + gCount;
-      const category = isGuest ? "guest" : isKid ? "kid" : "adult";
-
-      mealTypes.forEach((mType) => {
-        if (!isMealEnabled(dayId, mType, dayConfig)) return;
-        const choice = normalizeChoice(personSlot[mType]);
-        if (choice === DietaryOption.NONE) return;
-
-        const mFoodPrice = resolveVarietyPrice(dayId, mType, choice, isKid, isGuest, "member", dayConfig, foodMenu);
-
-        let mParcelPrice = 0;
-        const isParcelOpted = toBool(personSlot[`${mType}Parcel` as keyof typeof personSlot]);
-        const isParcelAllowed = isParcelOpted && (isGuest
-          ? isGuestsParcelEnabled(dayId, mType, dayConfig, guestsEnabled)
-          : isKid
-          ? isKidsParcelEnabled(dayId, mType, dayConfig, kidsEnabled)
-          : isParcelEnabled(dayId, mType, dayConfig));
-
-        if (isParcelAllowed) {
-          const dayConf = dayConfig.find((d) => d.id === dayId);
-          const mConf = dayConf ? dayConf[mType] : null;
-          const isVeg = choice === DietaryOption.VEG || choice === "veg_default" || (typeof choice === "string" && choice.toLowerCase().includes("veg") && !choice.toLowerCase().includes("non"));
-
-          if (isVeg) {
-            const adultParcelPrice = foodMenu?.[dayId]?.[mType]?.vegParcelPrice ?? mConf?.vegParcelPrice;
-            const kidsParcelPrice = foodMenu?.[dayId]?.[mType]?.kidsVegParcelPrice;
-            const guestsParcelPrice = foodMenu?.[dayId]?.[mType]?.guestsVegParcelPrice;
-
-            mParcelPrice = isGuest
-              ? resolveGuestPrice(guestsParcelPrice, adultParcelPrice, undefined)
-              : resolvePrice(isKid, kidsParcelPrice, adultParcelPrice, undefined);
-          } else {
-            const adultParcelPrice = foodMenu?.[dayId]?.[mType]?.nonVegParcelPrice ?? mConf?.nonVegParcelPrice;
-            const kidsParcelPrice = foodMenu?.[dayId]?.[mType]?.kidsNonVegParcelPrice;
-            const guestsParcelPrice = foodMenu?.[dayId]?.[mType]?.guestsNonVegParcelPrice;
-
-            mParcelPrice = isGuest
-              ? resolveGuestPrice(guestsParcelPrice, adultParcelPrice, undefined)
-              : resolvePrice(isKid, kidsParcelPrice, adultParcelPrice, undefined);
-          }
-        }
-
-        const slotTotalPrice = mFoodPrice + mParcelPrice;
-        const tState = taken[i] || {};
-        const isMealTaken = !!tState[mType];
-        const isParcelTaken = !!tState[`${mType}Parcel` as keyof TakenState];
-
-        passMeals.push({
-          dayId,
-          mealType: mType,
-          personIndex: i,
-          category,
-          choice,
-          menuPrice: mFoodPrice,
-          parcelPrice: mParcelPrice,
-          slotTotalPrice,
-          pkgDiscount: 0,
-          discountedPrice: slotTotalPrice,
-          excessDeficient: 0,
-          netPayment: slotTotalPrice,
-          isMealTaken,
-          isParcelOpted,
-          isParcelAllowed,
-          isParcelTaken,
-        });
-      });
-    });
-  });
-
-  for (let i = 0; i < totalPeople; i++) {
-    const appliedInfo = sub.appliedPackages?.[i] || (sub.appliedPackages as any)?.[String(i)] || (sub.isPackageApplied && i === 0 ? sub.appliedPackages?.[0] || (sub.appliedPackages as any)?.["0"] : undefined);
-
-    if (appliedInfo) {
-      const pkg = pkgList.find((p) => p.id === appliedInfo.packageId || p.id.trim() === (appliedInfo.packageId || '').trim());
-      if (pkg) {
-        const personMeals = passMeals.filter((m) => m.personIndex === i);
-        const mealItemsMap = pkg.selectedMealItems || {};
-        const legacyMealsMap = pkg.selectedMeals || {};
-        const pkgDays = Object.keys(mealItemsMap).length > 0 ? Object.keys(mealItemsMap) : Object.keys(legacyMealsMap);
-
-        let pkgTargetMeals: any[] = [];
-        if (pkgDays.length > 0) {
-          pkgTargetMeals = personMeals.filter((m) => {
-            const targetItems = mealItemsMap[m.dayId] || (legacyMealsMap[m.dayId] || []).map((t: any) => ({ mealType: t, varietyId: "" }));
-            return targetItems.some((item: any) => item.mealType === m.mealType);
-          });
-        } else {
-          pkgTargetMeals = personMeals;
-        }
-
-        if (pkgTargetMeals.length > 0) {
-          const normalPkgPrice = pkgTargetMeals.reduce((acc, m) => acc + m.menuPrice, 0);
-          const isFlatDiscount = pkg.discountType === "flat_discount" || pkg.discountRate !== undefined;
-
-          let totalPkgDiscount = 0;
-          if (isFlatDiscount) {
-            const discountPercent = Math.min(100, Math.max(0, pkg.discountRate ?? 0));
-            totalPkgDiscount = (normalPkgPrice * discountPercent) / 100;
-          } else {
-            const pkgPrice = pkg.packagePrice ?? 0;
-            totalPkgDiscount = Math.max(0, normalPkgPrice - pkgPrice);
-          }
-
-          if (totalPkgDiscount > 0) {
-            const weights = pkgTargetMeals.map((m) => m.menuPrice);
-            const distributedDiscounts = distributeAmountWithRemainder(totalPkgDiscount, weights);
-
-            pkgTargetMeals.forEach((m, idx) => {
-              m.pkgDiscount = distributedDiscounts[idx] || 0;
-              m.discountedPrice = Math.max(0, m.slotTotalPrice - m.pkgDiscount);
-            });
-          }
-        }
-      }
-    }
-  }
-
-  const paidAmount = calculatePaidAmount(sub);
-  const passCalculatedTotal = passMeals.reduce((acc, m) => acc + m.discountedPrice, 0);
-  const passDiff = Math.max(0, paidAmount - passCalculatedTotal);
-
-  if (passDiff > 0 && passMeals.length > 0) {
-    const weights = passMeals.map((m) => m.discountedPrice);
-    const totalMealWeight = weights.reduce((acc, w) => acc + w, 0);
-
-    if (totalMealWeight > 0) {
-      const distributedDiff = distributeAmountWithRemainder(passDiff, weights);
-      passMeals.forEach((m, idx) => {
-        m.excessDeficient = distributedDiff[idx] || 0;
-      });
-    } else {
-      const equalWeights = new Array(passMeals.length).fill(1);
-      const distributedDiff = distributeAmountWithRemainder(passDiff, equalWeights);
-      passMeals.forEach((m, idx) => {
-        m.excessDeficient = distributedDiff[idx] || 0;
-      });
-    }
-  }
-
-  passMeals.forEach((m) => {
-    m.netPayment = m.menuPrice + m.parcelPrice - m.pkgDiscount + m.excessDeficient;
-  });
-
-  return passMeals;
-}
 
 export function VendorMealWiseReport({
   activeDays,
@@ -829,17 +651,28 @@ export function VendorMealWiseReport({
                     key={mKey}
                     style={{ backgroundColor: theme.colors.surfaceDark + (theme.themeType === AppThemeMode.DARK ? "66" : "80"), borderRadius: 16, padding: 12, borderWidth: 1, borderColor: theme.colors.border, gap: 10 }}
                   >
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, justifyContent: "space-between", flexWrap: "wrap" }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                        <Ionicons name={mKey === MealType.BREAKFAST ? "sunny-outline" : mKey === MealType.LUNCH ? "restaurant-outline" : "moon-outline"} size={16} color={theme.colors.primary} />
-                        <Text style={{ fontSize: 15, fontWeight: '800', color: theme.colors.textPrimary }}>
-                          {getMealLabel(mKey)}
-                          {mealParcelSub > 0 ? ` (${UI_TEXT.dineIn}: ₹${formatCurrencyAmount(mealDineSub)} | ${UI_TEXT.parcel}: ₹${formatCurrencyAmount(mealParcelSub)})` : ""}
-                        </Text>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 }}>
+                      <View style={{ flex: 1, minWidth: 120, gap: 2 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <Ionicons
+                            name={mKey === MealType.BREAKFAST ? "sunny-outline" : mKey === MealType.LUNCH ? "restaurant-outline" : "moon-outline"}
+                            size={16}
+                            color={theme.colors.primary}
+                          />
+                          <Text style={{ fontSize: 15, fontWeight: '800', color: theme.colors.textPrimary }}>
+                            {getMealLabel(mKey)}
+                          </Text>
+                        </View>
+                        {mealParcelSub > 0 && (
+                          <Text style={{ fontSize: 12, fontWeight: '700', color: theme.colors.textSecondary, paddingLeft: 22 }}>
+                            {UI_TEXT.openParen}{UI_TEXT.dineIn}{UI_TEXT.colon}{UI_TEXT.space}{UI_TEXT.rs}{formatCurrencyAmount(mealDineSub)}{UI_TEXT.space}{UI_TEXT.pipe}{UI_TEXT.space}{UI_TEXT.parcel}{UI_TEXT.colon}{UI_TEXT.space}{UI_TEXT.rs}{formatCurrencyAmount(mealParcelSub)}{UI_TEXT.closeParen}
+                          </Text>
+                        )}
                       </View>
-                      <View style={{ backgroundColor: theme.colors.primary + "22", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: theme.colors.primary }}>
+
+                      <View style={{ backgroundColor: theme.colors.primary + "22", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: theme.colors.primary, flexShrink: 0 }}>
                         <Text style={{ fontSize: 12, fontWeight: '900', color: theme.colors.primary }}>
-                          {getExcessOrDeficiencyLabel(mealExcessDeficiency)}: {UI_TEXT.rs} {formatCurrencyAmount(Math.abs(mealExcessDeficiency))}
+                          {getExcessOrDeficiencyLabel(mealExcessDeficiency)}{UI_TEXT.colon}{UI_TEXT.space}{UI_TEXT.rs}{UI_TEXT.space}{formatCurrencyAmount(Math.abs(mealExcessDeficiency))}
                         </Text>
                       </View>
                     </View>
@@ -854,18 +687,18 @@ export function VendorMealWiseReport({
                                 {cat.name}
                               </Text>
                               <Text style={{ fontSize: 10, fontWeight: "700", color: theme.colors.textMuted }}>
-                                {UI_TEXT.planLabel}{UI_TEXT.colon} {cat.planned} {UI_TEXT.pipe} {UI_TEXT.servedLabel}{UI_TEXT.colon} {cat.served}
+                                {UI_TEXT.planLabel}{UI_TEXT.colon}{UI_TEXT.space}{cat.planned}{UI_TEXT.space}{UI_TEXT.pipe}{UI_TEXT.space}{UI_TEXT.servedLabel}{UI_TEXT.colon}{UI_TEXT.space}{cat.served}
                               </Text>
                             </View>
-                            <View style={{ flexDirection: "row", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                            <View style={{ flexDirection: "row", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                               <Text style={{ fontSize: 12, fontWeight: "700", color: theme.colors.textPrimary }}>
-                                {UI_TEXT.subLabel}{UI_TEXT.colon} {UI_TEXT.rs}{formatCurrencyAmount(cat.catSub)}
+                                {UI_TEXT.subLabel}{UI_TEXT.colon}{UI_TEXT.space}{UI_TEXT.rs}{formatCurrencyAmount(cat.catSub)}
                               </Text>
                               <Text style={{ fontSize: 12, fontWeight: "700", color: theme.colors.textSecondary }}>
-                                {UI_TEXT.expLabel}{UI_TEXT.colon} {UI_TEXT.rs}{formatCurrencyAmount(cat.catExpVendor)}
+                                {UI_TEXT.expLabel}{UI_TEXT.colon}{UI_TEXT.space}{UI_TEXT.rs}{formatCurrencyAmount(cat.catExpVendor)}
                               </Text>
                               <Text style={{ fontSize: 12, fontWeight: "800", color: theme.colors.primary }}>
-                                {UI_TEXT.actLabel}{UI_TEXT.colon} {UI_TEXT.rs}{formatCurrencyAmount(cat.catActVendor)}
+                                {UI_TEXT.actLabel}{UI_TEXT.colon}{UI_TEXT.space}{UI_TEXT.rs}{formatCurrencyAmount(cat.catActVendor)}
                               </Text>
                             </View>
                           </View>
