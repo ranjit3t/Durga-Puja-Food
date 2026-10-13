@@ -282,9 +282,9 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
 - **Document Header Banner**: Captures report data cards (`reportRef`) prefixed with an official non-interactive Document Header Banner (`seasonName`, Report Title, Scope/Day/Meal, Date).
 - **Capture-Aware Button Suppression**: `isCapturing` state automatically suppresses interactive UI tab buttons, filter selection cards, and internal view-mode toggle buttons (`Complete` / `Planned`, `Summary` / `Missed`, `Payment Summary` / `Discrepancy`) during image capture, producing a pristine data-only report image without UI buttons.
 
-### AH. Duplicate Pass Registration Prevention & Alert Safeguard ([`SubscriptionForm.tsx`](src/screens/SubscriptionForm.tsx))
+### AH. Duplicate Pass Collision Confirmation & View Pass Navigation ([`SubscriptionForm.tsx`](src/screens/SubscriptionForm.tsx))
 - **Pre-Save Collision Detection**: When registering a new pass (`!lockIdentity`), the system checks whether a pass with the exact same Block and Flat number already exists in the database.
-- **Alert Popup & Overwrite Blocking**: Triggers an alert popup (`UI_TEXT.flatExists`) and blocks saving when a duplicate pass is detected, preventing accidental overriding of existing pass records.
+- **Interactive Confirmation Dialog & Direct Navigation**: Triggers an interactive confirmation dialog (`showAlert`) displaying the duplicate pass notice alongside `"Do you want to see the pass?"`. Tapping **Yes** (`UI_TEXT.yes`) immediately navigates the operator to view the existing pass details (`AppScreen.DETAILS`), while **No** (`UI_TEXT.no`) keeps the operator on the current form to adjust unit details.
 
 ### AI. Concurrent Passcode Uniqueness Re-Validation Engine ([`SubscriptionForm.tsx`](src/screens/SubscriptionForm.tsx), [`constants.ts`](src/constants.ts))
 - **Passcode Preservation on Edit**: When editing an existing pass (`lockIdentity === true`), the passcode is strictly preserved (`value.passcode`).

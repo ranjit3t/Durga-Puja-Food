@@ -527,6 +527,7 @@ export const UI_TEXT = {
   flatExistsMsgPrefix: "Pass for unit ",
   flatExistsMsgSuffix: " is already registered. You may edit the existing pass now.",
   flatExistsWithId: "Pass with pass id '{id}' already exists.",
+  viewExistingPassQuestion: "Do you want to see the pass?",
   saveFailed: "Save Operation Failed",
   parcelMissedConfirm: "Parcel service is enabled for this pass, but parcel collection was not marked. Do you want to proceed?",
   syncError: "Database synchronization error.",

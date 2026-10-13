@@ -1086,7 +1086,22 @@ export function SubscriptionForm() {
     if (duplicateMatch) {
       showGlobalAlert(
         UI_TEXT.flatExists,
-        UI_TEXT.flatExistsWithId.replace("{id}", duplicateMatch.id)
+        `${UI_TEXT.flatExistsWithId.replace("{id}", duplicateMatch.id)}\n\n${UI_TEXT.viewExistingPassQuestion}`,
+        [
+          {
+            text: UI_TEXT.no,
+            style: "cancel",
+          },
+          {
+            text: UI_TEXT.yes,
+            style: "default",
+            onPress: () => {
+              setSelectedId(duplicateMatch.id);
+              setSelectedRecord(duplicateMatch);
+              navigate(AppScreen.DETAILS);
+            },
+          },
+        ]
       );
       return;
     }
