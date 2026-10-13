@@ -412,6 +412,7 @@ export function ViewMenuScreen() {
                         kidsEnabled={!!kidsEnabled}
                         guestsEnabled={!!guestsEnabled}
                         freeMealEnabled={!!freeMealEnabled}
+                        isAdmin={isAdmin}
                       />
                     ))}
                 </View>

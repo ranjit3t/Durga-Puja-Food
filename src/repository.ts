@@ -580,7 +580,7 @@ export function createFirebaseRepository(): SubscriptionRepository {
     },
     async getConfig() {
       const services = await ensureFirebaseAuth();
-      if (!services) return { seasonName: "", days: [], payment: { enabled: true, options: { upi: true, cash: true, bankTransfer: true } }, freeMealEnabled: true, mobileEnabled: true, foodPriceEnabled: false, seasonEnabled: true, kidsEnabled: false };
+      if (!services) return { seasonName: "", days: [], payment: { enabled: true, options: { upi: true, cash: true, bankTransfer: true } }, freeMealEnabled: true, mobileEnabled: true, foodPriceEnabled: false, seasonEnabled: true, kidsEnabled: false, vendorKidsMealChargingEnabled: true };
       const snapshot = await get(ref(services.db, configPath));
       const val = snapshot.val();
 
@@ -610,12 +610,13 @@ export function createFirebaseRepository(): SubscriptionRepository {
           seasonEnabled: val.seasonEnabled !== false,
           kidsEnabled: val.kidsEnabled || false,
           guestsEnabled: val.guestsEnabled || false,
+          vendorKidsMealChargingEnabled: val.vendorKidsMealChargingEnabled !== false,
           whatsappCountryCode: val.whatsappCountryCode || "91",
           quickCheckoutAutoCloseMs: val.quickCheckoutAutoCloseMs ?? 3000,
           soundEnabled: val.soundEnabled !== undefined ? Boolean(val.soundEnabled) : true,
         };
       }
-      return { seasonName: "", days: [], payment: defaultPayment, freeMealEnabled: true, mobileEnabled: true, foodPriceEnabled: false, seasonEnabled: true, kidsEnabled: false, soundEnabled: true };
+      return { seasonName: "", days: [], payment: defaultPayment, freeMealEnabled: true, mobileEnabled: true, foodPriceEnabled: false, seasonEnabled: true, kidsEnabled: false, vendorKidsMealChargingEnabled: true, soundEnabled: true };
     },
     async updateConfig(config) {
       const services = await ensureFirebaseAuth();
@@ -913,6 +914,7 @@ export function createFirebaseRepository(): SubscriptionRepository {
               seasonEnabled: val.seasonEnabled !== false,
               kidsEnabled: val.kidsEnabled || false,
               guestsEnabled: val.guestsEnabled || false,
+              vendorKidsMealChargingEnabled: val.vendorKidsMealChargingEnabled !== false,
               whatsappCountryCode: val.whatsappCountryCode || "91",
               quickCheckoutAutoCloseMs: val.quickCheckoutAutoCloseMs ?? 3000,
             });

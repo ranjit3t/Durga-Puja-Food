@@ -21,6 +21,8 @@ export function MealDisplay({
   foodPriceEnabled,
   kidsEnabled,
   guestsEnabled,
+  freeMealEnabled,
+  isAdmin = false,
 }: {
   title: string;
   mealKey: MealType;
@@ -32,6 +34,7 @@ export function MealDisplay({
   kidsEnabled: boolean;
   guestsEnabled?: boolean;
   freeMealEnabled?: boolean;
+  isAdmin?: boolean;
 }) {
   const styles = useStyles();
   const { theme } = useAppTheme();
@@ -160,7 +163,7 @@ export function MealDisplay({
                   </View>
                 </View>
 
-                {(foodPriceEnabled || !!vendorPrice || !!vendorParcelPrice) && (
+                {(foodPriceEnabled || (isAdmin && (!!vendorPrice || !!vendorParcelPrice))) && (
                   <View style={{ alignItems: "flex-end", gap: 4, flexShrink: 1 }}>
                     <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
                       {foodPriceEnabled && adultPrice ? (
@@ -187,7 +190,7 @@ export function MealDisplay({
                         </View>
                       ) : null}
 
-                      {vendorPrice ? (
+                      {isAdmin && vendorPrice ? (
                         <View style={[styles.pill, { backgroundColor: vColor + "22", paddingVertical: 4, paddingHorizontal: 10, borderRadius: 8, borderStyle: "dotted", borderWidth: 1, borderColor: vColor }]}>
                           <Text style={{ fontSize: 11, fontWeight: "900", color: theme.colors.textPrimary }}>
                             {UI_TEXT.vendorPriceLabel}{UI_TEXT.colon} {UI_TEXT.rs} {vendorPrice}
@@ -196,10 +199,10 @@ export function MealDisplay({
                       ) : null}
                     </View>
 
-                    {mConf?.parcel && ((foodPriceEnabled && (parcelPrice || kidsParcelPrice || guestParcelPrice)) || vendorParcelPrice) ? (
+                    {mConf?.parcel && ((foodPriceEnabled && (parcelPrice || kidsParcelPrice || guestParcelPrice)) || (isAdmin && vendorParcelPrice)) ? (
                       <Text style={{ fontSize: 10, color: theme.colors.textSecondary, fontWeight: "700" }}>
                         {foodPriceEnabled ? `${UI_TEXT.parcelLabel}${UI_TEXT.colon}${UI_TEXT.space}${UI_TEXT.rs}${UI_TEXT.space}${parcelPrice || "0"}` : ""}
-                        {vendorParcelPrice ? `${foodPriceEnabled ? UI_TEXT.space : ""}(${UI_TEXT.vendorPriceLabel}: ${UI_TEXT.rs}${vendorParcelPrice})` : ""}
+                        {isAdmin && vendorParcelPrice ? `${foodPriceEnabled ? UI_TEXT.space : ""}(${UI_TEXT.vendorPriceLabel}: ${UI_TEXT.rs}${vendorParcelPrice})` : ""}
                         {foodPriceEnabled && kidsEnabled && isKidsParcelEnabled(dayId, mealKey, config, kidsEnabled) && kidsParcelPrice
                           ? `${UI_TEXT.space}${UI_TEXT.openParen}${UI_TEXT.kidsAbbrLabel}${UI_TEXT.colon}${UI_TEXT.space}${UI_TEXT.rs}${UI_TEXT.space}${kidsParcelPrice}${UI_TEXT.closeParen}`
                           : ""}

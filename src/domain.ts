@@ -183,6 +183,7 @@ export type AppConfig = {
   seasonEnabled?: boolean;
   kidsEnabled?: boolean;
   guestsEnabled?: boolean;
+  vendorKidsMealChargingEnabled?: boolean;
   whatsappCountryCode?: string;
   quickCheckoutAutoCloseMs?: number;
   soundEnabled?: boolean;
@@ -242,6 +243,7 @@ export enum ReportType {
   DAY = "day",
   MEAL = "meal",
   FREE_MEAL = "freeMeal",
+  VENDOR_PRICE = "vendorPrice",
   PARCEL = "parcel",
   FLAT = "flat",
   PAYMENT = "payment",

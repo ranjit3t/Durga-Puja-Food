@@ -35,7 +35,7 @@ import { useAppNavigation } from "../context/NavigationContext";
 export function ReportScreen() {
   const { handleLogout } = useAuth();
   const {
-    subscriptions, foodMenu, dayConfig, seasonName, paymentConfig, freeMealEnabled, kidsEnabled, guestsEnabled
+    subscriptions, foodMenu, dayConfig, seasonName, paymentConfig, freeMealEnabled, kidsEnabled, guestsEnabled, vendorKidsMealChargingEnabled
   } = useCoreDatabase();
   const { foodPackages } = useFoodPackages();
   const { shareQr } = useUI();
@@ -149,7 +149,7 @@ export function ReportScreen() {
     switch (type) {
       case ReportType.DAY: return UI_TEXT.dayWiseReport;
       case ReportType.MEAL: return UI_TEXT.mealWiseReport;
-      case ReportType.FREE_MEAL: return UI_TEXT.vendorPriceReport;
+      case ReportType.VENDOR_PRICE: return UI_TEXT.vendorPriceReport;
       case ReportType.MEMBERS_MEAL: return UI_TEXT.membersMealReport;
       case ReportType.PARCEL: return UI_TEXT.parcelReport;
       case ReportType.NOT_TAKEN: return UI_TEXT.notTakenReport;
@@ -269,7 +269,7 @@ export function ReportScreen() {
           {[
             { id: ReportType.DAY, label: UI_TEXT.day, icon: "calendar-outline" },
             { id: ReportType.MEAL, label: UI_TEXT.meal, icon: "restaurant-outline" },
-            { id: ReportType.FREE_MEAL, label: UI_TEXT.vendorPriceReport, icon: "receipt-outline" },
+            { id: ReportType.VENDOR_PRICE, label: UI_TEXT.vendorPriceReport, icon: "receipt-outline" },
             { id: ReportType.MEMBERS_MEAL, label: UI_TEXT.members, icon: "people-outline" },
             { id: ReportType.PARCEL, label: UI_TEXT.parcels, icon: "cube-outline" },
             { id: ReportType.NOT_TAKEN, label: UI_TEXT.pending, icon: "alert-circle-outline" },
@@ -480,7 +480,7 @@ export function ReportScreen() {
             />
           )}
 
-          {reportType === ReportType.FREE_MEAL && (
+          {reportType === ReportType.VENDOR_PRICE && (
             <VendorMealWiseReport
               activeDays={activeDays}
               foodMenu={foodMenu}
@@ -489,6 +489,8 @@ export function ReportScreen() {
               kidsEnabled={!!kidsEnabled}
               guestsEnabled={!!guestsEnabled}
               foodPackages={foodPackages}
+              vendorKidsMealChargingEnabled={vendorKidsMealChargingEnabled}
+              freeMealEnabled={!!freeMealEnabled}
             />
           )}
 

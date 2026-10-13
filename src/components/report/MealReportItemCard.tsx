@@ -18,9 +18,10 @@ export function MealReportItemCard({ mealType, mealLabel, detail, colorScheme }:
   const styles = useStyles();
   const { theme } = useAppTheme();
 
+  const memberLabel = detail.kidsPortionCount ? UI_TEXT.adults : UI_TEXT.members;
   const categoryBreakdownStr = (detail.adultPortionCount || detail.kidsPortionCount || detail.guestsPortionCount)
     ? ` [${[
-        detail.adultPortionCount ? `${detail.adultPortionCount} ${UI_TEXT.adults}` : null,
+        detail.adultPortionCount ? `${detail.adultPortionCount} ${memberLabel}` : null,
         detail.kidsPortionCount ? `${detail.kidsPortionCount} ${UI_TEXT.kids}` : null,
         detail.guestsPortionCount ? `${detail.guestsPortionCount} ${UI_TEXT.guests}` : null,
       ].filter(Boolean).join(", ")}]`

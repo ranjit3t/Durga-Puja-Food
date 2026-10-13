@@ -133,7 +133,7 @@ export function DayWisePaymentReport({
                         : ` (${dayDineInCount || dayPortions} ${UI_TEXT.dineIn})`}
                       {(dayDetail.adultPortionCount || dayDetail.kidsPortionCount || dayDetail.guestsPortionCount) ? (
                         ` [${[
-                          dayDetail.adultPortionCount ? `${dayDetail.adultPortionCount} ${UI_TEXT.adults}` : null,
+                          dayDetail.adultPortionCount ? `${dayDetail.adultPortionCount} ${dayDetail.kidsPortionCount ? UI_TEXT.adults : UI_TEXT.members}` : null,
                           dayDetail.kidsPortionCount ? `${dayDetail.kidsPortionCount} ${UI_TEXT.kids}` : null,
                           dayDetail.guestsPortionCount ? `${dayDetail.guestsPortionCount} ${UI_TEXT.guests}` : null,
                         ].filter(Boolean).join(", ")}]`
@@ -151,7 +151,7 @@ export function DayWisePaymentReport({
                   const mDineIn = mDetail?.dineInCount ?? mPortions;
                   const mCategoryStr = (mDetail?.adultPortionCount || mDetail?.kidsPortionCount || mDetail?.guestsPortionCount)
                     ? ` [${[
-                        mDetail?.adultPortionCount ? `${mDetail.adultPortionCount} ${UI_TEXT.adults}` : null,
+                        mDetail?.adultPortionCount ? `${mDetail.adultPortionCount} ${mDetail?.kidsPortionCount ? UI_TEXT.adults : UI_TEXT.members}` : null,
                         mDetail?.kidsPortionCount ? `${mDetail.kidsPortionCount} ${UI_TEXT.kids}` : null,
                         mDetail?.guestsPortionCount ? `${mDetail.guestsPortionCount} ${UI_TEXT.guests}` : null,
                       ].filter(Boolean).join(", ")}]`

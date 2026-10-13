@@ -105,13 +105,13 @@ export function PaymentSummaryReport({
   const discrepancyCount = data.discrepancies ? data.discrepancies.length : 0;
 
   const foodBreakdown = [
-    { label: UI_TEXT.adults, amount: data.totalAdultFood ?? 0 },
+    { label: kidsEnabled ? UI_TEXT.adults : UI_TEXT.members, amount: data.totalAdultFood ?? 0 },
     ...(kidsEnabled ? [{ label: UI_TEXT.kids, amount: data.totalKidsFood ?? 0 }] : []),
     ...(guestsEnabled ? [{ label: UI_TEXT.guests, amount: data.totalGuestsFood ?? 0 }] : []),
   ].filter((item) => item.amount > 0);
 
   const parcelBreakdown = [
-    { label: UI_TEXT.adults, amount: data.totalAdultParcel ?? 0 },
+    { label: kidsEnabled ? UI_TEXT.adults : UI_TEXT.members, amount: data.totalAdultParcel ?? 0 },
     ...(kidsEnabled ? [{ label: UI_TEXT.kids, amount: data.totalKidsParcel ?? 0 }] : []),
     ...(guestsEnabled ? [{ label: UI_TEXT.guests, amount: data.totalGuestsParcel ?? 0 }] : []),
   ].filter((item) => item.amount > 0);

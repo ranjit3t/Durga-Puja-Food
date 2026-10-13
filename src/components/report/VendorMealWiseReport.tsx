@@ -224,6 +224,8 @@ export function VendorMealWiseReport({
   kidsEnabled = false,
   guestsEnabled = false,
   foodPackages = [],
+  vendorKidsMealChargingEnabled = true,
+  freeMealEnabled = true,
 }: {
   activeDays: string[];
   foodMenu: FoodMenu;
@@ -232,12 +234,16 @@ export function VendorMealWiseReport({
   kidsEnabled?: boolean;
   guestsEnabled?: boolean;
   foodPackages?: FoodPackage[] | Record<string, FoodPackage>;
+  vendorKidsMealChargingEnabled?: boolean;
+  freeMealEnabled?: boolean;
 }) {
   const styles = useStyles();
   const { theme } = useAppTheme();
 
   const getExcessOrDeficiencyLabel = (amount: number) =>
     amount >= 0 ? UI_TEXT.excess : UI_TEXT.deficiency;
+
+  const memberLabel = kidsEnabled ? UI_TEXT.adults : UI_TEXT.members;
 
   let seasonTotalSubscription = 0;
   let seasonTotalExpectedVendor = 0;
@@ -300,7 +306,8 @@ export function VendorMealWiseReport({
           const varMenu = gm.varieties?.[m.choice];
 
           // Vendor meal & parcel prices
-          const varVendorMeal = varMenu?.vendorPrice ? Number(varMenu.vendorPrice) : (isVeg ? defAdultVegVendor : defAdultNvVendor);
+          const baseVendorMeal = varMenu?.vendorPrice ? Number(varMenu.vendorPrice) : (isVeg ? defAdultVegVendor : defAdultNvVendor);
+          const varVendorMeal = (m.category === "kid" && vendorKidsMealChargingEnabled === false) ? 0 : baseVendorMeal;
           const varVendorParcel = varMenu?.vendorParcelPrice ? Number(varMenu.vendorParcelPrice) : (isVeg ? defAdultVegParcelVendor : defAdultNvParcelVendor);
 
           const slotParcelSub = m.isParcelAllowed ? m.parcelPrice : 0;
@@ -312,32 +319,36 @@ export function VendorMealWiseReport({
           const parcelAct = m.isParcelTaken ? varVendorParcel : 0;
 
           if (m.category === "guest") {
-            guestsDineSub += slotDineSub;
-            guestsDineExp += dineExp;
-            guestsDineAct += dineAct;
-            guestsDinePlanned++;
-            if (m.isMealTaken) guestsDineServed++;
+            if (guestsEnabled) {
+              guestsDineSub += slotDineSub;
+              guestsDineExp += dineExp;
+              guestsDineAct += dineAct;
+              guestsDinePlanned++;
+              if (m.isMealTaken) guestsDineServed++;
 
-            if (m.isParcelAllowed) {
-              guestsParcelSub += slotParcelSub;
-              guestsParcelExp += parcelExp;
-              guestsParcelAct += parcelAct;
-              guestsParcelPlanned++;
-              if (m.isParcelTaken) guestsParcelServed++;
+              if (m.isParcelAllowed) {
+                guestsParcelSub += slotParcelSub;
+                guestsParcelExp += parcelExp;
+                guestsParcelAct += parcelAct;
+                guestsParcelPlanned++;
+                if (m.isParcelTaken) guestsParcelServed++;
+              }
             }
           } else if (m.category === "kid") {
-            kidsDineSub += slotDineSub;
-            kidsDineExp += dineExp;
-            kidsDineAct += dineAct;
-            kidsDinePlanned++;
-            if (m.isMealTaken) kidsDineServed++;
+            if (kidsEnabled) {
+              kidsDineSub += slotDineSub;
+              kidsDineExp += dineExp;
+              kidsDineAct += dineAct;
+              kidsDinePlanned++;
+              if (m.isMealTaken) kidsDineServed++;
 
-            if (m.isParcelAllowed) {
-              kidsParcelSub += slotParcelSub;
-              kidsParcelExp += parcelExp;
-              kidsParcelAct += parcelAct;
-              kidsParcelPlanned++;
-              if (m.isParcelTaken) kidsParcelServed++;
+              if (m.isParcelAllowed) {
+                kidsParcelSub += slotParcelSub;
+                kidsParcelExp += parcelExp;
+                kidsParcelAct += parcelAct;
+                kidsParcelPlanned++;
+                if (m.isParcelTaken) kidsParcelServed++;
+              }
             }
           } else {
             adultDineSub += slotDineSub;
@@ -357,10 +368,10 @@ export function VendorMealWiseReport({
         });
       });
 
-      const freeVegPlanned = vEnabled ? fmCounts.freeMealVeg : 0;
-      const freeNonVegPlanned = nvEnabled ? fmCounts.freeMealNonVeg : 0;
-      const freeVegServed = vEnabled ? fmCounts.freeMealVegTaken : 0;
-      const freeNonVegServed = nvEnabled ? fmCounts.freeMealNonVegTaken : 0;
+      const freeVegPlanned = (freeMealEnabled && vEnabled) ? fmCounts.freeMealVeg : 0;
+      const freeNonVegPlanned = (freeMealEnabled && nvEnabled) ? fmCounts.freeMealNonVeg : 0;
+      const freeVegServed = (freeMealEnabled && vEnabled) ? fmCounts.freeMealVegTaken : 0;
+      const freeNonVegServed = (freeMealEnabled && nvEnabled) ? fmCounts.freeMealNonVegTaken : 0;
 
       const freeDineExp = (freeVegPlanned * defAdultVegVendor) + (freeNonVegPlanned * defAdultNvVendor);
       const freeDineAct = (freeVegServed * defAdultVegVendor) + (freeNonVegServed * defAdultNvVendor);
@@ -379,12 +390,14 @@ export function VendorMealWiseReport({
         seasonGuestsDineExp += guestsDineExp; seasonGuestsParcelExp += guestsParcelExp;
         seasonGuestsDineAct += guestsDineAct; seasonGuestsParcelAct += guestsParcelAct;
       }
-      seasonFreeDineExp += freeDineExp;
-      seasonFreeDineAct += freeDineAct;
+      if (freeMealEnabled) {
+        seasonFreeDineExp += freeDineExp;
+        seasonFreeDineAct += freeDineAct;
+      }
 
       const categories = [
         ...(adultDinePlanned > 0 || adultDineServed > 0 || adultDineSub > 0 ? [{
-          name: `${UI_TEXT.adults} (${UI_TEXT.dineIn})`,
+          name: `${memberLabel} (${UI_TEXT.dineIn})`,
           planned: adultDinePlanned,
           served: adultDineServed,
           catSub: adultDineSub,
@@ -392,7 +405,7 @@ export function VendorMealWiseReport({
           catActVendor: adultDineAct,
         }] : []),
         ...(adultParcelPlanned > 0 || adultParcelServed > 0 || adultParcelSub > 0 ? [{
-          name: `${UI_TEXT.adults} (${UI_TEXT.parcel})`,
+          name: `${memberLabel} (${UI_TEXT.parcel})`,
           planned: adultParcelPlanned,
           served: adultParcelServed,
           catSub: adultParcelSub,
@@ -435,7 +448,7 @@ export function VendorMealWiseReport({
             catActVendor: guestsParcelAct,
           }] : []),
         ] : []),
-        ...(freeVegPlanned + freeNonVegPlanned > 0 || freeVegServed + freeNonVegServed > 0 ? [{
+        ...(freeMealEnabled && (freeVegPlanned + freeNonVegPlanned > 0 || freeVegServed + freeNonVegServed > 0) ? [{
           name: `${UI_TEXT.freeMealSuffix} (${UI_TEXT.dineIn})`,
           planned: freeVegPlanned + freeNonVegPlanned,
           served: freeVegServed + freeNonVegServed,
@@ -517,6 +530,14 @@ export function VendorMealWiseReport({
   const seasonTotalDineAct = seasonAdultDineAct + seasonKidsDineAct + seasonGuestsDineAct + seasonFreeDineAct;
   const seasonTotalParcelAct = seasonAdultParcelAct + seasonKidsParcelAct + seasonGuestsParcelAct;
 
+  const seasonExpectedDiff = seasonTotalExpectedVendor - seasonTotalSubscription;
+  const seasonExpectedLabel = seasonExpectedDiff > 0 ? UI_TEXT.totalExpectedDeficiency : UI_TEXT.totalExpectedExcess;
+  const seasonExpectedVal = Math.abs(seasonExpectedDiff);
+
+  const seasonActualDiff = seasonTotalActualVendor - seasonTotalSubscription;
+  const seasonActualLabel = seasonActualDiff > 0 ? UI_TEXT.totalActualDeficiency : UI_TEXT.totalActualExcess;
+  const seasonActualVal = Math.abs(seasonActualDiff);
+
   return (
     <View style={{ gap: 16 }}>
       {/* Top Season Summary Card */}
@@ -549,25 +570,25 @@ export function VendorMealWiseReport({
             {seasonTotalDineSub > 0 && (
               <View style={{ paddingLeft: 10, gap: 2, marginTop: 4 }}>
                 <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                  <Text style={{ color: theme.colors.white + "CC", fontSize: 12, fontWeight: "800" }}>• Meal Service (Dine-In)</Text>
+                  <Text style={{ color: theme.colors.white + "CC", fontSize: 12, fontWeight: "800" }}>• {UI_TEXT.mealService}</Text>
                   <Text style={{ color: theme.colors.white + "DD", fontSize: 12, fontWeight: "800" }}>{UI_TEXT.rs} {formatCurrencyAmount(seasonTotalDineSub)}</Text>
                 </View>
                 <View style={{ paddingLeft: 12, gap: 2 }}>
                   {seasonAdultDineSub > 0 && (
                     <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                      <Text style={{ color: theme.colors.white + "99", fontSize: 11, fontWeight: "600" }}>- {UI_TEXT.adults}</Text>
+                      <Text style={{ color: theme.colors.white + "99", fontSize: 11, fontWeight: "600" }}>{UI_TEXT.hyphen} {memberLabel}</Text>
                       <Text style={{ color: theme.colors.white + "CC", fontSize: 11, fontWeight: "700" }}>{UI_TEXT.rs} {formatCurrencyAmount(seasonAdultDineSub)}</Text>
                     </View>
                   )}
                   {kidsEnabled && seasonKidsDineSub > 0 && (
                     <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                      <Text style={{ color: theme.colors.white + "99", fontSize: 11, fontWeight: "600" }}>- {UI_TEXT.kids}</Text>
+                      <Text style={{ color: theme.colors.white + "99", fontSize: 11, fontWeight: "600" }}>{UI_TEXT.hyphen} {UI_TEXT.kids}</Text>
                       <Text style={{ color: theme.colors.white + "CC", fontSize: 11, fontWeight: "700" }}>{UI_TEXT.rs} {formatCurrencyAmount(seasonKidsDineSub)}</Text>
                     </View>
                   )}
                   {guestsEnabled && seasonGuestsDineSub > 0 && (
                     <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                      <Text style={{ color: theme.colors.white + "99", fontSize: 11, fontWeight: "600" }}>- {UI_TEXT.guests}</Text>
+                      <Text style={{ color: theme.colors.white + "99", fontSize: 11, fontWeight: "600" }}>{UI_TEXT.hyphen} {UI_TEXT.guests}</Text>
                       <Text style={{ color: theme.colors.white + "CC", fontSize: 11, fontWeight: "700" }}>{UI_TEXT.rs} {formatCurrencyAmount(seasonGuestsDineSub)}</Text>
                     </View>
                   )}
@@ -579,25 +600,25 @@ export function VendorMealWiseReport({
             {seasonTotalParcelSub > 0 && (
               <View style={{ paddingLeft: 10, gap: 2, marginTop: 4 }}>
                 <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                  <Text style={{ color: theme.colors.white + "CC", fontSize: 12, fontWeight: "800" }}>• Parcel Service</Text>
+                  <Text style={{ color: theme.colors.white + "CC", fontSize: 12, fontWeight: "800" }}>• {UI_TEXT.parcelService}</Text>
                   <Text style={{ color: theme.colors.white + "DD", fontSize: 12, fontWeight: "800" }}>{UI_TEXT.rs} {formatCurrencyAmount(seasonTotalParcelSub)}</Text>
                 </View>
                 <View style={{ paddingLeft: 12, gap: 2 }}>
                   {seasonAdultParcelSub > 0 && (
                     <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                      <Text style={{ color: theme.colors.white + "99", fontSize: 11, fontWeight: "600" }}>- {UI_TEXT.adults}</Text>
+                      <Text style={{ color: theme.colors.white + "99", fontSize: 11, fontWeight: "600" }}>{UI_TEXT.hyphen} {memberLabel}</Text>
                       <Text style={{ color: theme.colors.white + "CC", fontSize: 11, fontWeight: "700" }}>{UI_TEXT.rs} {formatCurrencyAmount(seasonAdultParcelSub)}</Text>
                     </View>
                   )}
                   {kidsEnabled && seasonKidsParcelSub > 0 && (
                     <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                      <Text style={{ color: theme.colors.white + "99", fontSize: 11, fontWeight: "600" }}>- {UI_TEXT.kids}</Text>
+                      <Text style={{ color: theme.colors.white + "99", fontSize: 11, fontWeight: "600" }}>{UI_TEXT.hyphen} {UI_TEXT.kids}</Text>
                       <Text style={{ color: theme.colors.white + "CC", fontSize: 11, fontWeight: "700" }}>{UI_TEXT.rs} {formatCurrencyAmount(seasonKidsParcelSub)}</Text>
                     </View>
                   )}
                   {guestsEnabled && seasonGuestsParcelSub > 0 && (
                     <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                      <Text style={{ color: theme.colors.white + "99", fontSize: 11, fontWeight: "600" }}>- {UI_TEXT.guests}</Text>
+                      <Text style={{ color: theme.colors.white + "99", fontSize: 11, fontWeight: "600" }}>{UI_TEXT.hyphen} {UI_TEXT.guests}</Text>
                       <Text style={{ color: theme.colors.white + "CC", fontSize: 11, fontWeight: "700" }}>{UI_TEXT.rs} {formatCurrencyAmount(seasonGuestsParcelSub)}</Text>
                     </View>
                   )}
@@ -621,31 +642,31 @@ export function VendorMealWiseReport({
             {seasonTotalDineExp > 0 && (
               <View style={{ paddingLeft: 10, gap: 2, marginTop: 4 }}>
                 <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                  <Text style={{ color: theme.colors.white + "CC", fontSize: 12, fontWeight: "800" }}>• Meal Service (Dine-In)</Text>
+                  <Text style={{ color: theme.colors.white + "CC", fontSize: 12, fontWeight: "800" }}>• {UI_TEXT.mealService}</Text>
                   <Text style={{ color: theme.colors.white + "DD", fontSize: 12, fontWeight: "800" }}>{UI_TEXT.rs} {formatCurrencyAmount(seasonTotalDineExp)}</Text>
                 </View>
                 <View style={{ paddingLeft: 12, gap: 2 }}>
                   {seasonAdultDineExp > 0 && (
                     <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                      <Text style={{ color: theme.colors.white + "99", fontSize: 11, fontWeight: "600" }}>- {UI_TEXT.adults}</Text>
+                      <Text style={{ color: theme.colors.white + "99", fontSize: 11, fontWeight: "600" }}>{UI_TEXT.hyphen} {memberLabel}</Text>
                       <Text style={{ color: theme.colors.white + "CC", fontSize: 11, fontWeight: "700" }}>{UI_TEXT.rs} {formatCurrencyAmount(seasonAdultDineExp)}</Text>
                     </View>
                   )}
                   {kidsEnabled && seasonKidsDineExp > 0 && (
                     <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                      <Text style={{ color: theme.colors.white + "99", fontSize: 11, fontWeight: "600" }}>- {UI_TEXT.kids}</Text>
+                      <Text style={{ color: theme.colors.white + "99", fontSize: 11, fontWeight: "600" }}>{UI_TEXT.hyphen} {UI_TEXT.kids}</Text>
                       <Text style={{ color: theme.colors.white + "CC", fontSize: 11, fontWeight: "700" }}>{UI_TEXT.rs} {formatCurrencyAmount(seasonKidsDineExp)}</Text>
                     </View>
                   )}
                   {guestsEnabled && seasonGuestsDineExp > 0 && (
                     <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                      <Text style={{ color: theme.colors.white + "99", fontSize: 11, fontWeight: "600" }}>- {UI_TEXT.guests}</Text>
+                      <Text style={{ color: theme.colors.white + "99", fontSize: 11, fontWeight: "600" }}>{UI_TEXT.hyphen} {UI_TEXT.guests}</Text>
                       <Text style={{ color: theme.colors.white + "CC", fontSize: 11, fontWeight: "700" }}>{UI_TEXT.rs} {formatCurrencyAmount(seasonGuestsDineExp)}</Text>
                     </View>
                   )}
-                  {seasonFreeDineExp > 0 && (
+                  {freeMealEnabled && seasonFreeDineExp > 0 && (
                     <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                      <Text style={{ color: theme.colors.white + "99", fontSize: 11, fontWeight: "600" }}>- {UI_TEXT.freeMealSuffix}</Text>
+                      <Text style={{ color: theme.colors.white + "99", fontSize: 11, fontWeight: "600" }}>{UI_TEXT.hyphen} {UI_TEXT.freeMealSuffix}</Text>
                       <Text style={{ color: theme.colors.white + "CC", fontSize: 11, fontWeight: "700" }}>{UI_TEXT.rs} {formatCurrencyAmount(seasonFreeDineExp)}</Text>
                     </View>
                   )}
@@ -657,25 +678,25 @@ export function VendorMealWiseReport({
             {seasonTotalParcelExp > 0 && (
               <View style={{ paddingLeft: 10, gap: 2, marginTop: 4 }}>
                 <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                  <Text style={{ color: theme.colors.white + "CC", fontSize: 12, fontWeight: "800" }}>• Parcel Service</Text>
+                  <Text style={{ color: theme.colors.white + "CC", fontSize: 12, fontWeight: "800" }}>• {UI_TEXT.parcelService}</Text>
                   <Text style={{ color: theme.colors.white + "DD", fontSize: 12, fontWeight: "800" }}>{UI_TEXT.rs} {formatCurrencyAmount(seasonTotalParcelExp)}</Text>
                 </View>
                 <View style={{ paddingLeft: 12, gap: 2 }}>
                   {seasonAdultParcelExp > 0 && (
                     <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                      <Text style={{ color: theme.colors.white + "99", fontSize: 11, fontWeight: "600" }}>- {UI_TEXT.adults}</Text>
+                      <Text style={{ color: theme.colors.white + "99", fontSize: 11, fontWeight: "600" }}>{UI_TEXT.hyphen} {memberLabel}</Text>
                       <Text style={{ color: theme.colors.white + "CC", fontSize: 11, fontWeight: "700" }}>{UI_TEXT.rs} {formatCurrencyAmount(seasonAdultParcelExp)}</Text>
                     </View>
                   )}
                   {kidsEnabled && seasonKidsParcelExp > 0 && (
                     <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                      <Text style={{ color: theme.colors.white + "99", fontSize: 11, fontWeight: "600" }}>- {UI_TEXT.kids}</Text>
+                      <Text style={{ color: theme.colors.white + "99", fontSize: 11, fontWeight: "600" }}>{UI_TEXT.hyphen} {UI_TEXT.kids}</Text>
                       <Text style={{ color: theme.colors.white + "CC", fontSize: 11, fontWeight: "700" }}>{UI_TEXT.rs} {formatCurrencyAmount(seasonKidsParcelExp)}</Text>
                     </View>
                   )}
                   {guestsEnabled && seasonGuestsParcelExp > 0 && (
                     <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                      <Text style={{ color: theme.colors.white + "99", fontSize: 11, fontWeight: "600" }}>- {UI_TEXT.guests}</Text>
+                      <Text style={{ color: theme.colors.white + "99", fontSize: 11, fontWeight: "600" }}>{UI_TEXT.hyphen} {UI_TEXT.guests}</Text>
                       <Text style={{ color: theme.colors.white + "CC", fontSize: 11, fontWeight: "700" }}>{UI_TEXT.rs} {formatCurrencyAmount(seasonGuestsParcelExp)}</Text>
                     </View>
                   )}
@@ -684,7 +705,17 @@ export function VendorMealWiseReport({
             )}
           </View>
 
-          {/* 3. Total Actual Vendor Cost (Meal vs Parcel with subcategories) */}
+          {/* 3. Total Expected Excess / Deficiency Summary */}
+          <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.white + "30", paddingTop: 8, marginTop: 4, flexDirection: "row", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap" }}>
+            <Text style={{ color: theme.colors.white, fontWeight: "900", fontSize: 15, flex: 1, marginRight: 8 }} numberOfLines={1}>
+              {seasonExpectedLabel}
+            </Text>
+            <Text style={{ color: theme.colors.white, fontWeight: "900", fontSize: 18, flexShrink: 0 }} numberOfLines={1}>
+              {UI_TEXT.rs} {formatCurrencyAmount(seasonExpectedVal)}
+            </Text>
+          </View>
+
+          {/* 4. Total Actual Vendor Cost (Meal vs Parcel with subcategories) */}
           <View style={{ gap: 4, borderTopWidth: 1, borderTopColor: theme.colors.white + "30", paddingTop: 8 }}>
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap" }}>
               <Text style={{ color: theme.colors.white, fontSize: 14, fontWeight: "900", flex: 1, marginRight: 8 }} numberOfLines={1}>
@@ -699,31 +730,31 @@ export function VendorMealWiseReport({
             {seasonTotalDineAct > 0 && (
               <View style={{ paddingLeft: 10, gap: 2, marginTop: 4 }}>
                 <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                  <Text style={{ color: theme.colors.white + "CC", fontSize: 12, fontWeight: "800" }}>• Meal Service (Dine-In)</Text>
+                  <Text style={{ color: theme.colors.white + "CC", fontSize: 12, fontWeight: "800" }}>• {UI_TEXT.mealService}</Text>
                   <Text style={{ color: theme.colors.white + "DD", fontSize: 12, fontWeight: "800" }}>{UI_TEXT.rs} {formatCurrencyAmount(seasonTotalDineAct)}</Text>
                 </View>
                 <View style={{ paddingLeft: 12, gap: 2 }}>
                   {seasonAdultDineAct > 0 && (
                     <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                      <Text style={{ color: theme.colors.white + "99", fontSize: 11, fontWeight: "600" }}>- {UI_TEXT.adults}</Text>
+                      <Text style={{ color: theme.colors.white + "99", fontSize: 11, fontWeight: "600" }}>{UI_TEXT.hyphen} {memberLabel}</Text>
                       <Text style={{ color: theme.colors.white + "CC", fontSize: 11, fontWeight: "700" }}>{UI_TEXT.rs} {formatCurrencyAmount(seasonAdultDineAct)}</Text>
                     </View>
                   )}
                   {kidsEnabled && seasonKidsDineAct > 0 && (
                     <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                      <Text style={{ color: theme.colors.white + "99", fontSize: 11, fontWeight: "600" }}>- {UI_TEXT.kids}</Text>
+                      <Text style={{ color: theme.colors.white + "99", fontSize: 11, fontWeight: "600" }}>{UI_TEXT.hyphen} {UI_TEXT.kids}</Text>
                       <Text style={{ color: theme.colors.white + "CC", fontSize: 11, fontWeight: "700" }}>{UI_TEXT.rs} {formatCurrencyAmount(seasonKidsDineAct)}</Text>
                     </View>
                   )}
                   {guestsEnabled && seasonGuestsDineAct > 0 && (
                     <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                      <Text style={{ color: theme.colors.white + "99", fontSize: 11, fontWeight: "600" }}>- {UI_TEXT.guests}</Text>
+                      <Text style={{ color: theme.colors.white + "99", fontSize: 11, fontWeight: "600" }}>{UI_TEXT.hyphen} {UI_TEXT.guests}</Text>
                       <Text style={{ color: theme.colors.white + "CC", fontSize: 11, fontWeight: "700" }}>{UI_TEXT.rs} {formatCurrencyAmount(seasonGuestsDineAct)}</Text>
                     </View>
                   )}
-                  {seasonFreeDineAct > 0 && (
+                  {freeMealEnabled && seasonFreeDineAct > 0 && (
                     <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                      <Text style={{ color: theme.colors.white + "99", fontSize: 11, fontWeight: "600" }}>- {UI_TEXT.freeMealSuffix}</Text>
+                      <Text style={{ color: theme.colors.white + "99", fontSize: 11, fontWeight: "600" }}>{UI_TEXT.hyphen} {UI_TEXT.freeMealSuffix}</Text>
                       <Text style={{ color: theme.colors.white + "CC", fontSize: 11, fontWeight: "700" }}>{UI_TEXT.rs} {formatCurrencyAmount(seasonFreeDineAct)}</Text>
                     </View>
                   )}
@@ -735,25 +766,25 @@ export function VendorMealWiseReport({
             {seasonTotalParcelAct > 0 && (
               <View style={{ paddingLeft: 10, gap: 2, marginTop: 4 }}>
                 <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                  <Text style={{ color: theme.colors.white + "CC", fontSize: 12, fontWeight: "800" }}>• Parcel Service</Text>
+                  <Text style={{ color: theme.colors.white + "CC", fontSize: 12, fontWeight: "800" }}>• {UI_TEXT.parcelService}</Text>
                   <Text style={{ color: theme.colors.white + "DD", fontSize: 12, fontWeight: "800" }}>{UI_TEXT.rs} {formatCurrencyAmount(seasonTotalParcelAct)}</Text>
                 </View>
                 <View style={{ paddingLeft: 12, gap: 2 }}>
                   {seasonAdultParcelAct > 0 && (
                     <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                      <Text style={{ color: theme.colors.white + "99", fontSize: 11, fontWeight: "600" }}>- {UI_TEXT.adults}</Text>
+                      <Text style={{ color: theme.colors.white + "99", fontSize: 11, fontWeight: "600" }}>{UI_TEXT.hyphen} {memberLabel}</Text>
                       <Text style={{ color: theme.colors.white + "CC", fontSize: 11, fontWeight: "700" }}>{UI_TEXT.rs} {formatCurrencyAmount(seasonAdultParcelAct)}</Text>
                     </View>
                   )}
                   {kidsEnabled && seasonKidsParcelAct > 0 && (
                     <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                      <Text style={{ color: theme.colors.white + "99", fontSize: 11, fontWeight: "600" }}>- {UI_TEXT.kids}</Text>
+                      <Text style={{ color: theme.colors.white + "99", fontSize: 11, fontWeight: "600" }}>{UI_TEXT.hyphen} {UI_TEXT.kids}</Text>
                       <Text style={{ color: theme.colors.white + "CC", fontSize: 11, fontWeight: "700" }}>{UI_TEXT.rs} {formatCurrencyAmount(seasonKidsParcelAct)}</Text>
                     </View>
                   )}
                   {guestsEnabled && seasonGuestsParcelAct > 0 && (
                     <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                      <Text style={{ color: theme.colors.white + "99", fontSize: 11, fontWeight: "600" }}>- {UI_TEXT.guests}</Text>
+                      <Text style={{ color: theme.colors.white + "99", fontSize: 11, fontWeight: "600" }}>{UI_TEXT.hyphen} {UI_TEXT.guests}</Text>
                       <Text style={{ color: theme.colors.white + "CC", fontSize: 11, fontWeight: "700" }}>{UI_TEXT.rs} {formatCurrencyAmount(seasonGuestsParcelAct)}</Text>
                     </View>
                   )}
@@ -762,13 +793,13 @@ export function VendorMealWiseReport({
             )}
           </View>
 
-          {/* 4. Excess / Deficiency Summary */}
+          {/* 5. Total Actual Excess / Deficiency Summary */}
           <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.white + "40", paddingTop: 8, marginTop: 4, flexDirection: "row", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap" }}>
             <Text style={{ color: theme.colors.white, fontWeight: "900", fontSize: 16, flex: 1, marginRight: 8 }} numberOfLines={1}>
-              {getExcessOrDeficiencyLabel(seasonNetExcessDeficiency)}
+              {seasonActualLabel}
             </Text>
             <Text style={{ color: theme.colors.white, fontWeight: "900", fontSize: 20, flexShrink: 0 }} numberOfLines={1}>
-              {UI_TEXT.rs} {formatCurrencyAmount(Math.abs(seasonNetExcessDeficiency))}
+              {UI_TEXT.rs} {formatCurrencyAmount(seasonActualVal)}
             </Text>
           </View>
         </View>
@@ -823,18 +854,18 @@ export function VendorMealWiseReport({
                                 {cat.name}
                               </Text>
                               <Text style={{ fontSize: 10, fontWeight: "700", color: theme.colors.textMuted }}>
-                                Plan: {cat.planned} | Served: {cat.served}
+                                {UI_TEXT.planLabel}{UI_TEXT.colon} {cat.planned} {UI_TEXT.pipe} {UI_TEXT.servedLabel}{UI_TEXT.colon} {cat.served}
                               </Text>
                             </View>
                             <View style={{ flexDirection: "row", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
                               <Text style={{ fontSize: 12, fontWeight: "700", color: theme.colors.textPrimary }}>
-                                Sub: {UI_TEXT.rs}{formatCurrencyAmount(cat.catSub)}
+                                {UI_TEXT.subLabel}{UI_TEXT.colon} {UI_TEXT.rs}{formatCurrencyAmount(cat.catSub)}
                               </Text>
                               <Text style={{ fontSize: 12, fontWeight: "700", color: theme.colors.textSecondary }}>
-                                Exp: {UI_TEXT.rs}{formatCurrencyAmount(cat.catExpVendor)}
+                                {UI_TEXT.expLabel}{UI_TEXT.colon} {UI_TEXT.rs}{formatCurrencyAmount(cat.catExpVendor)}
                               </Text>
                               <Text style={{ fontSize: 12, fontWeight: "800", color: theme.colors.primary }}>
-                                Act: {UI_TEXT.rs}{formatCurrencyAmount(cat.catActVendor)}
+                                {UI_TEXT.actLabel}{UI_TEXT.colon} {UI_TEXT.rs}{formatCurrencyAmount(cat.catActVendor)}
                               </Text>
                             </View>
                           </View>
