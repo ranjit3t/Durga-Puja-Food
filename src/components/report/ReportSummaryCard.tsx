@@ -9,6 +9,7 @@ import { formatCurrencyAmount } from "../../utils/paymentUtils";
 export interface ReportSummaryCardProps {
   title: string;
   iconName: keyof typeof Ionicons.glyphMap;
+  activeFilterChips?: { label: string; value: string }[];
   summary: {
     menuPrice: number;
     parcelPrice?: number;
@@ -25,6 +26,10 @@ export interface ReportSummaryCardProps {
     vegPortionsTaken?: number;
     nonVegPortions?: number;
     nonVegPortionsTaken?: number;
+    totalMembersCount?: number;
+    totalAdultsCount?: number;
+    totalKidsCount?: number;
+    totalGuestsCount?: number;
     seasonTotalPasses?: number;
     paidPassesCount?: number;
     unpaidPassesCount?: number;
@@ -33,7 +38,7 @@ export interface ReportSummaryCardProps {
   };
 }
 
-export function ReportSummaryCard({ title, iconName, summary }: ReportSummaryCardProps) {
+export function ReportSummaryCard({ title, iconName, activeFilterChips, summary }: ReportSummaryCardProps) {
   const styles = useStyles();
   const { theme } = useAppTheme();
 
@@ -58,6 +63,38 @@ export function ReportSummaryCard({ title, iconName, summary }: ReportSummaryCar
       </View>
 
       <View style={{ gap: 8, borderTopWidth: 1, borderTopColor: theme.colors.white + "40", paddingTop: 12 }}>
+        {/* Applied Filter Criteria Subsection */}
+        {activeFilterChips !== undefined && (
+          <View style={{ gap: 4, marginBottom: 4, borderBottomWidth: 1, borderBottomColor: theme.colors.white + "20", paddingBottom: 8 }}>
+            <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700" }}>
+              {UI_TEXT.activeFilterSummary}
+            </Text>
+            {activeFilterChips.length > 0 ? (
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 2 }}>
+                {activeFilterChips.map((chip) => (
+                  <View
+                    key={chip.label}
+                    style={{
+                      backgroundColor: theme.colors.white + "25",
+                      paddingHorizontal: 8,
+                      paddingVertical: 3,
+                      borderRadius: 6,
+                    }}
+                  >
+                    <Text style={{ color: theme.colors.white, fontSize: 12, fontWeight: "800" }}>
+                      {chip.label}: {chip.value}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <Text style={{ color: theme.colors.white, fontSize: 12, fontWeight: "700", marginTop: 2 }}>
+                {UI_TEXT.allFilters}
+              </Text>
+            )}
+          </View>
+        )}
+
         {/* Total Passes Block */}
         {(summary.seasonTotalPasses ?? 0) > 0 && (
           <View style={{ gap: 3, marginBottom: 4, borderBottomWidth: 1, borderBottomColor: theme.colors.white + "20", paddingBottom: 8 }}>
@@ -75,6 +112,32 @@ export function ReportSummaryCard({ title, iconName, summary }: ReportSummaryCar
                   {UI_TEXT.pipe}
                   {summary.unpaidPassesCount}{UI_TEXT.space}{UI_TEXT.unpaidPasses}
                   {UI_TEXT.closeParen}
+                </Text>
+              )}
+            </View>
+          </View>
+        )}
+
+        {/* Headcount Subsection Block */}
+        {(summary.totalMembersCount ?? 0) > 0 && (
+          <View style={{ gap: 3, marginBottom: 4, borderBottomWidth: 1, borderBottomColor: theme.colors.white + "20", paddingBottom: 8 }}>
+            <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700" }}>
+              {UI_TEXT.membersReport} ({summary.totalMembersCount} {summary.totalMembersCount === 1 ? UI_TEXT.member : UI_TEXT.members})
+            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              {summary.totalAdultsCount !== undefined && summary.totalAdultsCount > 0 && (
+                <Text style={{ color: theme.colors.white, fontSize: 13, fontWeight: "800" }}>
+                  • {UI_TEXT.adults}: {summary.totalAdultsCount}
+                </Text>
+              )}
+              {summary.totalKidsCount !== undefined && summary.totalKidsCount > 0 && (
+                <Text style={{ color: theme.colors.white, fontSize: 13, fontWeight: "800" }}>
+                  • {UI_TEXT.kids}: {summary.totalKidsCount}
+                </Text>
+              )}
+              {summary.totalGuestsCount !== undefined && summary.totalGuestsCount > 0 && (
+                <Text style={{ color: theme.colors.white, fontSize: 13, fontWeight: "800" }}>
+                  • {UI_TEXT.guests}: {summary.totalGuestsCount}
                 </Text>
               )}
             </View>

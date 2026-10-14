@@ -622,6 +622,7 @@ export const UI_TEXT = {
   allPaymentStatuses: "All Payment Statuses",
   allPackages: "All Packages",
   anyPackage: "Any Package",
+  allFilters: "All Filters (Complete Dataset)",
   resetAllFilters: "Reset Filters",
   matchingRecords: "Matching Passes",
   activeFilterSummary: "Active Filters Selected:",

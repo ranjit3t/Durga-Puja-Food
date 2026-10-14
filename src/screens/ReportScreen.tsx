@@ -577,6 +577,7 @@ export function ReportScreen() {
               paymentConfig={paymentConfig}
               foodPackages={foodPackages}
               onSelectFlat={onSelectFlat}
+              isCapturing={isCapturing}
             />
           )}
         </View>

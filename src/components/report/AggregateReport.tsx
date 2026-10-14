@@ -31,6 +31,7 @@ interface AggregateReportProps {
   paymentConfig: any;
   foodPackages: FoodPackage[] | Record<string, FoodPackage>;
   onSelectFlat: (id: string) => void;
+  isCapturing?: boolean;
 }
 
 function useOptionalNavigation() {
@@ -52,6 +53,7 @@ export function AggregateReport({
   paymentConfig,
   foodPackages,
   onSelectFlat,
+  isCapturing = false,
 }: AggregateReportProps) {
   const styles = useStyles();
   const { theme } = useAppTheme();
@@ -266,6 +268,34 @@ export function AggregateReport({
     isPaymentEnabled,
   ]);
 
+  const activeFilterChips = useMemo(() => {
+    const chips: { label: string; value: string }[] = [];
+    if (selectedBlock !== UI_TEXT.allBlocks) chips.push({ label: UI_TEXT.filterByBlock, value: selectedBlock });
+    if (selectedFlat !== UI_TEXT.allFlats) chips.push({ label: UI_TEXT.filterByFlat, value: selectedFlat });
+    if (selectedPersonType !== UI_TEXT.allPersons) chips.push({ label: UI_TEXT.filterByPersonType, value: selectedPersonType });
+    if (selectedDiet !== UI_TEXT.allDiets) chips.push({ label: UI_TEXT.filterByDiet, value: selectedDiet });
+    if (selectedDay !== UI_TEXT.allDays) chips.push({ label: UI_TEXT.filterByDay, value: getDayLabel(selectedDay, dayConfig) });
+    if (selectedMeal !== UI_TEXT.allMeals) chips.push({ label: UI_TEXT.filterByMeal, value: getMealLabel(selectedMeal as MealType) });
+    if (selectedService !== UI_TEXT.allServices) chips.push({ label: UI_TEXT.filterByService, value: selectedService });
+    if (isPaymentEnabled && selectedPaymentMode !== UI_TEXT.allPaymentModes) chips.push({ label: UI_TEXT.filterByPaymentMode, value: selectedPaymentMode });
+    if (isPaymentEnabled && selectedPaymentStatus !== UI_TEXT.allPaymentStatuses) chips.push({ label: UI_TEXT.filterByPaymentStatus, value: selectedPaymentStatus });
+    if (selectedPackage !== UI_TEXT.allPackages) chips.push({ label: UI_TEXT.filterByPackage, value: selectedPackage });
+    return chips;
+  }, [
+    selectedBlock,
+    selectedFlat,
+    selectedPersonType,
+    selectedDiet,
+    selectedDay,
+    selectedMeal,
+    selectedService,
+    selectedPaymentMode,
+    selectedPaymentStatus,
+    selectedPackage,
+    dayConfig,
+    isPaymentEnabled,
+  ]);
+
   // Filter and compute matching subscription records & portions using calculatePassMealBreakdown
   const filteredData = useMemo(() => {
     let result = subscriptions;
@@ -442,6 +472,9 @@ export function AggregateReport({
     let vegPortionsTaken = 0;
     let nonVegPortions = 0;
     let nonVegPortionsTaken = 0;
+    let totalAdultsCount = 0;
+    let totalKidsCount = 0;
+    let totalGuestsCount = 0;
     let menuPrice = 0;
     let parcelPrice = 0;
     let packageDiscount = 0;
@@ -461,6 +494,28 @@ export function AggregateReport({
       vegPortionsTaken += item.vegPortionsTaken;
       nonVegPortions += item.nonVegPortions;
       nonVegPortionsTaken += item.nonVegPortionsTaken;
+
+      const aCount = item.peopleCount || 0;
+      const kCount = kidsEnabled ? (item.kidsCount || 0) : 0;
+      const gCount = guestsEnabled ? (item.guestsCount || 0) : 0;
+
+      // Filter headcounts if person type filter is active
+      if (selectedPersonType === UI_TEXT.allPersons) {
+        totalAdultsCount += aCount;
+        totalKidsCount += kCount;
+        totalGuestsCount += gCount;
+      } else if (selectedPersonType === UI_TEXT.adults) {
+        totalAdultsCount += aCount;
+      } else if (selectedPersonType === UI_TEXT.kids) {
+        totalKidsCount += kCount;
+      } else if (selectedPersonType === UI_TEXT.guests) {
+        totalGuestsCount += gCount;
+      } else if (selectedPersonType === UI_TEXT.freeMeal) {
+        totalAdultsCount += aCount;
+        totalKidsCount += kCount;
+        totalGuestsCount += gCount;
+      }
+
       menuPrice += item.menuPriceSum;
       parcelPrice += item.parcelPriceSum;
       packageDiscount += item.packageDiscountSum;
@@ -470,13 +525,11 @@ export function AggregateReport({
 
       // Package breakdown calculation
       const applied = item.appliedPackages || {};
-      const adultCount = item.peopleCount || 0;
-      const kidCount = kidsEnabled ? (item.kidsCount || 0) : 0;
 
       Object.entries(applied).forEach(([pIdxStr, appliedInfo]: [string, any]) => {
         const pIdx = Number(pIdxStr);
-        const isKid = kidsEnabled && pIdx >= adultCount && pIdx < adultCount + kidCount;
-        const isGuest = guestsEnabled && pIdx >= adultCount + kidCount;
+        const isKid = kidsEnabled && pIdx >= aCount && pIdx < aCount + kCount;
+        const isGuest = guestsEnabled && pIdx >= aCount + kCount;
 
         // Respect person type filter if set
         if (selectedPersonType !== UI_TEXT.allPersons) {
@@ -496,6 +549,8 @@ export function AggregateReport({
       });
     });
 
+    const totalMembersCount = totalAdultsCount + totalKidsCount + totalGuestsCount;
+
     return {
       seasonTotalPasses: totalPasses,
       totalPortions,
@@ -508,6 +563,10 @@ export function AggregateReport({
       vegPortionsTaken,
       nonVegPortions,
       nonVegPortionsTaken,
+      totalMembersCount,
+      totalAdultsCount,
+      totalKidsCount,
+      totalGuestsCount,
       menuPrice,
       parcelPrice,
       packageDiscount,
@@ -520,130 +579,133 @@ export function AggregateReport({
 
   return (
     <View style={{ gap: 16 }}>
-      {/* 1. Filter Permutation Controls Card (ON TOP) */}
-      <View style={[styles.card, { padding: 16, borderRadius: 16 }]}>
-        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <Ionicons name="filter-outline" size={18} color={theme.colors.primary} />
-            <Text style={{ fontWeight: "900", fontSize: 16, color: theme.colors.textPrimary }}>
-              {UI_TEXT.filters} ({activeFiltersCount} active)
-            </Text>
-          </View>
-          {activeFiltersCount > 0 && (
-            <Pressable
-              onPress={handleResetFilters}
-              accessible={true}
-              accessibilityRole="button"
-              accessibilityLabel={UI_TEXT.resetAllFilters}
-              style={{ paddingHorizontal: 10, paddingVertical: 4, backgroundColor: theme.colors.primary + "20", borderRadius: 8 }}
-            >
-              <Text style={{ color: theme.colors.primary, fontWeight: "800", fontSize: 12 }}>
-                {UI_TEXT.resetAllFilters}
+      {/* 1. Filter Permutation Controls Card (Hidden during capture/sharing) */}
+      {!isCapturing && (
+        <View style={[styles.card, { padding: 16, borderRadius: 16 }]}>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <Ionicons name="filter-outline" size={18} color={theme.colors.primary} />
+              <Text style={{ fontWeight: "900", fontSize: 16, color: theme.colors.textPrimary }}>
+                {UI_TEXT.filters} ({activeFiltersCount} active)
               </Text>
-            </Pressable>
-          )}
-        </View>
-
-        <View style={{ gap: 12 }}>
-          <View style={{ flexDirection: "row", gap: 10, flexWrap: "wrap" }}>
-            <View style={{ flex: 1, minWidth: 150 }}>
-              <Dropdown label={UI_TEXT.filterByBlock} value={selectedBlock} options={blocks} onChange={setSelectedBlock} />
             </View>
-            <View style={{ flex: 1, minWidth: 150 }}>
-              <Dropdown label={UI_TEXT.filterByFlat} value={selectedFlat} options={flats} onChange={setSelectedFlat} />
-            </View>
+            {activeFiltersCount > 0 && (
+              <Pressable
+                onPress={handleResetFilters}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={UI_TEXT.resetAllFilters}
+                style={{ paddingHorizontal: 10, paddingVertical: 4, backgroundColor: theme.colors.primary + "20", borderRadius: 8 }}
+              >
+                <Text style={{ color: theme.colors.primary, fontWeight: "800", fontSize: 12 }}>
+                  {UI_TEXT.resetAllFilters}
+                </Text>
+              </Pressable>
+            )}
           </View>
 
-          {(personTypes.length > 1 || diets.length > 1) && (
+          <View style={{ gap: 12 }}>
             <View style={{ flexDirection: "row", gap: 10, flexWrap: "wrap" }}>
-              {personTypes.length > 1 && (
-                <View style={{ flex: 1, minWidth: 150 }}>
-                  <Dropdown label={UI_TEXT.filterByPersonType} value={selectedPersonType} options={personTypes} onChange={setSelectedPersonType} />
-                </View>
-              )}
-              {diets.length > 1 && (
-                <View style={{ flex: 1, minWidth: 150 }}>
-                  <Dropdown label={UI_TEXT.filterByDiet} value={selectedDiet} options={diets} onChange={setSelectedDiet} />
-                </View>
-              )}
+              <View style={{ flex: 1, minWidth: 150 }}>
+                <Dropdown label={UI_TEXT.filterByBlock} value={selectedBlock} options={blocks} onChange={setSelectedBlock} />
+              </View>
+              <View style={{ flex: 1, minWidth: 150 }}>
+                <Dropdown label={UI_TEXT.filterByFlat} value={selectedFlat} options={flats} onChange={setSelectedFlat} />
+              </View>
             </View>
-          )}
 
-          {(days.length > 1 || meals.length > 1) && (
-            <View style={{ flexDirection: "row", gap: 10, flexWrap: "wrap" }}>
-              {days.length > 1 && (
-                <View style={{ flex: 1, minWidth: 150 }}>
-                  <Dropdown
-                    label={UI_TEXT.filterByDay}
-                    value={selectedDay === UI_TEXT.allDays ? UI_TEXT.allDays : getDayLabel(selectedDay, dayConfig)}
-                    options={days.map((d) => (d === UI_TEXT.allDays ? UI_TEXT.allDays : getDayLabel(d, dayConfig)))}
-                    onChange={(val) => {
-                      if (val === UI_TEXT.allDays) {
-                        setSelectedDay(UI_TEXT.allDays);
-                      } else {
-                        const found = dayConfig.find((d) => d.label === val || d.id === val);
-                        setSelectedDay(found ? found.id : val);
-                      }
-                    }}
-                  />
-                </View>
-              )}
-              {meals.length > 1 && (
-                <View style={{ flex: 1, minWidth: 150 }}>
-                  <Dropdown
-                    label={UI_TEXT.filterByMeal}
-                    value={selectedMeal === UI_TEXT.allMeals ? UI_TEXT.allMeals : getMealLabel(selectedMeal as MealType)}
-                    options={meals.map((m) => (m === UI_TEXT.allMeals ? UI_TEXT.allMeals : getMealLabel(m as MealType)))}
-                    onChange={(val) => {
-                      if (val === UI_TEXT.allMeals) {
-                        setSelectedMeal(UI_TEXT.allMeals);
-                      } else {
-                        const foundObj = Object.values(MealType).find((m) => getMealLabel(m) === val);
-                        setSelectedMeal(foundObj || val);
-                      }
-                    }}
-                  />
-                </View>
-              )}
-            </View>
-          )}
+            {(personTypes.length > 1 || diets.length > 1) && (
+              <View style={{ flexDirection: "row", gap: 10, flexWrap: "wrap" }}>
+                {personTypes.length > 1 && (
+                  <View style={{ flex: 1, minWidth: 150 }}>
+                    <Dropdown label={UI_TEXT.filterByPersonType} value={selectedPersonType} options={personTypes} onChange={setSelectedPersonType} />
+                  </View>
+                )}
+                {diets.length > 1 && (
+                  <View style={{ flex: 1, minWidth: 150 }}>
+                    <Dropdown label={UI_TEXT.filterByDiet} value={selectedDiet} options={diets} onChange={setSelectedDiet} />
+                  </View>
+                )}
+              </View>
+            )}
 
-          {(services.length > 1 || (isPaymentEnabled && paymentModes.length > 1)) && (
-            <View style={{ flexDirection: "row", gap: 10, flexWrap: "wrap" }}>
-              {services.length > 1 && (
-                <View style={{ flex: 1, minWidth: 150 }}>
-                  <Dropdown label={UI_TEXT.filterByService} value={selectedService} options={services} onChange={setSelectedService} />
-                </View>
-              )}
-              {isPaymentEnabled && paymentModes.length > 1 && (
-                <View style={{ flex: 1, minWidth: 150 }}>
-                  <Dropdown label={UI_TEXT.filterByPaymentMode} value={selectedPaymentMode} options={paymentModes} onChange={setSelectedPaymentMode} />
-                </View>
-              )}
-            </View>
-          )}
+            {(days.length > 1 || meals.length > 1) && (
+              <View style={{ flexDirection: "row", gap: 10, flexWrap: "wrap" }}>
+                {days.length > 1 && (
+                  <View style={{ flex: 1, minWidth: 150 }}>
+                    <Dropdown
+                      label={UI_TEXT.filterByDay}
+                      value={selectedDay === UI_TEXT.allDays ? UI_TEXT.allDays : getDayLabel(selectedDay, dayConfig)}
+                      options={days.map((d) => (d === UI_TEXT.allDays ? UI_TEXT.allDays : getDayLabel(d, dayConfig)))}
+                      onChange={(val) => {
+                        if (val === UI_TEXT.allDays) {
+                          setSelectedDay(UI_TEXT.allDays);
+                        } else {
+                          const found = dayConfig.find((d) => d.label === val || d.id === val);
+                          setSelectedDay(found ? found.id : val);
+                        }
+                      }}
+                    />
+                  </View>
+                )}
+                {meals.length > 1 && (
+                  <View style={{ flex: 1, minWidth: 150 }}>
+                    <Dropdown
+                      label={UI_TEXT.filterByMeal}
+                      value={selectedMeal === UI_TEXT.allMeals ? UI_TEXT.allMeals : getMealLabel(selectedMeal as MealType)}
+                      options={meals.map((m) => (m === UI_TEXT.allMeals ? UI_TEXT.allMeals : getMealLabel(m as MealType)))}
+                      onChange={(val) => {
+                        if (val === UI_TEXT.allMeals) {
+                          setSelectedMeal(UI_TEXT.allMeals);
+                        } else {
+                          const foundObj = Object.values(MealType).find((m) => getMealLabel(m) === val);
+                          setSelectedMeal(foundObj || val);
+                        }
+                      }}
+                    />
+                  </View>
+                )}
+              </View>
+            )}
 
-          {((isPaymentEnabled && paymentStatuses.length > 1) || packageOptions.length > 1) && (
-            <View style={{ flexDirection: "row", gap: 10, flexWrap: "wrap" }}>
-              {isPaymentEnabled && paymentStatuses.length > 1 && (
-                <View style={{ flex: 1, minWidth: 150 }}>
-                  <Dropdown label={UI_TEXT.filterByPaymentStatus} value={selectedPaymentStatus} options={paymentStatuses} onChange={setSelectedPaymentStatus} />
-                </View>
-              )}
-              {packageOptions.length > 1 && (
-                <View style={{ flex: 1, minWidth: 150 }}>
-                  <Dropdown label={UI_TEXT.filterByPackage} value={selectedPackage} options={packageOptions} onChange={setSelectedPackage} />
-                </View>
-              )}
-            </View>
-          )}
+            {(services.length > 1 || (isPaymentEnabled && paymentModes.length > 1)) && (
+              <View style={{ flexDirection: "row", gap: 10, flexWrap: "wrap" }}>
+                {services.length > 1 && (
+                  <View style={{ flex: 1, minWidth: 150 }}>
+                    <Dropdown label={UI_TEXT.filterByService} value={selectedService} options={services} onChange={setSelectedService} />
+                  </View>
+                )}
+                {isPaymentEnabled && paymentModes.length > 1 && (
+                  <View style={{ flex: 1, minWidth: 150 }}>
+                    <Dropdown label={UI_TEXT.filterByPaymentMode} value={selectedPaymentMode} options={paymentModes} onChange={setSelectedPaymentMode} />
+                  </View>
+                )}
+              </View>
+            )}
+
+            {((isPaymentEnabled && paymentStatuses.length > 1) || packageOptions.length > 1) && (
+              <View style={{ flexDirection: "row", gap: 10, flexWrap: "wrap" }}>
+                {isPaymentEnabled && paymentStatuses.length > 1 && (
+                  <View style={{ flex: 1, minWidth: 150 }}>
+                    <Dropdown label={UI_TEXT.filterByPaymentStatus} value={selectedPaymentStatus} options={paymentStatuses} onChange={setSelectedPaymentStatus} />
+                  </View>
+                )}
+                {packageOptions.length > 1 && (
+                  <View style={{ flex: 1, minWidth: 150 }}>
+                    <Dropdown label={UI_TEXT.filterByPackage} value={selectedPackage} options={packageOptions} onChange={setSelectedPackage} />
+                  </View>
+                )}
+              </View>
+            )}
+          </View>
         </View>
-      </View>
+      )}
 
       {/* 2. Summary Card */}
       <ReportSummaryCard
         title={seasonName ? `${seasonName} - ${UI_TEXT.aggregateReport}` : UI_TEXT.aggregateReport}
         iconName="options-outline"
+        activeFilterChips={activeFilterChips}
         summary={aggregateSummary}
       />
 
