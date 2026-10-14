@@ -12,7 +12,8 @@ import { PaymentSummaryReport } from "./PaymentSummaryReport";
 import { PendingReport } from "./PendingReport";
 import { MealWisePaymentReport } from "./MealWisePaymentReport";
 import { DayWisePaymentReport } from "./DayWisePaymentReport";
-import { MealType, PaymentMode } from "../../domain";
+import { AggregateReport } from "./AggregateReport";
+import { MealType, DietaryOption, PaymentMode } from "../../domain";
 import { STORY_FIXTURES } from "../../../.storybook/storyMocks";
 
 const noop = () => undefined;
@@ -147,6 +148,51 @@ export const FlatWiseReportStory = {
     amount: "80",
     dayStats: [],
   }]} dayConfig={dayConfig} onSelectFlat={noop} kidsEnabled={false} />,
+};
+
+export const AggregateReportStory = {
+  name: "AggregateReport",
+  render: () => (
+    <AggregateReport
+      subscriptions={[
+        {
+          id: "sub-1",
+          block: "A",
+          flat: "101",
+          peopleCount: 2,
+          kidsCount: 1,
+          guestsCount: 0,
+          amount: "1500",
+          paymentMode: PaymentMode.UPI,
+          payments: [{ amount: "1500", mode: PaymentMode.UPI }],
+          meals: {},
+          mealByPerson: {},
+          mealSlots: {
+            day1: [
+              {
+                breakfast: DietaryOption.VEG,
+                lunch: DietaryOption.VEG,
+                dinner: DietaryOption.NON_VEG,
+                breakfastParcel: false,
+                lunchParcel: true,
+                dinnerParcel: false,
+              },
+            ],
+          },
+          takenByPerson: {},
+        },
+      ]}
+      dayConfig={dayConfig}
+      foodMenu={foodMenu}
+      seasonName="Durga Puja 2026"
+      kidsEnabled={true}
+      guestsEnabled={true}
+      freeMealEnabled={true}
+      paymentConfig={{ enabled: true }}
+      foodPackages={[]}
+      onSelectFlat={noop}
+    />
+  ),
 };
 
 export const VendorMealWiseReportStory = {

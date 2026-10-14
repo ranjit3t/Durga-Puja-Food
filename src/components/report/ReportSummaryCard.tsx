@@ -16,11 +16,20 @@ export interface ReportSummaryCardProps {
     excessDeficient: number;
     netPayment: number;
     totalPortions?: number;
+    servedPortions?: number;
     dineInCount?: number;
+    dineInCountTaken?: number;
     parcelCount?: number;
+    parcelCountTaken?: number;
+    vegPortions?: number;
+    vegPortionsTaken?: number;
+    nonVegPortions?: number;
+    nonVegPortionsTaken?: number;
     seasonTotalPasses?: number;
     paidPassesCount?: number;
     unpaidPassesCount?: number;
+    packagedMembersCount?: number;
+    packageCounts?: Record<string, { packageName: string; count: number }>;
   };
 }
 
@@ -28,7 +37,11 @@ export function ReportSummaryCard({ title, iconName, summary }: ReportSummaryCar
   const styles = useStyles();
   const { theme } = useAppTheme();
 
-  const summaryA11yLabel = `${title}: ${summary.totalPortions ?? 0} plates, Menu Price ${summary.menuPrice} rupees, Net Payment ${summary.netPayment} rupees`;
+  const summaryA11yLabel = `${title}: ${
+    summary.servedPortions !== undefined
+      ? `${summary.servedPortions} of ${summary.totalPortions ?? 0} plates served`
+      : `${summary.totalPortions ?? 0} plates`
+  }, Menu Price ${summary.menuPrice} rupees, Net Payment ${summary.netPayment} rupees`;
 
   return (
     <View
@@ -45,6 +58,7 @@ export function ReportSummaryCard({ title, iconName, summary }: ReportSummaryCar
       </View>
 
       <View style={{ gap: 8, borderTopWidth: 1, borderTopColor: theme.colors.white + "40", paddingTop: 12 }}>
+        {/* Total Passes Block */}
         {(summary.seasonTotalPasses ?? 0) > 0 && (
           <View style={{ gap: 3, marginBottom: 4, borderBottomWidth: 1, borderBottomColor: theme.colors.white + "20", paddingBottom: 8 }}>
             <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700" }}>
@@ -67,21 +81,70 @@ export function ReportSummaryCard({ title, iconName, summary }: ReportSummaryCar
           </View>
         )}
 
+        {/* Subscribed & Served Plates Block */}
         {(summary.totalPortions ?? 0) > 0 && (
-          <View style={{ gap: 3, marginBottom: 4, borderBottomWidth: 1, borderBottomColor: theme.colors.white + "20", paddingBottom: 8 }}>
-            <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700" }}>
-              {UI_TEXT.totalSubscribed}
-            </Text>
+          <View style={{ gap: 4, marginBottom: 4, borderBottomWidth: 1, borderBottomColor: theme.colors.white + "20", paddingBottom: 8 }}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 4 }}>
+              <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700" }}>
+                {UI_TEXT.totalSubscribed}
+              </Text>
+              {summary.servedPortions !== undefined && (
+                <Text style={{ color: theme.colors.white + "EE", fontSize: 12, fontWeight: "800" }}>
+                  {UI_TEXT.totalServed}: {summary.servedPortions} / {summary.totalPortions} {UI_TEXT.plates}
+                </Text>
+              )}
+            </View>
+
             <Text style={{ color: theme.colors.white, fontSize: 14, fontWeight: "900" }}>
-              {summary.totalPortions} {UI_TEXT.plates}
+              {summary.servedPortions !== undefined ? `${summary.servedPortions} / ${summary.totalPortions}` : summary.totalPortions} {UI_TEXT.plates}
               {(summary.parcelCount ?? 0) > 0
-                ? ` (${summary.dineInCount ?? 0} ${UI_TEXT.dineIn}, ${summary.parcelCount ?? 0} ${UI_TEXT.parcel})`
-                : ` (${summary.dineInCount ?? summary.totalPortions} ${UI_TEXT.dineIn})`}
+                ? ` (${summary.dineInCountTaken !== undefined ? `${summary.dineInCountTaken}/${summary.dineInCount}` : summary.dineInCount} ${UI_TEXT.dineIn}, ${summary.parcelCountTaken !== undefined ? `${summary.parcelCountTaken}/${summary.parcelCount}` : summary.parcelCount} ${UI_TEXT.parcel})`
+                : ` (${summary.dineInCountTaken !== undefined ? `${summary.dineInCountTaken}/${summary.dineInCount}` : (summary.dineInCount ?? summary.totalPortions)} ${UI_TEXT.dineIn})`}
             </Text>
+
+            {/* Veg / Non-Veg Breakdown */}
+            {(summary.vegPortions !== undefined || summary.nonVegPortions !== undefined) && (
+              <View style={{ flexDirection: "row", gap: 10, marginTop: 4, flexWrap: "wrap" }}>
+                {summary.vegPortions !== undefined && summary.vegPortions > 0 && (
+                  <Text style={{ color: theme.colors.white + "EE", fontSize: 12, fontWeight: "800" }}>
+                    • {UI_TEXT.veg}: {summary.vegPortionsTaken !== undefined ? `${summary.vegPortionsTaken}/${summary.vegPortions}` : summary.vegPortions}
+                  </Text>
+                )}
+                {summary.nonVegPortions !== undefined && summary.nonVegPortions > 0 && (
+                  <Text style={{ color: theme.colors.white + "EE", fontSize: 12, fontWeight: "800" }}>
+                    • {UI_TEXT.nonVeg}: {summary.nonVegPortionsTaken !== undefined ? `${summary.nonVegPortionsTaken}/${summary.nonVegPortions}` : summary.nonVegPortions}
+                  </Text>
+                )}
+              </View>
+            )}
           </View>
         )}
 
-        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+        {/* Applied Packages Block */}
+        {(summary.packagedMembersCount ?? 0) > 0 && (
+          <View style={{ gap: 4, marginBottom: 4, borderBottomWidth: 1, borderBottomColor: theme.colors.white + "20", paddingBottom: 8 }}>
+            <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700" }}>
+              {UI_TEXT.packagesAppliedTitle} ({summary.packagedMembersCount} {summary.packagedMembersCount === 1 ? UI_TEXT.member : UI_TEXT.members})
+            </Text>
+            {summary.packageCounts && Object.keys(summary.packageCounts).length > 0 && (
+              <View style={{ gap: 4, marginTop: 2 }}>
+                {Object.values(summary.packageCounts).map((pkg) => (
+                  <View key={pkg.packageName} style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 4 }}>
+                    <Text style={{ color: theme.colors.white + "EE", fontSize: 12, fontWeight: "600", flex: 1, minWidth: 120 }}>
+                      • {pkg.packageName}
+                    </Text>
+                    <Text style={{ color: theme.colors.white, fontSize: 12, fontWeight: "800", flexShrink: 0 }}>
+                      {pkg.count} {pkg.count === 1 ? UI_TEXT.member : UI_TEXT.members}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Financial Collections Breakdown */}
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 4 }}>
           <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700", flex: 1, marginRight: 8 }} numberOfLines={1}>
             {UI_TEXT.menuPriceLabel}
           </Text>
@@ -91,7 +154,7 @@ export function ReportSummaryCard({ title, iconName, summary }: ReportSummaryCar
         </View>
 
         {(summary.parcelPrice ?? 0) > 0 && (
-          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 4 }}>
             <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700", flex: 1, marginRight: 8 }} numberOfLines={1}>
               {UI_TEXT.parcelCharges}
             </Text>
@@ -102,7 +165,7 @@ export function ReportSummaryCard({ title, iconName, summary }: ReportSummaryCar
         )}
 
         {summary.packageDiscount > 0 && (
-          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 4 }}>
             <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700", flex: 1, marginRight: 8 }} numberOfLines={1}>
               {UI_TEXT.packageDiscountLabel}
             </Text>
@@ -113,7 +176,7 @@ export function ReportSummaryCard({ title, iconName, summary }: ReportSummaryCar
         )}
 
         {summary.excessDeficient !== 0 && (
-          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 4 }}>
             <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700", flex: 1, marginRight: 8 }} numberOfLines={1}>
               {UI_TEXT.excessDeficientLabel}
             </Text>
@@ -124,7 +187,7 @@ export function ReportSummaryCard({ title, iconName, summary }: ReportSummaryCar
           </View>
         )}
 
-        <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.white + "40", paddingTop: 8, marginTop: 4, flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+        <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.white + "40", paddingTop: 8, marginTop: 4, flexDirection: "row", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 4 }}>
           <Text style={{ color: theme.colors.white, fontWeight: "900", fontSize: 16 }}>
             {UI_TEXT.netPaymentLabel}
           </Text>

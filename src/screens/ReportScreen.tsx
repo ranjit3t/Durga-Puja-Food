@@ -23,6 +23,7 @@ import { FlatWiseReport } from "../components/report/FlatWiseReport";
 import { PaymentSummaryReport } from "../components/report/PaymentSummaryReport";
 import { MembersReport } from "../components/report/MembersReport";
 import { PackagePassesReport } from "../components/report/PackagePassesReport";
+import { AggregateReport } from "../components/report/AggregateReport";
 
 // Custom Hook
 import { useReportData } from "../hooks/useReportData";
@@ -156,6 +157,7 @@ export function ReportScreen() {
       case ReportType.FLAT: return UI_TEXT.flatWiseReport;
       case ReportType.PAYMENT: return UI_TEXT.paymentReport;
       case ReportType.PACKAGE: return UI_TEXT.packageReport;
+      case ReportType.AGGREGATE: return UI_TEXT.aggregateReport;
       default: return UI_TEXT.reportTitle;
     }
   };
@@ -276,6 +278,7 @@ export function ReportScreen() {
             { id: ReportType.FLAT, label: UI_TEXT.flat, icon: "business-outline" },
             { id: ReportType.PAYMENT, label: UI_TEXT.payment, icon: "card-outline" },
             { id: ReportType.PACKAGE, label: UI_TEXT.packageReport, icon: "pricetag-outline" },
+            { id: ReportType.AGGREGATE, label: UI_TEXT.aggregateTab, icon: "options-outline" },
           ].filter(tab =>
             (tab.id !== ReportType.PAYMENT || paymentConfig.enabled) &&
             (tab.id !== ReportType.PARCEL || isParcelEnabledGlobally)
@@ -559,6 +562,21 @@ export function ReportScreen() {
               dayConfig={dayConfig}
               foodMenu={foodMenu}
               foodPackages={foodPackages}
+            />
+          )}
+
+          {reportType === ReportType.AGGREGATE && (
+            <AggregateReport
+              subscriptions={subscriptions}
+              dayConfig={dayConfig}
+              foodMenu={foodMenu}
+              seasonName={seasonName}
+              kidsEnabled={!!kidsEnabled}
+              guestsEnabled={!!guestsEnabled}
+              freeMealEnabled={!!freeMealEnabled}
+              paymentConfig={paymentConfig}
+              foodPackages={foodPackages}
+              onSelectFlat={onSelectFlat}
             />
           )}
         </View>

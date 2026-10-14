@@ -290,6 +290,15 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
 - **Passcode Preservation on Edit**: When editing an existing pass (`lockIdentity === true`), the passcode is strictly preserved (`value.passcode`).
 - **Live Commit-Time Uniqueness Re-Validation**: During parallel multi-device Add Pass operations (`!lockIdentity`), the system queries live database subscriptions at commit time, automatically re-generating collision-free passcodes when simultaneous submissions occur.
 
+### AJ. Multi-Parameter Aggregate Report Engine ([`AggregateReport.tsx`](src/components/report/AggregateReport.tsx), [`ReportScreen.tsx`](src/screens/ReportScreen.tsx), [`NavigationContext.tsx`](src/context/NavigationContext.tsx))
+- **On-the-Fly Custom Multi-Parameter Analytics**: Computes real-time, non-precalculated reporting across arbitrary filter permutations without relying on pre-computed static totals.
+- **Top Filter Permutation Controls**: Filter controls are positioned at the **top** of the view above summary cards for instant interaction.
+- **Navigation Filter State Persistence & Reset Rules**: Aggregate report filter choices are hoisted to `NavigationContext`. Returning back from pass details (`DetailsScreen`) via `goBack()` preserves all active filter selections, while navigating to Report from the Home Page or App Header (`navigate(AppScreen.REPORT)`) resets all filters to default.
+- **Dynamic Multi-Parameter Permutations**: Supports full permutation combinations of **Block**, **Flat**, **Person Category** (Adults, Kids, Guests, Free Meal), **Dietary Choice** (Veg, Non-Veg, Varieties), **Day** (All Days or specific festival day), **Meal Name** (Breakfast, Lunch, Dinner), **Service Type** (Dine-In, Parcel), **Payment Mode** (UPI, Cash, Bank Transfer), **Payment Status** (Paid, Pending), and **Package Opted** (Any Package or specific package name).
+- **Dynamic Feature Enablement Flags**: Filter options dynamically respect system configuration (`kidsEnabled`, `guestsEnabled`, `freeMealEnabled`).
+- **Summary Card & Mobile-Friendly Layout**: `ReportSummaryCard` displays matching passes count, total subscribed and served plate counts (`X Served / Y Total plates`), Dine-In vs Parcel served breakdowns, Veg vs Non-Veg served breakdowns, unadjusted parcel charges sum, net collection sum, and opted package distribution breakdown, with responsive flex wrapping (`flexWrap: "wrap"`).
+- **100% Theme & WCAG 2.1 AA Compliance**: Full UI text localization, zero hardcoded strings or colors, full WCAG 2.1 AA accessibility compliance (`accessibilityRole="summary"`, `accessibilityRole="combobox"`), Jest unit testing (`aggregateReport.test.ts`), and Storybook component stories (`AggregateReportStory`).
+
 ## 6. Quality Assurance & UI Catalog
 
 ### Jest Test Boundary

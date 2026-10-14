@@ -31,12 +31,12 @@ import { useAppNavigation } from "../context/NavigationContext";
 import { getPaymentModeLabel, getMealLabel, getMealConstraints, getMealVarieties } from "../constants";
 import { MealConfig, MealType, DietType } from "../domain";
 
-export type PresetColor = {
+type PresetColor = {
   hex: string;
   name: string;
 };
 
-export const COLOR_PALETTE: PresetColor[] = [
+const COLOR_PALETTE: PresetColor[] = [
   { hex: "#16A34A", name: "Emerald Green" },
   { hex: "#15803D", name: "Forest Green" },
   { hex: "#0D9488", name: "Teal Blue" },

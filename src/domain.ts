@@ -251,6 +251,7 @@ export enum ReportType {
   MEMBERS_MEAL = "membersMeal",
   MISSED_PARCEL = "missedParcel",
   PACKAGE = "package",
+  AGGREGATE = "aggregate",
 }
 
 export enum UserRole {
