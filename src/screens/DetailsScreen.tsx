@@ -11,6 +11,8 @@ import {
   StatusBar,
   Linking,
   Platform,
+  Modal,
+  KeyboardAvoidingView,
 } from "react-native";
 import { useStyles } from "../styles";
 import { useAppTheme } from "../theme";
@@ -36,7 +38,7 @@ import {
   formatTimestamp,
   isGuestsParcelEnabled,
 } from "../constants";
-import { MealMenu, MealType, DietType, DietaryOption, normalizeChoice, toBool, AppScreen, UserRole, PaymentMode, ReportType, AppThemeMode, ActivityModule, ActivityAction, CheckoutSource, getPassDisplayLabel } from "../types";
+import { MealMenu, MealType, DietType, DietaryOption, normalizeChoice, toBool, AppScreen, UserRole, PaymentMode, ReportType, AppThemeMode, ActivityModule, ActivityAction, CheckoutSource, getPassDisplayLabel, FoodPackage } from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
@@ -48,7 +50,7 @@ import { QuickCheckoutModal } from "../components/common/QuickCheckoutModal";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useAuth } from "../context/AuthContext";
-import { useCoreDatabase, useActivityLogs } from "../context/DatabaseContext";
+import { useCoreDatabase, useActivityLogs, useFoodPackages } from "../context/DatabaseContext";
 import { useUI } from "../context/UIContext";
 import { useAppNavigation } from "../context/NavigationContext";
 
@@ -58,6 +60,7 @@ export function DetailsScreen() {
     subscriptions, dayConfig, paymentConfig, seasonEnabled, foodMenu, mobileEnabled,
     deleteSubscription, whatsappCountryCode, kidsEnabled, guestsEnabled
   } = useCoreDatabase();
+  const { foodPackages } = useFoodPackages();
   const { addActivityLog } = useActivityLogs();
   const { showAlert: showGlobalAlert } = useUI();
   const {
@@ -74,6 +77,7 @@ export function DetailsScreen() {
   const activeDays = getActiveDays(dayConfig);
 
   const [showQuickCheckoutModal, setShowQuickCheckoutModal] = React.useState(false);
+  const [viewingPackage, setViewingPackage] = React.useState<FoodPackage | null>(null);
 
   const currentMealInfo = React.useMemo(() => {
     const active = getActiveDays(dayConfig);
@@ -574,85 +578,140 @@ export function DetailsScreen() {
         {/* Choice Matrix */}
         <Text style={[styles.sectionTitle, { marginBottom: 12 }]}>{UI_TEXT.foodChoiceByPerson}</Text>
         <Text style={styles.helper}>{UI_TEXT.foodChoiceInstruction || UI_TEXT.foodChoiceHelper}</Text>
-        {Array.from({ length: subscription.peopleCount + (kidsEnabled ? (subscription.kidsCount || 0) : 0) + (guestsEnabled ? (subscription.guestsCount || 0) : 0) }, (_, personIndex) => (
-          <View key={personIndex} style={[styles.card, { backgroundColor: theme.cardColors[2].bg, borderColor: theme.cardColors[2].border }]}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 16 }}>
-               <Ionicons name="person-outline" size={18} color={theme.cardColors[2].accent} />
-               <Text style={[styles.sectionTitle, { marginBottom: 0, fontSize: 16, color: theme.cardColors[2].accent }]}>{getMemberLegend(personIndex, subscription.peopleCount, !!kidsEnabled, subscription.kidsCount || 0, !!guestsEnabled)}</Text>
-            </View>
-            <View style={styles.personDays}>
-              {activeDays.map((day) => {
-                const slots = subscription.mealSlots[day]?.[personIndex];
-                const kCount = kidsEnabled ? (subscription.kidsCount || 0) : 0;
-                const isKid = kidsEnabled && personIndex >= subscription.peopleCount && personIndex < subscription.peopleCount + kCount;
-                const isGuest = guestsEnabled && personIndex >= subscription.peopleCount + kCount;
+        {Array.from({ length: subscription.peopleCount + (kidsEnabled ? (subscription.kidsCount || 0) : 0) + (guestsEnabled ? (subscription.guestsCount || 0) : 0) }, (_, personIndex) => {
+          const appliedInfo = subscription.appliedPackages?.[personIndex] || (subscription.appliedPackages as any)?.[String(personIndex)] || (subscription.isPackageApplied && personIndex === 0 ? subscription.appliedPackages?.[0] : undefined);
+          const pkgs = foodPackages as any;
+          const pkg = appliedInfo ? (
+            Array.isArray(pkgs)
+              ? pkgs.find((p: any) => p.id === appliedInfo.packageId || (p.id && p.id.trim() === appliedInfo.packageId?.trim()))
+              : (pkgs[appliedInfo.packageId] || Object.values(pkgs || {}).find((p: any) => p.id === appliedInfo.packageId || (p.id && p.id.trim() === appliedInfo.packageId?.trim())))
+          ) as FoodPackage | undefined : undefined;
+          const pkgName = appliedInfo?.packageName || pkg?.name;
 
-                const getMealParts = () => {
-                   if (!slots) return [];
-                   const res: Array<{ label: string; parcel: boolean; color: string }> = [];
-                   const meals = [
-                     { key: MealType.BREAKFAST, abbr: UI_TEXT.breakfastAbbr, parcelKey: 'breakfastParcel' as const },
-                     { key: MealType.LUNCH, abbr: UI_TEXT.lunchAbbr, parcelKey: 'lunchParcel' as const },
-                     { key: MealType.DINNER, abbr: UI_TEXT.dinnerAbbr, parcelKey: 'dinnerParcel' as const },
-                   ];
+          return (
+            <View key={personIndex} style={[styles.card, { backgroundColor: theme.cardColors[2].bg, borderColor: theme.cardColors[2].border }]}>
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
+                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                    <Ionicons name="person-outline" size={18} color={theme.cardColors[2].accent} />
+                    <Text style={[styles.sectionTitle, { marginBottom: 0, fontSize: 16, color: theme.cardColors[2].accent }]}>
+                      {getMemberLegend(personIndex, subscription.peopleCount, !!kidsEnabled, subscription.kidsCount || 0, !!guestsEnabled)}
+                    </Text>
+                 </View>
+                 {appliedInfo && (
+                   <Pressable
+                     onPress={() => {
+                       if (pkg) {
+                         setViewingPackage(pkg);
+                       } else {
+                         showGlobalAlert(
+                           pkgName || UI_TEXT.packageAppliedMarker,
+                           `${appliedInfo.packagePrice ?? 0}`,
+                           [{ text: UI_TEXT.ok, style: "default" }]
+                         );
+                       }
+                     }}
+                     accessible={true}
+                     accessibilityRole="button"
+                     accessibilityLabel={`${UI_TEXT.packageAppliedMarker}: ${pkgName}`}
+                     accessibilityHint={UI_TEXT.viewPassHint}
+                     style={({ pressed }) => [
+                       {
+                         flexDirection: "row",
+                         alignItems: "center",
+                         gap: 4,
+                         backgroundColor: theme.colors.primary + "20",
+                         paddingHorizontal: 10,
+                         paddingVertical: 4,
+                         borderRadius: 12,
+                         borderWidth: 1,
+                         borderColor: theme.colors.primary + "60",
+                         flexShrink: 1,
+                         maxWidth: "100%",
+                       },
+                       pressed && { opacity: 0.7 }
+                     ]}
+                   >
+                     <Ionicons name="pricetag" size={12} color={theme.colors.primary} />
+                     <Text numberOfLines={1} adjustsFontSizeToFit={true} style={{ fontSize: 12, fontWeight: "800", color: theme.colors.primary, flexShrink: 1 }}>
+                       {pkgName}
+                     </Text>
+                   </Pressable>
+                 )}
+              </View>
+              <View style={styles.personDays}>
+                {activeDays.map((day) => {
+                  const slots = subscription.mealSlots[day]?.[personIndex];
+                  const kCount = kidsEnabled ? (subscription.kidsCount || 0) : 0;
+                  const isKid = kidsEnabled && personIndex >= subscription.peopleCount && personIndex < subscription.peopleCount + kCount;
+                  const isGuest = guestsEnabled && personIndex >= subscription.peopleCount + kCount;
 
-                   meals.forEach((m) => {
-                     if (!isMealEnabled(day, m.key, dayConfig)) return;
-                     const choice = getValidSlotChoice(day, m.key, slots[m.key], dayConfig);
-                     if (choice === DietaryOption.NONE) return;
+                  const getMealParts = () => {
+                     if (!slots) return [];
+                     const res: Array<{ label: string; parcel: boolean; color: string }> = [];
+                     const meals = [
+                       { key: MealType.BREAKFAST, abbr: UI_TEXT.breakfastAbbr, parcelKey: 'breakfastParcel' as const },
+                       { key: MealType.LUNCH, abbr: UI_TEXT.lunchAbbr, parcelKey: 'lunchParcel' as const },
+                       { key: MealType.DINNER, abbr: UI_TEXT.dinnerAbbr, parcelKey: 'dinnerParcel' as const },
+                     ];
 
-                     const dayConf = dayConfig.find(d => d.id === day);
-                     const mConf = dayConf ? dayConf[m.key] : undefined;
-                     const dietType = getDietTypeForChoice(choice, getMealVarieties(mConf, dayConf?.vegOnly));
-                     const color = dietType === DietType.VEG ? theme.colors.veg : (dietType === DietType.NON_VEG ? theme.colors.nonVeg : theme.cardColors[2].accent);
+                     meals.forEach((m) => {
+                       if (!isMealEnabled(day, m.key, dayConfig)) return;
+                       const choice = getValidSlotChoice(day, m.key, slots[m.key], dayConfig);
+                       if (choice === DietaryOption.NONE) return;
 
-                     const parcelActive = isGuest
-                       ? isGuestsParcelEnabled(day, m.key, dayConfig, guestsEnabled)
-                       : isKid
-                       ? isKidsParcelEnabled(day, m.key, dayConfig, kidsEnabled)
-                       : isParcelEnabled(day, m.key, dayConfig);
-                     const hasParcel = parcelActive && toBool(slots[m.parcelKey]);
+                       const dayConf = dayConfig.find(d => d.id === day);
+                       const mConf = dayConf ? dayConf[m.key] : undefined;
+                       const dietType = getDietTypeForChoice(choice, getMealVarieties(mConf, dayConf?.vegOnly));
+                       const color = dietType === DietType.VEG ? theme.colors.veg : (dietType === DietType.NON_VEG ? theme.colors.nonVeg : theme.cardColors[2].accent);
 
-                     res.push({ label: m.abbr, parcel: hasParcel, color });
-                   });
+                       const parcelActive = isGuest
+                         ? isGuestsParcelEnabled(day, m.key, dayConfig, guestsEnabled)
+                         : isKid
+                         ? isKidsParcelEnabled(day, m.key, dayConfig, kidsEnabled)
+                         : isParcelEnabled(day, m.key, dayConfig);
+                       const hasParcel = parcelActive && toBool(slots[m.parcelKey]);
 
-                   return res;
-                };
+                       res.push({ label: m.abbr, parcel: hasParcel, color });
+                     });
 
-                const mealParts = getMealParts();
-                const isAnyMeal = mealParts.length > 0;
+                     return res;
+                  };
 
-                return (
-                  <View
-                    key={day}
-                    style={[
-                      styles.personDay,
-                      isAnyMeal && { backgroundColor: theme.colors.background, borderColor: theme.cardColors[2].accent },
-                      { flexDirection: "row", gap: 8, minWidth: 80, justifyContent: 'space-between' }
-                    ]}
-                  >
-                    <Text style={[styles.personDayText, isAnyMeal && { color: theme.cardColors[2].accent }]}>{getDayAbbr(day, dayConfig)}</Text>
-                    <View style={{ flexDirection: "row", gap: 4, flexWrap: 'wrap', justifyContent: 'center' }}>
-                       {mealParts.map((p, i) => (
-                          <View key={i} style={{ position: 'relative' }}>
-                             <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: p.color, alignItems: "center", justifyContent: "center" }}>
-                                <Text style={{ color: theme.colors.white, fontSize: 10, fontWeight: "900" }}>{p.label}</Text>
-                             </View>
-                             {p.parcel && (
-                                <View style={{ position: 'absolute', top: -6, right: -6, width: 12, height: 12, borderRadius: 6, backgroundColor: p.color, alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: theme.colors.white, zIndex: 1, elevation: 2 }}>
-                                   <Text style={{ color: theme.colors.white, fontSize: 7, fontWeight: "900" }}>{UI_TEXT.parcelAbbr}</Text>
-                                </View>
-                             )}
-                          </View>
-                       ))}
-                       {mealParts.length === 0 && <Text style={{ color: theme.colors.textMuted, fontSize: 10 }}>{UI_TEXT.hyphen}</Text>}
+                  const mealParts = getMealParts();
+                  const isAnyMeal = mealParts.length > 0;
+
+                  return (
+                    <View
+                      key={day}
+                      style={[
+                        styles.personDay,
+                        isAnyMeal && { backgroundColor: theme.colors.background, borderColor: theme.cardColors[2].accent },
+                        { flexDirection: "row", gap: 8, minWidth: 80, justifyContent: 'space-between' }
+                      ]}
+                    >
+                      <Text style={[styles.personDayText, isAnyMeal && { color: theme.cardColors[2].accent }]}>{getDayAbbr(day, dayConfig)}</Text>
+                      <View style={{ flexDirection: "row", gap: 4, flexWrap: 'wrap', justifyContent: 'center' }}>
+                         {mealParts.map((p, i) => (
+                            <View key={i} style={{ position: 'relative' }}>
+                               <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: p.color, alignItems: "center", justifyContent: "center" }}>
+                                  <Text style={{ color: theme.colors.white, fontSize: 10, fontWeight: "900" }}>{p.label}</Text>
+                               </View>
+                               {p.parcel && (
+                                  <View style={{ position: 'absolute', top: -6, right: -6, width: 12, height: 12, borderRadius: 6, backgroundColor: p.color, alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: theme.colors.white, zIndex: 1, elevation: 2 }}>
+                                     <Text style={{ color: theme.colors.white, fontSize: 7, fontWeight: "900" }}>{UI_TEXT.parcelAbbr}</Text>
+                                  </View>
+                               )}
+                            </View>
+                         ))}
+                         {mealParts.length === 0 && <Text style={{ color: theme.colors.textMuted, fontSize: 10 }}>{UI_TEXT.hyphen}</Text>}
+                      </View>
                     </View>
-                  </View>
-                );
-              })}
+                  );
+                })}
+              </View>
             </View>
-          </View>
-        ))}
+          );
+        })}
 
         {/* Collection Matrix */}
         <Text style={[styles.sectionTitle, { marginBottom: 12 }]}>{UI_TEXT.foodTakenByPerson}</Text>
@@ -830,6 +889,92 @@ export function DetailsScreen() {
            <Text style={styles.footerText}>{UI_TEXT.footerCopyright}</Text>
         </View>
       </ScrollView>
+
+      {/* View-Only Package Details Modal */}
+      <Modal
+        visible={!!viewingPackage}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setViewingPackage(null)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={{ flex: 1, backgroundColor: theme.colors.shadow + "80", justifyContent: "center", alignItems: "center" }}
+        >
+          <View style={[styles.card, { width: "90%", maxHeight: "80%", padding: 20, backgroundColor: theme.colors.surface }]}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <Text style={{ fontSize: 18, fontWeight: "900", color: theme.colors.textPrimary }}>
+                {UI_TEXT.packageDetails}
+              </Text>
+              <Pressable onPress={() => setViewingPackage(null)}>
+                <Ionicons name="close-outline" size={24} color={theme.colors.textPrimary} />
+              </Pressable>
+            </View>
+
+            {viewingPackage && (
+              <ScrollView style={{ flexShrink: 1 }} contentContainerStyle={{ gap: 12 }}>
+                <Text style={{ fontSize: 20, fontWeight: "900", color: theme.colors.primary }}>
+                  {viewingPackage.name}
+                </Text>
+
+                <Text style={{ fontSize: 14, color: theme.colors.textSecondary, lineHeight: 20 }}>
+                  {viewingPackage.description}
+                </Text>
+
+                <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
+                  <View style={{ backgroundColor: theme.colors.primary + "18", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 }}>
+                    <Text style={{ fontSize: 12, fontWeight: "900", color: theme.colors.primary }}>
+                      {viewingPackage.applicability === "kids" ? UI_TEXT.kidsOnly : viewingPackage.applicability === "member" ? UI_TEXT.membersAll : UI_TEXT.adultsOnly}
+                    </Text>
+                  </View>
+                  <View style={{ backgroundColor: theme.colors.successLight, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 }}>
+                    <Text style={{ fontSize: 12, fontWeight: "900", color: theme.colors.success }}>
+                      {UI_TEXT.packagePrice}: {viewingPackage.packagePrice}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Included Meals */}
+                <View style={{ backgroundColor: theme.colors.surfaceDark, padding: 12, borderRadius: 12, gap: 6 }}>
+                  <Text style={{ fontSize: 11, fontWeight: "800", color: theme.colors.textMuted, textTransform: "uppercase" }}>
+                    {UI_TEXT.selectMealsForPackage}
+                  </Text>
+                  {Object.keys(viewingPackage.selectedMealItems || viewingPackage.selectedMeals || {}).map((dayId) => {
+                    const dLabel = getDayLabel(dayId, dayConfig);
+                    const mealItems = viewingPackage.selectedMealItems?.[dayId] || (viewingPackage.selectedMeals?.[dayId] || []).map((m: any) => ({ mealType: m, varietyId: "" }));
+                    const mLabels = mealItems.map((i) => {
+                      const mLabel = getMealLabel(i.mealType);
+                      const dObj = dayConfig.find((d) => d.id === dayId);
+                      const mealConf = dObj ? (dObj as any)[i.mealType] : null;
+                      const varieties = getMealVarieties(mealConf);
+                      const v = varieties.find((vr) => vr.id === i.varietyId);
+                      return v ? `${mLabel} (${v.name})` : mLabel;
+                    }).join(", ");
+                    return (
+                      <Text key={dayId} style={{ fontSize: 13, fontWeight: "700", color: theme.colors.textPrimary }}>
+                        • {dLabel}: {mLabels}
+                      </Text>
+                    );
+                  })}
+                </View>
+              </ScrollView>
+            )}
+
+            <Pressable
+              onPress={() => setViewingPackage(null)}
+              style={({ pressed }) => [
+                styles.primary,
+                { height: 46, marginTop: 16, borderRadius: 12 },
+                pressed && { opacity: 0.8 },
+              ]}
+            >
+              <Text style={{ color: theme.colors.white, fontWeight: "900", fontSize: 15 }}>
+                {UI_TEXT.ok}
+              </Text>
+            </Pressable>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
 
       {/* Quick Checkout Modal */}
       <QuickCheckoutModal

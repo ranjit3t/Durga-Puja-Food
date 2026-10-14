@@ -85,6 +85,26 @@ const sampleSubscription = {
   timestamp: Date.now(),
 };
 
+const samplePackage = {
+  id: "pkg-veg-1",
+  name: "All Veg Festival Package",
+  description: "All vegetarian meals for the Durga Puja festival.",
+  applicability: "member",
+  packagePrice: 1250,
+  selectedMealItems: { Shashthi: [{ mealType: MealType.LUNCH, varietyId: "veg_default" }] },
+};
+
+const subscriptionWithPackage = {
+  ...sampleSubscription,
+  id: "sample-pass-pkg",
+  block: "A",
+  flat: "102",
+  isPackageApplied: true,
+  appliedPackages: { 0: { packageId: "pkg-veg-1", packageName: "All Veg Festival Package", packagePrice: 1250 } },
+  amount: "1250",
+  passcode: "1020",
+};
+
 const secondSubscription = {
   ...sampleSubscription,
   id: "sample-pass-b",
@@ -138,7 +158,7 @@ const database = {
   loading: false,
   firebaseError: "",
   refreshAllData: emptyAsync,
-  subscriptions: [sampleSubscription, secondSubscription],
+  subscriptions: [sampleSubscription, subscriptionWithPackage, secondSubscription],
   foodMenu,
   dayConfig,
   seasonName: "FestiveDesk Preview",
@@ -229,7 +249,7 @@ export function useDatabase() {
     notes: listOverrides.notes ?? [],
     upsertNote: emptyAsync,
     deleteNote: emptyAsync,
-    foodPackages: [],
+    foodPackages: [samplePackage],
     upsertFoodPackage: emptyAsync,
     deleteFoodPackage: emptyAsync,
   };
@@ -246,7 +266,7 @@ export function useNotes() {
 }
 
 export function useFoodPackages() {
-  return { foodPackages: [], upsertFoodPackage: emptyAsync, deleteFoodPackage: emptyAsync };
+  return { foodPackages: [samplePackage], upsertFoodPackage: emptyAsync, deleteFoodPackage: emptyAsync };
 }
 
 export function useUI() {

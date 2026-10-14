@@ -8,8 +8,8 @@ import { useAuth } from "../context/AuthContext";
 import { useCoreDatabase } from "../context/DatabaseContext";
 import { useUI } from "../context/UIContext";
 import { useAppNavigation } from "../context/NavigationContext";
-import { AppScreen, UserRole, MealType, AppThemeMode, DietaryOption, DietType } from "../types";
-import { getActiveDays, isSeasonDone, isMealCurrent, getDayLabel, isMealEnabled, isDietaryEnabled, getMealLabel, getDietTypeForChoice, getMealVarieties, getMealFreeMealCounts, isVersionBehind, isSpecialMeal } from "../constants";
+import { AppScreen, UserRole, MealType, AppThemeMode, DietaryOption, DietType, toBool } from "../types";
+import { getActiveDays, isSeasonDone, isMealCurrent, getDayLabel, isMealEnabled, isDietaryEnabled, getMealLabel, getDietTypeForChoice, getMealVarieties, getMealFreeMealCounts, isVersionBehind, isSpecialMeal, isParcelEnabled } from "../constants";
 import { calculatePaidAmount, calculateSubscriptionAmount, calculatePassTotalWithPackages } from "../utils/paymentUtils";
 import { ActionLabel } from "../components/common/ActionLabel";
 import { LogoutButton } from "../components/common/LogoutButton";
@@ -129,6 +129,26 @@ export function HomeScreen() {
 
     return { adults, kids, guests, vegPlates, nonVegPlates, mealPlates, totalPlates: vegPlates + nonVegPlates };
   }, [subscriptions, dayConfig, foodMenu, freeMealEnabled]);
+
+  const seasonParcelTotal = React.useMemo(() => {
+    let parcels = 0;
+    const activeDays = getActiveDays(dayConfig);
+    subscriptions.forEach((sub) => {
+      activeDays.forEach(dayId => {
+        const slots = sub.mealSlots[dayId] || [];
+        slots.forEach((slot) => {
+          [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].forEach(mType => {
+            if (!isMealEnabled(dayId, mType, dayConfig)) return;
+            const isParcel = toBool(slot[`${mType}Parcel` as keyof typeof slot]);
+            if (isParcel && isParcelEnabled(dayId, mType, dayConfig)) {
+              parcels++;
+            }
+          });
+        });
+      });
+    });
+    return parcels;
+  }, [subscriptions, dayConfig]);
 
   const activeMealSegregations = React.useMemo(() => {
     const meals = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER];
@@ -450,6 +470,14 @@ export function HomeScreen() {
                   <Text style={{ fontSize: labelFontSize, color: theme.colors.white, opacity: 0.8, fontWeight: '700', flexShrink: 1 }}>
                     {UI_TEXT.openParen}
                     {activeMealSegregations.join(UI_TEXT.pipe)}
+                    {UI_TEXT.closeParen}
+                  </Text>
+                )}
+                {seasonParcelTotal >= 0 && (
+                  <Text style={{ fontSize: labelFontSize, color: theme.colors.white, opacity: 0.8, fontWeight: '700', flexShrink: 1 }}>
+                    {UI_TEXT.openParen}
+                    {summaryCounts.totalPlates - seasonParcelTotal} {UI_TEXT.dineIn}
+                    {seasonParcelTotal > 0 ? ` ${UI_TEXT.pipe} ${seasonParcelTotal} ${UI_TEXT.parcel}` : ""}
                     {UI_TEXT.closeParen}
                   </Text>
                 )}

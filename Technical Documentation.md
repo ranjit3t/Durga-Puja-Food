@@ -133,9 +133,8 @@ The application follows a **Serverless Layered Architecture** built on the **Exp
 - **Block-Level Filtering**: Tapping the block label badge in the top-left portion of any pass card instantly filters the directory to show passes of that block only, with a removable block filter chip. Non-nested sibling layout (`e.stopPropagation()`) completely prevents HTML DOM hydration errors (`<button>` inside `<button>`).
 - **100% Theme & Dictionary Compliance**: All labels bind directly to `UI_TEXT` tokens without hardcoded text or colors.
 
-### Q. Clean Report Image Capture & Document Header Engine ([`ReportScreen.tsx`](src/screens/ReportScreen.tsx), [`DayWiseReport.tsx`](src/components/report/DayWiseReport.tsx), [`ParcelWiseReport.tsx`](src/components/report/ParcelWiseReport.tsx), [`PaymentSummaryReport.tsx`](src/components/report/PaymentSummaryReport.tsx))
-- **Document Header Banner**: Captures report data cards (`reportRef`) prefixed with an official non-interactive Document Header Banner (`seasonName`, Report Title, Scope/Day/Meal, Date).
-- **Capture-Aware Button Suppression**: `isCapturing` state automatically suppresses interactive UI tab buttons, filter selection cards, and internal view-mode toggle buttons (`Complete` / `Planned`, `Summary` / `Missed`, `Payment Summary` / `Discrepancy`) during image capture, producing a pristine data-only report image without UI buttons.
+### T. Dashboard & Home Page Dine-In Summary Cards ([`DashboardScreen.tsx`](src/screens/DashboardScreen.tsx), [`HomeScreen.tsx`](src/screens/HomeScreen.tsx))
+- **Explicit Dine-In Metrics**: Event and season summary cards on the Dashboard and Home Page prominently display **Dine-In** counts (treating all non-parcel meals and free meals as Dine-In) alongside parcel subtotals.
 
 ### R. Duplicate Pass Collision Confirmation & View Pass Navigation ([`SubscriptionForm.tsx`](src/screens/SubscriptionForm.tsx))
 - **Pre-Save Collision Detection**: When registering a new pass (`!lockIdentity`), the system checks whether a pass with the exact same Block and Flat number already exists in the database.
