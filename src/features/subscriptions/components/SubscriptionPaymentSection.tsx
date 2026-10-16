@@ -28,6 +28,11 @@ interface SubscriptionPaymentSectionProps {
   lockIdentity?: boolean;
   onViewAppliedPackage?: (pkgId: string) => void;
   getPersonLabel?: (index: number) => string;
+  discrepancyDetail?: {
+    hasDiscrepancy: boolean;
+    type: "deficiency" | "excess" | "none";
+    amount: number;
+  };
 }
 
 export const SubscriptionPaymentSection: React.FC<SubscriptionPaymentSectionProps> = ({
@@ -52,6 +57,7 @@ export const SubscriptionPaymentSection: React.FC<SubscriptionPaymentSectionProp
   lockIdentity,
   onViewAppliedPackage,
   getPersonLabel,
+  discrepancyDetail,
 }) => {
   return (
     <View
@@ -126,6 +132,35 @@ export const SubscriptionPaymentSection: React.FC<SubscriptionPaymentSectionProp
           </View>
         </View>
       </View>
+
+      {/* Auto-populated Discrepancy Banner */}
+      {discrepancyDetail && discrepancyDetail.hasDiscrepancy && (
+        <View
+          style={{
+            backgroundColor: discrepancyDetail.type === "deficiency" ? theme.colors.errorLight : theme.colors.primary + "15",
+            borderColor: discrepancyDetail.type === "deficiency" ? theme.colors.error : theme.colors.primary,
+            borderWidth: 1,
+            paddingHorizontal: 12,
+            paddingVertical: 10,
+            borderRadius: 12,
+            marginBottom: 16,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
+            <Ionicons
+              name={discrepancyDetail.type === "deficiency" ? "warning-outline" : "information-circle-outline"}
+              size={18}
+              color={discrepancyDetail.type === "deficiency" ? theme.colors.error : theme.colors.primary}
+            />
+            <Text style={{ fontSize: 13, fontWeight: "900", color: discrepancyDetail.type === "deficiency" ? theme.colors.error : theme.colors.primary }}>
+              {discrepancyDetail.type === "deficiency" ? UI_TEXT.deficiency : UI_TEXT.excess}: {formatCurrencyAmount(discrepancyDetail.amount)}
+            </Text>
+          </View>
+        </View>
+      )}
 
       {/* Edit Pass Applied Package Details Section */}
       {isPackageApplied && appliedPackages && Object.keys(appliedPackages).length > 0 && (

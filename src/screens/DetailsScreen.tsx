@@ -53,7 +53,11 @@ import { useAuth } from "../context/AuthContext";
 import { useCoreDatabase, useActivityLogs, useFoodPackages } from "../context/DatabaseContext";
 import { useUI } from "../context/UIContext";
 import { useAppNavigation } from "../context/NavigationContext";
-import { hasAmountDiscrepancy } from "../utils/paymentUtils";
+import {
+  hasAmountDiscrepancy,
+  calculatePassDiscrepancy,
+  formatCurrencyAmount,
+} from "../utils/paymentUtils";
 
 export function DetailsScreen() {
   const { userRole, handleLogout } = useAuth();
@@ -80,10 +84,12 @@ export function DetailsScreen() {
   const [showQuickCheckoutModal, setShowQuickCheckoutModal] = React.useState(false);
   const [viewingPackage, setViewingPackage] = React.useState<FoodPackage | null>(null);
 
-  const hasDiscrepancy = React.useMemo(() => {
-    if (!subscription) return false;
-    return isAdmin && paymentConfig?.enabled && hasAmountDiscrepancy(subscription, foodMenu, dayConfig, !!kidsEnabled, !!guestsEnabled, foodPackages);
+  const discrepancyDetail = React.useMemo(() => {
+    if (!subscription || !isAdmin || !paymentConfig?.enabled) return { hasDiscrepancy: false, type: "none" as const, difference: 0, amount: 0, paidAmount: 0, calculatedAmount: 0 };
+    return calculatePassDiscrepancy(subscription, foodMenu, dayConfig, !!kidsEnabled, !!guestsEnabled, foodPackages);
   }, [subscription, foodMenu, dayConfig, kidsEnabled, guestsEnabled, foodPackages, isAdmin, paymentConfig]);
+
+  const hasDiscrepancy = discrepancyDetail.hasDiscrepancy;
 
   const currentMealInfo = React.useMemo(() => {
     const active = getActiveDays(dayConfig);
@@ -468,6 +474,37 @@ export function DetailsScreen() {
                   ))}
               </View>
             ) : null}
+
+            {discrepancyDetail && discrepancyDetail.hasDiscrepancy && (
+              <View
+                accessible={true}
+                accessibilityRole="text"
+                accessibilityLabel={`${discrepancyDetail.type === "deficiency" ? UI_TEXT.deficiency : UI_TEXT.excess}: ${formatCurrencyAmount(discrepancyDetail.amount)}`}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  backgroundColor: discrepancyDetail.type === "deficiency" ? theme.colors.errorLight : theme.colors.primary + "15",
+                  borderColor: discrepancyDetail.type === "deficiency" ? theme.colors.error : theme.colors.primary,
+                  borderWidth: 1,
+                  paddingHorizontal: 12,
+                  paddingVertical: 10,
+                  borderRadius: 12,
+                  marginTop: 12,
+                }}
+              >
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
+                  <Ionicons
+                    name={discrepancyDetail.type === "deficiency" ? "warning-outline" : "information-circle-outline"}
+                    size={18}
+                    color={discrepancyDetail.type === "deficiency" ? theme.colors.error : theme.colors.primary}
+                  />
+                  <Text style={{ fontSize: 13, fontWeight: "900", color: discrepancyDetail.type === "deficiency" ? theme.colors.error : theme.colors.primary }}>
+                    {discrepancyDetail.type === "deficiency" ? UI_TEXT.deficiency : UI_TEXT.excess}: {formatCurrencyAmount(discrepancyDetail.amount)}
+                  </Text>
+                </View>
+              </View>
+            )}
           </Pressable>
         )}
 

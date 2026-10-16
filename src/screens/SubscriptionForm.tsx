@@ -72,13 +72,11 @@ import {
 } from "../domain";
 import { ActionLabel } from "../components/common/ActionLabel";
 import { PaymentScannerModal } from "../components/common/PaymentScannerModal";
-import { Dropdown } from "../components/common/Dropdown";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
 import { ThemeToggleButton } from "../components/common/ThemeToggleButton";
 import { UserGreeting } from "../components/common/UserGreeting";
-import { CounterInput } from "../components/common/CounterInput";
 import { Ionicons } from "@expo/vector-icons";
 import { SubscriptionBasicInfoSection } from "../features/subscriptions/components/SubscriptionBasicInfoSection";
 import { SubscriptionPaymentSection } from "../features/subscriptions/components/SubscriptionPaymentSection";
@@ -93,6 +91,8 @@ import {
   findApplicablePackagesForPerson,
   calculatePassTotalWithPackages,
   calculatePaidAmount,
+  getDiscrepancyDetail,
+  formatCurrencyAmount,
 } from "../utils/paymentUtils";
 
 export function SubscriptionForm() {
@@ -560,14 +560,12 @@ export function SubscriptionForm() {
     return payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
   }, [payments]);
 
-  const hasFormDiscrepancy = useMemo(() => {
-    if (!isAdmin || !paymentConfig?.enabled) return false;
-    if (lockIdentity && value) {
-      return Math.abs(initialLoadedAmount - calculatedExpectedAmount) > 0.01;
-    } else {
-      return Math.abs(currentTotalAmount - calculatedExpectedAmount) > 0.01;
-    }
-  }, [isAdmin, paymentConfig, lockIdentity, value, initialLoadedAmount, calculatedExpectedAmount, currentTotalAmount]);
+  const formDiscrepancyDetail = useMemo(() => {
+    if (!isAdmin || !paymentConfig?.enabled) return { hasDiscrepancy: false, type: "none" as const, amount: 0 };
+    return getDiscrepancyDetail(currentTotalAmount, calculatedExpectedAmount);
+  }, [isAdmin, paymentConfig, currentTotalAmount, calculatedExpectedAmount]);
+
+  const hasFormDiscrepancy = formDiscrepancyDetail.hasDiscrepancy;
 
   // Capture initial meal state snapshot for Edit Pass to detect meal/parcel choice variations
   const initialMealSnapshot = useRef({
@@ -1930,6 +1928,7 @@ export function SubscriptionForm() {
               if (pkg) setViewingPackage(pkg);
             }}
             getPersonLabel={(idx) => getMemberLegend(idx, form.peopleCount, !!kidsEnabled)}
+            discrepancyDetail={hasFormDiscrepancy ? formDiscrepancyDetail : undefined}
           />
         )}
 

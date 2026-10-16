@@ -271,7 +271,10 @@ The application enforces strict role-based access control (RBAC) distinguishing 
    - Non-admin users can view, edit, and delete only the notes they have personally created (`note.userName === userName`), filtering out notes created by other users.
 8. **Amount Discrepancy Filter & Real-Time Watchful Summary Badges (`SubscriptionListScreen.tsx`, `SubscriptionForm.tsx`, `DetailsScreen.tsx`)**:
    - Added an **Amount Discrepancy** filter chip (`FilterMode.AMOUNT_DISCREPANCY`) to the subscription directory with auto-filtering and warning icons on pass cards.
-   - Add/Edit Pass and View Pass summary cards feature a **watchful real-time discrepancy badge pill** that appears instantly whenever an amount discrepancy is detected between calculated costs and initial loaded/paid amounts, and automatically removes itself when resolved.
+   - Add Pass, Edit Pass, and View Pass summary cards feature a **watchful real-time discrepancy badge pill** (featuring warning icon and "Amount Discrepancy" text label matching special meal and package badge structure) that appears instantly whenever an amount discrepancy is detected, and automatically removes itself when resolved.
+9. **Auto-Populated Discrepancy Amount Display (`paymentUtils.ts`, `SubscriptionForm.tsx`, `SubscriptionPaymentSection.tsx`, `DetailsScreen.tsx`)**:
+   - Reuses unified discrepancy logic (`calculatePassDiscrepancy`) across the discrepancy report, directory filters, pass cards, View Pass, and Add/Edit Pass.
+   - Displays exact auto-populated Deficiency (`Deficiency: ₹X`) or Excess (`Excess: ₹X`) banners in the Payment Section and summary cards whenever an amount discrepancy > ₹0 occurs.
 
 ---
 

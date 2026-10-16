@@ -606,19 +606,56 @@ export function calculatePaidAmount(sub: { payments?: PaymentEntry[]; amount?: s
 }
 
 /**
- * Checks whether a subscription has an amount discrepancy (paid vs calculated).
+ * Computes exact discrepancy detail (type and amount) comparing paid vs calculated amounts.
  */
-export function hasAmountDiscrepancy(
-  sub: SubscriptionRecord,
+export function getDiscrepancyDetail(paidAmount: number, calculatedAmount: number): {
+  hasDiscrepancy: boolean;
+  type: "deficiency" | "excess" | "none";
+  amount: number;
+} {
+  const difference = Math.round((paidAmount - calculatedAmount) * 100) / 100;
+  if (Math.abs(difference) <= 0.01) {
+    return { hasDiscrepancy: false, type: "none", amount: 0 };
+  }
+  if (difference < 0) {
+    return { hasDiscrepancy: true, type: "deficiency", amount: Math.abs(difference) };
+  } else {
+    return { hasDiscrepancy: true, type: "excess", amount: difference };
+  }
+}
+
+/**
+ * Calculates exact amount discrepancy (paid vs calculated) for a single subscription pass.
+ * Shared directly across Amount Discrepancy reports, View Pass, Edit Pass, and Directory Filters.
+ */
+export function calculatePassDiscrepancy(
+  sub: {
+    mealSlots: Record<string, MealSlot[]>;
+    peopleCount: number;
+    kidsCount?: number;
+    guestsCount?: number;
+    payments?: PaymentEntry[];
+    amount?: string;
+    isPackageApplied?: boolean;
+    appliedPackages?: Record<number, AppliedPackageInfo>;
+  },
   foodMenu: Record<string, any>,
   dayConfig: ConfigDay[],
   kidsEnabled: boolean,
   guestsEnabled: boolean = false,
   foodPackages: FoodPackage[] | Record<string, FoodPackage> = []
-): boolean {
+): {
+  hasDiscrepancy: boolean;
+  type: "deficiency" | "excess" | "none";
+  difference: number;
+  amount: number;
+  paidAmount: number;
+  calculatedAmount: number;
+} {
   const pkgList = Array.isArray(foodPackages)
     ? foodPackages
     : Object.values(foodPackages || {});
+
   const paidAmount = calculatePaidAmount(sub);
   const isPkgApplied = sub.isPackageApplied || (sub.appliedPackages && Object.keys(sub.appliedPackages).length > 0);
   const calculatedAmount = isPkgApplied
@@ -644,8 +681,33 @@ export function hasAmountDiscrepancy(
         sub.guestsCount || 0,
         guestsEnabled
       );
+
   const difference = Math.round((paidAmount - calculatedAmount) * 100) / 100;
-  return Math.abs(difference) > 0.01;
+  const hasDiscrepancy = Math.abs(difference) > 0.01;
+  const type = !hasDiscrepancy ? "none" : difference < 0 ? "deficiency" : "excess";
+
+  return {
+    hasDiscrepancy,
+    type,
+    difference,
+    amount: Math.abs(difference),
+    paidAmount,
+    calculatedAmount,
+  };
+}
+
+/**
+ * Checks whether a subscription has an amount discrepancy (paid vs calculated).
+ */
+export function hasAmountDiscrepancy(
+  sub: SubscriptionRecord,
+  foodMenu: Record<string, any>,
+  dayConfig: ConfigDay[],
+  kidsEnabled: boolean,
+  guestsEnabled: boolean = false,
+  foodPackages: FoodPackage[] | Record<string, FoodPackage> = []
+): boolean {
+  return calculatePassDiscrepancy(sub, foodMenu, dayConfig, kidsEnabled, guestsEnabled, foodPackages).hasDiscrepancy;
 }
 
 /**
@@ -660,39 +722,9 @@ export function getAmountDiscrepancyData(
   guestsEnabled: boolean = false,
   foodPackages: FoodPackage[] | Record<string, FoodPackage> = []
 ): DiscrepancyItem[] {
-  const pkgList = Array.isArray(foodPackages)
-    ? foodPackages
-    : Object.values(foodPackages || {});
-
   return subscriptions
     .map((sub) => {
-      const paidAmount = calculatePaidAmount(sub);
-      const isPkgApplied = sub.isPackageApplied || (sub.appliedPackages && Object.keys(sub.appliedPackages).length > 0);
-      const calculatedAmount = isPkgApplied
-        ? calculatePassTotalWithPackages(
-            sub.mealSlots,
-            sub.peopleCount || 0,
-            sub.kidsCount || 0,
-            sub.appliedPackages,
-            pkgList,
-            foodMenu,
-            dayConfig,
-            kidsEnabled,
-            sub.guestsCount || 0,
-            guestsEnabled
-          )
-        : calculateSubscriptionAmount(
-            sub.mealSlots,
-            sub.peopleCount,
-            sub.kidsCount || 0,
-            foodMenu,
-            dayConfig,
-            kidsEnabled,
-            sub.guestsCount || 0,
-            guestsEnabled
-          );
-      const difference = Math.round((paidAmount - calculatedAmount) * 100) / 100;
-
+      const disc = calculatePassDiscrepancy(sub, foodMenu, dayConfig, kidsEnabled, guestsEnabled, foodPackages);
       return {
         id: sub.id,
         block: sub.block,
@@ -700,9 +732,9 @@ export function getAmountDiscrepancyData(
         peopleCount: sub.peopleCount || 0,
         kidsCount: sub.kidsCount || 0,
         guestsCount: sub.guestsCount || 0,
-        paidAmount,
-        calculatedAmount,
-        difference,
+        paidAmount: disc.paidAmount,
+        calculatedAmount: disc.calculatedAmount,
+        difference: disc.difference,
         payments: sub.payments || [],
       };
     })
