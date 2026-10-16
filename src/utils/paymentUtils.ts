@@ -1150,7 +1150,7 @@ export function calculateDetailedPaymentReportData(
         const mealMenu = foodMenu?.[dayId]?.[mType];
         const dayConf = dayConfig.find((d) => d.id === dayId);
         const mConf = dayConf ? dayConf[mType] : null;
-        const varieties = getMealVarieties(mConf);
+        const varieties = getMealVarieties(mConf ?? undefined);
         const freeMeals = getMealFreeMealCounts(mealMenu, varieties);
         const totalFreeMealPlates = (freeMeals.freeMealVeg || 0) + (freeMeals.freeMealNonVeg || 0);
 
