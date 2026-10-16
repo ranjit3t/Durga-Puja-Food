@@ -74,7 +74,7 @@ export function VendorMealWiseReport({
   let seasonAdultDineSub = 0, seasonAdultParcelSub = 0, seasonAdultDineExp = 0, seasonAdultParcelExp = 0, seasonAdultDineAct = 0, seasonAdultParcelAct = 0;
   let seasonKidsDineSub = 0, seasonKidsParcelSub = 0, seasonKidsDineExp = 0, seasonKidsParcelExp = 0, seasonKidsDineAct = 0, seasonKidsParcelAct = 0;
   let seasonGuestsDineSub = 0, seasonGuestsParcelSub = 0, seasonGuestsDineExp = 0, seasonGuestsParcelExp = 0, seasonGuestsDineAct = 0, seasonGuestsParcelAct = 0;
-  let seasonFreeDineExp = 0, seasonFreeDineAct = 0;
+  let seasonFreeDineExp = 0, seasonFreeDineAct = 0, seasonFreeParcelAct = 0;
 
   const dayReports = activeDays.map((dayId, index) => {
     const dMenu = foodMenu[dayId];
@@ -192,11 +192,14 @@ export function VendorMealWiseReport({
 
       const freeVegPlanned = (freeMealEnabled && vEnabled) ? fmCounts.freeMealVeg : 0;
       const freeNonVegPlanned = (freeMealEnabled && nvEnabled) ? fmCounts.freeMealNonVeg : 0;
-      const freeVegServed = (freeMealEnabled && vEnabled) ? fmCounts.freeMealVegTaken : 0;
-      const freeNonVegServed = (freeMealEnabled && nvEnabled) ? fmCounts.freeMealNonVegTaken : 0;
+      const freeVegDineServed = (freeMealEnabled && vEnabled) ? fmCounts.freeMealVegTaken : 0;
+      const freeNonVegDineServed = (freeMealEnabled && nvEnabled) ? fmCounts.freeMealNonVegTaken : 0;
+      const freeVegParcelServed = (freeMealEnabled && vEnabled) ? fmCounts.freeMealVegParcelTaken : 0;
+      const freeNonVegParcelServed = (freeMealEnabled && nvEnabled) ? fmCounts.freeMealNonVegParcelTaken : 0;
 
       const freeDineExp = (freeVegPlanned * defAdultVegVendor) + (freeNonVegPlanned * defAdultNvVendor);
-      const freeDineAct = (freeVegServed * defAdultVegVendor) + (freeNonVegServed * defAdultNvVendor);
+      const freeDineAct = (freeVegDineServed * defAdultVegVendor) + (freeNonVegDineServed * defAdultNvVendor);
+      const freeParcelAct = (freeVegParcelServed * (defAdultVegVendor + defAdultVegParcelVendor)) + (freeNonVegParcelServed * (defAdultNvVendor + defAdultNvParcelVendor));
 
       seasonAdultDineSub += adultDineSub; seasonAdultParcelSub += adultParcelSub;
       seasonAdultDineExp += adultDineExp; seasonAdultParcelExp += adultParcelExp;
@@ -215,6 +218,7 @@ export function VendorMealWiseReport({
       if (freeMealEnabled) {
         seasonFreeDineExp += freeDineExp;
         seasonFreeDineAct += freeDineAct;
+        seasonFreeParcelAct += freeParcelAct;
       }
 
       const categories = [
@@ -270,13 +274,21 @@ export function VendorMealWiseReport({
             catActVendor: guestsParcelAct,
           }] : []),
         ] : []),
-        ...(freeMealEnabled && (freeVegPlanned + freeNonVegPlanned > 0 || freeVegServed + freeNonVegServed > 0) ? [{
+        ...(freeMealEnabled && (freeVegPlanned + freeNonVegPlanned > 0 || freeVegDineServed + freeNonVegDineServed > 0) ? [{
           name: `${UI_TEXT.freeMealSuffix} (${UI_TEXT.dineIn})`,
           planned: freeVegPlanned + freeNonVegPlanned,
-          served: freeVegServed + freeNonVegServed,
+          served: freeVegDineServed + freeNonVegDineServed,
           catSub: 0,
           catExpVendor: freeDineExp,
           catActVendor: freeDineAct,
+        }] : []),
+        ...(freeMealEnabled && (freeVegParcelServed + freeNonVegParcelServed > 0) ? [{
+          name: `${UI_TEXT.freeMealSuffix} (${UI_TEXT.parcel})`,
+          planned: 0,
+          served: freeVegParcelServed + freeNonVegParcelServed,
+          catSub: 0,
+          catExpVendor: 0,
+          catActVendor: freeParcelAct,
         }] : []),
       ].filter(cat => cat.planned > 0 || cat.served > 0 || cat.catSub > 0 || cat.catExpVendor > 0 || cat.catActVendor > 0);
 
@@ -350,7 +362,7 @@ export function VendorMealWiseReport({
   const seasonTotalParcelExp = seasonAdultParcelExp + seasonKidsParcelExp + seasonGuestsParcelExp;
 
   const seasonTotalDineAct = seasonAdultDineAct + seasonKidsDineAct + seasonGuestsDineAct + seasonFreeDineAct;
-  const seasonTotalParcelAct = seasonAdultParcelAct + seasonKidsParcelAct + seasonGuestsParcelAct;
+  const seasonTotalParcelAct = seasonAdultParcelAct + seasonKidsParcelAct + seasonGuestsParcelAct + seasonFreeParcelAct;
 
   const seasonExpectedDiff = seasonTotalExpectedVendor - seasonTotalSubscription;
   const seasonExpectedLabel = seasonExpectedDiff > 0 ? UI_TEXT.totalExpectedDeficiency : UI_TEXT.totalExpectedExcess;
@@ -608,6 +620,12 @@ export function VendorMealWiseReport({
                     <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
                       <Text style={{ color: theme.colors.white + "99", fontSize: 11, fontWeight: "600" }}>{UI_TEXT.hyphen} {UI_TEXT.guests}</Text>
                       <Text style={{ color: theme.colors.white + "CC", fontSize: 11, fontWeight: "700" }}>{UI_TEXT.rs} {formatCurrencyAmount(seasonGuestsParcelAct)}</Text>
+                    </View>
+                  )}
+                  {freeMealEnabled && seasonFreeParcelAct > 0 && (
+                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                      <Text style={{ color: theme.colors.white + "99", fontSize: 11, fontWeight: "600" }}>{UI_TEXT.hyphen} {UI_TEXT.freeMealSuffix}</Text>
+                      <Text style={{ color: theme.colors.white + "CC", fontSize: 11, fontWeight: "700" }}>{UI_TEXT.rs} {formatCurrencyAmount(seasonFreeParcelAct)}</Text>
                     </View>
                   )}
                 </View>

@@ -159,7 +159,12 @@ The application follows a **Serverless Layered Architecture** built on the **Exp
   - Image capture filter omission (`isCapturing === true`) with **Applied Filter Criteria Subsection** inside `ReportSummaryCard` for permanent image export record.
   - Dedicated **Headcount Subsection** in `ReportSummaryCard` showing total members and category breakdown (`• Adults: A • Kids: B • Guests: C`) strictly when count > 0.
 - **Free Meal Desk Plate Count Integration in Payment Reports**:
-  - Includes Free Meal Desk plate counts (`freeMealVeg` + `freeMealNonVeg` from `getMealFreeMealCounts`) as ₹0 dine-in plates across Payment Summary, Day-Wise Payment, and Meal-Wise Payment reports.
+  - Includes Free Meal Desk plate counts (`freeMealVeg` + `freeMealNonVeg` from `getMealFreeMealCounts`) as ₹0 plates across Payment Summary, Day-Wise Payment, and Meal-Wise Payment reports, accurately categorizing Dine-In vs Parcel served portions.
+- **Free Meal Takeaway Parcel Support & Vendor Pricing Engine**:
+  - Organizers cover vendor meal cost + vendor parcel cost for free meal parcels.
+  - On the Free Meal desk page (`FreeMealManagementScreen.tsx`) and Quick Free Meal checkout modal (`QuickFreeMealModal.tsx`), sub-category cards render side-by-side **Dine-In** and **Parcel** CounterInputs on the served section side, enforcing `dineInCount + parcelCount <= totalPlannedCount`.
+  - In Kitchen Operations Analytics (`DashboardScreen.tsx`, `MealMetricGrid.tsx`, `MealBarChart.tsx`), free meal parcel checkouts are automatically counted under parcel served metrics.
+  - In Vendor Price Reports (`VendorMealWiseReport.tsx`), free meal actual costs are accurately split into two parts: **Meal Service (Dine-In)** (`vendorMealPrice`) and **Parcel Service** (`vendorMealPrice + vendorParcelPrice`), with planned free meals initially evaluated as dine-in expected cost.
 - **Amount Discrepancy Primary Summary Card**:
   - Added a top primary `ReportSummaryCard` in `AmountDiscrepancyReport.tsx` displaying total passes with discrepancy, Pending (Excess vs Pending sub-counts `X Excess | Y Pending`), Expected Calculated Amount, Total Deficiency (`UI_TEXT.totalDeficiency`), Total Excess (`UI_TEXT.totalExcess`), and Paid Collection.
 - **Edit Pass Payment Pre-population & Dynamic Excess Payment Entry**:

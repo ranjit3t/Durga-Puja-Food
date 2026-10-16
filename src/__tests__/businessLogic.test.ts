@@ -71,6 +71,79 @@ import {
   distributeAmountWithRemainder,
 } from "../utils/paymentUtils";
 import { ConfigDay, PaymentMode } from "../domain";
+import { getMealFreeMealCounts } from "../constants";
+
+describe("free meal parcel counts and payment report integration", () => {
+  it("calculates free meal dine-in, parcel, and total served counts correctly", () => {
+    const mealMenu: any = {
+      freeMealVeg: 10,
+      freeMealNonVeg: 5,
+      freeMealVegTaken: 6,
+      freeMealNonVegTaken: 3,
+      freeMealVegParcelTaken: 2,
+      freeMealNonVegParcelTaken: 1,
+    };
+
+    const counts = getMealFreeMealCounts(mealMenu);
+    expect(counts.freeMealVeg).toBe(10);
+    expect(counts.freeMealNonVeg).toBe(5);
+    expect(counts.freeMealTotal).toBe(15);
+
+    expect(counts.freeMealVegTaken).toBe(6);
+    expect(counts.freeMealNonVegTaken).toBe(3);
+    expect(counts.freeMealDineInTaken).toBe(9);
+
+    expect(counts.freeMealVegParcelTaken).toBe(2);
+    expect(counts.freeMealNonVegParcelTaken).toBe(1);
+    expect(counts.freeMealParcelTaken).toBe(3);
+
+    expect(counts.freeMealTaken).toBe(12);
+  });
+
+  it("adds free meal dine-in and parcel portions to dineInCount and parcelCount in detailed payment reports", () => {
+    const dummyDays: ConfigDay[] = [
+      {
+        id: "day1",
+        label: "Saptami",
+        abbr: "SEP",
+        enabled: true,
+        breakfast: { enabled: true, veg: true, nonVeg: true, parcel: false },
+        lunch: { enabled: true, veg: true, nonVeg: true, parcel: false },
+        dinner: { enabled: true, veg: true, nonVeg: true, parcel: false },
+      },
+    ];
+
+    const foodMenu: any = {
+      day1: {
+        lunch: {
+          freeMealVeg: 10,
+          freeMealNonVeg: 5,
+          freeMealVegTaken: 6,
+          freeMealNonVegTaken: 3,
+          freeMealVegParcelTaken: 2,
+          freeMealNonVegParcelTaken: 1,
+        },
+      },
+    };
+
+    const report = calculateDetailedPaymentReportData(
+      [],
+      foodMenu,
+      dummyDays,
+      false,
+      false,
+      []
+    );
+
+    const lunchPayment = report.mealWisePayments.find((m) => m.dayId === "day1" && m.mealType === MealType.LUNCH);
+    expect(lunchPayment).toBeDefined();
+    if (lunchPayment) {
+      expect(lunchPayment.portionCount).toBe(15);
+      expect(lunchPayment.dineInCount).toBe(9);
+      expect(lunchPayment.parcelCount).toBe(6);
+    }
+  });
+});
 
 describe("remainder distribution and detailed payment report calculation", () => {
   it("distributes 50 discount across 3 meals as 16, 16, 18 without decimals", () => {

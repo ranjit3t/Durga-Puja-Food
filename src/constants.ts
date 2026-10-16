@@ -323,53 +323,81 @@ export function getMealFreeMealCounts(
 ) {
   if (!mealMenu) {
     return {
-      freeMealVeg: 0, freeMealNonVeg: 0, freeMealVegTaken: 0, freeMealNonVegTaken: 0, freeMealTaken: 0
+      freeMealVeg: 0,
+      freeMealNonVeg: 0,
+      freeMealTotal: 0,
+      freeMealVegTaken: 0,
+      freeMealNonVegTaken: 0,
+      freeMealVegParcelTaken: 0,
+      freeMealNonVegParcelTaken: 0,
+      freeMealDineInTaken: 0,
+      freeMealParcelTaken: 0,
+      freeMealTaken: 0,
     };
   }
 
   let vegP = 0;
   let nonVegP = 0;
-  let vegS = 0;
-  let nonVegS = 0;
+  let vegS_DineIn = 0;
+  let nonVegS_DineIn = 0;
+  let vegS_Parcel = 0;
+  let nonVegS_Parcel = 0;
 
   if (varieties && varieties.length > 0) {
     varieties.forEach((v) => {
       let p = 0;
-      let s = 0;
+      let sDine = 0;
+      let sParcel = 0;
       if (v.id === "veg_default") {
         p = mealMenu.freeMealVeg || 0;
-        s = mealMenu.freeMealVegTaken || 0;
+        sDine = mealMenu.freeMealVegTaken || 0;
+        sParcel = mealMenu.freeMealVegParcelTaken || 0;
       } else if (v.id === "nonVeg_default") {
         p = mealMenu.freeMealNonVeg || 0;
-        s = mealMenu.freeMealNonVegTaken || 0;
+        sDine = mealMenu.freeMealNonVegTaken || 0;
+        sParcel = mealMenu.freeMealNonVegParcelTaken || 0;
       } else {
         const counts = mealMenu.freeMealCounts;
         const takenCounts = mealMenu.freeMealTakenCounts;
+        const parcelTakenCounts = mealMenu.freeMealParcelTakenCounts;
         p = Number(counts?.[v.id]) || 0;
-        s = Number(takenCounts?.[v.id]) || 0;
+        sDine = Number(takenCounts?.[v.id]) || 0;
+        sParcel = Number(parcelTakenCounts?.[v.id]) || 0;
       }
 
       if (v.type === DietType.VEG) {
         vegP += p;
-        vegS += s;
+        vegS_DineIn += sDine;
+        vegS_Parcel += sParcel;
       } else {
         nonVegP += p;
-        nonVegS += s;
+        nonVegS_DineIn += sDine;
+        nonVegS_Parcel += sParcel;
       }
     });
   } else {
     vegP = mealMenu.freeMealVeg || 0;
     nonVegP = mealMenu.freeMealNonVeg || 0;
-    vegS = mealMenu.freeMealVegTaken || 0;
-    nonVegS = mealMenu.freeMealNonVegTaken || 0;
+    vegS_DineIn = mealMenu.freeMealVegTaken || 0;
+    nonVegS_DineIn = mealMenu.freeMealNonVegTaken || 0;
+    vegS_Parcel = mealMenu.freeMealVegParcelTaken || 0;
+    nonVegS_Parcel = mealMenu.freeMealNonVegParcelTaken || 0;
   }
+
+  const dineInTotal = vegS_DineIn + nonVegS_DineIn;
+  const parcelTotal = vegS_Parcel + nonVegS_Parcel;
 
   return {
     freeMealVeg: vegP,
     freeMealNonVeg: nonVegP,
-    freeMealVegTaken: vegS,
-    freeMealNonVegTaken: nonVegS,
-    freeMealTaken: vegS + nonVegS,
+    freeMealTotal: vegP + nonVegP,
+    freeMealVegTaken: vegS_DineIn,
+    freeMealNonVegTaken: nonVegS_DineIn,
+    freeMealVegParcelTaken: vegS_Parcel,
+    freeMealNonVegParcelTaken: nonVegS_Parcel,
+    freeMealDineInTaken: dineInTotal,
+    freeMealParcelTaken: parcelTotal,
+    freeMealTaken: dineInTotal + parcelTotal,
   };
 }
 

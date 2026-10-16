@@ -54,35 +54,44 @@ const FreeMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, isCat
 
   const isMealEditableForAdmin = isAdmin && (!anyCurrentMealEnabled ? !isDone : (isCurrent || isFuture));
 
-  const getFreeMealCount = (vId: string, kind: "planned" | "served"): number => {
+  const getFreeMealCount = (vId: string, kind: "planned" | "dineIn" | "parcel"): number => {
     if (kind === "planned") {
       if (vId === "veg_default") return menu.freeMealVeg || 0;
       if (vId === "nonVeg_default") return menu.freeMealNonVeg || 0;
       return menu.freeMealCounts?.[vId] || 0;
-    } else {
+    } else if (kind === "dineIn") {
       if (vId === "veg_default") return menu.freeMealVegTaken || 0;
       if (vId === "nonVeg_default") return menu.freeMealNonVegTaken || 0;
       return menu.freeMealTakenCounts?.[vId] || 0;
+    } else {
+      if (vId === "veg_default") return menu.freeMealVegParcelTaken || 0;
+      if (vId === "nonVeg_default") return menu.freeMealNonVegParcelTaken || 0;
+      return menu.freeMealParcelTakenCounts?.[vId] || 0;
     }
   };
 
-  let vegTotalPlanned = 0, vegTotalServed = 0;
-  let nonVegTotalPlanned = 0, nonVegTotalServed = 0;
+  let vegTotalPlanned = 0, vegTotalDineIn = 0, vegTotalParcel = 0;
+  let nonVegTotalPlanned = 0, nonVegTotalDineIn = 0, nonVegTotalParcel = 0;
 
   varieties.forEach((v) => {
     const p = getFreeMealCount(v.id, "planned");
-    const s = getFreeMealCount(v.id, "served");
+    const d = getFreeMealCount(v.id, "dineIn");
+    const parc = getFreeMealCount(v.id, "parcel");
     if (v.type === DietType.VEG) {
       vegTotalPlanned += p;
-      vegTotalServed += s;
+      vegTotalDineIn += d;
+      vegTotalParcel += parc;
     } else {
       nonVegTotalPlanned += p;
-      nonVegTotalServed += s;
+      nonVegTotalDineIn += d;
+      nonVegTotalParcel += parc;
     }
   });
 
   const overallTotalPlanned = vegTotalPlanned + nonVegTotalPlanned;
-  const overallTotalServed = vegTotalServed + nonVegTotalServed;
+  const overallTotalDineIn = vegTotalDineIn + nonVegTotalDineIn;
+  const overallTotalParcel = vegTotalParcel + nonVegTotalParcel;
+  const overallTotalServed = overallTotalDineIn + overallTotalParcel;
   const isSpecial = isSpecialMeal(dayId, type, config);
 
   return (
@@ -124,11 +133,13 @@ const FreeMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, isCat
           if (!isDietaryEnabled(dayId, type, v.type, config)) return null;
 
           const pCount = getFreeMealCount(v.id, "planned");
-          const sCount = getFreeMealCount(v.id, "served");
+          const dineInCount = getFreeMealCount(v.id, "dineIn");
+          const parcelCount = getFreeMealCount(v.id, "parcel");
           const vColor = v.color || (v.type === DietType.VEG ? theme.colors.veg : theme.colors.nonVeg);
 
           const plannedField = v.id === "veg_default" ? "freeMealVeg" : v.id === "nonVeg_default" ? "freeMealNonVeg" : `fmc_${v.id}`;
-          const servedField = v.id === "veg_default" ? "freeMealVegTaken" : v.id === "nonVeg_default" ? "freeMealNonVegTaken" : `fmt_${v.id}`;
+          const dineInField = v.id === "veg_default" ? "freeMealVegTaken" : v.id === "nonVeg_default" ? "freeMealNonVegTaken" : `fmt_${v.id}`;
+          const parcelField = v.id === "veg_default" ? "freeMealVegParcelTaken" : v.id === "nonVeg_default" ? "freeMealNonVegParcelTaken" : `fmp_${v.id}`;
 
           return (
             <View
@@ -164,30 +175,39 @@ const FreeMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, isCat
                     <Text style={{ fontSize: 18, fontWeight: '900', color: theme.colors.textPrimary, marginTop: 2 }}>{pCount}</Text>
                   </View>
                   <View style={{ flex: 1, backgroundColor: theme.colors.surfaceDark, padding: 10, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.border }}>
-                    <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.textSecondary }}>{UI_TEXT.served.toUpperCase()}</Text>
-                    <Text style={{ fontSize: 18, fontWeight: '900', color: theme.colors.veg, marginTop: 2 }}>{sCount}</Text>
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.textSecondary }}>{UI_TEXT.dineIn.toUpperCase()}</Text>
+                    <Text style={{ fontSize: 18, fontWeight: '900', color: theme.colors.veg, marginTop: 2 }}>{dineInCount}</Text>
+                  </View>
+                  <View style={{ flex: 1, backgroundColor: theme.colors.surfaceDark, padding: 10, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.border }}>
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.textSecondary }}>{UI_TEXT.parcel.toUpperCase()}</Text>
+                    <Text style={{ fontSize: 18, fontWeight: '900', color: theme.colors.primary, marginTop: 2 }}>{parcelCount}</Text>
                   </View>
                 </View>
               ) : (
-                <View style={{ flexDirection: isUltraNarrow ? "column" : "row", gap: 10 }}>
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <CounterInput
-                      label={UI_TEXT.planned}
-                      value={pCount}
-                      min={sCount}
-                      onChange={(val) => onUpdate(dayId, type, plannedField, val)}
-                      disabled={isCaterer || disabled || !isMealEditableForAdmin}
-                    />
-                  </View>
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <CounterInput
-                      label={UI_TEXT.served}
-                      value={sCount}
-                      max={pCount}
-                      onChange={(val) => onUpdate(dayId, type, servedField, val)}
-                      disabled={isCaterer || disabled || isDone || isFuture}
-                    />
-                  </View>
+                <View style={{ gap: 8 }}>
+                  <CounterInput
+                    label={UI_TEXT.planned}
+                    value={pCount}
+                    min={dineInCount + parcelCount}
+                    onChange={(val) => onUpdate(dayId, type, plannedField, val)}
+                    disabled={isCaterer || disabled || !isMealEditableForAdmin}
+                  />
+                  <CounterInput
+                    label={UI_TEXT.dineIn}
+                    value={dineInCount}
+                    min={0}
+                    max={Math.max(0, pCount - parcelCount)}
+                    onChange={(val) => onUpdate(dayId, type, dineInField, val)}
+                    disabled={isCaterer || disabled || isDone || isFuture}
+                  />
+                  <CounterInput
+                    label={UI_TEXT.parcel}
+                    value={parcelCount}
+                    min={0}
+                    max={Math.max(0, pCount - dineInCount)}
+                    onChange={(val) => onUpdate(dayId, type, parcelField, val)}
+                    disabled={isCaterer || disabled || isDone || isFuture}
+                  />
                 </View>
               )}
             </View>
@@ -203,16 +223,16 @@ const FreeMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, isCat
             {vegTotalPlanned > 0 && (
               <View style={{ flex: 1, backgroundColor: theme.colors.successLight, padding: 10, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.veg }}>
                 <Text style={{ fontSize: 11, fontWeight: '800', color: theme.colors.veg }}>{UI_TEXT.vegGlobal}</Text>
-                <Text style={{ fontSize: 15, fontWeight: '900', color: theme.colors.textPrimary, marginTop: 2 }}>
-                  {vegTotalPlanned} P | {vegTotalServed} S
+                <Text style={{ fontSize: 14, fontWeight: '900', color: theme.colors.textPrimary, marginTop: 2 }}>
+                  {vegTotalPlanned} P | {vegTotalDineIn} D | {vegTotalParcel} P
                 </Text>
               </View>
             )}
             {nonVegTotalPlanned > 0 && (
               <View style={{ flex: 1, backgroundColor: theme.colors.errorLight, padding: 10, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.nonVeg }}>
                 <Text style={{ fontSize: 11, fontWeight: '800', color: theme.colors.nonVeg }}>{UI_TEXT.nonVegGlobal}</Text>
-                <Text style={{ fontSize: 15, fontWeight: '900', color: theme.colors.textPrimary, marginTop: 2 }}>
-                  {nonVegTotalPlanned} P | {nonVegTotalServed} S
+                <Text style={{ fontSize: 14, fontWeight: '900', color: theme.colors.textPrimary, marginTop: 2 }}>
+                  {nonVegTotalPlanned} P | {nonVegTotalDineIn} D | {nonVegTotalParcel} P
                 </Text>
               </View>
             )}
@@ -224,7 +244,9 @@ const FreeMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, isCat
             </View>
             <View style={{ flex: 1, backgroundColor: theme.colors.surface, padding: 10, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border }}>
               <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.textSecondary }}>{UI_TEXT.overallServed}</Text>
-              <Text style={{ fontSize: 18, fontWeight: '900', color: theme.colors.veg, marginTop: 2 }}>{overallTotalServed}</Text>
+              <Text style={{ fontSize: 16, fontWeight: '900', color: theme.colors.veg, marginTop: 2 }}>
+                {overallTotalServed} ({overallTotalDineIn} D, {overallTotalParcel} P)
+              </Text>
             </View>
           </View>
         </View>

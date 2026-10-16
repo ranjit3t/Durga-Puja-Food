@@ -165,9 +165,16 @@ export function useReportData(
           });
         });
 
-        const fmCounts = getMealFreeMealCounts(foodMenu[day]?.[MealType.BREAKFAST], getMealVarieties(dayConfig.find(d => d.id === day)?.[MealType.BREAKFAST]));
-        totals.freeMealVeg += fmCounts.freeMealVeg;
-        totals.freeMealNonVeg += fmCounts.freeMealNonVeg;
+        [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].forEach((mType) => {
+          if (!isMealEnabled(day, mType, dayConfig)) return;
+          const fmCounts = getMealFreeMealCounts(foodMenu[day]?.[mType], getMealVarieties(dayConfig.find(d => d.id === day)?.[mType]));
+          totals.freeMealVeg += fmCounts.freeMealVeg;
+          totals.freeMealNonVeg += fmCounts.freeMealNonVeg;
+          totals.freeMealVegTaken += fmCounts.freeMealVegTaken;
+          totals.freeMealNonVegTaken += fmCounts.freeMealNonVegTaken;
+          (totals as any).freeMealVegParcelTaken = ((totals as any).freeMealVegParcelTaken || 0) + fmCounts.freeMealVegParcelTaken;
+          (totals as any).freeMealNonVegParcelTaken = ((totals as any).freeMealNonVegParcelTaken || 0) + fmCounts.freeMealNonVegParcelTaken;
+        });
       });
 
       return { dayId: day, totals };
@@ -296,6 +303,10 @@ export function useReportData(
           const fmCounts = getMealFreeMealCounts(foodMenu[dayId]?.[mType], getMealVarieties(dayConfig.find(d => d.id === dayId)?.[mType]));
           stats.freeMealVeg += fmCounts.freeMealVeg;
           stats.freeMealNonVeg += fmCounts.freeMealNonVeg;
+          stats.freeMealVegTaken += fmCounts.freeMealVegTaken;
+          stats.freeMealNonVegTaken += fmCounts.freeMealNonVegTaken;
+          (stats as any).freeMealVegParcelTaken = fmCounts.freeMealVegParcelTaken;
+          (stats as any).freeMealNonVegParcelTaken = fmCounts.freeMealNonVegParcelTaken;
         }
 
         mealsObj[mType] = stats;

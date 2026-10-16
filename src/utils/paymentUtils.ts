@@ -1227,11 +1227,16 @@ export function calculateDetailedPaymentReportData(
         const mConf = dayConf ? dayConf[mType] : null;
         const varieties = getMealVarieties(mConf ?? undefined);
         const freeMeals = getMealFreeMealCounts(mealMenu, varieties);
-        const totalFreeMealPlates = (freeMeals.freeMealVeg || 0) + (freeMeals.freeMealNonVeg || 0);
+        const freeTotal = freeMeals.freeMealTotal || 0;
+        const freeDineInPlates = freeMeals.freeMealDineInTaken;
+        const freeParcelPlates = freeMeals.freeMealParcelTaken;
+        const totalServedFreePlates = freeDineInPlates + freeParcelPlates;
+        const freeUnservedPlates = Math.max(0, freeTotal - totalServedFreePlates);
 
-        if (totalFreeMealPlates > 0) {
-          mealMap[key].portionCount += totalFreeMealPlates;
-          mealMap[key].dineInCount += totalFreeMealPlates;
+        if (freeTotal > 0) {
+          mealMap[key].portionCount += freeTotal;
+          mealMap[key].dineInCount += freeDineInPlates;
+          mealMap[key].parcelCount += freeParcelPlates + freeUnservedPlates;
         }
       }
     });

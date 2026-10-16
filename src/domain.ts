@@ -316,12 +316,17 @@ export type MealMenu = {
   varieties?: Record<string, VarietyMenu>;
   freeMealCounts?: Record<string, number>;
   freeMealTakenCounts?: Record<string, number>;
+  freeMealParcelTakenCounts?: Record<string, number>;
   freeMealVeg?: number;
   freeMealNonVeg?: number;
   freeMealTotal?: number;
   freeMealTaken?: number;
   freeMealVegTaken?: number;
   freeMealNonVegTaken?: number;
+  freeMealVegParcelTaken?: number;
+  freeMealNonVegParcelTaken?: number;
+  freeMealDineInTaken?: number;
+  freeMealParcelTaken?: number;
   kidsVeg?: number;
   kidsNonVeg?: number;
   kidsVegTaken?: number;

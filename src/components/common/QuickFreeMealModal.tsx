@@ -116,35 +116,44 @@ export function QuickFreeMealModal({
   const mConf = dayConf ? dayConf[mealType] : undefined;
   const varieties = getMealVarieties(mConf);
 
-  const getFreeMealCount = (vId: string, kind: "planned" | "served"): number => {
+  const getFreeMealCount = (vId: string, kind: "planned" | "dineIn" | "parcel"): number => {
     if (kind === "planned") {
       if (vId === "veg_default") return mealMenu?.freeMealVeg || 0;
       if (vId === "nonVeg_default") return mealMenu?.freeMealNonVeg || 0;
       return mealMenu?.freeMealCounts?.[vId] || 0;
-    } else {
+    } else if (kind === "dineIn") {
       if (vId === "veg_default") return mealMenu?.freeMealVegTaken || 0;
       if (vId === "nonVeg_default") return mealMenu?.freeMealNonVegTaken || 0;
       return mealMenu?.freeMealTakenCounts?.[vId] || 0;
+    } else {
+      if (vId === "veg_default") return mealMenu?.freeMealVegParcelTaken || 0;
+      if (vId === "nonVeg_default") return mealMenu?.freeMealNonVegParcelTaken || 0;
+      return mealMenu?.freeMealParcelTakenCounts?.[vId] || 0;
     }
   };
 
-  let vegTotalPlanned = 0, vegTotalServed = 0;
-  let nonVegTotalPlanned = 0, nonVegTotalServed = 0;
+  let vegTotalPlanned = 0, vegTotalDineIn = 0, vegTotalParcel = 0;
+  let nonVegTotalPlanned = 0, nonVegTotalDineIn = 0, nonVegTotalParcel = 0;
 
   varieties.forEach((v) => {
     const p = getFreeMealCount(v.id, "planned");
-    const s = getFreeMealCount(v.id, "served");
+    const d = getFreeMealCount(v.id, "dineIn");
+    const parc = getFreeMealCount(v.id, "parcel");
     if (v.type === DietType.VEG) {
       vegTotalPlanned += p;
-      vegTotalServed += s;
+      vegTotalDineIn += d;
+      vegTotalParcel += parc;
     } else {
       nonVegTotalPlanned += p;
-      nonVegTotalServed += s;
+      nonVegTotalDineIn += d;
+      nonVegTotalParcel += parc;
     }
   });
 
   const freeMealTotal = vegTotalPlanned + nonVegTotalPlanned;
-  const freeMealTaken = vegTotalServed + nonVegTotalServed;
+  const freeMealDineInTaken = vegTotalDineIn + nonVegTotalDineIn;
+  const freeMealParcelTaken = vegTotalParcel + nonVegTotalParcel;
+  const freeMealTaken = freeMealDineInTaken + freeMealParcelTaken;
   const freeMealPending = Math.max(0, freeMealTotal - freeMealTaken);
   const isSpecial = currentMealInfo ? isSpecialMeal(dayId, mealType, dayConfig) : false;
 
@@ -289,6 +298,7 @@ export function QuickFreeMealModal({
                   {UI_TEXT.planned}{UI_TEXT.colon}{UI_TEXT.space}{freeMealTotal}
                   {UI_TEXT.pipe}
                   {UI_TEXT.served}{UI_TEXT.colon}{UI_TEXT.space}{freeMealTaken}
+                  {freeMealParcelTaken > 0 ? ` (${freeMealDineInTaken} D, ${freeMealParcelTaken} P)` : ""}
                 </Text>
 
                 <Text style={{ fontSize: 11, fontWeight: "800", color: isSpecial ? theme.colors.specialMealText : theme.colors.white, opacity: 0.9 }}>
@@ -303,11 +313,13 @@ export function QuickFreeMealModal({
                 if (!isDietaryEnabled(dayId, mealType, v.type, dayConfig)) return null;
 
                 const pCount = getFreeMealCount(v.id, "planned");
-                const sCount = getFreeMealCount(v.id, "served");
+                const dineInCount = getFreeMealCount(v.id, "dineIn");
+                const parcelCount = getFreeMealCount(v.id, "parcel");
                 const vColor = v.color || (v.type === DietType.VEG ? theme.colors.veg : theme.colors.nonVeg);
 
                 const plannedField = v.id === "veg_default" ? "freeMealVeg" : v.id === "nonVeg_default" ? "freeMealNonVeg" : `fmc_${v.id}`;
-                const servedField = v.id === "veg_default" ? "freeMealVegTaken" : v.id === "nonVeg_default" ? "freeMealNonVegTaken" : `fmt_${v.id}`;
+                const dineInField = v.id === "veg_default" ? "freeMealVegTaken" : v.id === "nonVeg_default" ? "freeMealNonVegTaken" : `fmt_${v.id}`;
+                const parcelField = v.id === "veg_default" ? "freeMealVegParcelTaken" : v.id === "nonVeg_default" ? "freeMealNonVegParcelTaken" : `fmp_${v.id}`;
 
                 return (
                   <View
@@ -334,26 +346,30 @@ export function QuickFreeMealModal({
                       </View>
                     </View>
 
-                    <View style={{ flexDirection: isUltraNarrow ? "column" : "row", gap: 8 }}>
-                      <View style={{ flex: 1, minWidth: 0 }}>
-                        <CounterInput
-                          label={UI_TEXT.planned}
-                          value={pCount}
-                          min={sCount}
-                          disabled={!isMealEditableForAdmin}
-                          onChange={(val) => updateFreeMealCountDebounced(dayId, mealType, plannedField, val, FreeMealCheckoutSource.FREE_MEAL_MODAL)}
-                        />
-                      </View>
-                      <View style={{ flex: 1, minWidth: 0 }}>
-                        <CounterInput
-                          label={UI_TEXT.served}
-                          value={sCount}
-                          min={0}
-                          max={pCount}
-                          disabled={isServedDisabled}
-                          onChange={(val) => updateFreeMealCountDebounced(dayId, mealType, servedField, val, FreeMealCheckoutSource.FREE_MEAL_MODAL)}
-                        />
-                      </View>
+                    <View style={{ gap: 8 }}>
+                      <CounterInput
+                        label={UI_TEXT.planned}
+                        value={pCount}
+                        min={dineInCount + parcelCount}
+                        disabled={!isMealEditableForAdmin}
+                        onChange={(val) => updateFreeMealCountDebounced(dayId, mealType, plannedField, val, FreeMealCheckoutSource.FREE_MEAL_MODAL)}
+                      />
+                      <CounterInput
+                        label={UI_TEXT.dineIn}
+                        value={dineInCount}
+                        min={0}
+                        max={Math.max(0, pCount - parcelCount)}
+                        disabled={isServedDisabled}
+                        onChange={(val) => updateFreeMealCountDebounced(dayId, mealType, dineInField, val, FreeMealCheckoutSource.FREE_MEAL_MODAL)}
+                      />
+                      <CounterInput
+                        label={UI_TEXT.parcel}
+                        value={parcelCount}
+                        min={0}
+                        max={Math.max(0, pCount - dineInCount)}
+                        disabled={isServedDisabled}
+                        onChange={(val) => updateFreeMealCountDebounced(dayId, mealType, parcelField, val, FreeMealCheckoutSource.FREE_MEAL_MODAL)}
+                      />
                     </View>
                   </View>
                 );

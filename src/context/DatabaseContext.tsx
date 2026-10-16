@@ -602,8 +602,26 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
   const applyFreeMealCountUpdate = (mealMenu: MealMenu, field: string, value: number): MealMenu => {
     const updatedMeal: MealMenu = { ...mealMenu };
 
-    if (field === "freeMealVeg" || field === "freeMealNonVeg" || field === "freeMealVegTaken" || field === "freeMealNonVegTaken") {
+    if (field === "freeMealVeg" || field === "freeMealNonVeg") {
       (updatedMeal as any)[field] = value;
+    } else if (field === "freeMealVegTaken" || field === "freeMealNonVegTaken") {
+      const oldDineIn = (updatedMeal as any)[field] || 0;
+      const delta = value - oldDineIn;
+      (updatedMeal as any)[field] = value;
+      if (delta > 0) {
+        const parcelField = field === "freeMealVegTaken" ? "freeMealVegParcelTaken" : "freeMealNonVegParcelTaken";
+        const currentParcel = (updatedMeal as any)[parcelField] || 0;
+        (updatedMeal as any)[parcelField] = Math.max(0, currentParcel - delta);
+      }
+    } else if (field === "freeMealVegParcelTaken" || field === "freeMealNonVegParcelTaken") {
+      const oldParcel = (updatedMeal as any)[field] || 0;
+      const delta = value - oldParcel;
+      (updatedMeal as any)[field] = value;
+      if (delta > 0) {
+        const dineInField = field === "freeMealVegParcelTaken" ? "freeMealVegTaken" : "freeMealNonVegTaken";
+        const currentDineIn = (updatedMeal as any)[dineInField] || 0;
+        (updatedMeal as any)[dineInField] = Math.max(0, currentDineIn - delta);
+      }
     } else if (field.startsWith("fmc_") || field.startsWith("gc_")) {
       const varId = field.replace("fmc_", "").replace("gc_", "");
       if (varId === "veg_default") {
@@ -618,20 +636,66 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
     } else if (field.startsWith("fmt_") || field.startsWith("gt_")) {
       const varId = field.replace("fmt_", "").replace("gt_", "");
       if (varId === "veg_default") {
+        const oldDineIn = updatedMeal.freeMealVegTaken || 0;
+        const delta = value - oldDineIn;
         updatedMeal.freeMealVegTaken = value;
+        if (delta > 0) {
+          updatedMeal.freeMealVegParcelTaken = Math.max(0, (updatedMeal.freeMealVegParcelTaken || 0) - delta);
+        }
       } else if (varId === "nonVeg_default") {
+        const oldDineIn = updatedMeal.freeMealNonVegTaken || 0;
+        const delta = value - oldDineIn;
         updatedMeal.freeMealNonVegTaken = value;
+        if (delta > 0) {
+          updatedMeal.freeMealNonVegParcelTaken = Math.max(0, (updatedMeal.freeMealNonVegParcelTaken || 0) - delta);
+        }
       } else {
         const takenCounts = { ...(updatedMeal.freeMealTakenCounts || {}) };
+        const parcelTakenCounts = { ...(updatedMeal.freeMealParcelTakenCounts || {}) };
+        const oldDineIn = Number(takenCounts[varId]) || 0;
+        const delta = value - oldDineIn;
         takenCounts[varId] = value;
+        if (delta > 0) {
+          parcelTakenCounts[varId] = Math.max(0, (Number(parcelTakenCounts[varId]) || 0) - delta);
+        }
         updatedMeal.freeMealTakenCounts = takenCounts;
+        updatedMeal.freeMealParcelTakenCounts = parcelTakenCounts;
+      }
+    } else if (field.startsWith("fmp_") || field.startsWith("gpt_")) {
+      const varId = field.replace("fmp_", "").replace("gpt_", "");
+      if (varId === "veg_default") {
+        const oldParcel = updatedMeal.freeMealVegParcelTaken || 0;
+        const delta = value - oldParcel;
+        updatedMeal.freeMealVegParcelTaken = value;
+        if (delta > 0) {
+          updatedMeal.freeMealVegTaken = Math.max(0, (updatedMeal.freeMealVegTaken || 0) - delta);
+        }
+      } else if (varId === "nonVeg_default") {
+        const oldParcel = updatedMeal.freeMealNonVegParcelTaken || 0;
+        const delta = value - oldParcel;
+        updatedMeal.freeMealNonVegParcelTaken = value;
+        if (delta > 0) {
+          updatedMeal.freeMealNonVegTaken = Math.max(0, (updatedMeal.freeMealNonVegTaken || 0) - delta);
+        }
+      } else {
+        const takenCounts = { ...(updatedMeal.freeMealTakenCounts || {}) };
+        const parcelTakenCounts = { ...(updatedMeal.freeMealParcelTakenCounts || {}) };
+        const oldParcel = Number(parcelTakenCounts[varId]) || 0;
+        const delta = value - oldParcel;
+        parcelTakenCounts[varId] = value;
+        if (delta > 0) {
+          takenCounts[varId] = Math.max(0, (Number(takenCounts[varId]) || 0) - delta);
+        }
+        updatedMeal.freeMealTakenCounts = takenCounts;
+        updatedMeal.freeMealParcelTakenCounts = parcelTakenCounts;
       }
     } else {
       (updatedMeal as any)[field] = value;
     }
 
     let gTotal = (updatedMeal.freeMealVeg || 0) + (updatedMeal.freeMealNonVeg || 0);
-    let gTaken = (updatedMeal.freeMealVegTaken || 0) + (updatedMeal.freeMealNonVegTaken || 0);
+    let gDineIn = (updatedMeal.freeMealVegTaken || 0) + (updatedMeal.freeMealNonVegTaken || 0);
+    let gParcel = (updatedMeal.freeMealVegParcelTaken || 0) + (updatedMeal.freeMealNonVegParcelTaken || 0);
 
     const countsObj = updatedMeal.freeMealCounts;
     if (countsObj) {
@@ -645,25 +709,45 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
     if (takenCountsObj) {
       Object.entries(takenCountsObj).forEach(([vId, cnt]) => {
         if (vId !== "veg_default" && vId !== "nonVeg_default") {
-          gTaken += Number(cnt) || 0;
+          gDineIn += Number(cnt) || 0;
+        }
+      });
+    }
+    const parcelTakenCountsObj = updatedMeal.freeMealParcelTakenCounts;
+    if (parcelTakenCountsObj) {
+      Object.entries(parcelTakenCountsObj).forEach(([vId, cnt]) => {
+        if (vId !== "veg_default" && vId !== "nonVeg_default") {
+          gParcel += Number(cnt) || 0;
         }
       });
     }
 
     updatedMeal.freeMealTotal = gTotal;
-    updatedMeal.freeMealTaken = gTaken;
+    updatedMeal.freeMealDineInTaken = gDineIn;
+    updatedMeal.freeMealParcelTaken = gParcel;
+    updatedMeal.freeMealTaken = gDineIn + gParcel;
 
     return updatedMeal;
   };
 
-  const buildFreeMealUpdatePayload = (field: string, value: number, freeMealTotal: number, freeMealTaken: number): Record<string, any> => {
+  const buildFreeMealUpdatePayload = (
+    field: string,
+    value: number,
+    updatedMeal: MealMenu
+  ): Record<string, any> => {
     const payload: Record<string, any> = {
-      freeMealTotal,
-      freeMealTaken,
+      freeMealTotal: updatedMeal.freeMealTotal,
+      freeMealTaken: updatedMeal.freeMealTaken,
+      freeMealParcelTaken: updatedMeal.freeMealParcelTaken,
     };
 
-    if (field === "freeMealVeg" || field === "freeMealNonVeg" || field === "freeMealVegTaken" || field === "freeMealNonVegTaken") {
+    if (field === "freeMealVeg" || field === "freeMealNonVeg") {
       payload[field] = value;
+    } else if (field === "freeMealVegTaken" || field === "freeMealNonVegTaken" || field === "freeMealVegParcelTaken" || field === "freeMealNonVegParcelTaken") {
+      payload["freeMealVegTaken"] = updatedMeal.freeMealVegTaken;
+      payload["freeMealNonVegTaken"] = updatedMeal.freeMealNonVegTaken;
+      payload["freeMealVegParcelTaken"] = updatedMeal.freeMealVegParcelTaken;
+      payload["freeMealNonVegParcelTaken"] = updatedMeal.freeMealNonVegParcelTaken;
     } else if (field.startsWith("fmc_") || field.startsWith("gc_")) {
       const varId = field.replace("fmc_", "").replace("gc_", "");
       if (varId === "veg_default") {
@@ -673,14 +757,17 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       } else {
         payload[`freeMealCounts/${varId}`] = value;
       }
-    } else if (field.startsWith("fmt_") || field.startsWith("gt_")) {
-      const varId = field.replace("fmt_", "").replace("gt_", "");
+    } else if (field.startsWith("fmt_") || field.startsWith("gt_") || field.startsWith("fmp_") || field.startsWith("gpt_")) {
+      const varId = field.replace("fmt_", "").replace("gt_", "").replace("fmp_", "").replace("gpt_", "");
       if (varId === "veg_default") {
-        payload["freeMealVegTaken"] = value;
+        payload["freeMealVegTaken"] = updatedMeal.freeMealVegTaken;
+        payload["freeMealVegParcelTaken"] = updatedMeal.freeMealVegParcelTaken;
       } else if (varId === "nonVeg_default") {
-        payload["freeMealNonVegTaken"] = value;
+        payload["freeMealNonVegTaken"] = updatedMeal.freeMealNonVegTaken;
+        payload["freeMealNonVegParcelTaken"] = updatedMeal.freeMealNonVegParcelTaken;
       } else {
-        payload[`freeMealTakenCounts/${varId}`] = value;
+        payload[`freeMealTakenCounts/${varId}`] = updatedMeal.freeMealTakenCounts?.[varId];
+        payload[`freeMealParcelTakenCounts/${varId}`] = updatedMeal.freeMealParcelTakenCounts?.[varId];
       }
     } else {
       payload[field] = value;
@@ -712,7 +799,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       setFoodMenu(currentMenu => {
         const currentMeal = currentMenu[dayId]?.[mealKey] || { veg: [], nonVeg: [] };
         const updatedMeal = applyFreeMealCountUpdate(currentMeal, field, value);
-        const payload = buildFreeMealUpdatePayload(field, value, updatedMeal.freeMealTotal || 0, updatedMeal.freeMealTaken || 0);
+        const payload = buildFreeMealUpdatePayload(field, value, updatedMeal);
 
         repository.updateFreeMealCounts(dayId, mealKey, payload);
         return currentMenu;
@@ -958,7 +1045,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
           setFoodMenu(currentMenu => {
              const currentMeal = currentMenu[dayId]?.[mealKey] || { veg: [], nonVeg: [] };
              const updatedMeal = applyFreeMealCountUpdate(currentMeal, field, value);
-             const payload = buildFreeMealUpdatePayload(field, value, updatedMeal.freeMealTotal || 0, updatedMeal.freeMealTaken || 0);
+             const payload = buildFreeMealUpdatePayload(field, value, updatedMeal);
 
              repository.updateFreeMealCounts(dayId, mealKey, payload);
              return currentMenu;
@@ -1015,14 +1102,16 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
         breakfast: 0,
         breakfastVeg: 0,
         breakfastNonVeg: 0,
-        breakfastParcel: 0,
-        breakfastParcelTaken: 0,
+        breakfastParcel: (freeMealEnabled && isMealEnabled(day, MealType.BREAKFAST, dayConfig)) ? bFC.freeMealParcelTaken : 0,
+        breakfastParcelTaken: (freeMealEnabled && isMealEnabled(day, MealType.BREAKFAST, dayConfig)) ? bFC.freeMealParcelTaken : 0,
         breakfastTaken: 0,
         breakfastFreeMealVeg: (freeMealEnabled && isMealEnabled(day, MealType.BREAKFAST, dayConfig) && isDietaryEnabled(day, MealType.BREAKFAST, DietType.VEG, dayConfig)) ? bFC.freeMealVeg : 0,
         breakfastFreeMealNonVeg: (freeMealEnabled && isMealEnabled(day, MealType.BREAKFAST, dayConfig) && isDietaryEnabled(day, MealType.BREAKFAST, DietType.NON_VEG, dayConfig)) ? bFC.freeMealNonVeg : 0,
-        breakfastFreeMealTaken: (freeMealEnabled && isMealEnabled(day, MealType.BREAKFAST, dayConfig)) ? ((isDietaryEnabled(day, MealType.BREAKFAST, DietType.VEG, dayConfig) ? bFC.freeMealVegTaken : 0) + (isDietaryEnabled(day, MealType.BREAKFAST, DietType.NON_VEG, dayConfig) ? bFC.freeMealNonVegTaken : 0)) : 0,
-        breakfastFreeMealVegTaken: (freeMealEnabled && isMealEnabled(day, MealType.BREAKFAST, dayConfig) && isDietaryEnabled(day, MealType.BREAKFAST, DietType.VEG, dayConfig)) ? bFC.freeMealVegTaken : 0,
-        breakfastFreeMealNonVegTaken: (freeMealEnabled && isMealEnabled(day, MealType.BREAKFAST, dayConfig) && isDietaryEnabled(day, MealType.BREAKFAST, DietType.NON_VEG, dayConfig)) ? bFC.freeMealNonVegTaken : 0,
+        breakfastFreeMealTaken: (freeMealEnabled && isMealEnabled(day, MealType.BREAKFAST, dayConfig)) ? bFC.freeMealTaken : 0,
+        breakfastFreeMealVegTaken: (freeMealEnabled && isMealEnabled(day, MealType.BREAKFAST, dayConfig) && isDietaryEnabled(day, MealType.BREAKFAST, DietType.VEG, dayConfig)) ? (bFC.freeMealVegTaken + bFC.freeMealVegParcelTaken) : 0,
+        breakfastFreeMealNonVegTaken: (freeMealEnabled && isMealEnabled(day, MealType.BREAKFAST, dayConfig) && isDietaryEnabled(day, MealType.BREAKFAST, DietType.NON_VEG, dayConfig)) ? (bFC.freeMealNonVegTaken + bFC.freeMealNonVegParcelTaken) : 0,
+        breakfastFreeMealDineInTaken: (freeMealEnabled && isMealEnabled(day, MealType.BREAKFAST, dayConfig)) ? bFC.freeMealDineInTaken : 0,
+        breakfastFreeMealParcelTaken: (freeMealEnabled && isMealEnabled(day, MealType.BREAKFAST, dayConfig)) ? bFC.freeMealParcelTaken : 0,
         breakfastFlatVegTaken: 0,
         breakfastFlatNonVegTaken: 0,
         breakfastKidsTotal: 0,
@@ -1041,14 +1130,16 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
         lunch: 0,
         lunchVeg: 0,
         lunchNonVeg: 0,
-        lunchParcel: 0,
-        lunchParcelTaken: 0,
+        lunchParcel: (freeMealEnabled && isMealEnabled(day, MealType.LUNCH, dayConfig)) ? lFC.freeMealParcelTaken : 0,
+        lunchParcelTaken: (freeMealEnabled && isMealEnabled(day, MealType.LUNCH, dayConfig)) ? lFC.freeMealParcelTaken : 0,
         lunchTaken: 0,
         lunchFreeMealVeg: (freeMealEnabled && isMealEnabled(day, MealType.LUNCH, dayConfig) && isDietaryEnabled(day, MealType.LUNCH, DietType.VEG, dayConfig)) ? lFC.freeMealVeg : 0,
         lunchFreeMealNonVeg: (freeMealEnabled && isMealEnabled(day, MealType.LUNCH, dayConfig) && isDietaryEnabled(day, MealType.LUNCH, DietType.NON_VEG, dayConfig)) ? lFC.freeMealNonVeg : 0,
-        lunchFreeMealTaken: (freeMealEnabled && isMealEnabled(day, MealType.LUNCH, dayConfig)) ? ((isDietaryEnabled(day, MealType.LUNCH, DietType.VEG, dayConfig) ? lFC.freeMealVegTaken : 0) + (isDietaryEnabled(day, MealType.LUNCH, DietType.NON_VEG, dayConfig) ? lFC.freeMealNonVegTaken : 0)) : 0,
-        lunchFreeMealVegTaken: (freeMealEnabled && isMealEnabled(day, MealType.LUNCH, dayConfig) && isDietaryEnabled(day, MealType.LUNCH, DietType.VEG, dayConfig)) ? lFC.freeMealVegTaken : 0,
-        lunchFreeMealNonVegTaken: (freeMealEnabled && isMealEnabled(day, MealType.LUNCH, dayConfig) && isDietaryEnabled(day, MealType.LUNCH, DietType.NON_VEG, dayConfig)) ? lFC.freeMealNonVegTaken : 0,
+        lunchFreeMealTaken: (freeMealEnabled && isMealEnabled(day, MealType.LUNCH, dayConfig)) ? lFC.freeMealTaken : 0,
+        lunchFreeMealVegTaken: (freeMealEnabled && isMealEnabled(day, MealType.LUNCH, dayConfig) && isDietaryEnabled(day, MealType.LUNCH, DietType.VEG, dayConfig)) ? (lFC.freeMealVegTaken + lFC.freeMealVegParcelTaken) : 0,
+        lunchFreeMealNonVegTaken: (freeMealEnabled && isMealEnabled(day, MealType.LUNCH, dayConfig) && isDietaryEnabled(day, MealType.LUNCH, DietType.NON_VEG, dayConfig)) ? (lFC.freeMealNonVegTaken + lFC.freeMealNonVegParcelTaken) : 0,
+        lunchFreeMealDineInTaken: (freeMealEnabled && isMealEnabled(day, MealType.LUNCH, dayConfig)) ? lFC.freeMealDineInTaken : 0,
+        lunchFreeMealParcelTaken: (freeMealEnabled && isMealEnabled(day, MealType.LUNCH, dayConfig)) ? lFC.freeMealParcelTaken : 0,
         lunchFlatVegTaken: 0,
         lunchFlatNonVegTaken: 0,
         lunchKidsTotal: 0,
@@ -1067,14 +1158,16 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
         dinner: 0,
         dinnerVeg: 0,
         dinnerNonVeg: 0,
-        dinnerParcel: 0,
-        dinnerParcelTaken: 0,
+        dinnerParcel: (freeMealEnabled && isMealEnabled(day, MealType.DINNER, dayConfig)) ? dFC.freeMealParcelTaken : 0,
+        dinnerParcelTaken: (freeMealEnabled && isMealEnabled(day, MealType.DINNER, dayConfig)) ? dFC.freeMealParcelTaken : 0,
         dinnerTaken: 0,
         dinnerFreeMealVeg: (freeMealEnabled && isMealEnabled(day, MealType.DINNER, dayConfig) && isDietaryEnabled(day, MealType.DINNER, DietType.VEG, dayConfig)) ? dFC.freeMealVeg : 0,
         dinnerFreeMealNonVeg: (freeMealEnabled && isMealEnabled(day, MealType.DINNER, dayConfig) && isDietaryEnabled(day, MealType.DINNER, DietType.NON_VEG, dayConfig)) ? dFC.freeMealNonVeg : 0,
-        dinnerFreeMealTaken: (freeMealEnabled && isMealEnabled(day, MealType.DINNER, dayConfig)) ? ((isDietaryEnabled(day, MealType.DINNER, DietType.VEG, dayConfig) ? dFC.freeMealVegTaken : 0) + (isDietaryEnabled(day, MealType.DINNER, DietType.NON_VEG, dayConfig) ? dFC.freeMealNonVegTaken : 0)) : 0,
-        dinnerFreeMealVegTaken: (freeMealEnabled && isMealEnabled(day, MealType.DINNER, dayConfig) && isDietaryEnabled(day, MealType.DINNER, DietType.VEG, dayConfig)) ? dFC.freeMealVegTaken : 0,
-        dinnerFreeMealNonVegTaken: (freeMealEnabled && isMealEnabled(day, MealType.DINNER, dayConfig) && isDietaryEnabled(day, MealType.DINNER, DietType.NON_VEG, dayConfig)) ? dFC.freeMealNonVegTaken : 0,
+        dinnerFreeMealTaken: (freeMealEnabled && isMealEnabled(day, MealType.DINNER, dayConfig)) ? dFC.freeMealTaken : 0,
+        dinnerFreeMealVegTaken: (freeMealEnabled && isMealEnabled(day, MealType.DINNER, dayConfig) && isDietaryEnabled(day, MealType.DINNER, DietType.VEG, dayConfig)) ? (dFC.freeMealVegTaken + dFC.freeMealVegParcelTaken) : 0,
+        dinnerFreeMealNonVegTaken: (freeMealEnabled && isMealEnabled(day, MealType.DINNER, dayConfig) && isDietaryEnabled(day, MealType.DINNER, DietType.NON_VEG, dayConfig)) ? (dFC.freeMealNonVegTaken + dFC.freeMealNonVegParcelTaken) : 0,
+        dinnerFreeMealDineInTaken: (freeMealEnabled && isMealEnabled(day, MealType.DINNER, dayConfig)) ? dFC.freeMealDineInTaken : 0,
+        dinnerFreeMealParcelTaken: (freeMealEnabled && isMealEnabled(day, MealType.DINNER, dayConfig)) ? dFC.freeMealParcelTaken : 0,
         dinnerFlatVegTaken: 0,
         dinnerFlatNonVegTaken: 0,
         dinnerKidsTotal: 0,

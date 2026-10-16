@@ -147,8 +147,25 @@ export function HomeScreen() {
         });
       });
     });
+
+    if (freeMealEnabled) {
+      activeDays.forEach(dayId => {
+        const dMenu = foodMenu[dayId];
+        if (!dMenu) return;
+        [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].forEach(mType => {
+          if (!isMealEnabled(dayId, mType, dayConfig)) return;
+          const mealMenu = dMenu[mType];
+          const dayConf = dayConfig.find(d => d.id === dayId);
+          const mConf = dayConf ? dayConf[mType] : undefined;
+          const varieties = getMealVarieties(mConf, dayConf?.vegOnly);
+          const fmCounts = getMealFreeMealCounts(mealMenu, varieties);
+          parcels += (fmCounts.freeMealParcelTaken || 0);
+        });
+      });
+    }
+
     return parcels;
-  }, [subscriptions, dayConfig]);
+  }, [subscriptions, dayConfig, foodMenu, freeMealEnabled]);
 
   const activeMealSegregations = React.useMemo(() => {
     const meals = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER];

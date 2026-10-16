@@ -205,6 +205,11 @@ export const QuickCheckoutPartialServiceStory = {
   parameters: { storyMocks: { database: { kidsEnabled: true, guestsEnabled: true, dayConfig: multiCategoryDayConfig } } },
 };
 export const QuickFreeMealModalStory = { name: "QuickFreeMealModal", render: () => <QuickFreeMealExample /> };
+export const QuickFreeMealModalParcelStory = {
+  name: "QuickFreeMealModal/DineInAndParcelServed",
+  render: () => <QuickFreeMealExample />,
+  parameters: { storyMocks: { database: { freeMealEnabled: true } } },
+};
 export const ThemeToggleButtonStory = { name: "ThemeToggleButton", render: () => <ThemeToggleButton /> };
 export const UserGreetingStory = { name: "UserGreeting", render: () => <UserGreeting /> };
 export const ChatWidgetStory = { name: "ChatWidget", render: () => <ChatWidget /> };
