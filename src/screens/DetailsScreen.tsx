@@ -53,6 +53,7 @@ import { useAuth } from "../context/AuthContext";
 import { useCoreDatabase, useActivityLogs, useFoodPackages } from "../context/DatabaseContext";
 import { useUI } from "../context/UIContext";
 import { useAppNavigation } from "../context/NavigationContext";
+import { hasAmountDiscrepancy } from "../utils/paymentUtils";
 
 export function DetailsScreen() {
   const { userRole, handleLogout } = useAuth();
@@ -78,6 +79,11 @@ export function DetailsScreen() {
 
   const [showQuickCheckoutModal, setShowQuickCheckoutModal] = React.useState(false);
   const [viewingPackage, setViewingPackage] = React.useState<FoodPackage | null>(null);
+
+  const hasDiscrepancy = React.useMemo(() => {
+    if (!subscription) return false;
+    return isAdmin && paymentConfig?.enabled && hasAmountDiscrepancy(subscription, foodMenu, dayConfig, !!kidsEnabled, !!guestsEnabled, foodPackages);
+  }, [subscription, foodMenu, dayConfig, kidsEnabled, guestsEnabled, foodPackages, isAdmin, paymentConfig]);
 
   const currentMealInfo = React.useMemo(() => {
     const active = getActiveDays(dayConfig);
@@ -275,6 +281,27 @@ export function DetailsScreen() {
                     <Ionicons name="star" size={12} color={theme.colors.specialMealBorder} />
                     <Text style={{ fontSize: 11, fontWeight: "900", color: theme.colors.specialMealText }}>
                       {UI_TEXT.specialMeal}
+                    </Text>
+                  </View>
+                )}
+
+                {hasDiscrepancy && (
+                  <View
+                    style={{
+                      backgroundColor: theme.colors.errorLight,
+                      borderColor: theme.colors.error,
+                      borderWidth: 1,
+                      paddingHorizontal: 8,
+                      paddingVertical: 3,
+                      borderRadius: 10,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 4,
+                    }}
+                  >
+                    <Ionicons name="warning-outline" size={12} color={theme.colors.error} />
+                    <Text style={{ fontSize: 11, fontWeight: "900", color: theme.colors.error }}>
+                      {UI_TEXT.filterAmountDiscrepancy}
                     </Text>
                   </View>
                 )}

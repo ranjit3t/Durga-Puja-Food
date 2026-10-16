@@ -24,6 +24,8 @@ export const UI_TEXT = {
   downloadMenu: "Export Menu Image",
   shareMenu: "Share",
   reportFilters: "Filter Reports",
+  filterAmountDiscrepancy: "Discrepancy",
+  amountDiscrepancyBadge: "Discrepancy",
   selectDay: "Select Day:",
   selectMeal: "Select Meal:",
   completeView: "Complete",

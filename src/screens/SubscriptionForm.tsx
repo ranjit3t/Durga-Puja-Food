@@ -92,6 +92,7 @@ import {
   calculateSubscriptionAmount,
   findApplicablePackagesForPerson,
   calculatePassTotalWithPackages,
+  calculatePaidAmount,
 } from "../utils/paymentUtils";
 
 export function SubscriptionForm() {
@@ -523,6 +524,50 @@ export function SubscriptionForm() {
     }];
     return fallback;
   });
+
+  const initialLoadedAmount = useMemo(() => {
+    return value ? calculatePaidAmount(value) : 0;
+  }, [value]);
+
+  const calculatedExpectedAmount = useMemo(() => {
+    const isPkg = isPackageApplied || Object.keys(appliedPackages).length > 0;
+    return isPkg
+      ? calculatePassTotalWithPackages(
+          form.mealSlots,
+          form.peopleCount,
+          form.kidsCount || 0,
+          appliedPackages,
+          foodPackages,
+          foodMenu,
+          dayConfig,
+          !!kidsEnabled,
+          form.guestsCount || 0,
+          !!guestsEnabled
+        )
+      : calculateSubscriptionAmount(
+          form.mealSlots,
+          form.peopleCount,
+          form.kidsCount || 0,
+          foodMenu,
+          dayConfig,
+          !!kidsEnabled,
+          form.guestsCount || 0,
+          !!guestsEnabled
+        );
+  }, [form, appliedPackages, isPackageApplied, foodPackages, foodMenu, dayConfig, kidsEnabled, guestsEnabled]);
+
+  const currentTotalAmount = useMemo(() => {
+    return payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+  }, [payments]);
+
+  const hasFormDiscrepancy = useMemo(() => {
+    if (!isAdmin || !paymentConfig?.enabled) return false;
+    if (lockIdentity && value) {
+      return Math.abs(initialLoadedAmount - calculatedExpectedAmount) > 0.01;
+    } else {
+      return Math.abs(currentTotalAmount - calculatedExpectedAmount) > 0.01;
+    }
+  }, [isAdmin, paymentConfig, lockIdentity, value, initialLoadedAmount, calculatedExpectedAmount, currentTotalAmount]);
 
   // Capture initial meal state snapshot for Edit Pass to detect meal/parcel choice variations
   const initialMealSnapshot = useRef({
@@ -1318,6 +1363,27 @@ export function SubscriptionForm() {
                     <Ionicons name="star" size={12} color={theme.colors.specialMealBorder} />
                     <Text style={{ fontSize: 11, fontWeight: "900", color: theme.colors.specialMealText }}>
                       {UI_TEXT.specialMeal}
+                    </Text>
+                  </View>
+                )}
+
+                {hasFormDiscrepancy && (
+                  <View
+                    style={{
+                      backgroundColor: theme.colors.errorLight,
+                      borderColor: theme.colors.error,
+                      borderWidth: 1,
+                      paddingHorizontal: 8,
+                      paddingVertical: 3,
+                      borderRadius: 10,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 4,
+                    }}
+                  >
+                    <Ionicons name="warning-outline" size={12} color={theme.colors.error} />
+                    <Text style={{ fontSize: 11, fontWeight: "900", color: theme.colors.error }}>
+                      {UI_TEXT.filterAmountDiscrepancy}
                     </Text>
                   </View>
                 )}

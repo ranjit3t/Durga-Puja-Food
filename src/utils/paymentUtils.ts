@@ -606,6 +606,49 @@ export function calculatePaidAmount(sub: { payments?: PaymentEntry[]; amount?: s
 }
 
 /**
+ * Checks whether a subscription has an amount discrepancy (paid vs calculated).
+ */
+export function hasAmountDiscrepancy(
+  sub: SubscriptionRecord,
+  foodMenu: Record<string, any>,
+  dayConfig: ConfigDay[],
+  kidsEnabled: boolean,
+  guestsEnabled: boolean = false,
+  foodPackages: FoodPackage[] | Record<string, FoodPackage> = []
+): boolean {
+  const pkgList = Array.isArray(foodPackages)
+    ? foodPackages
+    : Object.values(foodPackages || {});
+  const paidAmount = calculatePaidAmount(sub);
+  const isPkgApplied = sub.isPackageApplied || (sub.appliedPackages && Object.keys(sub.appliedPackages).length > 0);
+  const calculatedAmount = isPkgApplied
+    ? calculatePassTotalWithPackages(
+        sub.mealSlots,
+        sub.peopleCount || 0,
+        sub.kidsCount || 0,
+        sub.appliedPackages,
+        pkgList,
+        foodMenu,
+        dayConfig,
+        kidsEnabled,
+        sub.guestsCount || 0,
+        guestsEnabled
+      )
+    : calculateSubscriptionAmount(
+        sub.mealSlots,
+        sub.peopleCount,
+        sub.kidsCount || 0,
+        foodMenu,
+        dayConfig,
+        kidsEnabled,
+        sub.guestsCount || 0,
+        guestsEnabled
+      );
+  const difference = Math.round((paidAmount - calculatedAmount) * 100) / 100;
+  return Math.abs(difference) > 0.01;
+}
+
+/**
  * Identifies all subscriptions where paid amount and calculated meal amount do not match.
  * Automatically excludes passes where a food package discount has been applied.
  */

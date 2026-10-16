@@ -58,6 +58,7 @@ export enum FilterMode {
   MISSED = "missed",
   SPECIAL_ONLY = "specialOnly",
   PACKAGE = "package",
+  AMOUNT_DISCREPANCY = "amountDiscrepancy",
 }
 
 export enum SectionType {

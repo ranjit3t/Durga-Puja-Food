@@ -20,7 +20,7 @@ import { useStyles, useScaling } from "../styles";
 import { useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
 import { useAuth } from "../context/AuthContext";
-import { useCoreDatabase, useActivityLogs } from "../context/DatabaseContext";
+import { useCoreDatabase, useActivityLogs, useFoodPackages } from "../context/DatabaseContext";
 import { useAppNavigation } from "../context/NavigationContext";
 import {
   getActiveDays,
@@ -60,7 +60,7 @@ import {
   CheckoutSource,
   getPassDisplayLabel,
 } from "../types";
-import { calculatePaidAmount } from "../utils/paymentUtils";
+import { calculatePaidAmount, hasAmountDiscrepancy } from "../utils/paymentUtils";
 import { DirectorySortMode } from "../domain";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
@@ -85,6 +85,7 @@ const SubscriptionCard = React.memo(({
   isVegOnly,
   hasSpecialMeal,
   hasPackage,
+  hasDiscrepancy,
   onSelect,
   onOpenQuickCheckout,
   onSelectBlock,
@@ -106,6 +107,7 @@ const SubscriptionCard = React.memo(({
   isVegOnly: boolean;
   hasSpecialMeal?: boolean;
   hasPackage?: boolean;
+  hasDiscrepancy?: boolean;
   onSelect: (sub: Subscription) => void;
   onOpenQuickCheckout?: (sub: Subscription) => void;
   onSelectBlock?: (block: string) => void;
@@ -205,6 +207,11 @@ const SubscriptionCard = React.memo(({
               {hasPackage && (
                 <View style={{ backgroundColor: theme.colors.primary + "20", padding: s(6), borderRadius: s(12), borderWidth: 1, borderColor: theme.colors.primary + "40" }}>
                   <Ionicons name="cube" size={s(14)} color={theme.colors.primary} />
+                </View>
+              )}
+              {hasDiscrepancy && (
+                <View style={{ backgroundColor: theme.colors.errorLight, padding: s(6), borderRadius: s(12), borderWidth: 1, borderColor: theme.colors.error + "40" }}>
+                  <Ionicons name="warning-outline" size={s(14)} color={theme.colors.error} />
                 </View>
               )}
               {hasCurrentMeal && (
@@ -346,7 +353,7 @@ const SubscriptionCard = React.memo(({
 export function SubscriptionListScreen() {
   const { userRole, handleLogout } = useAuth();
   const {
-    subscriptions, dayConfig, paymentConfig, seasonEnabled, whatsappCountryCode, kidsEnabled, guestsEnabled, refreshAllData
+    subscriptions, dayConfig, paymentConfig, seasonEnabled, whatsappCountryCode, kidsEnabled, guestsEnabled, refreshAllData, foodMenu
   } = useCoreDatabase();
   const { addActivityLog } = useActivityLogs();
 
@@ -525,6 +532,13 @@ export function SubscriptionListScreen() {
 
   const hasAnyPackage = passesWithPackageCount > 0;
 
+  const { foodPackages } = useFoodPackages();
+  const passesWithDiscrepancyCount = useMemo(() => {
+    return subscriptions.filter(sub => hasAmountDiscrepancy(sub, foodMenu, dayConfig, !!kidsEnabled, !!guestsEnabled, foodPackages)).length;
+  }, [subscriptions, foodMenu, dayConfig, kidsEnabled, guestsEnabled, foodPackages]);
+
+  const hasAnyDiscrepancy = passesWithDiscrepancyCount > 0;
+
   const subscribedCount = useMemo(() => {
     if (!currentMealInfo) return 0;
     return subscriptions.filter((sub) =>
@@ -587,13 +601,16 @@ export function SubscriptionListScreen() {
       if (next.includes(FilterMode.PACKAGE) && !hasAnyPackage) {
         next = next.filter(m => m !== FilterMode.PACKAGE);
       }
+      if (next.includes(FilterMode.AMOUNT_DISCREPANCY) && !hasAnyDiscrepancy) {
+        next = next.filter(m => m !== FilterMode.AMOUNT_DISCREPANCY);
+      }
 
       if (next.length === 0) {
         return [FilterMode.ALL];
       }
       return next.length === prev.length ? prev : next;
     });
-  }, [currentMealInfo, hasAnyMissed, hasAnySubscribed, kidsEnabled, hasAnyKids, hasAnyParcel, hasAnyVegOnly, hasAnySpecialOnly, hasAnyPackage]);
+  }, [currentMealInfo, hasAnyMissed, hasAnySubscribed, kidsEnabled, hasAnyKids, hasAnyParcel, hasAnyVegOnly, hasAnySpecialOnly, hasAnyPackage, hasAnyDiscrepancy]);
 
   const visibleSubscriptions = useMemo(() => {
     let filtered = subscriptions;
@@ -681,6 +698,10 @@ export function SubscriptionListScreen() {
 
       if (activeFilters.includes(FilterMode.PACKAGE)) {
         filtered = filtered.filter(sub => hasPackageApplied(sub));
+      }
+
+      if (activeFilters.includes(FilterMode.AMOUNT_DISCREPANCY)) {
+        filtered = filtered.filter(sub => hasAmountDiscrepancy(sub, foodMenu, dayConfig, !!kidsEnabled, !!guestsEnabled, foodPackages));
       }
     }
 
@@ -782,9 +803,10 @@ export function SubscriptionListScreen() {
       const hasPackage = hasPackageApplied(item);
       const missedItem = missedData.list.find(m => m.id === item.id);
 
-      return { ...item, _hasCurrentMeal: hasCurrentMeal, _hasParcel: hasParcel, _isVegOnly: isVegOnly, _hasSpecialMeal: hasSpecialMeal, _hasPackage: hasPackage, _missedCount: missedItem?.missed };
+      const hasDiscrepancy = hasAmountDiscrepancy(item, foodMenu, dayConfig, !!kidsEnabled, !!guestsEnabled, foodPackages);
+      return { ...item, _hasCurrentMeal: hasCurrentMeal, _hasParcel: hasParcel, _isVegOnly: isVegOnly, _hasSpecialMeal: hasSpecialMeal, _hasPackage: hasPackage, _missedCount: missedItem?.missed, _hasDiscrepancy: hasDiscrepancy };
     });
-  }, [subscriptions, subscriptionSearch, activeFilters, selectedBlock, currentMealInfo, kidsEnabled, missedData, isAscending, sortBy, dayConfig, hasPackageApplied]);
+  }, [subscriptions, subscriptionSearch, activeFilters, selectedBlock, currentMealInfo, kidsEnabled, guestsEnabled, missedData, isAscending, sortBy, dayConfig, hasPackageApplied, foodMenu, foodPackages]);
 
   const handleExportExcel = useCallback(async () => {
     if (visibleSubscriptions.length === 0) return;
@@ -1093,7 +1115,7 @@ export function SubscriptionListScreen() {
     }
   }, [visibleSubscriptions, dayConfig, kidsEnabled, addActivityLog]);
 
-  const renderItem = useCallback(({ item, index }: { item: Subscription & { _hasCurrentMeal?: boolean; _hasParcel?: boolean; _isVegOnly?: boolean; _hasSpecialMeal?: boolean; _hasPackage?: boolean; _missedCount?: number }; index: number }) => {
+  const renderItem = useCallback(({ item, index }: { item: Subscription & { _hasCurrentMeal?: boolean; _hasParcel?: boolean; _isVegOnly?: boolean; _hasSpecialMeal?: boolean; _hasPackage?: boolean; _missedCount?: number; _hasDiscrepancy?: boolean }; index: number }) => {
     return (
       <SubscriptionCard
         item={item}
@@ -1111,6 +1133,7 @@ export function SubscriptionListScreen() {
         isVegOnly={!!item._isVegOnly}
         hasSpecialMeal={!!item._hasSpecialMeal}
         hasPackage={!!item._hasPackage}
+        hasDiscrepancy={!!item._hasDiscrepancy}
         onSelect={onSelect}
         onOpenQuickCheckout={onOpenQuickCheckout}
         onSelectBlock={setSelectedBlock}
@@ -1120,7 +1143,7 @@ export function SubscriptionListScreen() {
     );
   }, [theme, styles, s, kidsEnabled, paymentConfig, whatsappCountryCode, isAdmin, onSelect, onOpenQuickCheckout, setSelectedBlock, addActivityLog]);
 
-  const showFilters = (currentMealInfo && hasAnySubscribed) || (kidsEnabled && hasAnyKids) || hasAnyParcel || (isNonVegSeason && hasAnyVegOnly) || (currentMealInfo && hasAnyMissed) || hasAnySpecialOnly || hasAnyPackage;
+  const showFilters = (currentMealInfo && hasAnySubscribed) || (kidsEnabled && hasAnyKids) || hasAnyParcel || (isNonVegSeason && hasAnyVegOnly) || (currentMealInfo && hasAnyMissed) || hasAnySpecialOnly || hasAnyPackage || hasAnyDiscrepancy;
 
   return (
     <View style={styles.root}>
@@ -1375,6 +1398,44 @@ export function SubscriptionListScreen() {
                   color: activeFilters.includes(FilterMode.PARCEL) ? theme.colors.secondary : theme.colors.textSecondary
                 }}>
                   {UI_TEXT.parcels} ({passesWithParcelCount})
+                </Text>
+              </Pressable>
+            )}
+
+            {hasAnyDiscrepancy && (
+              <Pressable
+                onPress={() => toggleFilter(FilterMode.AMOUNT_DISCREPANCY)}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityState={{ selected: activeFilters.includes(FilterMode.AMOUNT_DISCREPANCY) }}
+                accessibilityLabel={`${UI_TEXT.filterAmountDiscrepancy} (${passesWithDiscrepancyCount})`}
+                style={({ pressed }) => [
+                  {
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: s(4),
+                    paddingHorizontal: s(8),
+                    paddingVertical: s(4),
+                    borderRadius: s(12),
+                    borderWidth: 1,
+                    borderColor: activeFilters.includes(FilterMode.AMOUNT_DISCREPANCY) ? theme.colors.error : theme.colors.border,
+                    backgroundColor: activeFilters.includes(FilterMode.AMOUNT_DISCREPANCY) ? theme.colors.errorLight : theme.colors.surface,
+                    marginBottom: s(4)
+                  },
+                  pressed && { opacity: 0.7 }
+                ]}
+              >
+                <Ionicons
+                  name={activeFilters.includes(FilterMode.AMOUNT_DISCREPANCY) ? "warning" : "warning-outline"}
+                  size={s(13)}
+                  color={activeFilters.includes(FilterMode.AMOUNT_DISCREPANCY) ? theme.colors.error : theme.colors.textSecondary}
+                />
+                <Text style={{
+                  fontSize: s(11),
+                  fontWeight: "700",
+                  color: activeFilters.includes(FilterMode.AMOUNT_DISCREPANCY) ? theme.colors.error : theme.colors.textSecondary
+                }}>
+                  {UI_TEXT.filterAmountDiscrepancy} ({passesWithDiscrepancyCount})
                 </Text>
               </Pressable>
             )}

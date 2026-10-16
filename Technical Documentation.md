@@ -269,6 +269,9 @@ The application enforces strict role-based access control (RBAC) distinguishing 
    - Meal prices and parcel fees (`foodPriceEnabled`) are hidden for non-admin users, ensuring no pricing or parcel amounts are displayed on the menu.
 7. **Team Notes (`NotesScreen.tsx`)**:
    - Non-admin users can view, edit, and delete only the notes they have personally created (`note.userName === userName`), filtering out notes created by other users.
+8. **Amount Discrepancy Filter & Real-Time Watchful Summary Badges (`SubscriptionListScreen.tsx`, `SubscriptionForm.tsx`, `DetailsScreen.tsx`)**:
+   - Added an **Amount Discrepancy** filter chip (`FilterMode.AMOUNT_DISCREPANCY`) to the subscription directory with auto-filtering and warning icons on pass cards.
+   - Add/Edit Pass and View Pass summary cards feature a **watchful real-time discrepancy badge pill** that appears instantly whenever an amount discrepancy is detected between calculated costs and initial loaded/paid amounts, and automatically removes itself when resolved.
 
 ---
 
