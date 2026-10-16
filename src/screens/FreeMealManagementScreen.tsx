@@ -25,6 +25,7 @@ interface FreeMealCardProps {
   config: ConfigDay[];
   disabled: boolean;
   isAdmin: boolean;
+  isCaterer: boolean;
   onUpdate: (
     day: string,
     type: MealType,
@@ -34,7 +35,7 @@ interface FreeMealCardProps {
   anyCurrentMealEnabled: boolean;
 }
 
-const FreeMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, onUpdate, anyCurrentMealEnabled }: FreeMealCardProps) => {
+const FreeMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, isCaterer, onUpdate, anyCurrentMealEnabled }: FreeMealCardProps) => {
   const styles = useStyles();
   const { theme } = useAppTheme();
   const { width } = useWindowDimensions();
@@ -156,7 +157,7 @@ const FreeMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, onUpd
                 </View>
               </View>
 
-              {isDone ? (
+              {isDone || isCaterer ? (
                 <View style={{ flexDirection: isUltraNarrow ? "column" : "row", gap: 10 }}>
                   <View style={{ flex: 1, backgroundColor: theme.colors.surfaceDark, padding: 10, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.border }}>
                     <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.textSecondary }}>{UI_TEXT.planned.toUpperCase()}</Text>
@@ -175,7 +176,7 @@ const FreeMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, onUpd
                       value={pCount}
                       min={sCount}
                       onChange={(val) => onUpdate(dayId, type, plannedField, val)}
-                      disabled={disabled || !isMealEditableForAdmin}
+                      disabled={isCaterer || disabled || !isMealEditableForAdmin}
                     />
                   </View>
                   <View style={{ flex: 1, minWidth: 0 }}>
@@ -184,7 +185,7 @@ const FreeMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, onUpd
                       value={sCount}
                       max={pCount}
                       onChange={(val) => onUpdate(dayId, type, servedField, val)}
-                      disabled={disabled || isDone || isFuture}
+                      disabled={isCaterer || disabled || isDone || isFuture}
                     />
                   </View>
                 </View>
@@ -264,7 +265,7 @@ export function FreeMealManagementScreen() {
   const alertShownRef = React.useRef(false);
 
   React.useEffect(() => {
-    if (isQuickFreeMealMode) {
+    if (isQuickFreeMealMode && userRole !== UserRole.CATERER) {
       if (currentMealInfo) {
         setModalVisible(true);
         alertShownRef.current = false;
@@ -282,9 +283,10 @@ export function FreeMealManagementScreen() {
         ]);
       }
     } else {
+      setModalVisible(false);
       alertShownRef.current = false;
     }
-  }, [isQuickFreeMealMode, currentMealInfo, setIsQuickFreeMealMode, showGlobalAlert, navigate]);
+  }, [isQuickFreeMealMode, currentMealInfo, setIsQuickFreeMealMode, showGlobalAlert, navigate, userRole]);
 
   const handleCloseModal = React.useCallback(() => {
     setModalVisible(false);
@@ -306,6 +308,7 @@ export function FreeMealManagementScreen() {
   }, [dayConfig]);
 
   const isAdmin = userRole === UserRole.ADMIN;
+  const isCaterer = userRole === UserRole.CATERER;
   const anyCurrentMealEnabled = React.useMemo(() => {
     return dayConfig.some(d => d.enabled && [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].some(m => isMealCurrent(d.id, m, dayConfig)));
   }, [dayConfig]);
@@ -536,6 +539,7 @@ export function FreeMealManagementScreen() {
                     onUpdate={handleUpdate}
                     disabled={!seasonEnabled}
                     isAdmin={isAdmin}
+                    isCaterer={isCaterer}
                     anyCurrentMealEnabled={anyCurrentMealEnabled}
                   />
                 ))}

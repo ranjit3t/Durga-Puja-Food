@@ -149,9 +149,10 @@ export function QuickFreeMealModal({
   const isSpecial = currentMealInfo ? isSpecialMeal(dayId, mealType, dayConfig) : false;
 
   const isAdmin = userRole === UserRole.ADMIN;
+  const isCaterer = userRole === UserRole.CATERER;
   const isFuture = isMealInFuture(dayId, mealType, dayConfig);
 
-  const isServedDisabled = isDone || isFuture || !isStillCurrent;
+  const isServedDisabled = isCaterer || isDone || isFuture || !isStillCurrent;
 
   const anyCurrentMealEnabled = dayConfig.some(d => d.enabled && (
     (d[MealType.BREAKFAST].enabled && isMealCurrent(d.id, MealType.BREAKFAST, dayConfig)) ||
@@ -159,7 +160,7 @@ export function QuickFreeMealModal({
     (d[MealType.DINNER].enabled && isMealCurrent(d.id, MealType.DINNER, dayConfig))
   ));
 
-  const isMealEditableForAdmin = isAdmin && (!anyCurrentMealEnabled ? !isDone : (isMealCurrent(dayId, mealType, dayConfig) || isFuture));
+  const isMealEditableForAdmin = !isCaterer && isAdmin && (!anyCurrentMealEnabled ? !isDone : (isMealCurrent(dayId, mealType, dayConfig) || isFuture));
 
   const isUltraNarrow = width < 360;
   const cardMaxWidth = Math.min(width * 0.94, 500);

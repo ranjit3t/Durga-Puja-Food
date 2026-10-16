@@ -166,7 +166,7 @@ graph TD
 - **`ActivityLogScreen`**: Live real-time system audit log viewer streaming newest actions to the top in <50ms with Activity Summary modal window (uses `useActivityLogs()`).
 
 ### B. State & Context Layer (`src/context/`)
-- **`AuthContext`**: Manages login state, roles (`Admin` / `Vendor`), and 24-hour auto-logout.
+- **`AuthContext`**: Manages login state, roles (`Admin` / `Vendor` / `Caterer`), and 24-hour auto-logout.
 - **`DatabaseContext`**: Split into `CoreDatabaseContext`, `ActivityLogsContext`, `NotesContext`, and `FoodPackagesContext`. Features Universal WebSocket delta listeners, debounced batching, optimistic local state updates, progressive hydration, and `remoteAppVersion` sync.
 - **`NavigationContext`**: History-stack navigation using `AppScreen` enums with back button support.
 - **`UIContext`**: Global alert modals, error overlays, share handlers (`shareQr`), and printing logic.
@@ -255,14 +255,19 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
 - **Home Page Reset**: Navigating from the Home Page or logging out resets view states and sorting parameters back to default (`[FilterMode.ALL]`, `DirectorySortMode.BLOCK_FLAT`, ascending).
 
 ### AC. Non-Admin Role Restrictions & Role-Based Access Control (RBAC)
-- **Granular View & Edit Control**: Non-admin users (`UserRole.VENDOR`) have restricted visibility and edit capabilities across the application:
-  - **Home Page**: Total Payment Collection in summary card and Report button are hidden.
-  - **View Pass & Quick Checkout Modal**: Pass code, mobile numbers, UPI/payment info, payment types/modes, Subscription Summary card, and Show QR button are hidden.
-  - **Edit Pass**: Pass code, mobile numbers, UPI/payment info, payment types/modes, Mobile Number field, and Payment Information card are hidden.
-  - **Secure Field Preservation on Save**: When non-admin users edit a pass, all hidden admin-only fields (`mobile`, `passcode`, `payments`, `amount`, `paymentMode`, `transactionId`, `isPackageApplied`, `appliedPackages`) are securely preserved as their original/existing values.
-  - **Subscription Directory**: Payment information in card headers and WhatsApp/call action buttons are hidden.
-  - **View Menu**: Meal prices and parcel fees (`foodPriceEnabled`) are hidden.
-  - **Team Notes**: Non-admin users can view, edit, and delete only the notes created by themselves (`note.userName === userName`).
+- **Granular View & Edit Control**: Non-admin roles (`UserRole.VENDOR` and `UserRole.CATERER`) have restricted visibility and edit capabilities:
+  - **Caterer Role (`UserRole.CATERER`)**: A specialized subset of the vendor role designed to provide caterers with a view on meal demands and menu details.
+    - **Home Page**: Features only 4 action buttons (Free Meals, Analytics/Dashboard, Menu/View Menu, Operational Notes/Notes). Pass Subscriptions, Scan / Pass Code, and Quick Scan buttons are hidden.
+    - **Free Meals Page (`FreeMealManagementScreen.tsx`)**: Operates in strict **read-only mode** (planned and served counts display as static number cards without interactive counter inputs). Quick Free Meal modals never open for caterers.
+    - **View Menu (`ViewMenuScreen.tsx`)**: Displays the menu without pricing information (`!isAdmin`).
+  - **Vendor Role (`UserRole.VENDOR`)**: Accesses operational buttons including Subscriptions, QR Scanner, Quick Checkout, Free Meals, Analytics, Menu, and Notes.
+  - **General Non-Admin Safeguards**:
+    - **Home Page**: Total Payment Collection in summary card and Report button are hidden for non-admin users.
+    - **View Pass & Quick Checkout Modal**: Pass code, mobile numbers, UPI/payment info, payment types/modes, Subscription Summary card, and Show QR button are hidden.
+    - **Edit Pass**: Pass code, mobile numbers, UPI/payment info, payment types/modes, Mobile Number field, and Payment Information card are hidden, with admin-only fields securely preserved on save.
+    - **Subscription Directory**: Payment information in card headers and WhatsApp/call action buttons are hidden.
+    - **View Menu**: Meal prices and parcel fees (`foodPriceEnabled`) are hidden.
+    - **Team Notes**: Non-admin users can view, edit, and delete only the notes created by themselves (`note.userName === userName`).
 
 ### AD. Admin-Only Mobile Search Fallback & Block-Level Filtering ([`SubscriptionListScreen.tsx`](src/screens/SubscriptionListScreen.tsx), [`NavigationContext.tsx`](src/context/NavigationContext.tsx))
 - **Block-Level Filtering**: Tapping the block badge on any pass card instantly filters the directory to show passes belonging strictly to that block, accompanied by a removable block filter chip with match count.
@@ -305,7 +310,7 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
 - **Free Meal Desk Plate Count Integration in Payment Reports**: Updated `calculateDetailedPaymentReportData` in `paymentUtils.ts` to include Free Meal Desk plate counts (`freeMealVeg` + `freeMealNonVeg` from `getMealFreeMealCounts`) as ₹0 dine-in plates across Payment Summary, Day-Wise Payment, and Meal-Wise Payment reports.
 - **Amount Discrepancy Primary Summary Card**: Added a top primary `ReportSummaryCard` in `AmountDiscrepancyReport.tsx` displaying total passes with discrepancy, Pending (Excess vs Pending sub-counts `X Excess | Y Pending`), Expected Calculated Amount, Total Deficiency (`UI_TEXT.totalDeficiency`), Total Excess (`UI_TEXT.totalExcess`), and Paid Collection.
 - **Edit Pass Payment Pre-population & Dynamic Excess Payment Entry**: Expanded payment entries up to **5 entries**. For zero-payment passes, modifying choices updates `payments[0]`. For non-zero passes in Edit Pass, increasing food/parcel choices above the baseline paid sum automatically opens up a new payment entry populated with the excess amount (`total - baseSum`) set to **UPI** mode, and dynamically removes it if choices are reduced back to or below the baseline sum.
-- **Dashboard Summary Card Full Plate Count Display**: Updated the Daily Demand Summary card on `DashboardScreen.tsx` to display the Full Plate Count (`summaryTotals.total`) as the main prominent metric with `PLATES` (`UI_TEXT.plates.toUpperCase()`) as strong text, and Dine-In vs. Parcel breakdown in a sub-caption `(110 Dine-In, 10 Parcel)`.
+- **Dashboard Summary Card Full Plate Count Display**: Updated the Daily Demand Summary card on `DashboardScreen.tsx` to display the Full Plate Count (`summaryTotals.total`) as the main prominent metric with `PLATES` (`UI_TEXT.plates.toUpperCase()`) as strong text, and Dine-In vs. Parcel breakdowns in brackets for both total plates and served counts displayed strictly when values are greater than 0 (e.g., `(110 Dine-In, 10 Parcel)`).
 
 ## 6. Quality Assurance & UI Catalog
 

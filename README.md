@@ -99,21 +99,21 @@ The application follows a decoupled, context-driven component architecture with 
 
 ## 🔒 Non-Admin Role Restrictions & Role-Based Access Control (RBAC)
 
-The application implements granular role-based access control (RBAC) distinguishing administrators (`UserRole.ADMIN`) from non-admin volunteers (`UserRole.VENDOR`):
+The application implements granular role-based access control (RBAC) distinguishing administrators (`UserRole.ADMIN`), vendors (`UserRole.VENDOR`), and caterers (`UserRole.CATERER`):
 
-1. **Home Page (`HomeScreen.tsx`)**:
-   - Total Payment Collection in summary card and Report button are hidden for non-admin users.
-2. **View Pass (`DetailsScreen.tsx`) & Quick Checkout Modal (`QuickCheckoutHeader.tsx`)**:
-   - Pass code, mobile numbers, UPI/payment info, payment types/modes, Subscription Summary card, Show QR button, and pass code in quick checkout headers are hidden for non-admin users.
-3. **Edit Pass (`SubscriptionForm.tsx`)**:
-   - Pass code, mobile numbers, UPI/payment info, payment types/modes, Mobile Number field, and Payment Information card are hidden.
-   - **Secure Field Preservation on Save**: When non-admin users edit a pass, all hidden admin-only fields (`mobile`, `passcode`, `payments`, `amount`, `paymentMode`, `transactionId`, `isPackageApplied`, `appliedPackages`) are securely preserved as their original/existing values, ensuring edit saves never fail and never overwrite or corrupt admin financial and contact data.
-4. **Subscription Directory / List (`SubscriptionListScreen.tsx`)**:
-   - Payment information in card headers (payment mode and amount) and WhatsApp/call action buttons are hidden for non-admin users.
-5. **View Menu (`ViewMenuScreen.tsx`)**:
-   - Meal prices and parcel fees (`foodPriceEnabled`) are hidden for non-admin users.
-6. **Team Notes (`NotesScreen.tsx`)**:
-   - Non-admin users can view, edit, and delete only the notes created by themselves (`note.userName === userName`).
+1. **Caterer Role (`UserRole.CATERER`)**:
+   - A specialized subset of the vendor role designed to provide caterers with a view on meal demands and menu details.
+   - **Home Page Buttons**: Features only 4 action buttons: Free Meals, Analytics (Dashboard), Menu (View Menu), and Operational Notes (Notes). Administrative and financial controls (Add Flat, Pass Subscriptions, QR Scanner, Quick Checkout, Reports, Contacts, Settings) are hidden.
+   - **Free Meals Page (`FreeMealManagementScreen.tsx`)**: Operates in **read-only mode**. Caterers can view planned and served counts/demands but cannot modify them. Pressing the Free Meal button on the Home Page navigates directly to Free Meal Management without triggering any modal for the current day.
+   - **Menu View (`ViewMenuScreen.tsx`)**: Accesses the menu without pricing information (`!isAdmin`), exactly like vendors.
+2. **Vendor Role (`UserRole.VENDOR`)**:
+   - Accesses operational buttons including Subscriptions, QR Scanner, Quick Checkout, Free Meals, Analytics, Menu, and Notes.
+3. **General Non-Admin Safeguards**:
+   - **Home Page (`HomeScreen.tsx`)**: Total Payment Collection in summary card and Report button are hidden for non-admin users.
+   - **View Pass (`DetailsScreen.tsx`) & Quick Checkout Modal (`QuickCheckoutHeader.tsx`)**: Pass code, mobile numbers, UPI/payment info, payment types/modes, Subscription Summary card, Show QR button, and pass code in quick checkout headers are hidden.
+   - **Edit Pass (`SubscriptionForm.tsx`)**: Pass code, mobile numbers, UPI/payment info, payment types/modes, Mobile Number field, and Payment Information card are hidden, with admin-only fields securely preserved on save.
+   - **Subscription Directory / List (`SubscriptionListScreen.tsx`)**: Payment information and WhatsApp/call action buttons are hidden for non-admin users.
+   - **Team Notes (`NotesScreen.tsx`)**: Non-admin users can view, edit, and delete only the notes created by themselves (`note.userName === userName`).
 
 ---
 
@@ -299,6 +299,8 @@ Quick Checkout can be triggered from 4 distinct application entry methods, track
 - **Duplicate Pass Collision Confirmation & View Pass Navigation (`SubscriptionForm.tsx`)**: Added strict pre-save collision detection during Add Pass (`!lockIdentity`). When attempting to register a new pass with a Block and Flat number that already exists in the database, the system triggers an interactive confirmation dialog displaying the collision warning alongside `"Do you want to see the pass?"`. Tapping **Yes** (`UI_TEXT.yes`) synchronizes `selectedId`, `selectedRecord`, and `editing` states to navigate directly to the existing pass details view (`AppScreen.DETAILS`), while **No** (`UI_TEXT.no`) keeps the operator on the current form to adjust details, preventing accidental duplicate pass creation.
 - **Concurrent Passcode Uniqueness Re-Validation Engine (`SubscriptionForm.tsx`, `constants.ts`)**: Ensures that editing an existing pass strictly preserves its original passcode (`value.passcode`), while parallel multi-device Add Pass operations perform a live database re-validation at commit time, automatically re-generating collision-free passcodes when simultaneous submissions occur.
 - **Strict Special-Meals-Only Pass Card Badges (`SubscriptionListScreen.tsx`)**: Pass card star icon badges strictly reflect passes subscribed exclusively to special meals (`isSpecialOnlySubscribed`), matching the Special Meals Only filter chip count and criteria perfectly.
+- **Caterer User Role & Read-Only Free Meals (`UserRole.CATERER`, `HomeScreen.tsx`, `FreeMealManagementScreen.tsx`, `QuickFreeMealModal.tsx`, `ViewMenuScreen.tsx`)**: Introduced the **Caterer** user role (`UserRole.CATERER`) as a specialized subset of the Vendor role. Caterers have access to Free Meals, Analytics (Dashboard), Menu (View Menu), and Operational Notes (Notes) on their home page, while Pass Subscriptions, Scan / Pass Code, and Quick Scan buttons are hidden. The Free Meal management page operates in strict **read-only mode** displaying planned and served counts as static number cards without interactive counter inputs, and Quick Free Meal modals never open for caterers. Menu views display without pricing information (`!isAdmin`).
+- **Dashboard Served Count Dine-In & Parcel Breakdown (`DashboardScreen.tsx`)**: Enhanced the dashboard summary card so that the served count (`summaryTotals.taken`) and total plates display Dine-In and Parcel breakdowns in brackets beneath them strictly when their values are greater than 0 (e.g., `(X dine-in, Y parcel)`), omitting 0-value terms.
 
 ---
 

@@ -846,8 +846,14 @@ export function DashboardScreen() {
                  {UI_TEXT.plates.toUpperCase()}
                </Text>
                <Text style={{ color: theme.colors.white, opacity: 0.8, fontSize: s(9), fontWeight: "600", marginTop: 2 }}>
-                 ({summaryTotals.total - summaryTotals.parcel} {UI_TEXT.dineIn}
-                 {summaryTotals.parcel > 0 ? `, ${summaryTotals.parcel} ${UI_TEXT.parcel}` : ""})
+                 {(() => {
+                   const dineIn = summaryTotals.total - summaryTotals.parcel;
+                   const parcel = summaryTotals.parcel;
+                   const parts = [];
+                   if (dineIn > 0) parts.push(`${dineIn} ${UI_TEXT.dineIn}`);
+                   if (parcel > 0) parts.push(`${parcel} ${UI_TEXT.parcel}`);
+                   return parts.length > 0 ? `(${parts.join(", ")})` : "";
+                 })()}
                </Text>
             </View>
           </View>
@@ -916,10 +922,22 @@ export function DashboardScreen() {
                   )}
                 </View>
               </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(4) }}>
-               <Ionicons name="checkmark-done-circle" size={s(15)} color={theme.colors.white} />
-               <Text style={{ color: theme.colors.white, fontWeight: "800", fontSize: s(13) }}>
-                 {summaryTotals.taken} {UI_TEXT.taken.toUpperCase()}
+            <View style={{ alignItems: 'flex-end', justifyContent: 'center' }}>
+               <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(4) }}>
+                  <Ionicons name="checkmark-done-circle" size={s(15)} color={theme.colors.white} />
+                  <Text style={{ color: theme.colors.white, fontWeight: "800", fontSize: s(13) }}>
+                    {summaryTotals.taken} {UI_TEXT.taken.toUpperCase()}
+                  </Text>
+               </View>
+               <Text style={{ color: theme.colors.white, opacity: 0.8, fontSize: s(9), fontWeight: "600", marginTop: 2 }}>
+                 {(() => {
+                   const dineIn = summaryTotals.taken - summaryTotals.parcelTaken;
+                   const parcel = summaryTotals.parcelTaken;
+                   const parts = [];
+                   if (dineIn > 0) parts.push(`${dineIn} ${UI_TEXT.dineIn}`);
+                   if (parcel > 0) parts.push(`${parcel} ${UI_TEXT.parcel}`);
+                   return parts.length > 0 ? `(${parts.join(", ")})` : "";
+                 })()}
                </Text>
             </View>
           </View>

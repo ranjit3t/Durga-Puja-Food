@@ -575,7 +575,7 @@ export function HomeScreen() {
               accessibilityRole="button"
               accessibilityLabel={UI_TEXT.freeMealButton}
               onPress={() => {
-                if (currentMealInfo) {
+                if (userRole === UserRole.VENDOR && currentMealInfo) {
                   setIsQuickFreeMealMode(true);
                 } else {
                   setIsQuickFreeMealMode(false);
@@ -587,22 +587,26 @@ export function HomeScreen() {
               <ActionLabel icon="people-circle-outline" label={UI_TEXT.freeMealButton} color={theme.colors.white} size={iconSize} vertical />
             </Pressable>
           )}
-          <Pressable accessible={true} accessibilityRole="button" accessibilityLabel={UI_TEXT.subscriptions} onPress={() => navigate(AppScreen.SUBSCRIPTION_LIST)} style={[styles.compactSecondary, { backgroundColor: theme.cardColors[1].accent, borderColor: theme.cardColors[1].accent }]}>
-            <ActionLabel icon="list-outline" label={UI_TEXT.subscriptions} color={theme.colors.white} size={iconSize} vertical />
-          </Pressable>
-          <Pressable
-            accessible={true}
-            accessibilityRole="button"
-            accessibilityLabel={UI_TEXT.scanQr}
-            onPress={() => {
-              setIsQuickCheckout(false);
-              navigate(AppScreen.SCANNER);
-            }}
-            style={[styles.compactSecondary, { backgroundColor: theme.cardColors[4].accent, borderColor: theme.cardColors[4].accent }]}
-          >
-            <ActionLabel icon="scan-outline" label={UI_TEXT.scanQr} color={theme.colors.white} size={iconSize} vertical />
-          </Pressable>
-          {currentMealInfo && (
+          {userRole !== UserRole.CATERER && (
+            <Pressable accessible={true} accessibilityRole="button" accessibilityLabel={UI_TEXT.subscriptions} onPress={() => navigate(AppScreen.SUBSCRIPTION_LIST)} style={[styles.compactSecondary, { backgroundColor: theme.cardColors[1].accent, borderColor: theme.cardColors[1].accent }]}>
+              <ActionLabel icon="list-outline" label={UI_TEXT.subscriptions} color={theme.colors.white} size={iconSize} vertical />
+            </Pressable>
+          )}
+          {userRole !== UserRole.CATERER && (
+            <Pressable
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={UI_TEXT.scanQr}
+              onPress={() => {
+                setIsQuickCheckout(false);
+                navigate(AppScreen.SCANNER);
+              }}
+              style={[styles.compactSecondary, { backgroundColor: theme.cardColors[4].accent, borderColor: theme.cardColors[4].accent }]}
+            >
+              <ActionLabel icon="scan-outline" label={UI_TEXT.scanQr} color={theme.colors.white} size={iconSize} vertical />
+            </Pressable>
+          )}
+          {userRole !== UserRole.CATERER && currentMealInfo && (
             <Pressable
               accessible={true}
               accessibilityRole="button"

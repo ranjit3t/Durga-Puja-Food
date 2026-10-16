@@ -240,9 +240,14 @@ The application follows a **Serverless Layered Architecture** built on the **Exp
 
 ## 4. Non-Admin Role Restrictions & Role-Based Access Control (RBAC)
 
-The application enforces strict role-based access control (RBAC) distinguishing between administrators (`UserRole.ADMIN`) and non-admin users (`UserRole.VENDOR` / volunteers).
+The application enforces strict role-based access control (RBAC) distinguishing between administrators (`UserRole.ADMIN`), vendors (`UserRole.VENDOR`), and caterers (`UserRole.CATERER`):
 
-### Key Non-Admin Restrictions & Safeguards:
+### Caterer Role (`UserRole.CATERER`) & Safeguards:
+- **Home Page (`HomeScreen.tsx`)**: Features only 4 action buttons (Free Meals, Analytics/Dashboard, Menu/View Menu, Operational Notes/Notes). Administrative and financial actions (Add Flat, Pass Subscriptions, QR Scanner, Quick Checkout, Reports, Contacts, Settings) are hidden.
+- **Free Meals Page (`FreeMealManagementScreen.tsx`)**: Operates in **read-only mode**. Caterers can view planned and served counts/demands but cannot modify them. Pressing Free Meals on Home Page opens the page directly without opening any modal for the current day.
+- **Menu View (`ViewMenuScreen.tsx`)**: Displays the menu without pricing information (`!isAdmin`).
+
+### Key Non-Admin / Vendor Restrictions & Safeguards:
 1. **Home Page (`HomeScreen.tsx`)**:
    - Total Payment Collection in summary card is hidden for non-admin users.
    - Report button is hidden for non-admin users.

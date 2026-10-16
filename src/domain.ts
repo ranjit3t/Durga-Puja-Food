@@ -257,6 +257,7 @@ export enum ReportType {
 export enum UserRole {
   ADMIN = "admin",
   VENDOR = "vendor",
+  CATERER = "caterer",
 }
 
 export enum DirectorySortMode {
