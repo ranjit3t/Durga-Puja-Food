@@ -309,7 +309,7 @@ export const SubscriptionPaymentSection: React.FC<SubscriptionPaymentSectionProp
         </View>
       ))}
 
-      {isAdmin && canEdit && (
+      {isAdmin && canEdit && payments.length < 5 && (
         <Pressable
           onPress={addPayment}
           style={({ pressed }) => [

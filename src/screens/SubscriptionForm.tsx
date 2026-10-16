@@ -532,6 +532,33 @@ export function SubscriptionForm() {
     guestsCount: value.guestsCount || 0,
   });
 
+  // Capture initial payment snapshot for Edit Pass to calculate baseline paid sum & entry count
+  const initialPaymentSnapshot = useRef(() => {
+    let initialList: PaymentEntry[] = [];
+    if (value?.payments && value.payments.length > 0) {
+      initialList = value.payments.map((p: PaymentEntry) => ({
+        ...p,
+        amount: (p.amount !== undefined && p.amount !== null && String(p.amount).trim() !== "")
+          ? String(p.amount)
+          : UI_TEXT.zero,
+      }));
+    } else {
+      const rawAmt = value?.amount !== undefined && value?.amount !== null ? String(value.amount).trim() : "";
+      initialList = [{
+        amount: rawAmt !== "" ? rawAmt : UI_TEXT.zero,
+        mode: value?.paymentMode || enabledMethods[0],
+        transactionId: value?.transactionId,
+      }];
+    }
+    const count = initialList.length;
+    const baseSum = initialList.reduce((sum, p) => sum + (parseFloat(p.amount || "0") || 0), 0);
+    return { count, baseSum, initialList };
+  });
+
+  const basePaymentSnapshot = useMemo(() => {
+    return initialPaymentSnapshot.current();
+  }, []);
+
   const hasMealOrParcelChoicesChanged = useMemo(() => {
     if (!lockIdentity) return true;
     if (form.peopleCount !== initialMealSnapshot.current.peopleCount) return true;
@@ -929,7 +956,7 @@ export function SubscriptionForm() {
   };
 
   const addPayment = () => {
-    if (payments.length < 3) {
+    if (payments.length < 5) {
       setPayments([...payments, { amount: UI_TEXT.zero, mode: (enabledMethods[0] as any) || PaymentMode.CASH }]);
     }
   };
@@ -996,7 +1023,7 @@ export function SubscriptionForm() {
     }
   }, [scannerTargetIdx, updatePayment, showGlobalAlert]);
 
-  // Auto-calculation of total based on food prices
+  // Auto-calculation of total based on food prices and dynamic excess payment entry
   useEffect(() => {
     if (!foodPriceEnabled || !paymentConfig.enabled) return;
 
@@ -1013,12 +1040,63 @@ export function SubscriptionForm() {
       !!guestsEnabled
     );
 
-    // Only update if we have a single payment entry and it's either a new pass
-    // or the user hasn't manually edited the price yet.
-    if (payments.length === 1 && (!lockIdentity && !isManualAmount)) {
-      const currentVal = payments[0].amount || UI_TEXT.zero;
+    // Case 1: Single payment entry and either:
+    // a) New pass (!lockIdentity) without manual price edit, OR
+    // b) Editing pass (lockIdentity) that originally had 0 payment amount (!hasNonZeroPayment)
+    const shouldAutoPopulateSingle = payments.length === 1 && !isManualAmount && (
+      !lockIdentity || (lockIdentity && !hasNonZeroPayment)
+    );
+
+    if (shouldAutoPopulateSingle) {
+      const currentVal = payments[0]?.amount || UI_TEXT.zero;
       if (currentVal !== String(total)) {
         setPayments([{ ...payments[0], amount: String(total) }]);
+      }
+      return;
+    }
+
+    // Case 2: Editing an existing pass with 1+ non-zero payment entries (lockIdentity && hasNonZeroPayment)
+    if (lockIdentity && hasNonZeroPayment && !isManualAmount) {
+      const baseSum = basePaymentSnapshot.baseSum;
+      const defaultMode = enabledMethods.includes(PaymentMode.UPI)
+        ? PaymentMode.UPI
+        : (enabledMethods[0] as any) || PaymentMode.UPI;
+
+      const autoIndex = payments.findIndex((p) => p.isAutoExcess);
+      const hasAutoEntry = autoIndex !== -1;
+
+      if (total > baseSum) {
+        const excess = total - baseSum;
+        if (hasAutoEntry) {
+          // Update existing auto excess entry amount
+          const currAmount = payments[autoIndex]?.amount || UI_TEXT.zero;
+          if (currAmount !== String(excess)) {
+            const updated = [...payments];
+            updated[autoIndex] = {
+              ...updated[autoIndex],
+              amount: String(excess),
+            };
+            setPayments(updated);
+          }
+        } else {
+          // Add new auto excess entry if under 5 payments
+          if (payments.length < 5) {
+            setPayments([
+              ...payments,
+              {
+                amount: String(excess),
+                mode: defaultMode,
+                transactionId: "",
+                isAutoExcess: true,
+              },
+            ]);
+          }
+        }
+      } else if (total <= baseSum) {
+        // If auto excess entry exists and total is now <= baseSum, remove it
+        if (hasAutoEntry) {
+          setPayments(payments.filter((_, idx) => idx !== autoIndex));
+        }
       }
     }
   }, [
@@ -1028,6 +1106,7 @@ export function SubscriptionForm() {
     isManualAmount,
     paymentConfig.enabled,
     payments.length,
+    payments,
     foodMenu,
     kidsEnabled,
     guestsEnabled,
@@ -1035,6 +1114,9 @@ export function SubscriptionForm() {
     form.kidsCount,
     form.guestsCount,
     lockIdentity,
+    hasNonZeroPayment,
+    basePaymentSnapshot,
+    enabledMethods,
     appliedPackages,
     foodPackages
   ]);

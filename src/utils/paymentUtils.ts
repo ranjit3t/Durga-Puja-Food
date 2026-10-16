@@ -13,7 +13,7 @@ import {
   AppliedPackageInfo,
   PackageMealItem,
 } from "../domain";
-import { isParcelEnabled, isKidsParcelEnabled, isDietaryEnabled, isMealEnabled, getMealVarieties, getDietTypeForChoice, getVarietyForChoice, isGuestsParcelEnabled } from "../constants";
+import { isParcelEnabled, isKidsParcelEnabled, isDietaryEnabled, isMealEnabled, getMealVarieties, getDietTypeForChoice, getVarietyForChoice, isGuestsParcelEnabled, getMealFreeMealCounts } from "../constants";
 
 export interface DiscrepancyItem {
   id: string;
@@ -1136,6 +1136,27 @@ export function calculateDetailedPaymentReportData(
           mealMap[key].parcelCount++;
         } else {
           mealMap[key].dineInCount++;
+        }
+      }
+    });
+  });
+
+  // Also include Free Meal Desk plates from foodMenu for each active day & meal slot
+  activeDayIds.forEach((dayId) => {
+    mealTypes.forEach((mType) => {
+      if (!isMealEnabled(dayId, mType, dayConfig)) return;
+      const key = `${dayId}_${mType}`;
+      if (mealMap[key]) {
+        const mealMenu = foodMenu?.[dayId]?.[mType];
+        const dayConf = dayConfig.find((d) => d.id === dayId);
+        const mConf = dayConf ? dayConf[mType] : null;
+        const varieties = getMealVarieties(mConf);
+        const freeMeals = getMealFreeMealCounts(mealMenu, varieties);
+        const totalFreeMealPlates = (freeMeals.freeMealVeg || 0) + (freeMeals.freeMealNonVeg || 0);
+
+        if (totalFreeMealPlates > 0) {
+          mealMap[key].portionCount += totalFreeMealPlates;
+          mealMap[key].dineInCount += totalFreeMealPlates;
         }
       }
     });

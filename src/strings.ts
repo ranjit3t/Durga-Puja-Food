@@ -565,6 +565,8 @@ export const UI_TEXT = {
   packageDiscountLabel: "Package Discount",
   excess: "Excess",
   deficiency: "Deficiency",
+  totalExcess: "Total Excess",
+  totalDeficiency: "Total Deficiency",
   totalExpectedExcess: "Total Expected Excess",
   totalExpectedDeficiency: "Total Expected Deficiency",
   totalActualExcess: "Total Actual Excess",

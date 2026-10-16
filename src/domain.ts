@@ -352,6 +352,7 @@ export type PaymentEntry = {
   mode: PaymentMode;
   transactionId?: string;
   receivedBy?: string;
+  isAutoExcess?: boolean;
 };
 
 export type PackageApplicability = "adult" | "kids" | "member" | "guests";

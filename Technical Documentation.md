@@ -152,6 +152,23 @@ The application follows a **Serverless Layered Architecture** built on the **Exp
 - **Structured Top Season Summary Card**: Renders 5 organized financial blocks: Total Subscription Amount, Total Expected Vendor Cost, **Total Expected Excess / Deficiency** (`Total Expected Vendor Cost - Total Subscription`), Total Actual Vendor Cost, and **Total Actual Excess / Deficiency** (`Total Actual Vendor Cost - Total Subscription`).
 - **100% WCAG 2.1 AA & Zero Hardcoded Text**: 100% `UI_TEXT` dictionary compliance with zero hardcoded text strings, full accessibility compliance (`accessible={true}`, `accessibilityRole="summary"`, `accessibilityLabel`), responsive wrapping (`flexWrap: "wrap"`), and mobile viewport optimization.
 
+### U. Multi-Parameter Aggregate Report Engine & Payment UX Enhancements ([`AggregateReport.tsx`](src/components/report/AggregateReport.tsx), [`ReportSummaryCard.tsx`](src/components/report/ReportSummaryCard.tsx), [`AmountDiscrepancyReport.tsx`](src/components/report/AmountDiscrepancyReport.tsx), [`SubscriptionForm.tsx`](src/screens/SubscriptionForm.tsx), [`DashboardScreen.tsx`](src/screens/DashboardScreen.tsx))
+- **Multi-Parameter Aggregate Report Engine**:
+  - Non-precalculated reporting across arbitrary filter permutations (Block, Flat, Person Type, Dietary Choice, Day, Meal, Service Type, Payment Mode, Payment Status, Package Opted).
+  - Positioned top filter controls card with active filter badges and 1-tap "Reset Filters".
+  - Image capture filter omission (`isCapturing === true`) with **Applied Filter Criteria Subsection** inside `ReportSummaryCard` for permanent image export record.
+  - Dedicated **Headcount Subsection** in `ReportSummaryCard` showing total members and category breakdown (`• Adults: A • Kids: B • Guests: C`) strictly when count > 0.
+- **Free Meal Desk Plate Count Integration in Payment Reports**:
+  - Includes Free Meal Desk plate counts (`freeMealVeg` + `freeMealNonVeg` from `getMealFreeMealCounts`) as ₹0 dine-in plates across Payment Summary, Day-Wise Payment, and Meal-Wise Payment reports.
+- **Amount Discrepancy Primary Summary Card**:
+  - Added a top primary `ReportSummaryCard` in `AmountDiscrepancyReport.tsx` displaying total passes with discrepancy, Pending (Excess vs Pending sub-counts `X Excess | Y Pending`), Expected Calculated Amount, Total Deficiency (`UI_TEXT.totalDeficiency`), Total Excess (`UI_TEXT.totalExcess`), and Paid Collection.
+- **Edit Pass Payment Pre-population & Dynamic Excess Payment Entry**:
+  - Expanded payment entries up to **5 entries** (`SubscriptionForm.tsx`, `SubscriptionPaymentSection.tsx`).
+  - For zero-payment passes, modifying choices updates `payments[0]`.
+  - For non-zero passes in Edit Pass, increasing food/parcel choices above the baseline paid sum automatically opens up a new payment entry populated with the excess amount (`total - baseSum`) set to **UPI** mode (`isAutoExcess: true`), and dynamically removes it if choices are reduced back to or below the baseline sum without affecting manual payment entries.
+- **Dashboard Summary Card Full Plate Count Display**:
+  - Daily Demand Summary card on `DashboardScreen.tsx` displays Full Plate Count (`summaryTotals.total`) as the main metric with `PLATES` (`UI_TEXT.plates.toUpperCase()`), and Dine-In vs. Parcel breakdown in a sub-caption `(110 Dine-In, 10 Parcel)`.
+
 ---
 
 ## 3. Database Security & Indexing Configuration (`database.rules.json`)

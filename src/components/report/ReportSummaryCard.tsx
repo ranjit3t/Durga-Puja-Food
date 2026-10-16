@@ -16,6 +16,8 @@ export interface ReportSummaryCardProps {
     packageDiscount: number;
     excessDeficient: number;
     netPayment: number;
+    totalDeficiency?: number;
+    totalExcess?: number;
     totalPortions?: number;
     servedPortions?: number;
     dineInCount?: number;
@@ -108,9 +110,9 @@ export function ReportSummaryCard({ title, iconName, activeFilterChips, summary 
               {summary.paidPassesCount !== undefined && summary.unpaidPassesCount !== undefined && (
                 <Text style={{ color: theme.colors.white + "DD", fontSize: 13, fontWeight: "700" }}>
                   {UI_TEXT.openParen}
-                  {summary.paidPassesCount}{UI_TEXT.space}{UI_TEXT.paidPasses}
+                  {summary.paidPassesCount}{UI_TEXT.space}{UI_TEXT.overpaidLabel}
                   {UI_TEXT.pipe}
-                  {summary.unpaidPassesCount}{UI_TEXT.space}{UI_TEXT.unpaidPasses}
+                  {summary.unpaidPassesCount}{UI_TEXT.space}{UI_TEXT.underpaidLabel}
                   {UI_TEXT.closeParen}
                 </Text>
               )}
@@ -209,7 +211,7 @@ export function ReportSummaryCard({ title, iconName, activeFilterChips, summary 
         {/* Financial Collections Breakdown */}
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 4 }}>
           <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700", flex: 1, marginRight: 8 }} numberOfLines={1}>
-            {UI_TEXT.menuPriceLabel}
+            {UI_TEXT.expectedAmount}
           </Text>
           <Text style={{ color: theme.colors.white, fontSize: 14, fontWeight: "800", flexShrink: 0 }} numberOfLines={1}>
             {UI_TEXT.rs} {formatCurrencyAmount(summary.menuPrice)}
@@ -238,7 +240,29 @@ export function ReportSummaryCard({ title, iconName, activeFilterChips, summary 
           </View>
         )}
 
-        {summary.excessDeficient !== 0 && (
+        {(summary.totalDeficiency ?? 0) > 0 && (
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 4 }}>
+            <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700", flex: 1, marginRight: 8 }} numberOfLines={1}>
+              {UI_TEXT.totalDeficiency}
+            </Text>
+            <Text style={{ color: theme.colors.white, fontSize: 14, fontWeight: "800", flexShrink: 0 }} numberOfLines={1}>
+              - {UI_TEXT.rs} {formatCurrencyAmount(summary.totalDeficiency ?? 0)}
+            </Text>
+          </View>
+        )}
+
+        {(summary.totalExcess ?? 0) > 0 && (
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 4 }}>
+            <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700", flex: 1, marginRight: 8 }} numberOfLines={1}>
+              {UI_TEXT.totalExcess}
+            </Text>
+            <Text style={{ color: theme.colors.white, fontSize: 14, fontWeight: "800", flexShrink: 0 }} numberOfLines={1}>
+              + {UI_TEXT.rs} {formatCurrencyAmount(summary.totalExcess ?? 0)}
+            </Text>
+          </View>
+        )}
+
+        {summary.excessDeficient !== 0 && summary.totalDeficiency === undefined && summary.totalExcess === undefined && (
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 4 }}>
             <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700", flex: 1, marginRight: 8 }} numberOfLines={1}>
               {UI_TEXT.excessDeficientLabel}
@@ -252,7 +276,7 @@ export function ReportSummaryCard({ title, iconName, activeFilterChips, summary 
 
         <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.white + "40", paddingTop: 8, marginTop: 4, flexDirection: "row", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 4 }}>
           <Text style={{ color: theme.colors.white, fontWeight: "900", fontSize: 16 }}>
-            {UI_TEXT.netPaymentLabel}
+            {UI_TEXT.paidAmount}
           </Text>
           <Text style={{ color: theme.colors.white, fontWeight: "900", fontSize: 20 }}>
             {UI_TEXT.rs} {formatCurrencyAmount(summary.netPayment)}

@@ -840,12 +840,15 @@ export function DashboardScreen() {
             </View>
             <View style={{ alignItems: 'flex-end', justifyContent: 'center' }}>
                <Text style={[styles.previewAmount, { color: theme.colors.white, fontSize: s(24) }]}>
-                 {summaryTotals.total - summaryTotals.parcel}
+                 {summaryTotals.total}
                </Text>
-               <Text style={{ color: theme.colors.white, opacity: 0.8, fontSize: s(10), fontWeight: "700" }}>{UI_TEXT.dineIn.toUpperCase()}</Text>
-               {summaryTotals.parcel > 0 && (
-                 <Text style={{ color: theme.colors.white, opacity: 0.7, fontSize: s(9), fontWeight: "600" }}>+{summaryTotals.parcel} {UI_TEXT.parcel}</Text>
-               )}
+               <Text style={{ color: theme.colors.white, opacity: 0.8, fontSize: s(10), fontWeight: "700" }}>
+                 {UI_TEXT.plates.toUpperCase()}
+               </Text>
+               <Text style={{ color: theme.colors.white, opacity: 0.8, fontSize: s(9), fontWeight: "600", marginTop: 2 }}>
+                 ({summaryTotals.total - summaryTotals.parcel} {UI_TEXT.dineIn}
+                 {summaryTotals.parcel > 0 ? `, ${summaryTotals.parcel} ${UI_TEXT.parcel}` : ""})
+               </Text>
             </View>
           </View>
 
