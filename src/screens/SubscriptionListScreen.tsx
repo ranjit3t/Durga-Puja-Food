@@ -534,10 +534,11 @@ export function SubscriptionListScreen() {
 
   const { foodPackages } = useFoodPackages();
   const passesWithDiscrepancyCount = useMemo(() => {
+    if (!isAdmin) return 0;
     return subscriptions.filter(sub => hasAmountDiscrepancy(sub, foodMenu, dayConfig, !!kidsEnabled, !!guestsEnabled, foodPackages)).length;
-  }, [subscriptions, foodMenu, dayConfig, kidsEnabled, guestsEnabled, foodPackages]);
+  }, [subscriptions, foodMenu, dayConfig, kidsEnabled, guestsEnabled, foodPackages, isAdmin]);
 
-  const hasAnyDiscrepancy = passesWithDiscrepancyCount > 0;
+  const hasAnyDiscrepancy = isAdmin && passesWithDiscrepancyCount > 0;
 
   const subscribedCount = useMemo(() => {
     if (!currentMealInfo) return 0;
@@ -700,7 +701,7 @@ export function SubscriptionListScreen() {
         filtered = filtered.filter(sub => hasPackageApplied(sub));
       }
 
-      if (activeFilters.includes(FilterMode.AMOUNT_DISCREPANCY)) {
+      if (isAdmin && activeFilters.includes(FilterMode.AMOUNT_DISCREPANCY)) {
         filtered = filtered.filter(sub => hasAmountDiscrepancy(sub, foodMenu, dayConfig, !!kidsEnabled, !!guestsEnabled, foodPackages));
       }
     }
@@ -1143,7 +1144,7 @@ export function SubscriptionListScreen() {
     );
   }, [theme, styles, s, kidsEnabled, paymentConfig, whatsappCountryCode, isAdmin, onSelect, onOpenQuickCheckout, setSelectedBlock, addActivityLog]);
 
-  const showFilters = (currentMealInfo && hasAnySubscribed) || (kidsEnabled && hasAnyKids) || hasAnyParcel || (isNonVegSeason && hasAnyVegOnly) || (currentMealInfo && hasAnyMissed) || hasAnySpecialOnly || hasAnyPackage || hasAnyDiscrepancy;
+  const showFilters = (currentMealInfo && hasAnySubscribed) || (kidsEnabled && hasAnyKids) || hasAnyParcel || (isNonVegSeason && hasAnyVegOnly) || (currentMealInfo && hasAnyMissed) || hasAnySpecialOnly || hasAnyPackage || (isAdmin && hasAnyDiscrepancy);
 
   return (
     <View style={styles.root}>
@@ -1402,7 +1403,7 @@ export function SubscriptionListScreen() {
               </Pressable>
             )}
 
-            {hasAnyDiscrepancy && (
+            {isAdmin && hasAnyDiscrepancy && (
               <Pressable
                 onPress={() => toggleFilter(FilterMode.AMOUNT_DISCREPANCY)}
                 accessible={true}
