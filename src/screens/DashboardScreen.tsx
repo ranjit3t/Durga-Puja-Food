@@ -164,8 +164,11 @@ const DashboardMealSection = memo(
     const isNonVegEnabled = isDietaryEnabled(day, type, DietType.NON_VEG, config);
     const isBothEnabled = isVegEnabled && isNonVegEnabled;
 
-    const totalVegTaken = flatVegTaken + kidsVegTaken + freeMealVegTaken;
-    const totalNonVegTaken = flatNonVegTaken + kidsNonVegTaken + freeMealNonVegTaken;
+    const gVegTaken = guestsVegTaken || 0;
+    const gNonVegTaken = guestsNonVegTaken || 0;
+
+    const totalVegTaken = flatVegTaken + kidsVegTaken + gVegTaken + freeMealVegTaken;
+    const totalNonVegTaken = flatNonVegTaken + kidsNonVegTaken + gNonVegTaken + freeMealNonVegTaken;
     const totalMealTaken = totalVegTaken + totalNonVegTaken;
 
     /**
@@ -960,23 +963,47 @@ export function DashboardScreen() {
                     )}
                  </View>
 
-                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: s(6) }}>
-                      <Text style={{ color: theme.colors.white, fontSize: s(16), fontWeight: '900' }}>
-                         {currentMealSummary.total}
-                      </Text>
-                      <Text style={{ color: theme.colors.white, fontSize: s(10), fontWeight: '700', opacity: 0.8 }}>
-                         {UI_TEXT.plates.toUpperCase()}
+                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <View>
+                      <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: s(6) }}>
+                        <Text style={{ color: theme.colors.white, fontSize: s(16), fontWeight: '900' }}>
+                           {currentMealSummary.total}
+                        </Text>
+                        <Text style={{ color: theme.colors.white, fontSize: s(10), fontWeight: '700', opacity: 0.8 }}>
+                           {UI_TEXT.plates.toUpperCase()}
+                        </Text>
+                      </View>
+                      <Text style={{ color: theme.colors.white, opacity: 0.8, fontSize: s(9), fontWeight: "600", marginTop: 2 }}>
+                        {(() => {
+                          const dineIn = currentMealSummary.total - currentMealSummary.parcel;
+                          const parcel = currentMealSummary.parcel;
+                          const parts = [];
+                          if (dineIn > 0) parts.push(`${dineIn} ${UI_TEXT.dineIn}`);
+                          if (parcel > 0) parts.push(`${parcel} ${UI_TEXT.parcel}`);
+                          return parts.length > 0 ? `(${parts.join(", ")})` : "";
+                        })()}
                       </Text>
                     </View>
 
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(4) }}>
-                       <Ionicons name="checkmark-done-circle" size={s(15)} color={theme.colors.white} />
-                       <Text style={{ color: theme.colors.white, fontSize: s(15), fontWeight: '900' }}>
-                          {currentMealSummary.taken}
-                       </Text>
-                       <Text style={{ color: theme.colors.white, fontSize: s(10), fontWeight: '700', opacity: 0.8 }}>
-                          {UI_TEXT.taken.toUpperCase()}
+                    <View style={{ alignItems: 'flex-end' }}>
+                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(4) }}>
+                          <Ionicons name="checkmark-done-circle" size={s(15)} color={theme.colors.white} />
+                          <Text style={{ color: theme.colors.white, fontSize: s(15), fontWeight: '900' }}>
+                             {currentMealSummary.taken}
+                          </Text>
+                          <Text style={{ color: theme.colors.white, fontSize: s(10), fontWeight: '700', opacity: 0.8 }}>
+                             {UI_TEXT.taken.toUpperCase()}
+                          </Text>
+                       </View>
+                       <Text style={{ color: theme.colors.white, opacity: 0.8, fontSize: s(9), fontWeight: "600", marginTop: 2 }}>
+                         {(() => {
+                           const dineIn = currentMealSummary.taken - currentMealSummary.parcelTaken;
+                           const parcel = currentMealSummary.parcelTaken;
+                           const parts = [];
+                           if (dineIn > 0) parts.push(`${dineIn} ${UI_TEXT.dineIn}`);
+                           if (parcel > 0) parts.push(`${parcel} ${UI_TEXT.parcel}`);
+                           return parts.length > 0 ? `(${parts.join(", ")})` : "";
+                         })()}
                        </Text>
                     </View>
                  </View>
@@ -1006,6 +1033,21 @@ export function DashboardScreen() {
                                `(${currentMealSummary.kidsVeg}${UI_TEXT.vegAbbrLabel}${UI_TEXT.pipe}${currentMealSummary.kidsNonVeg}${UI_TEXT.nonVegAbbrLabel})${UI_TEXT.space}`
                             )}
                             ({UI_TEXT.taken}{UI_TEXT.colon}{UI_TEXT.space}{currentMealSummary.kidsTaken})
+                         </Text>
+                      </View>
+                    )}
+
+                    {guestsEnabled && currentMealSummary.guestsTotal > 0 && (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(6) }}>
+                         <Text style={{ fontSize: s(12), fontWeight: '800', color: theme.colors.white, opacity: 0.9 }}>{UI_TEXT.guests}:</Text>
+                         <Text style={{ fontSize: s(12), fontWeight: '900', color: theme.colors.white, opacity: 0.9 }}>
+                            {currentMealSummary.guestsTotal}
+                         </Text>
+                         <Text style={{ fontSize: s(10), fontWeight: '700', color: theme.colors.white, opacity: 0.7 }}>
+                            {currentMealSummary.isVegEnabled && currentMealSummary.isNonVegEnabled && (
+                               `(${currentMealSummary.guestsVeg}${UI_TEXT.vegAbbrLabel}${UI_TEXT.pipe}${currentMealSummary.guestsNonVeg}${UI_TEXT.nonVegAbbrLabel})${UI_TEXT.space}`
+                            )}
+                            ({UI_TEXT.taken}{UI_TEXT.colon}{UI_TEXT.space}{currentMealSummary.guestsTaken})
                          </Text>
                       </View>
                     )}

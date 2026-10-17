@@ -105,9 +105,9 @@ export function MealMetricGrid(props: MealMetricProps) {
   const adultTotalTaken = adultVegTaken + adultNonVegTaken;
   const adultTotalPlanned = veg + nonVeg;
 
-  const showKids = kidsEnabled && kidsTotal > 0;
-  const showGuests = guestsEnabled && gTotal > 0;
-  const showFreeMeals = freeMealEnabled && freeMealTotal > 0;
+  const showKids = kidsEnabled && (kidsTotal > 0 || kidsTaken > 0);
+  const showGuests = guestsEnabled && (gTotal > 0 || gTaken > 0);
+  const showFreeMeals = freeMealEnabled && (freeMealTotal > 0 || freeMealTakenTotal > 0);
   const showParcels = (isParcelEnabled ?? true) && parcel > 0;
 
   const SectionHeader = ({ icon, title, color }: { icon: keyof typeof Ionicons.glyphMap; title: string; color?: string }) => (

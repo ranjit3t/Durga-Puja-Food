@@ -19,11 +19,12 @@ export function MealReportItemCard({ mealType, mealLabel, detail, colorScheme }:
   const { theme } = useAppTheme();
 
   const memberLabel = detail.kidsPortionCount ? UI_TEXT.adults : UI_TEXT.members;
-  const categoryBreakdownStr = (detail.adultPortionCount || detail.kidsPortionCount || detail.guestsPortionCount)
+  const categoryBreakdownStr = (detail.adultPortionCount || detail.kidsPortionCount || detail.guestsPortionCount || detail.freeMealPortionCount)
     ? ` [${[
         detail.adultPortionCount ? `${detail.adultPortionCount} ${memberLabel}` : null,
         detail.kidsPortionCount ? `${detail.kidsPortionCount} ${UI_TEXT.kids}` : null,
         detail.guestsPortionCount ? `${detail.guestsPortionCount} ${UI_TEXT.guests}` : null,
+        detail.freeMealPortionCount ? `${detail.freeMealPortionCount} ${UI_TEXT.freeMeal}` : null,
       ].filter(Boolean).join(", ")}]`
     : "";
 

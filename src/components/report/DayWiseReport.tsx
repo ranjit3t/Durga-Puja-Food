@@ -126,20 +126,21 @@ export function DayWiseReport({
   const parcelEnabled = isParcelEnabled(currentDayId, currentMealType, dayConfig);
 
   // Meal level calculations
-  const mealVeg = m ? m.veg + (m.freeMealVeg || 0) + (m.kidsVeg || 0) : 0;
-  const mealNonVeg = m ? m.nonVeg + (m.freeMealNonVeg || 0) + (m.kidsNonVeg || 0) : 0;
-  const mealVegTaken = m ? m.vegTaken + (m.freeMealVegTaken || 0) + (m.kidsVegTaken || 0) : 0;
-  const mealNonVegTaken = m ? m.nonVegTaken + (m.freeMealNonVegTaken || 0) + (m.kidsNonVegTaken || 0) : 0;
+  const mealVegTaken = m ? m.vegTaken + (m.freeMealVegTaken || 0) + (m.kidsVegTaken || 0) + (m.guestsVegTaken || 0) : 0;
+  const mealNonVegTaken = m ? m.nonVegTaken + (m.freeMealNonVegTaken || 0) + (m.kidsNonVegTaken || 0) + (m.guestsNonVegTaken || 0) : 0;
+
+  const mealVeg = m ? Math.max(m.veg + (m.freeMealVeg || 0) + (m.kidsVeg || 0) + (m.guestsVeg || 0), mealVegTaken) : 0;
+  const mealNonVeg = m ? Math.max(m.nonVeg + (m.freeMealNonVeg || 0) + (m.kidsNonVeg || 0) + (m.guestsNonVeg || 0), mealNonVegTaken) : 0;
 
   const mealTotalDemand = mealVeg + mealNonVeg;
   const mealTotalTaken = mealVegTaken + mealNonVegTaken;
   const mealTotalNotTaken = Math.max(0, mealTotalDemand - mealTotalTaken);
 
-  const mealVegParcel = m ? m.vegParcel + (m.kidsVegParcel || 0) : 0;
-  const mealNonVegParcel = m ? m.nonVegParcel + (m.kidsNonVegParcel || 0) : 0;
+  const mealVegParcel = m ? m.vegParcel + (m.kidsVegParcel || 0) + (m.guestsVegParcel || 0) : 0;
+  const mealNonVegParcel = m ? m.nonVegParcel + (m.kidsNonVegParcel || 0) + (m.guestsNonVegParcel || 0) : 0;
   const mealTotalParcel = mealVegParcel + mealNonVegParcel;
-  const mealVegParcelTaken = m ? m.vegParcelTaken + (m.kidsVegParcelTaken || 0) : 0;
-  const mealNonVegParcelTaken = m ? m.nonVegParcelTaken + (m.kidsNonVegParcelTaken || 0) : 0;
+  const mealVegParcelTaken = m ? m.vegParcelTaken + (m.kidsVegParcelTaken || 0) + (m.guestsVegParcelTaken || 0) : 0;
+  const mealNonVegParcelTaken = m ? m.nonVegParcelTaken + (m.kidsNonVegParcelTaken || 0) + (m.guestsNonVegParcelTaken || 0) : 0;
   const mealTotalParcelTaken = mealVegParcelTaken + mealNonVegParcelTaken;
 
   const colorScheme = theme.cardColors[0];

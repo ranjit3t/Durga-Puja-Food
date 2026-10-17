@@ -592,7 +592,7 @@ export function HomeScreen() {
               accessibilityRole="button"
               accessibilityLabel={UI_TEXT.freeMealButton}
               onPress={() => {
-                if (userRole === UserRole.VENDOR && currentMealInfo) {
+                if ((userRole === UserRole.ADMIN || userRole === UserRole.VENDOR) && currentMealInfo) {
                   setIsQuickFreeMealMode(true);
                 } else {
                   setIsQuickFreeMealMode(false);

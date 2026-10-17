@@ -280,6 +280,10 @@ The application enforces strict role-based access control (RBAC) distinguishing 
 9. **Auto-Populated Discrepancy Amount Display (`paymentUtils.ts`, `SubscriptionForm.tsx`, `SubscriptionPaymentSection.tsx`, `DetailsScreen.tsx`)**:
    - Reuses unified discrepancy logic (`calculatePassDiscrepancy`) across the discrepancy report, directory filters, pass cards, View Pass, and Add/Edit Pass.
    - Displays exact auto-populated Deficiency (`Deficiency: ₹X`) or Excess (`Excess: ₹X`) banners in the Payment Section and summary cards whenever an amount discrepancy > ₹0 occurs.
+10. **Guest Integration in Analytics & Dashboard Summaries, Free Meal Payment Breakdowns & Non-Overwriting Edit Pass Payments (`DayWiseReport.tsx`, `MealMetricGrid.tsx`, `DashboardScreen.tsx`, `paymentUtils.ts`, `MealReportItemCard.tsx`, `DayWisePaymentReport.tsx`, `SubscriptionForm.tsx`)**:
+    - Guest demands, served counts, and parcels are fully integrated into day-wise report meal statistics (`DayWiseReport`), meal metric grids (`MealMetricGrid`), and dashboard meal sections (`DashboardScreen`), ensuring 100% parity between analytics summary cards and live kitchen dashboards.
+    - `calculateDetailedPaymentReportData` integrates free meal plate counts (`freeMealPortionCount`) into `MealPaymentDetail` and `DayPaymentDetail`, rendering free meal breakdowns on payment report cards.
+    - Pass editing auto-population preserves all existing payment entries without overwriting them, appending a new payment entry for any balance increases up to the 5-entry maximum limit.
 
 ---
 

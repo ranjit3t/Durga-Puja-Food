@@ -766,6 +766,7 @@ export interface MealPaymentDetail {
   adultPortionCount: number;
   kidsPortionCount: number;
   guestsPortionCount: number;
+  freeMealPortionCount: number;
 }
 
 export interface DayPaymentDetail {
@@ -780,6 +781,7 @@ export interface DayPaymentDetail {
   adultPortionCount: number;
   kidsPortionCount: number;
   guestsPortionCount: number;
+  freeMealPortionCount: number;
 }
 
 export interface DetailedPaymentBreakdown {
@@ -1150,6 +1152,7 @@ export function calculateDetailedPaymentReportData(
       adultPortionCount: number;
       kidsPortionCount: number;
       guestsPortionCount: number;
+      freeMealPortionCount: number;
     }
   > = {};
 
@@ -1171,6 +1174,7 @@ export function calculateDetailedPaymentReportData(
         adultPortionCount: 0,
         kidsPortionCount: 0,
         guestsPortionCount: 0,
+        freeMealPortionCount: 0,
       };
     });
   });
@@ -1237,6 +1241,7 @@ export function calculateDetailedPaymentReportData(
           mealMap[key].portionCount += freeTotal;
           mealMap[key].dineInCount += freeDineInPlates;
           mealMap[key].parcelCount += freeParcelPlates + freeUnservedPlates;
+          mealMap[key].freeMealPortionCount += freeTotal;
         }
       }
     });
@@ -1256,6 +1261,7 @@ export function calculateDetailedPaymentReportData(
     let dayAdultPortionCount = 0;
     let dayKidsPortionCount = 0;
     let dayGuestsPortionCount = 0;
+    let dayFreeMealPortionCount = 0;
 
     mealTypes.forEach((mType) => {
       const key = `${dayId}_${mType}`;
@@ -1272,6 +1278,7 @@ export function calculateDetailedPaymentReportData(
         adultPortionCount: 0,
         kidsPortionCount: 0,
         guestsPortionCount: 0,
+        freeMealPortionCount: 0,
       };
 
       const detail: MealPaymentDetail = {
@@ -1289,6 +1296,7 @@ export function calculateDetailedPaymentReportData(
         adultPortionCount: item.adultPortionCount,
         kidsPortionCount: item.kidsPortionCount,
         guestsPortionCount: item.guestsPortionCount,
+        freeMealPortionCount: item.freeMealPortionCount,
       };
 
       mealWisePayments.push(detail);
@@ -1303,6 +1311,7 @@ export function calculateDetailedPaymentReportData(
       dayAdultPortionCount += detail.adultPortionCount;
       dayKidsPortionCount += detail.kidsPortionCount;
       dayGuestsPortionCount += detail.guestsPortionCount;
+      dayFreeMealPortionCount += detail.freeMealPortionCount;
     });
 
     dayWisePaymentsMap[dayId] = {
@@ -1317,6 +1326,7 @@ export function calculateDetailedPaymentReportData(
       adultPortionCount: dayAdultPortionCount,
       kidsPortionCount: dayKidsPortionCount,
       guestsPortionCount: dayGuestsPortionCount,
+      freeMealPortionCount: dayFreeMealPortionCount,
     };
   });
 

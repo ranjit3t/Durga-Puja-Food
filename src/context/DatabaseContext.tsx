@@ -604,24 +604,18 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
 
     if (field === "freeMealVeg" || field === "freeMealNonVeg") {
       (updatedMeal as any)[field] = value;
-    } else if (field === "freeMealVegTaken" || field === "freeMealNonVegTaken") {
-      const oldDineIn = (updatedMeal as any)[field] || 0;
-      const delta = value - oldDineIn;
-      (updatedMeal as any)[field] = value;
-      if (delta > 0) {
-        const parcelField = field === "freeMealVegTaken" ? "freeMealVegParcelTaken" : "freeMealNonVegParcelTaken";
-        const currentParcel = (updatedMeal as any)[parcelField] || 0;
-        (updatedMeal as any)[parcelField] = Math.max(0, currentParcel - delta);
-      }
-    } else if (field === "freeMealVegParcelTaken" || field === "freeMealNonVegParcelTaken") {
-      const oldParcel = (updatedMeal as any)[field] || 0;
-      const delta = value - oldParcel;
-      (updatedMeal as any)[field] = value;
-      if (delta > 0) {
-        const dineInField = field === "freeMealVegParcelTaken" ? "freeMealVegTaken" : "freeMealNonVegTaken";
-        const currentDineIn = (updatedMeal as any)[dineInField] || 0;
-        (updatedMeal as any)[dineInField] = Math.max(0, currentDineIn - delta);
-      }
+    } else if (field === "freeMealVegTaken") {
+      const maxDine = Math.max(0, (updatedMeal.freeMealVeg || 0) - (updatedMeal.freeMealVegParcelTaken || 0));
+      updatedMeal.freeMealVegTaken = Math.min(value, maxDine);
+    } else if (field === "freeMealNonVegTaken") {
+      const maxDine = Math.max(0, (updatedMeal.freeMealNonVeg || 0) - (updatedMeal.freeMealNonVegParcelTaken || 0));
+      updatedMeal.freeMealNonVegTaken = Math.min(value, maxDine);
+    } else if (field === "freeMealVegParcelTaken") {
+      const maxParc = Math.max(0, (updatedMeal.freeMealVeg || 0) - (updatedMeal.freeMealVegTaken || 0));
+      updatedMeal.freeMealVegParcelTaken = Math.min(value, maxParc);
+    } else if (field === "freeMealNonVegParcelTaken") {
+      const maxParc = Math.max(0, (updatedMeal.freeMealNonVeg || 0) - (updatedMeal.freeMealNonVegTaken || 0));
+      updatedMeal.freeMealNonVegParcelTaken = Math.min(value, maxParc);
     } else if (field.startsWith("fmc_") || field.startsWith("gc_")) {
       const varId = field.replace("fmc_", "").replace("gc_", "");
       if (varId === "veg_default") {
@@ -636,57 +630,37 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
     } else if (field.startsWith("fmt_") || field.startsWith("gt_")) {
       const varId = field.replace("fmt_", "").replace("gt_", "");
       if (varId === "veg_default") {
-        const oldDineIn = updatedMeal.freeMealVegTaken || 0;
-        const delta = value - oldDineIn;
-        updatedMeal.freeMealVegTaken = value;
-        if (delta > 0) {
-          updatedMeal.freeMealVegParcelTaken = Math.max(0, (updatedMeal.freeMealVegParcelTaken || 0) - delta);
-        }
+        const maxDine = Math.max(0, (updatedMeal.freeMealVeg || 0) - (updatedMeal.freeMealVegParcelTaken || 0));
+        updatedMeal.freeMealVegTaken = Math.min(value, maxDine);
       } else if (varId === "nonVeg_default") {
-        const oldDineIn = updatedMeal.freeMealNonVegTaken || 0;
-        const delta = value - oldDineIn;
-        updatedMeal.freeMealNonVegTaken = value;
-        if (delta > 0) {
-          updatedMeal.freeMealNonVegParcelTaken = Math.max(0, (updatedMeal.freeMealNonVegParcelTaken || 0) - delta);
-        }
+        const maxDine = Math.max(0, (updatedMeal.freeMealNonVeg || 0) - (updatedMeal.freeMealNonVegParcelTaken || 0));
+        updatedMeal.freeMealNonVegTaken = Math.min(value, maxDine);
       } else {
         const takenCounts = { ...(updatedMeal.freeMealTakenCounts || {}) };
-        const parcelTakenCounts = { ...(updatedMeal.freeMealParcelTakenCounts || {}) };
-        const oldDineIn = Number(takenCounts[varId]) || 0;
-        const delta = value - oldDineIn;
-        takenCounts[varId] = value;
-        if (delta > 0) {
-          parcelTakenCounts[varId] = Math.max(0, (Number(parcelTakenCounts[varId]) || 0) - delta);
-        }
+        const parcelTakenCounts = updatedMeal.freeMealParcelTakenCounts || {};
+        const counts = updatedMeal.freeMealCounts || {};
+        const planned = Number(counts[varId]) || 0;
+        const parcel = Number(parcelTakenCounts[varId]) || 0;
+        const maxDine = Math.max(0, planned - parcel);
+        takenCounts[varId] = Math.min(value, maxDine);
         updatedMeal.freeMealTakenCounts = takenCounts;
-        updatedMeal.freeMealParcelTakenCounts = parcelTakenCounts;
       }
     } else if (field.startsWith("fmp_") || field.startsWith("gpt_")) {
       const varId = field.replace("fmp_", "").replace("gpt_", "");
       if (varId === "veg_default") {
-        const oldParcel = updatedMeal.freeMealVegParcelTaken || 0;
-        const delta = value - oldParcel;
-        updatedMeal.freeMealVegParcelTaken = value;
-        if (delta > 0) {
-          updatedMeal.freeMealVegTaken = Math.max(0, (updatedMeal.freeMealVegTaken || 0) - delta);
-        }
+        const maxParc = Math.max(0, (updatedMeal.freeMealVeg || 0) - (updatedMeal.freeMealVegTaken || 0));
+        updatedMeal.freeMealVegParcelTaken = Math.min(value, maxParc);
       } else if (varId === "nonVeg_default") {
-        const oldParcel = updatedMeal.freeMealNonVegParcelTaken || 0;
-        const delta = value - oldParcel;
-        updatedMeal.freeMealNonVegParcelTaken = value;
-        if (delta > 0) {
-          updatedMeal.freeMealNonVegTaken = Math.max(0, (updatedMeal.freeMealNonVegTaken || 0) - delta);
-        }
+        const maxParc = Math.max(0, (updatedMeal.freeMealNonVeg || 0) - (updatedMeal.freeMealNonVegTaken || 0));
+        updatedMeal.freeMealNonVegParcelTaken = Math.min(value, maxParc);
       } else {
-        const takenCounts = { ...(updatedMeal.freeMealTakenCounts || {}) };
+        const takenCounts = updatedMeal.freeMealTakenCounts || {};
         const parcelTakenCounts = { ...(updatedMeal.freeMealParcelTakenCounts || {}) };
-        const oldParcel = Number(parcelTakenCounts[varId]) || 0;
-        const delta = value - oldParcel;
-        parcelTakenCounts[varId] = value;
-        if (delta > 0) {
-          takenCounts[varId] = Math.max(0, (Number(takenCounts[varId]) || 0) - delta);
-        }
-        updatedMeal.freeMealTakenCounts = takenCounts;
+        const counts = updatedMeal.freeMealCounts || {};
+        const planned = Number(counts[varId]) || 0;
+        const dineIn = Number(takenCounts[varId]) || 0;
+        const maxParc = Math.max(0, planned - dineIn);
+        parcelTakenCounts[varId] = Math.min(value, maxParc);
         updatedMeal.freeMealParcelTakenCounts = parcelTakenCounts;
       }
     } else {

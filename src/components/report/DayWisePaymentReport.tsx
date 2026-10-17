@@ -131,11 +131,12 @@ export function DayWisePaymentReport({
                       {dayParcelCount > 0
                         ? ` (${dayDineInCount} ${UI_TEXT.dineIn}, ${dayParcelCount} ${UI_TEXT.parcel})`
                         : ` (${dayDineInCount || dayPortions} ${UI_TEXT.dineIn})`}
-                      {(dayDetail.adultPortionCount || dayDetail.kidsPortionCount || dayDetail.guestsPortionCount) ? (
+                      {(dayDetail.adultPortionCount || dayDetail.kidsPortionCount || dayDetail.guestsPortionCount || dayDetail.freeMealPortionCount) ? (
                         ` [${[
                           dayDetail.adultPortionCount ? `${dayDetail.adultPortionCount} ${dayDetail.kidsPortionCount ? UI_TEXT.adults : UI_TEXT.members}` : null,
                           dayDetail.kidsPortionCount ? `${dayDetail.kidsPortionCount} ${UI_TEXT.kids}` : null,
                           dayDetail.guestsPortionCount ? `${dayDetail.guestsPortionCount} ${UI_TEXT.guests}` : null,
+                          dayDetail.freeMealPortionCount ? `${dayDetail.freeMealPortionCount} ${UI_TEXT.freeMeal}` : null,
                         ].filter(Boolean).join(", ")}]`
                       ) : ""}
                     </Text>
@@ -149,11 +150,12 @@ export function DayWisePaymentReport({
                   if (mPortions === 0) return null;
                   const mParcel = mDetail?.parcelCount ?? 0;
                   const mDineIn = mDetail?.dineInCount ?? mPortions;
-                  const mCategoryStr = (mDetail?.adultPortionCount || mDetail?.kidsPortionCount || mDetail?.guestsPortionCount)
+                  const mCategoryStr = (mDetail?.adultPortionCount || mDetail?.kidsPortionCount || mDetail?.guestsPortionCount || mDetail?.freeMealPortionCount)
                     ? ` [${[
                         mDetail?.adultPortionCount ? `${mDetail.adultPortionCount} ${mDetail?.kidsPortionCount ? UI_TEXT.adults : UI_TEXT.members}` : null,
                         mDetail?.kidsPortionCount ? `${mDetail.kidsPortionCount} ${UI_TEXT.kids}` : null,
                         mDetail?.guestsPortionCount ? `${mDetail.guestsPortionCount} ${UI_TEXT.guests}` : null,
+                        mDetail?.freeMealPortionCount ? `${mDetail.freeMealPortionCount} ${UI_TEXT.freeMeal}` : null,
                       ].filter(Boolean).join(", ")}]`
                     : "";
 

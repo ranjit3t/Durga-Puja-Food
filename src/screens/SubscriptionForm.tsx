@@ -1100,45 +1100,24 @@ export function SubscriptionForm() {
 
     // Case 2: Editing an existing pass with 1+ non-zero payment entries (lockIdentity && hasNonZeroPayment)
     if (lockIdentity && hasNonZeroPayment && !isManualAmount) {
-      const baseSum = basePaymentSnapshot.baseSum;
       const defaultMode = enabledMethods.includes(PaymentMode.UPI)
         ? PaymentMode.UPI
         : (enabledMethods[0] as any) || PaymentMode.UPI;
 
-      const autoIndex = payments.findIndex((p) => p.isAutoExcess);
-      const hasAutoEntry = autoIndex !== -1;
+      const currentSum = payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
 
-      if (total > baseSum) {
-        const excess = total - baseSum;
-        if (hasAutoEntry) {
-          // Update existing auto excess entry amount
-          const currAmount = payments[autoIndex]?.amount || UI_TEXT.zero;
-          if (currAmount !== String(excess)) {
-            const updated = [...payments];
-            updated[autoIndex] = {
-              ...updated[autoIndex],
+      if (total > currentSum) {
+        const excess = total - currentSum;
+        if (payments.length < 5) {
+          setPayments([
+            ...payments,
+            {
               amount: String(excess),
-            };
-            setPayments(updated);
-          }
-        } else {
-          // Add new auto excess entry if under 5 payments
-          if (payments.length < 5) {
-            setPayments([
-              ...payments,
-              {
-                amount: String(excess),
-                mode: defaultMode,
-                transactionId: "",
-                isAutoExcess: true,
-              },
-            ]);
-          }
-        }
-      } else if (total <= baseSum) {
-        // If auto excess entry exists and total is now <= baseSum, remove it
-        if (hasAutoEntry) {
-          setPayments(payments.filter((_, idx) => idx !== autoIndex));
+              mode: defaultMode,
+              transactionId: "",
+              isAutoExcess: true,
+            },
+          ]);
         }
       }
     }
