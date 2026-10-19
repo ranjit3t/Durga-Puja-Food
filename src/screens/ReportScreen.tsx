@@ -529,6 +529,7 @@ export function ReportScreen() {
               dayConfig={dayConfig}
               onSelectFlat={onSelectFlat}
               kidsEnabled={!!kidsEnabled}
+              guestsEnabled={!!guestsEnabled}
             />
           )}
 

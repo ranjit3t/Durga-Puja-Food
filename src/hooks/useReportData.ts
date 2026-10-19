@@ -631,8 +631,12 @@ export function useReportData(
       .map((sub) => {
         const slots = sub.mealSlots[selectedDayId] || [];
         const taken = sub.takenByPerson[selectedDayId] || [];
+        const adultCount = sub.peopleCount || 0;
+        const kCount = kidsEnabled ? (sub.kidsCount || 0) : 0;
+        const gCount = guestsEnabled ? (sub.guestsCount || 0) : 0;
 
         let vegNotTaken = 0, nonVegNotTaken = 0;
+        let adultsNotTaken = 0, kidsNotTaken = 0, guestsNotTaken = 0;
 
         slots.forEach((s: any, idx: number) => {
           if (!s) return;
@@ -649,6 +653,17 @@ export function useReportData(
           if (!isTaken) {
             if (diet === DietType.VEG) vegNotTaken++;
             else if (diet === DietType.NON_VEG) nonVegNotTaken++;
+
+            const isKid = kidsEnabled && idx >= adultCount && idx < adultCount + kCount;
+            const isGuest = guestsEnabled && idx >= adultCount + kCount;
+
+            if (isGuest) {
+              guestsNotTaken++;
+            } else if (isKid) {
+              kidsNotTaken++;
+            } else {
+              adultsNotTaken++;
+            }
           }
         });
 
@@ -662,12 +677,14 @@ export function useReportData(
           count: vegNotTaken + nonVegNotTaken,
           veg: vegNotTaken,
           nonVeg: nonVegNotTaken,
-          kids: sub.kidsCount || 0,
+          adults: adultsNotTaken,
+          kids: kidsNotTaken,
+          guests: guestsNotTaken,
         };
       })
       .filter((item) => item.count > 0)
       .sort((a, b) => (a.block || "").localeCompare(b.block || "", undefined, { numeric: true, sensitivity: 'base' }) || (a.flat || "").localeCompare(b.flat || "", undefined, { numeric: true, sensitivity: 'base' }));
-  }, [subscriptions, dayConfig]);
+  }, [subscriptions, dayConfig, kidsEnabled, guestsEnabled]);
 
   const getMembersMealData = useCallback((selectedDayId: string, selectedMealType: MealType, personCategory: "all" | "adult" | "kids" | "guests" = "all") => {
     const dayConf = (dayConfig || []).find(d => d.id === selectedDayId);

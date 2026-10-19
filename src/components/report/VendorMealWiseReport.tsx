@@ -192,14 +192,14 @@ export function VendorMealWiseReport({
 
       const freeVegPlanned = (freeMealEnabled && vEnabled) ? fmCounts.freeMealVeg : 0;
       const freeNonVegPlanned = (freeMealEnabled && nvEnabled) ? fmCounts.freeMealNonVeg : 0;
-      const freeVegDineServed = (freeMealEnabled && vEnabled) ? fmCounts.freeMealVegTaken : 0;
-      const freeNonVegDineServed = (freeMealEnabled && nvEnabled) ? fmCounts.freeMealNonVegTaken : 0;
-      const freeVegParcelServed = (freeMealEnabled && vEnabled) ? fmCounts.freeMealVegParcelTaken : 0;
-      const freeNonVegParcelServed = (freeMealEnabled && nvEnabled) ? fmCounts.freeMealNonVegParcelTaken : 0;
+      const freeVegParcelServed = (freeMealEnabled && vEnabled) ? (fmCounts.freeMealVegParcelTaken || 0) : 0;
+      const freeNonVegParcelServed = (freeMealEnabled && nvEnabled) ? (fmCounts.freeMealNonVegParcelTaken || 0) : 0;
+      const freeVegDineServed = (freeMealEnabled && vEnabled) ? Math.max(0, (fmCounts.freeMealVegTaken || 0) - freeVegParcelServed) : 0;
+      const freeNonVegDineServed = (freeMealEnabled && nvEnabled) ? Math.max(0, (fmCounts.freeMealNonVegTaken || 0) - freeNonVegParcelServed) : 0;
 
       const freeDineExp = (freeVegPlanned * defAdultVegVendor) + (freeNonVegPlanned * defAdultNvVendor);
       const freeDineAct = (freeVegDineServed * defAdultVegVendor) + (freeNonVegDineServed * defAdultNvVendor);
-      const freeParcelAct = (freeVegParcelServed * (defAdultVegVendor + defAdultVegParcelVendor)) + (freeNonVegParcelServed * (defAdultNvVendor + defAdultNvParcelVendor));
+      const freeParcelAct = (freeVegParcelServed * defAdultVegParcelVendor) + (freeNonVegParcelServed * defAdultNvParcelVendor);
 
       seasonAdultDineSub += adultDineSub; seasonAdultParcelSub += adultParcelSub;
       seasonAdultDineExp += adultDineExp; seasonAdultParcelExp += adultParcelExp;

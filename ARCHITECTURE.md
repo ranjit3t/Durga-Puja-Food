@@ -118,6 +118,11 @@ graph TD
 - Configured `FlatList` virtualization parameters (`initialNumToRender={12}`, `maxToRenderPerBatch={10}`, `windowSize={5}`, `removeClippedSubviews={Platform.OS === 'android'}`) for smooth 60 FPS scrolling through 10,000 passes.
 - Added natural alphanumeric sort toggle button (`isAscending ? blockCompare : -blockCompare`) sorting by Block then Flat ascending or descending.
 
+### Q. Pending Report Red Summary Card & Restructured Pass-Wise Payment Report (`PendingReport.tsx`, `PaymentSummaryReport.tsx`, `useReportData.ts`)
+- **Pending Report Red Summary Card**: Added a prominent red summary card (`backgroundColor: theme.colors.primary`) at the top of the Pending (Not Taken) Report detailing total missed passes (flats) and breaking down kids, adults, and guests missed based on feature applicability (`kidsEnabled`, `guestsEnabled`).
+- **Pass-Wise Payment Report & Anti-Clash Mobile Wrapping**: Restructured the Payment Summary Report from separate mode-grouped sections to a structured pass-wise list. Each paid pass shows its total amount and an ordered payment method breakup (UPI / Cash / Bank Transfer), with transaction IDs and received-by fields wrapped properly on mobile viewports (`flexWrap: "wrap"`, `numberOfLines={2}`) to prevent text clashing with payment amounts.
+- **100% WCAG 2.1 AA Accessibility & Localization**: Full accessibility compliance (`accessible={true}`, `accessibilityRole="summary"`, `accessibilityLabel`, `accessibilityHint`) and zero hardcoding (`UI_TEXT` localization).
+
 ### K. Real-Time Activity Logs & Team Notes Stream (`ActivityLogScreen.tsx`, `NotesScreen.tsx`)
 - `ActivityLogScreen` (via `useActivityLogs()`) and `NotesScreen` (via `useNotes()`) connect directly to decoupled sub-contexts.
 - In default descending mode (`b.timestamp - a.timestamp`), newly incoming real-time logs and team notes insert automatically at **Index 0 (the very top of the list)** in sub-50ms.

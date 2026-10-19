@@ -144,6 +144,11 @@ The application follows a **Serverless Layered Architecture** built on the **Exp
 - **Passcode Preservation on Edit**: When editing an existing pass (`lockIdentity === true`), the passcode is strictly preserved (`value.passcode`).
 - **Live Commit-Time Uniqueness Re-Validation**: During parallel multi-device Add Pass operations (`!lockIdentity`), the system queries live database subscriptions at commit time, automatically re-generating collision-free passcodes when simultaneous submissions occur.
 
+### Q. Pending Report Red Summary Card & Restructured Pass-Wise Payment Report (`PendingReport.tsx`, `PaymentSummaryReport.tsx`, `useReportData.ts`)
+- **Pending Report Red Summary Card**: Added a prominent red summary card (`backgroundColor: theme.colors.primary`) at the top of the Pending (Not Taken) Report detailing total missed passes (flats) and breaking down kids, adults, and guests missed based on feature applicability (`kidsEnabled`, `guestsEnabled`).
+- **Pass-Wise Payment Report & Anti-Clash Mobile Wrapping**: Restructured the Payment Summary Report from separate mode-grouped sections to a structured pass-wise list. Each paid pass shows its total amount and an ordered payment method breakup (UPI / Cash / Bank Transfer), with transaction IDs and received-by fields wrapped properly on mobile viewports (`flexWrap: "wrap"`, `numberOfLines={2}`) to prevent text clashing with payment amounts.
+- **100% WCAG 2.1 AA Accessibility & Localization**: Full accessibility compliance (`accessible={true}`, `accessibilityRole="summary"`, `accessibilityLabel`, `accessibilityHint`) and zero hardcoding (`UI_TEXT` localization).
+
 ### G. Vendor Meal-Wise Report & Parcel Pricing Engine (`VendorMealWiseReport.tsx`, `MealMenuEditor.tsx`, `MealDisplay.tsx`, `domain.ts`, `repository.ts`)
 - **Vendor Price & Vendor Parcel Price Concept**: Vendor pricing (`vendorPrice` / `vendorVegPrice` / `vendorNonVegPrice`) and vendor parcel pricing (`vendorParcelPrice` / `vendorVegParcelPrice` / `vendorNonVegParcelPrice`) represent direct vendor costs.
 - **Non-Admin View Menu Restriction**: Vendor meal prices (`vendorPrice`) and vendor parcel prices (`vendorParcelPrice`) are strictly hidden for non-admin users (`!isAdmin`) on the View Menu page (`MealDisplay.tsx`).

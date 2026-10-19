@@ -78,30 +78,6 @@ export function PaymentSummaryReport({
   const { theme } = useAppTheme();
   const [activeTab, setActiveTab] = useState<PaymentTab>(PaymentTab.SUMMARY);
 
-  // Group individual payment entries by mode from ALL subscriptions
-  const transactionsByMode = (data.summary || []).map((s) => {
-    const entries: any[] = [];
-    (data.details || []).forEach((flat) => {
-      flat.payments.forEach((p) => {
-        if (p.mode === s.mode) {
-          entries.push({
-            ...p,
-            block: flat.block,
-            flat: flat.flat,
-            flatId: flat.id,
-          });
-        }
-      });
-    });
-    // Sort entries by block/flat naturally
-    entries.sort(
-      (a, b) =>
-        (a.block || "").localeCompare(b.block || "", undefined, { numeric: true, sensitivity: "base" }) ||
-        (a.flat || "").localeCompare(b.flat || "", undefined, { numeric: true, sensitivity: "base" })
-    );
-    return { mode: s.mode, total: s.total, entries };
-  });
-
   const discrepancyCount = data.discrepancies ? data.discrepancies.length : 0;
 
   const foodBreakdown = [
@@ -334,108 +310,126 @@ export function PaymentSummaryReport({
             </View>
           </View>
 
-          {/* 2. Mode-Specific Transaction Detailed Subsections */}
-          <View style={{ gap: 32 }}>
-            {transactionsByMode.map((group, groupIdx) => {
-              if (group.entries.length === 0) return null;
-              const groupColor = theme.cardColors[groupIdx % theme.cardColors.length];
+          {/* 2. Pass-Wise Payment Details List */}
+          <View style={{ gap: 12 }}>
+            <Text style={[styles.sectionTitle, { fontSize: 16, color: theme.colors.textPrimary, textTransform: "uppercase" }]}>
+              {UI_TEXT.subscriptions} ({data.details.length} {UI_TEXT.paidPasses || "Paid Passes"})
+            </Text>
 
-              return (
-                <View key={group.mode} style={{ gap: 12 }}>
-                  {/* Subsection Header */}
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      paddingHorizontal: 4,
-                      borderLeftWidth: 4,
-                      borderLeftColor: groupColor.accent,
-                      paddingLeft: 12,
-                    }}
+            <View style={{ gap: 10 }}>
+              {(data.details || []).map((flat, flatIdx) => {
+                const colorScheme = theme.cardColors[flatIdx % theme.cardColors.length];
+
+                return (
+                  <Pressable
+                    key={flat.id}
+                    onPress={() => onSelectFlat && onSelectFlat(flat.id)}
+                    accessible={true}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${flat.block}${UI_TEXT.hyphen}${flat.flat}, ${UI_TEXT.total}: ${UI_TEXT.rs}${flat.total.toFixed(0)}`}
+                    accessibilityHint={UI_TEXT.viewPassHint}
+                    style={({ pressed }) => [
+                      styles.dashboardCard,
+                      {
+                        backgroundColor: colorScheme.bg,
+                        borderColor: colorScheme.border,
+                        borderWidth: 1.5,
+                        marginBottom: 0,
+                        padding: 14,
+                        gap: 10,
+                      },
+                      pressed && { opacity: 0.7 },
+                    ]}
                   >
-                    <View>
-                      <Text style={[styles.sectionTitle, { fontSize: 16, color: theme.colors.textPrimary, textTransform: "uppercase" }]}>
-                        {getPaymentModeLabel(group.mode)}
-                      </Text>
-                      <Text style={{ fontSize: 11, fontWeight: "700", color: theme.colors.textSecondary }}>
-                        {group.entries.length} {UI_TEXT.transactionsLabel}
-                      </Text>
-                    </View>
-                    <View
-                      style={[styles.pill, { backgroundColor: groupColor.accentLight, height: 26, paddingHorizontal: 12, borderRadius: 13 }]}
-                    >
-                      <Text style={[styles.pillText, { color: groupColor.accent, fontSize: 12, fontWeight: "900" }]}>
-                        {UI_TEXT.rs} {group.total.toFixed(0)}
-                      </Text>
-                    </View>
-                  </View>
+                    {/* Pass Header: Block-Flat & Pass Total Amount */}
+                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 12, borderBottomWidth: flat.payments.length > 0 ? 1 : 0, borderBottomColor: colorScheme.border, paddingBottom: flat.payments.length > 0 ? 8 : 0 }}>
+                      <View style={{ flex: 1, minWidth: 120 }}>
+                        <Text style={[styles.dashboardDay, { color: colorScheme.accent, fontSize: 18 }]}>
+                          {flat.block}
+                          {UI_TEXT.hyphen}
+                          {flat.flat}
+                        </Text>
+                        <Text style={{ fontSize: 11, fontWeight: "700", color: theme.colors.textSecondary, marginTop: 2 }}>
+                          {flat.peopleCount} {flat.peopleCount === 1 ? UI_TEXT.personSuffix : UI_TEXT.personsSuffix}
+                        </Text>
+                      </View>
 
-                  {/* Individual Transaction Entries */}
-                  <View style={{ gap: 10 }}>
-                    {group.entries.map((entry, idx) => (
-                      <Pressable
-                        key={`${entry.flatId}-${idx}`}
-                        onPress={() => onSelectFlat && onSelectFlat(entry.flatId)}
-                        accessible={true}
-                        accessibilityRole="button"
-                        accessibilityLabel={`${entry.block}${UI_TEXT.hyphen}${entry.flat}${UI_TEXT.comma}${UI_TEXT.space}${UI_TEXT.rs}${parseFloat(entry.amount).toFixed(0)}`}
-                        accessibilityHint={UI_TEXT.viewPassHint}
-                        style={({ pressed }) => [
-                          styles.dashboardCard,
-                          {
-                            backgroundColor: theme.colors.surfaceDark + (theme.themeType === AppThemeMode.DARK ? "66" : "80"),
-                            borderColor: theme.colors.border,
-                            borderWidth: 1,
-                            marginBottom: 0,
-                            paddingVertical: 12,
-                            paddingHorizontal: 16,
-                          },
-                          pressed && { opacity: 0.7, backgroundColor: groupColor.bg },
-                        ]}
-                      >
-                        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                          <View style={{ flex: 1 }}>
-                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                              <View style={{ width: 4, height: 16, borderRadius: 2, backgroundColor: groupColor.accent }} />
-                              <Text style={{ fontSize: 18, fontWeight: "900", color: theme.colors.textPrimary }}>
-                                {entry.block}
-                                {UI_TEXT.hyphen}
-                                {entry.flat}
+                      <View style={{ alignItems: "flex-end", flexShrink: 0 }}>
+                        <Text style={{ fontSize: 11, fontWeight: "700", color: theme.colors.textSecondary, textTransform: "uppercase" }}>
+                          {UI_TEXT.total}
+                        </Text>
+                        <Text style={{ fontSize: 20, fontWeight: "900", color: colorScheme.accent, marginTop: 2 }}>
+                          {UI_TEXT.rs}
+                          {UI_TEXT.space}
+                          {flat.total.toFixed(0)}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* Ordered Payment Breakup Entries */}
+                    {flat.payments && flat.payments.length > 0 && (
+                      <View style={{ gap: 8, paddingTop: 4 }}>
+                        <Text style={{ fontSize: 10, fontWeight: "800", color: theme.colors.textSecondary, textTransform: "uppercase" }}>
+                          {UI_TEXT.paymentDetails}
+                        </Text>
+                        {flat.payments.map((p, pIdx) => (
+                          <View
+                            key={pIdx}
+                            style={{
+                              backgroundColor: theme.colors.surface + (theme.themeType === AppThemeMode.DARK ? "88" : "CC"),
+                              borderRadius: 10,
+                              padding: 10,
+                              borderWidth: 1,
+                              borderColor: theme.colors.border,
+                              gap: 6,
+                            }}
+                          >
+                            {/* Payment Method & Entry Amount (Wrapped properly to prevent clashing) */}
+                            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
+                              <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flex: 1, minWidth: 140 }}>
+                                <Ionicons
+                                  name={
+                                    p.mode === PaymentMode.UPI
+                                      ? "phone-portrait-outline"
+                                      : p.mode === PaymentMode.CASH
+                                      ? "cash-outline"
+                                      : "card-outline"
+                                  }
+                                  size={14}
+                                  color={colorScheme.accent}
+                                />
+                                <Text style={{ fontSize: 13, fontWeight: "800", color: theme.colors.textPrimary, flexShrink: 1 }} numberOfLines={1}>
+                                  {getPaymentModeLabel(p.mode)}
+                                </Text>
+                              </View>
+
+                              <Text style={{ fontSize: 15, fontWeight: "900", color: colorScheme.accent, flexShrink: 0 }}>
+                                {UI_TEXT.rs} {parseFloat(p.amount || "0").toFixed(0)}
                               </Text>
                             </View>
 
-                            {group.mode === PaymentMode.CASH && entry.receivedBy ? (
-                              <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 6, marginLeft: 12 }}>
+                            {/* Transaction ID or Received By (Wrapped on its own line, never clashes with amount) */}
+                            {(p.transactionId || p.receivedBy) && (
+                              <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 4, marginTop: 2, paddingLeft: 20 }}>
                                 <Text style={{ fontSize: 10, color: theme.colors.textSecondary, fontWeight: "700", textTransform: "uppercase" }}>
-                                  {UI_TEXT.receivedByLabel}{UI_TEXT.colon}
+                                  {p.mode === PaymentMode.CASH ? UI_TEXT.receivedByLabel : UI_TEXT.transactionIdLabel}:
                                 </Text>
-                                <Text style={{ fontSize: 12, color: groupColor.accent, fontWeight: "800" }}>{entry.receivedBy}</Text>
-                              </View>
-                            ) : group.mode !== PaymentMode.CASH && entry.transactionId ? (
-                              <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 6, marginLeft: 12 }}>
-                                <Text style={{ fontSize: 10, color: theme.colors.textSecondary, fontWeight: "700", textTransform: "uppercase" }}>
-                                  {UI_TEXT.transactionIdLabel}{UI_TEXT.colon}
+                                <Text
+                                  style={{ fontSize: 11, color: theme.colors.textPrimary, fontWeight: "800", flex: 1, minWidth: 120 }}
+                                  numberOfLines={2}
+                                >
+                                  {p.mode === PaymentMode.CASH ? p.receivedBy : p.transactionId}
                                 </Text>
-                                <Text style={{ fontSize: 12, color: groupColor.accent, fontWeight: "800" }}>{entry.transactionId}</Text>
                               </View>
-                            ) : null}
+                            )}
                           </View>
-
-                          <View style={{ alignItems: "flex-end" }}>
-                            <Text style={{ fontSize: 20, fontWeight: "900", color: groupColor.accent }}>
-                              {UI_TEXT.rs}
-                              {UI_TEXT.space}
-                              {parseFloat(entry.amount).toFixed(0)}
-                            </Text>
-                          </View>
-                        </View>
-                      </Pressable>
-                    ))}
-                  </View>
-                </View>
-              );
-            })}
+                        ))}
+                      </View>
+                    )}
+                  </Pressable>
+                );
+              })}
+            </View>
           </View>
         </View>
       ) : activeTab === PaymentTab.DAY_WISE ? (
