@@ -144,10 +144,11 @@ The application follows a **Serverless Layered Architecture** built on the **Exp
 - **Passcode Preservation on Edit**: When editing an existing pass (`lockIdentity === true`), the passcode is strictly preserved (`value.passcode`).
 - **Live Commit-Time Uniqueness Re-Validation**: During parallel multi-device Add Pass operations (`!lockIdentity`), the system queries live database subscriptions at commit time, automatically re-generating collision-free passcodes when simultaneous submissions occur.
 
-### Q. Pending Report Red Summary Card, Pass-Wise Payment Report & Vendor Price Free Meal Parcel Correction (`PendingReport.tsx`, `PaymentSummaryReport.tsx`, `VendorMealWiseReport.tsx`, `useReportData.ts`)
+### Q. Pending Report Red Summary Card, Pass-Wise Payment Report & Dashboard Parcel Veg/Non-Veg Breakdown (`PendingReport.tsx`, `PaymentSummaryReport.tsx`, `VendorMealWiseReport.tsx`, `DashboardScreen.tsx`, `MealMetricGrid.tsx`)
 - **Pending Report Red Summary Card**: Added a prominent red summary card (`backgroundColor: theme.colors.primary`) at the top of the Pending (Not Taken) Report detailing total missed passes (flats) and breaking down kids, adults, and guests missed based on feature applicability (`kidsEnabled`, `guestsEnabled`).
 - **Pass-Wise Payment Report & Anti-Clash Mobile Wrapping**: Restructured the Payment Summary Report from separate mode-grouped sections to a structured pass-wise list. Each paid pass shows its total amount and an ordered payment method breakup (UPI / Cash / Bank Transfer), with transaction IDs and received-by fields wrapped properly on mobile viewports (`flexWrap: "wrap"`, `numberOfLines={2}`) to prevent text clashing with payment amounts.
 - **Vendor Price Free Meal Parcel Cost Correction**: Corrected actual vendor parcel cost calculation for free meals (`freeParcelAct`) to use parcel packaging container vendor pricing (`defAdultVegParcelVendor` / `defAdultNvParcelVendor`) rather than duplicating meal prices, preventing inflated parcel service totals.
+- **Dashboard Veg & Non-Veg Parcel Breakdown**: Added explicit Vegetarian (`V`) and Non-Vegetarian (`NV`) demand and served sub-counts for Takeaway Parcels on the Event Summary Card, Current Live Meal Summary Card, and detailed Meal Metric Grid Cards when `isBothEnabled === true`.
 - **100% WCAG 2.1 AA Accessibility & Localization**: Full accessibility compliance (`accessible={true}`, `accessibilityRole="summary"`, `accessibilityLabel`, `accessibilityHint`) and zero hardcoding (`UI_TEXT` localization).
 
 ### G. Vendor Meal-Wise Report & Parcel Pricing Engine (`VendorMealWiseReport.tsx`, `MealMenuEditor.tsx`, `MealDisplay.tsx`, `domain.ts`, `repository.ts`)
@@ -290,6 +291,10 @@ The application enforces strict role-based access control (RBAC) distinguishing 
     - Guest demands, served counts, and parcels are fully integrated into day-wise report meal statistics (`DayWiseReport`), meal metric grids (`MealMetricGrid`), and dashboard meal sections (`DashboardScreen`), ensuring 100% parity between analytics summary cards and live kitchen dashboards.
     - `calculateDetailedPaymentReportData` integrates free meal plate counts (`freeMealPortionCount`) into `MealPaymentDetail` and `DayPaymentDetail`, rendering free meal breakdowns on payment report cards.
     - Pass editing auto-population preserves all existing payment entries without overwriting them, appending a new payment entry for any balance increases up to the 5-entry maximum limit.
+11. **Veg & Non-Veg Takeaway Parcel Dashboard Breakdown ([`DashboardScreen.tsx`](src/screens/DashboardScreen.tsx), [`MealMetricGrid.tsx`](src/components/dashboard/MealMetricGrid.tsx), [`DatabaseContext.tsx`](src/context/DatabaseContext.tsx))**:
+    - Added explicit Vegetarian (`V`) and Non-Vegetarian (`NV`) demand and served sub-counts for Takeaway Parcels on the **Event Summary Card**, **Current Live Meal Summary Card**, and detailed **Meal Metric Grid Cards** across both **Planned View** and **Grid View** whenever both dietary options are enabled (`isBothEnabled === true`).
+    - `dashboardData` in `DatabaseContext.tsx` pre-computes `parcelVeg`, `parcelNonVeg`, `parcelVegTaken`, and `parcelNonVegTaken` for each meal slot including free meal parcel checkouts. `DashboardMealSection` forwards these metrics directly to `MealMetricGrid`, guaranteeing zero re-calculation discrepancies across all views.
+    - Full WCAG 2.1 AA accessibility compliance (`accessible={true}`, `accessibilityRole="summary"`, `accessibilityLabel`), localized `UI_TEXT` dictionary compliance with zero hardcoded text strings, responsive flexbox wrapping (`flexWrap: "wrap"`), and mobile viewport containment.
 
 ---
 

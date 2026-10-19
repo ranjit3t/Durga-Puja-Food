@@ -319,7 +319,10 @@ export function getVarietyForChoice(choice: string | undefined, varieties: Dieta
 
 export function getMealFreeMealCounts(
   mealMenu?: MealMenu,
-  varieties?: DietaryVariety[]
+  varieties?: DietaryVariety[],
+  dayId?: string,
+  mealType?: MealType,
+  dayConfig?: ConfigDay[]
 ) {
   if (!mealMenu) {
     return {
@@ -343,45 +346,47 @@ export function getMealFreeMealCounts(
   let vegS_Parcel = 0;
   let nonVegS_Parcel = 0;
 
+  const isVegAllowed = dayId && mealType && dayConfig ? isDietaryEnabled(dayId, mealType, DietType.VEG, dayConfig) : true;
+  const isNonVegAllowed = dayId && mealType && dayConfig ? isDietaryEnabled(dayId, mealType, DietType.NON_VEG, dayConfig) : true;
+
+  // 1. Process Default Veg & Non-Veg
+  if (isVegAllowed) {
+    vegP += mealMenu.freeMealVeg || 0;
+    vegS_DineIn += mealMenu.freeMealVegTaken || 0;
+    vegS_Parcel += mealMenu.freeMealVegParcelTaken || 0;
+  }
+  if (isNonVegAllowed) {
+    nonVegP += mealMenu.freeMealNonVeg || 0;
+    nonVegS_DineIn += mealMenu.freeMealNonVegTaken || 0;
+    nonVegS_Parcel += mealMenu.freeMealNonVegParcelTaken || 0;
+  }
+
+  // 2. Process Custom Varieties (excluding veg_default & nonVeg_default)
   if (varieties && varieties.length > 0) {
+    const counts = mealMenu.freeMealCounts || {};
+    const takenCounts = mealMenu.freeMealTakenCounts || {};
+    const parcelTakenCounts = mealMenu.freeMealParcelTakenCounts || {};
+
     varieties.forEach((v) => {
-      let p = 0;
-      let sDine = 0;
-      let sParcel = 0;
-      if (v.id === "veg_default") {
-        p = mealMenu.freeMealVeg || 0;
-        sDine = mealMenu.freeMealVegTaken || 0;
-        sParcel = mealMenu.freeMealVegParcelTaken || 0;
-      } else if (v.id === "nonVeg_default") {
-        p = mealMenu.freeMealNonVeg || 0;
-        sDine = mealMenu.freeMealNonVegTaken || 0;
-        sParcel = mealMenu.freeMealNonVegParcelTaken || 0;
-      } else {
-        const counts = mealMenu.freeMealCounts;
-        const takenCounts = mealMenu.freeMealTakenCounts;
-        const parcelTakenCounts = mealMenu.freeMealParcelTakenCounts;
-        p = Number(counts?.[v.id]) || 0;
-        sDine = Number(takenCounts?.[v.id]) || 0;
-        sParcel = Number(parcelTakenCounts?.[v.id]) || 0;
-      }
+      if (v.id === "veg_default" || v.id === "nonVeg_default") return;
+
+      const isAllowed = dayId && mealType && dayConfig ? isDietaryEnabled(dayId, mealType, v.type, dayConfig) : true;
+      if (!isAllowed) return;
+
+      const p = Number(counts[v.id]) || 0;
+      const sDine = Number(takenCounts[v.id]) || 0;
+      const sParcel = Number(parcelTakenCounts[v.id]) || 0;
 
       if (v.type === DietType.VEG) {
         vegP += p;
         vegS_DineIn += sDine;
         vegS_Parcel += sParcel;
-      } else {
+      } else if (v.type === DietType.NON_VEG) {
         nonVegP += p;
         nonVegS_DineIn += sDine;
         nonVegS_Parcel += sParcel;
       }
     });
-  } else {
-    vegP = mealMenu.freeMealVeg || 0;
-    nonVegP = mealMenu.freeMealNonVeg || 0;
-    vegS_DineIn = mealMenu.freeMealVegTaken || 0;
-    nonVegS_DineIn = mealMenu.freeMealNonVegTaken || 0;
-    vegS_Parcel = mealMenu.freeMealVegParcelTaken || 0;
-    nonVegS_Parcel = mealMenu.freeMealNonVegParcelTaken || 0;
   }
 
   const dineInTotal = vegS_DineIn + nonVegS_DineIn;

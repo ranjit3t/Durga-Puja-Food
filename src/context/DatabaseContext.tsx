@@ -1066,9 +1066,9 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       const lVarieties = getMealVarieties(dayConf?.lunch, dayConf?.vegOnly);
       const dVarieties = getMealVarieties(dayConf?.dinner, dayConf?.vegOnly);
 
-      const bFC = getMealFreeMealCounts(bMenu, bVarieties);
-      const lFC = getMealFreeMealCounts(lMenu, lVarieties);
-      const dFC = getMealFreeMealCounts(dMenu, dVarieties);
+      const bFC = getMealFreeMealCounts(bMenu, bVarieties, day, MealType.BREAKFAST, dayConfig);
+      const lFC = getMealFreeMealCounts(lMenu, lVarieties, day, MealType.LUNCH, dayConfig);
+      const dFC = getMealFreeMealCounts(dMenu, dVarieties, day, MealType.DINNER, dayConfig);
 
       const initialTotals = {
         dayId: day,
@@ -1078,6 +1078,10 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
         breakfastNonVeg: 0,
         breakfastParcel: (freeMealEnabled && isMealEnabled(day, MealType.BREAKFAST, dayConfig)) ? bFC.freeMealParcelTaken : 0,
         breakfastParcelTaken: (freeMealEnabled && isMealEnabled(day, MealType.BREAKFAST, dayConfig)) ? bFC.freeMealParcelTaken : 0,
+        breakfastParcelVeg: (freeMealEnabled && isMealEnabled(day, MealType.BREAKFAST, dayConfig)) ? bFC.freeMealVegParcelTaken : 0,
+        breakfastParcelNonVeg: (freeMealEnabled && isMealEnabled(day, MealType.BREAKFAST, dayConfig)) ? bFC.freeMealNonVegParcelTaken : 0,
+        breakfastParcelVegTaken: (freeMealEnabled && isMealEnabled(day, MealType.BREAKFAST, dayConfig)) ? bFC.freeMealVegParcelTaken : 0,
+        breakfastParcelNonVegTaken: (freeMealEnabled && isMealEnabled(day, MealType.BREAKFAST, dayConfig)) ? bFC.freeMealNonVegParcelTaken : 0,
         breakfastTaken: 0,
         breakfastFreeMealVeg: (freeMealEnabled && isMealEnabled(day, MealType.BREAKFAST, dayConfig) && isDietaryEnabled(day, MealType.BREAKFAST, DietType.VEG, dayConfig)) ? bFC.freeMealVeg : 0,
         breakfastFreeMealNonVeg: (freeMealEnabled && isMealEnabled(day, MealType.BREAKFAST, dayConfig) && isDietaryEnabled(day, MealType.BREAKFAST, DietType.NON_VEG, dayConfig)) ? bFC.freeMealNonVeg : 0,
@@ -1106,6 +1110,10 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
         lunchNonVeg: 0,
         lunchParcel: (freeMealEnabled && isMealEnabled(day, MealType.LUNCH, dayConfig)) ? lFC.freeMealParcelTaken : 0,
         lunchParcelTaken: (freeMealEnabled && isMealEnabled(day, MealType.LUNCH, dayConfig)) ? lFC.freeMealParcelTaken : 0,
+        lunchParcelVeg: (freeMealEnabled && isMealEnabled(day, MealType.LUNCH, dayConfig)) ? lFC.freeMealVegParcelTaken : 0,
+        lunchParcelNonVeg: (freeMealEnabled && isMealEnabled(day, MealType.LUNCH, dayConfig)) ? lFC.freeMealNonVegParcelTaken : 0,
+        lunchParcelVegTaken: (freeMealEnabled && isMealEnabled(day, MealType.LUNCH, dayConfig)) ? lFC.freeMealVegParcelTaken : 0,
+        lunchParcelNonVegTaken: (freeMealEnabled && isMealEnabled(day, MealType.LUNCH, dayConfig)) ? lFC.freeMealNonVegParcelTaken : 0,
         lunchTaken: 0,
         lunchFreeMealVeg: (freeMealEnabled && isMealEnabled(day, MealType.LUNCH, dayConfig) && isDietaryEnabled(day, MealType.LUNCH, DietType.VEG, dayConfig)) ? lFC.freeMealVeg : 0,
         lunchFreeMealNonVeg: (freeMealEnabled && isMealEnabled(day, MealType.LUNCH, dayConfig) && isDietaryEnabled(day, MealType.LUNCH, DietType.NON_VEG, dayConfig)) ? lFC.freeMealNonVeg : 0,
@@ -1134,6 +1142,10 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
         dinnerNonVeg: 0,
         dinnerParcel: (freeMealEnabled && isMealEnabled(day, MealType.DINNER, dayConfig)) ? dFC.freeMealParcelTaken : 0,
         dinnerParcelTaken: (freeMealEnabled && isMealEnabled(day, MealType.DINNER, dayConfig)) ? dFC.freeMealParcelTaken : 0,
+        dinnerParcelVeg: (freeMealEnabled && isMealEnabled(day, MealType.DINNER, dayConfig)) ? dFC.freeMealVegParcelTaken : 0,
+        dinnerParcelNonVeg: (freeMealEnabled && isMealEnabled(day, MealType.DINNER, dayConfig)) ? dFC.freeMealNonVegParcelTaken : 0,
+        dinnerParcelVegTaken: (freeMealEnabled && isMealEnabled(day, MealType.DINNER, dayConfig)) ? dFC.freeMealVegParcelTaken : 0,
+        dinnerParcelNonVegTaken: (freeMealEnabled && isMealEnabled(day, MealType.DINNER, dayConfig)) ? dFC.freeMealNonVegParcelTaken : 0,
         dinnerTaken: 0,
         dinnerFreeMealVeg: (freeMealEnabled && isMealEnabled(day, MealType.DINNER, dayConfig) && isDietaryEnabled(day, MealType.DINNER, DietType.VEG, dayConfig)) ? dFC.freeMealVeg : 0,
         dinnerFreeMealNonVeg: (freeMealEnabled && isMealEnabled(day, MealType.DINNER, dayConfig) && isDietaryEnabled(day, MealType.DINNER, DietType.NON_VEG, dayConfig)) ? dFC.freeMealNonVeg : 0,
@@ -1196,6 +1208,13 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
 
               if (isB_ParcelOptEnabled && slots.breakfastParcel) {
                 totals.breakfastParcel += 1;
+                if (diet === DietType.VEG) {
+                  totals.breakfastParcelVeg += 1;
+                  if (taken?.breakfastParcel) totals.breakfastParcelVegTaken += 1;
+                } else {
+                  totals.breakfastParcelNonVeg += 1;
+                  if (taken?.breakfastParcel) totals.breakfastParcelNonVegTaken += 1;
+                }
                 if (taken?.breakfastParcel) totals.breakfastParcelTaken += 1;
               }
 
@@ -1246,6 +1265,13 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
 
               if (isL_ParcelOptEnabled && slots.lunchParcel) {
                 totals.lunchParcel += 1;
+                if (diet === DietType.VEG) {
+                  totals.lunchParcelVeg += 1;
+                  if (taken?.lunchParcel) totals.lunchParcelVegTaken += 1;
+                } else {
+                  totals.lunchParcelNonVeg += 1;
+                  if (taken?.lunchParcel) totals.lunchParcelNonVegTaken += 1;
+                }
                 if (taken?.lunchParcel) totals.lunchParcelTaken += 1;
               }
 
@@ -1296,6 +1322,13 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
 
               if (isD_ParcelOptEnabled && slots.dinnerParcel) {
                 totals.dinnerParcel += 1;
+                if (diet === DietType.VEG) {
+                  totals.dinnerParcelVeg += 1;
+                  if (taken?.dinnerParcel) totals.dinnerParcelVegTaken += 1;
+                } else {
+                  totals.dinnerParcelNonVeg += 1;
+                  if (taken?.dinnerParcel) totals.dinnerParcelNonVegTaken += 1;
+                }
                 if (taken?.dinnerParcel) totals.dinnerParcelTaken += 1;
               }
 

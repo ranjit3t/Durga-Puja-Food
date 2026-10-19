@@ -4,10 +4,9 @@ import { useStyles } from "../../styles";
 import { useAppTheme } from "../../theme";
 import { UI_TEXT } from "../../strings";
 import { Metric } from "../common/Metric";
-import { MealType, DietaryOption, DietaryVariety, DietType } from "../../domain";
-import { toBool } from "../../domain";
+import { MealType, DietaryOption, DietaryVariety, DietType, TakenState, toBool } from "../../domain";
 import { useCoreDatabase } from "../../context/DatabaseContext";
-import { getMealVarieties, isSpecialMeal } from "../../constants";
+import { getMealVarieties, isSpecialMeal, isParcelEnabled, isKidsParcelEnabled, isGuestsParcelEnabled, getDietTypeForChoice, getMealFreeMealCounts } from "../../constants";
 import { Ionicons } from "@expo/vector-icons";
 
 export interface MealMetricProps {
@@ -18,6 +17,10 @@ export interface MealMetricProps {
   nonVeg: number;
   parcel: number;
   parcelTaken: number;
+  parcelVeg?: number;
+  parcelNonVeg?: number;
+  parcelVegTaken?: number;
+  parcelNonVegTaken?: number;
   totalVegTaken: number;
   totalNonVegTaken: number;
   freeMealVeg: number;
@@ -71,7 +74,7 @@ export function MealMetricGrid(props: MealMetricProps) {
     totalVegTaken, totalNonVegTaken, freeMealVeg, freeMealNonVeg,
     freeMealVegTaken, freeMealNonVegTaken, totalMealTaken,
     kidsTotal, kidsTaken, kidsVeg, kidsNonVeg, kidsVegTaken, kidsNonVegTaken,
-    freeMealEnabled, kidsEnabled, isParcelEnabled, isBothEnabled,
+    freeMealEnabled, kidsEnabled, isParcelEnabled: isParcelEnabledProp, isBothEnabled,
     showPlannedOnly = false
   } = props;
 
@@ -108,7 +111,7 @@ export function MealMetricGrid(props: MealMetricProps) {
   const showKids = kidsEnabled && (kidsTotal > 0 || kidsTaken > 0);
   const showGuests = guestsEnabled && (gTotal > 0 || gTaken > 0);
   const showFreeMeals = freeMealEnabled && (freeMealTotal > 0 || freeMealTakenTotal > 0);
-  const showParcels = (isParcelEnabled ?? true) && parcel > 0;
+  const showParcels = (isParcelEnabledProp ?? true) && parcel > 0;
 
   const SectionHeader = ({ icon, title, color }: { icon: keyof typeof Ionicons.glyphMap; title: string; color?: string }) => (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6, marginBottom: 2 }}>
@@ -391,9 +394,24 @@ export function MealMetricGrid(props: MealMetricProps) {
             color={theme.colors.primary}
           />
           <View style={styles.metricGrid}>
-            <Metric icon="cube-outline" label={showPlannedOnly ? UI_TEXT.total : UI_TEXT.planned} value={parcel} color={theme.colors.primary} />
-            {!showPlannedOnly && (
-              <Metric icon="checkmark-circle-outline" label={UI_TEXT.served} value={parcelTaken} color={theme.colors.veg} />
+            {isBothEnabled ? (
+              <>
+                <Metric icon="leaf-outline" label={vegLabel} value={props.parcelVeg || 0} color={theme.colors.veg} />
+                {!showPlannedOnly && (
+                  <Metric icon="checkmark-done-outline" label={UI_TEXT.served} value={props.parcelVegTaken || 0} color={theme.colors.veg} />
+                )}
+                <Metric icon="flame-outline" label={nonVegLabel} value={props.parcelNonVeg || 0} color={theme.colors.nonVeg} />
+                {!showPlannedOnly && (
+                  <Metric icon="checkmark-done-outline" label={UI_TEXT.served} value={props.parcelNonVegTaken || 0} color={theme.colors.nonVeg} />
+                )}
+              </>
+            ) : (
+              <>
+                <Metric icon="cube-outline" label={showPlannedOnly ? UI_TEXT.total : UI_TEXT.planned} value={parcel} color={theme.colors.primary} />
+                {!showPlannedOnly && (
+                  <Metric icon="checkmark-circle-outline" label={UI_TEXT.served} value={parcelTaken} color={theme.colors.veg} />
+                )}
+              </>
             )}
           </View>
         </View>
