@@ -15,7 +15,7 @@ import { QuickFreeMealModal } from "./QuickFreeMealModal";
 import { ThemeToggleButton } from "./ThemeToggleButton";
 import { UserGreeting } from "./UserGreeting";
 import { ChatWidget } from "../chat/ChatWidget";
-import { DietaryOption, MealType } from "../../domain";
+import { DietaryOption, MealType, DietType } from "../../domain";
 import { useDatabase } from "../../context/DatabaseContext";
 import { STORY_FIXTURES, StoryMockProvider } from "../../../.storybook/storyMocks";
 
@@ -39,6 +39,82 @@ const multiCategoryDayConfig = (STORY_FIXTURES.dayConfig as any[]).map((day) =>
     ? { ...day, lunch: { ...day.lunch, kidsParcel: true, guestsParcel: true } }
     : day,
 );
+
+const varietyDayConfig = (STORY_FIXTURES.dayConfig as any[]).map((day) => {
+  if (day.id === "Shashthi") {
+    return {
+      ...day,
+      lunch: {
+        ...day.lunch,
+        enabled: true,
+        current: true,
+        parcel: true,
+        kidsParcel: true,
+        guestsParcel: true,
+        varieties: [
+          { id: "veg_default", name: "Special Veg Meal", type: DietType.VEG, price: "100", color: "#16A34A" },
+          { id: "fish_meal", name: "Fish Meal", type: DietType.NON_VEG, price: "160", color: "#2563EB" },
+          { id: "mutton_meal", name: "Mutton Meal", type: DietType.NON_VEG, price: "220", color: "#DC2626" },
+        ],
+      },
+    };
+  }
+  return day;
+});
+
+const varietyFoodMenu = {
+  ...STORY_FIXTURES.foodMenu,
+  Shashthi: {
+    ...STORY_FIXTURES.foodMenu.Shashthi,
+    lunch: {
+      ...STORY_FIXTURES.foodMenu.Shashthi.lunch,
+      veg: ["Basmati Pulao", "Paneer Butter Masala", "Chutney"],
+      nonVeg: ["Katla Kalia", "Mutton Kosha"],
+      varieties: {
+        fish_meal: { name: "Fish Meal", items: ["Pulao", "Katla Kalia", "Payesh"] },
+        mutton_meal: { name: "Mutton Meal", items: ["Pulao", "Mutton Kosha", "Payesh"] },
+      },
+    },
+  },
+};
+
+function createVarietyCheckoutPass(id: string) {
+  const choices = [
+    { choice: "veg_default", parcel: false },
+    { choice: "fish_meal", parcel: false },
+    { choice: "mutton_meal", parcel: true },
+    { choice: "fish_meal", parcel: true },
+    { choice: "mutton_meal", parcel: false },
+  ];
+
+  return {
+    ...STORY_FIXTURES.subscription,
+    id,
+    block: "B",
+    flat: "304",
+    peopleCount: 3,
+    kidsCount: 1,
+    guestsCount: 1,
+    mealSlots: {
+      Shashthi: choices.map(({ choice, parcel }) => ({
+        breakfast: DietaryOption.NONE,
+        lunch: choice,
+        dinner: DietaryOption.NONE,
+        breakfastParcel: false,
+        lunchParcel: parcel,
+        dinnerParcel: false,
+      })),
+    },
+    takenByPerson: {
+      Shashthi: choices.map(() => ({
+        breakfast: false,
+        lunch: false,
+        dinner: false,
+        lunchParcel: false,
+      })),
+    },
+  };
+}
 
 function createCheckoutPass(
   id: string,
@@ -203,6 +279,20 @@ export const QuickCheckoutPartialServiceStory = {
     [0],
   )} />,
   parameters: { storyMocks: { database: { kidsEnabled: true, guestsEnabled: true, dayConfig: multiCategoryDayConfig } } },
+};
+export const QuickCheckoutVarietyFoodStory = {
+  name: "QuickCheckoutModal/FoodVarieties (Veg, Fish, Mutton)",
+  render: () => <QuickCheckoutPass subscription={createVarietyCheckoutPass("variety-food-pass")} />,
+  parameters: {
+    storyMocks: {
+      database: {
+        kidsEnabled: true,
+        guestsEnabled: true,
+        dayConfig: varietyDayConfig,
+        foodMenu: varietyFoodMenu,
+      },
+    },
+  },
 };
 export const QuickFreeMealModalStory = { name: "QuickFreeMealModal", render: () => <QuickFreeMealExample /> };
 export const QuickFreeMealModalParcelStory = {
