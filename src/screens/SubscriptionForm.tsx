@@ -999,7 +999,7 @@ export function SubscriptionForm() {
   };
 
   const addPayment = () => {
-    if (payments.length < 5) {
+    if (payments.length < UI_TEXT.maxPayments) {
       setPayments([...payments, { amount: UI_TEXT.zero, mode: (enabledMethods[0] as any) || PaymentMode.CASH }]);
     }
   };
@@ -1108,7 +1108,7 @@ export function SubscriptionForm() {
 
       if (total > currentSum) {
         const excess = total - currentSum;
-        if (payments.length < 5) {
+        if (payments.length < UI_TEXT.maxPayments) {
           setPayments([
             ...payments,
             {

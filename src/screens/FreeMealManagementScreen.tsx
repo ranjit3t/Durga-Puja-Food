@@ -393,11 +393,11 @@ export function FreeMealManagementScreen() {
           const fmCounts = getMealFreeMealCounts(mealMenu, varieties);
 
           const vegPlanned = fmCounts.freeMealVeg;
-          const vegServed = fmCounts.freeMealVegTaken;
+          const vegServed = fmCounts.freeMealVegTaken + fmCounts.freeMealVegParcelTaken;
           const vegPending = Math.max(0, vegPlanned - vegServed);
 
           const nonVegPlanned = fmCounts.freeMealNonVeg;
-          const nonVegServed = fmCounts.freeMealNonVegTaken;
+          const nonVegServed = fmCounts.freeMealNonVegTaken + fmCounts.freeMealNonVegParcelTaken;
           const nonVegPending = Math.max(0, nonVegPlanned - nonVegServed);
 
           const totalPlanned = vegPlanned + nonVegPlanned;

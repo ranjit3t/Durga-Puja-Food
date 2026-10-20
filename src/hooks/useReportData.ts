@@ -170,8 +170,8 @@ export function useReportData(
           const fmCounts = getMealFreeMealCounts(foodMenu[day]?.[mType], getMealVarieties(dayConfig.find(d => d.id === day)?.[mType]));
           totals.freeMealVeg += fmCounts.freeMealVeg;
           totals.freeMealNonVeg += fmCounts.freeMealNonVeg;
-          totals.freeMealVegTaken += fmCounts.freeMealVegTaken;
-          totals.freeMealNonVegTaken += fmCounts.freeMealNonVegTaken;
+          totals.freeMealVegTaken += fmCounts.freeMealVegTaken + fmCounts.freeMealVegParcelTaken;
+          totals.freeMealNonVegTaken += fmCounts.freeMealNonVegTaken + fmCounts.freeMealNonVegParcelTaken;
           (totals as any).freeMealVegParcelTaken = ((totals as any).freeMealVegParcelTaken || 0) + fmCounts.freeMealVegParcelTaken;
           (totals as any).freeMealNonVegParcelTaken = ((totals as any).freeMealNonVegParcelTaken || 0) + fmCounts.freeMealNonVegParcelTaken;
         });
@@ -303,8 +303,8 @@ export function useReportData(
           const fmCounts = getMealFreeMealCounts(foodMenu[dayId]?.[mType], getMealVarieties(dayConfig.find(d => d.id === dayId)?.[mType]));
           stats.freeMealVeg += fmCounts.freeMealVeg;
           stats.freeMealNonVeg += fmCounts.freeMealNonVeg;
-          stats.freeMealVegTaken += fmCounts.freeMealVegTaken;
-          stats.freeMealNonVegTaken += fmCounts.freeMealNonVegTaken;
+          stats.freeMealVegTaken += fmCounts.freeMealVegTaken + fmCounts.freeMealVegParcelTaken;
+          stats.freeMealNonVegTaken += fmCounts.freeMealNonVegTaken + fmCounts.freeMealNonVegParcelTaken;
           (stats as any).freeMealVegParcelTaken = fmCounts.freeMealVegParcelTaken;
           (stats as any).freeMealNonVegParcelTaken = fmCounts.freeMealNonVegParcelTaken;
         }

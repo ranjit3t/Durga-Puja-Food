@@ -3,10 +3,11 @@
  * Centralized dictionary for all application text.
  */
 export const UI_TEXT = {
+  maxPayments: 10,
   appName: "FestiveDesk",
-  appVersion: "1.5.3",
+  appVersion: "1.5.6",
   appUpdateTitle: "Update Available",
-  appUpdatedMessage: "An updated version of FestiveDesk is available. Please download and install the latest build.",
+  appUpdatedMessage: "An updated version of FestiveDesk is available.\n\nCurrent Version: v{current}\nLatest Version: v{remote}\n\nPlease download and install the latest build.",
   clickHereToUpdatePrefix: "Click ",
   clickHereToUpdateLink: "here",
   clickHereToUpdateSuffix: " to update.",

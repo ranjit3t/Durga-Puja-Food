@@ -23,6 +23,8 @@ import {
   isMealDone,
   isDietaryEnabled,
   isParcelEnabled,
+  isKidsParcelEnabled,
+  isGuestsParcelEnabled,
   isMealCurrent,
   isMealInFuture,
   getSortedMealKeys,
@@ -32,7 +34,7 @@ import {
   getDietTypeForChoice,
   isSpecialMeal,
 } from "../constants";
-import { MealMenu, UserRole, ConfigDay, MealType, DietType, AppScreen, AppThemeMode, DietaryOption, DietaryVariety, Subscription, FoodMenu, toBool } from "../types";
+import { MealMenu, UserRole, ConfigDay, MealType, DietType, AppScreen, AppThemeMode, DietaryOption, DietaryVariety, Subscription, FoodMenu, toBool, TakenState } from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
@@ -317,6 +319,8 @@ const DashboardMealSection = memo(
                 <View style={{ flexDirection: "row", flexWrap: "wrap", gap: s(8) }}>
                   {varieties.map((v) => {
                     let adultP = 0, kidsP = 0, guestsP = 0, adultS = 0, kidsS = 0, guestsS = 0, freeMealP = 0, freeMealS = 0;
+                    let adultParcelP = 0, kidsParcelP = 0, guestsParcelP = 0, freeMealParcelP = 0;
+                    let adultParcelS = 0, kidsParcelS = 0, guestsParcelS = 0, freeMealParcelS = 0;
                     subscriptions.forEach((sub) => {
                       const slots = sub.mealSlots?.[day] || [];
                       const taken = sub.takenByPerson?.[day] || [];
@@ -330,19 +334,35 @@ const DashboardMealSection = memo(
                         const isMatch =
                           choice === v.id ||
                           ((v.id === "veg_default" || v.isDefault) && v.type === DietType.VEG && (choice === DietaryOption.VEG || choice === "veg")) ||
-                          ((v.id === "nonVeg_default" || v.isDefault) && v.type === DietType.NON_VEG && (choice === DietaryOption.NON_VEG || choice === "nonVeg"));
+                          ((v.id === "nonVeg_default" || v.isDefault) && v.type === DietType.NON_VEG && (choice === DietaryOption.NON_VEG || choice === "non_veg" || choice === "nonVeg"));
 
                         if (isMatch) {
-                          const isTaken = toBool(taken[idx]?.[type]);
+                          const personTaken = taken[idx] as TakenState | undefined;
+                          const parcelKey = `${type}Parcel` as keyof TakenState;
+                          const isParcelOpted = toBool((sSlot as any)?.[parcelKey]);
+                          const isParcelAllowed = isParcelOpted && (
+                            isGuest ? isGuestsParcelEnabled(day, type, config, guestsEnabled) :
+                            isKid ? isKidsParcelEnabled(day, type, config, kidsEnabled) :
+                            isParcelEnabled(day, type, config)
+                          );
+                          const isTaken = toBool(personTaken?.[type]) || toBool(personTaken?.[parcelKey]);
+                          const isParcelTaken = toBool(personTaken?.[parcelKey]);
+
                           if (isGuest) {
                             guestsP++;
+                            if (isParcelAllowed) guestsParcelP++;
                             if (isTaken) guestsS++;
+                            if (isParcelTaken) guestsParcelS++;
                           } else if (isKid) {
                             kidsP++;
+                            if (isParcelAllowed) kidsParcelP++;
                             if (isTaken) kidsS++;
+                            if (isParcelTaken) kidsParcelS++;
                           } else {
                             adultP++;
+                            if (isParcelAllowed) adultParcelP++;
                             if (isTaken) adultS++;
+                            if (isParcelTaken) adultParcelS++;
                           }
                         }
                       });
@@ -352,19 +372,27 @@ const DashboardMealSection = memo(
                     if (mealMenu) {
                       if (v.id === "veg_default") {
                         freeMealP = mealMenu.freeMealVeg || 0;
-                        freeMealS = mealMenu.freeMealVegTaken || 0;
+                        freeMealS = (mealMenu.freeMealVegTaken || 0) + (mealMenu.freeMealVegParcelTaken || 0);
+                        freeMealParcelS = mealMenu.freeMealVegParcelTaken || 0;
+                        freeMealParcelP = freeMealParcelS;
                       } else if (v.id === "nonVeg_default") {
                         freeMealP = mealMenu.freeMealNonVeg || 0;
-                        freeMealS = mealMenu.freeMealNonVegTaken || 0;
+                        freeMealS = (mealMenu.freeMealNonVegTaken || 0) + (mealMenu.freeMealNonVegParcelTaken || 0);
+                        freeMealParcelS = mealMenu.freeMealNonVegParcelTaken || 0;
+                        freeMealParcelP = freeMealParcelS;
                       } else {
                         freeMealP = mealMenu.freeMealCounts?.[v.id] || 0;
-                        freeMealS = mealMenu.freeMealTakenCounts?.[v.id] || 0;
+                        freeMealS = (mealMenu.freeMealTakenCounts?.[v.id] || 0) + (mealMenu.freeMealParcelTakenCounts?.[v.id] || 0);
+                        freeMealParcelS = mealMenu.freeMealParcelTakenCounts?.[v.id] || 0;
+                        freeMealParcelP = freeMealParcelS;
                       }
                     }
 
                     const subTotal = adultP + kidsP + guestsP + freeMealP;
                     const subTaken = adultS + kidsS + guestsS + freeMealS;
-                    if (subTotal === 0) return null;
+                    const subParcelPlanned = adultParcelP + kidsParcelP + guestsParcelP + freeMealParcelP;
+                    const subParcelServed = adultParcelS + kidsParcelS + guestsParcelS + freeMealParcelS;
+                    if (subTotal === 0 && subParcelPlanned === 0) return null;
                     const vColor = v.color || (v.type === DietType.VEG ? theme.colors.veg : theme.colors.nonVeg);
 
                     return (

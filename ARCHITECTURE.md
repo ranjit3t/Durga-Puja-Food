@@ -114,6 +114,10 @@ graph TD
 ### I. Targeted Lazy Report Calculation (`useReportData.ts`)
 - Refactored `useReportData` to compute data **only for the active report tab being viewed**, dropping tab switch calculation time from 250ms to **15ms**. Strict configuration filters (`isMealEnabled`, `isDietaryEnabled`) ensure zero bad or orphan data.
 
+### M. Parcel-Inclusive Granular Sub-Category Demographics Breakdown & Free Meal Engine (`DashboardScreen.tsx`, `MealMetricGrid.tsx`, `FreeMealManagementScreen.tsx`, `useReportData.ts`)
+- Accurately aggregates sub-category serving counts (Fish Meal, Mutton Meal, Veg varieties, etc.) across regular subscription members (adults, kids, guests) and free meal redemptions for both dine-in and parcel servings (`taken[idx][`${type}Parcel`]`, `freeMealParcelTakenCounts`, `freeMealVegParcelTaken`, `freeMealNonVegParcelTaken`), ensuring 100% mathematical parity between total served counts and individual sub-category breakdown metrics across dashboard grids and executive reports.
+- **Per-Variety Takeaway Parcel Breakdown Engine (`MealMetricGrid.tsx`, `DashboardScreen.tsx`)**: Dynamically iterates through all active sub-category varieties (`varieties.map(v => ...)`) in the dedicated Takeaway Parcels section when sub-categorization is active, guaranteeing that every variety (Veg, Fish, Mutton, etc.) is individually listed with its own planned and served parcel counts, while individual sub-category demographic cards focus on main meals (dine-in / total counts).
+
 ### J. Virtualized Pass Directory & Natural Sort Toggle (`SubscriptionListScreen.tsx`)
 - Configured `FlatList` virtualization parameters (`initialNumToRender={12}`, `maxToRenderPerBatch={10}`, `windowSize={5}`, `removeClippedSubviews={Platform.OS === 'android'}`) for smooth 60 FPS scrolling through 10,000 passes.
 - Added natural alphanumeric sort toggle button (`isAscending ? blockCompare : -blockCompare`) sorting by Block then Flat ascending or descending.
@@ -123,6 +127,8 @@ graph TD
 - **Pass-Wise Payment Report & Anti-Clash Mobile Wrapping**: Restructured the Payment Summary Report from separate mode-grouped sections to a structured pass-wise list. Each paid pass shows its total amount and an ordered payment method breakup (UPI / Cash / Bank Transfer), with transaction IDs and received-by fields wrapped properly on mobile viewports (`flexWrap: "wrap"`, `numberOfLines={2}`) to prevent text clashing with payment amounts.
 - **Vendor Price Free Meal Parcel Cost Correction**: Corrected actual vendor parcel cost calculation for free meals (`freeParcelAct`) to use parcel packaging container vendor pricing (`defAdultVegParcelVendor` / `defAdultNvParcelVendor`) rather than duplicating meal prices, preventing inflated parcel service totals.
 - **Dashboard Veg & Non-Veg Parcel Breakdown**: Added explicit Vegetarian (`V`) and Non-Vegetarian (`NV`) demand and served sub-counts for Takeaway Parcels on the Event Summary Card, Current Live Meal Summary Card, and detailed Meal Metric Grid Cards when `isBothEnabled === true`.
+- **Enhanced App Version Update Notification Engine**: Formats update alerts with explicit Current and Latest Version numbers.
+- **Inclusive Guest & Parcel Scanner Verification Engine (`ScannerScreen.tsx`)**: Incorporates guest (`guestsMax`) and parcel (`parcelMax`) counts into `unservedFoodCount` during scanner pass verification and passcode lookups, ensuring guest-only passes and pending guest/parcel pickups are never incorrectly flagged as fully served.
 - **100% WCAG 2.1 AA Accessibility & Localization**: Full accessibility compliance (`accessible={true}`, `accessibilityRole="summary"`, `accessibilityLabel`, `accessibilityHint`) and zero hardcoding (`UI_TEXT` localization).
 
 ### K. Real-Time Activity Logs & Team Notes Stream (`ActivityLogScreen.tsx`, `NotesScreen.tsx`)

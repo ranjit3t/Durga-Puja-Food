@@ -229,9 +229,11 @@ export function ScannerScreen() {
 
     const adultsMax = Math.max(0, adultsPlanned - adultsTaken);
     const kidsMax = Math.max(0, kidsPlanned - kidsTaken);
+    const guestsMax = Math.max(0, guestsPlanned - guestsTaken);
+    const parcelMax = Math.max(0, parcelPlanned - parcelTaken);
 
     // Modal is shown ONLY when any person of the pass for current day has NOT taken food
-    const unservedFoodCount = adultsMax + kidsMax;
+    const unservedFoodCount = adultsMax + kidsMax + guestsMax + parcelMax;
 
     if (subscribedCount === 0) {
       addActivityLog({

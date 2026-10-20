@@ -38,9 +38,12 @@ export function HomeScreen() {
     ) {
       markVersionAlertShown();
       const appLocation = Platform.OS === "android" ? androidAppLocation : (Platform.OS === "ios" ? iosAppLocation : undefined);
+      const message = UI_TEXT.appUpdatedMessage
+        .replace("{current}", UI_TEXT.appVersion)
+        .replace("{remote}", remoteAppVersion);
       showAlert(
         UI_TEXT.appUpdateTitle,
-        UI_TEXT.appUpdatedMessage,
+        message,
         [{ text: UI_TEXT.ok, style: "default" }],
         appLocation
       );
