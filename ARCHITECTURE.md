@@ -303,6 +303,12 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
 - **Unified Single Source of Truth**: `dashboardData` in `DatabaseContext.tsx` pre-computes `parcelVeg`, `parcelNonVeg`, `parcelVegTaken`, and `parcelNonVegTaken` for each meal slot including free meal parcel checkouts. `DashboardMealSection` forwards these metrics directly to `MealMetricGrid`, guaranteeing zero re-calculation discrepancies across all views.
 - **100% WCAG 2.1 AA & Zero Hardcoding**: Full accessibility compliance (`accessible={true}`, `accessibilityRole="summary"`, `accessibilityLabel`), localized `UI_TEXT` dictionary compliance with zero hardcoded text strings, responsive flexbox wrapping (`flexWrap: "wrap"`), and mobile viewport containment.
 
+### AJ. Partial Pickup Directory Filter & Real-Time Card Badging ([`SubscriptionListScreen.tsx`](src/screens/SubscriptionListScreen.tsx), [`types.ts`](src/types.ts), [`strings.ts`](src/strings.ts))
+- **Active Meal Partial Pickup Detection**: Added a dynamic filter mode (`FilterMode.PARTIAL_CHECKOUT`) in the subscription directory active when a current live meal slot is on and at least 1 pass has completed a partial checkout (`0 < takenCount < subscribedCount`).
+- **Beside Missed Pickup Filter Placement**: The `Partial Pickup (X)` filter chip renders directly beside the `Missed Meal Pickup (Y)` filter chip in `SubscriptionListScreen.tsx`, automatically auto-deselecting if all partial checkouts complete or the active meal ends.
+- **High-Visibility Card Badge Pill**: Renders a dedicated amber badge pill (`PARTIAL X/Y` with `pie-chart` icon) on `SubscriptionCard` for all multi-member passes with in-flight partial checkouts for the active meal slot.
+- **100% WCAG 2.1 AA & Dictionary Compliance**: Full accessibility compliance (`accessible={true}`, `accessibilityRole="button"`, `accessibilityLabel`), 100% `UI_TEXT` token localization, zero hardcoding, and responsive mobile flexbox layout.
+
 ### AI. Concurrent Passcode Uniqueness Re-Validation Engine ([`SubscriptionForm.tsx`](src/screens/SubscriptionForm.tsx), [`constants.ts`](src/constants.ts))
 - **Passcode Preservation on Edit**: When editing an existing pass (`lockIdentity === true`), the passcode is strictly preserved (`value.passcode`).
 - **Live Commit-Time Uniqueness Re-Validation**: During parallel multi-device Add Pass operations (`!lockIdentity`), the system queries live database subscriptions at commit time, automatically re-generating collision-free passcodes when simultaneous submissions occur.

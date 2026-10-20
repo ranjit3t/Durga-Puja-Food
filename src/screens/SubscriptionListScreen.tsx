@@ -90,7 +90,8 @@ const SubscriptionCard = React.memo(({
   onOpenQuickCheckout,
   onSelectBlock,
   addActivityLog,
-  missedCount
+  missedCount,
+  partialCheckoutInfo,
 }: {
   item: Subscription;
   index: number;
@@ -113,6 +114,7 @@ const SubscriptionCard = React.memo(({
   onSelectBlock?: (block: string) => void;
   addActivityLog: any;
   missedCount?: number;
+  partialCheckoutInfo?: { taken: number; total: number };
 }) => {
   const colorScheme = theme.cardColors[index % theme.cardColors.length];
 
@@ -164,7 +166,7 @@ const SubscriptionCard = React.memo(({
 
       <View style={styles.cardTop}>
         <View style={{ flex: 1 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: s(6) }}>
             <Pressable
               onPress={(e) => {
                 e.stopPropagation();
@@ -183,7 +185,7 @@ const SubscriptionCard = React.memo(({
                 {UI_TEXT.block} {item.block}
               </Text>
             </Pressable>
-            <View style={{ flexDirection: 'row', gap: s(6) }}>
+            <View style={{ flexDirection: 'row', gap: s(6), flexWrap: 'wrap', justifyContent: 'flex-end', flexShrink: 1, maxWidth: '100%' }}>
               {kidsEnabled && item.kidsCount ? (
                 <View style={{ backgroundColor: theme.colors.nonVeg + "20", padding: s(6), borderRadius: s(12), borderWidth: 1, borderColor: theme.colors.nonVeg + "40" }}>
                   <Ionicons name="happy" size={s(14)} color={theme.colors.nonVeg} />
@@ -217,6 +219,31 @@ const SubscriptionCard = React.memo(({
               {hasCurrentMeal && (
                 <View style={{ backgroundColor: theme.colors.successLight, padding: s(6), borderRadius: s(12), borderWidth: 1, borderColor: theme.colors.success + "40" }}>
                   <Ionicons name="restaurant" size={s(14)} color={theme.colors.success} />
+                </View>
+              )}
+              {partialCheckoutInfo && (
+                <View
+                  style={{
+                    backgroundColor: theme.colors.warningLight || theme.colors.secondary + "20",
+                    paddingHorizontal: s(6),
+                    paddingVertical: s(2),
+                    borderRadius: s(8),
+                    borderWidth: 1,
+                    borderColor: theme.colors.warning || theme.colors.secondary,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: s(4),
+                    flexShrink: 1,
+                    maxWidth: "100%",
+                  }}
+                  accessible={true}
+                  accessibilityRole="text"
+                  accessibilityLabel={`${UI_TEXT.partialCheckoutBadgeLabel} ${partialCheckoutInfo.taken} ${UI_TEXT.ofTotal || "of"} ${partialCheckoutInfo.total}`}
+                >
+                  <Ionicons name="pie-chart" size={s(12)} color={theme.colors.warning || theme.colors.secondary} />
+                  <Text style={{ fontSize: s(10), fontWeight: "900", color: theme.colors.warning || theme.colors.secondary }} numberOfLines={1}>
+                    {UI_TEXT.partialCheckoutBadgeLabel} {partialCheckoutInfo.taken}/{partialCheckoutInfo.total}
+                  </Text>
                 </View>
               )}
             </View>
@@ -574,6 +601,37 @@ export function SubscriptionListScreen() {
 
   const hasAnyMissed = missedData.count > 0;
 
+  const partialCheckoutData = useMemo(() => {
+    if (!currentMealInfo) return { count: 0, list: [], map: {} as Record<string, { taken: number; total: number }> };
+    const map: Record<string, { taken: number; total: number }> = {};
+    const list = subscriptions.map(sub => {
+      let totalSubscribed = 0;
+      let totalTaken = 0;
+      const slots = sub.mealSlots?.[currentMealInfo.dayId] || [];
+      const takenList = sub.takenByPerson?.[currentMealInfo.dayId] || [];
+
+      slots.forEach((s, idx) => {
+        const hasChoice = getDietTypeForChoice(s[currentMealInfo.type]) !== undefined;
+        const isTaken = !!takenList[idx]?.[currentMealInfo.type] || !!takenList[idx]?.[`${currentMealInfo.type}Parcel` as keyof TakenState];
+
+        if (hasChoice) {
+          totalSubscribed++;
+          if (isTaken) totalTaken++;
+        }
+      });
+
+      if (totalSubscribed > 0 && totalTaken > 0 && totalTaken < totalSubscribed) {
+        map[sub.id] = { taken: totalTaken, total: totalSubscribed };
+        return { id: sub.id, taken: totalTaken, total: totalSubscribed };
+      }
+      return null;
+    }).filter(Boolean) as { id: string; taken: number; total: number }[];
+
+    return { count: list.length, list, map };
+  }, [subscriptions, currentMealInfo]);
+
+  const hasAnyPartialCheckout = partialCheckoutData.count > 0;
+
   // Auto-deselect filters when their selection count drops to 0 (e.g., after quick checkout clears the last missed pass)
   useEffect(() => {
     setActiveFilters(prev => {
@@ -583,6 +641,9 @@ export function SubscriptionListScreen() {
 
       if (next.includes(FilterMode.MISSED) && (!currentMealInfo || !hasAnyMissed)) {
         next = next.filter(m => m !== FilterMode.MISSED);
+      }
+      if (next.includes(FilterMode.PARTIAL_CHECKOUT) && (!currentMealInfo || !hasAnyPartialCheckout)) {
+        next = next.filter(m => m !== FilterMode.PARTIAL_CHECKOUT);
       }
       if (next.includes(FilterMode.SUBSCRIBED) && (!currentMealInfo || !hasAnySubscribed)) {
         next = next.filter(m => m !== FilterMode.SUBSCRIBED);
@@ -611,7 +672,7 @@ export function SubscriptionListScreen() {
       }
       return next.length === prev.length ? prev : next;
     });
-  }, [currentMealInfo, hasAnyMissed, hasAnySubscribed, kidsEnabled, hasAnyKids, hasAnyParcel, hasAnyVegOnly, hasAnySpecialOnly, hasAnyPackage, hasAnyDiscrepancy]);
+  }, [currentMealInfo, hasAnyMissed, hasAnyPartialCheckout, hasAnySubscribed, kidsEnabled, hasAnyKids, hasAnyParcel, hasAnyVegOnly, hasAnySpecialOnly, hasAnyPackage, hasAnyDiscrepancy]);
 
   const visibleSubscriptions = useMemo(() => {
     let filtered = subscriptions;
@@ -628,6 +689,11 @@ export function SubscriptionListScreen() {
       if (activeFilters.includes(FilterMode.MISSED) && currentMealInfo) {
         const missedIds = missedData.list.map(m => m.id);
         filtered = filtered.filter(sub => missedIds.includes(sub.id));
+      }
+
+      if (activeFilters.includes(FilterMode.PARTIAL_CHECKOUT) && currentMealInfo) {
+        const partialIds = partialCheckoutData.list.map(m => m.id);
+        filtered = filtered.filter(sub => partialIds.includes(sub.id));
       }
 
       if (activeFilters.includes(FilterMode.KIDS) && kidsEnabled) {
@@ -803,11 +869,12 @@ export function SubscriptionListScreen() {
       const hasSpecialMeal = isSpecialOnlySubscribed(item, dayConfig);
       const hasPackage = hasPackageApplied(item);
       const missedItem = missedData.list.find(m => m.id === item.id);
+      const partialInfo = partialCheckoutData.map[item.id];
 
       const hasDiscrepancy = hasAmountDiscrepancy(item, foodMenu, dayConfig, !!kidsEnabled, !!guestsEnabled, foodPackages);
-      return { ...item, _hasCurrentMeal: hasCurrentMeal, _hasParcel: hasParcel, _isVegOnly: isVegOnly, _hasSpecialMeal: hasSpecialMeal, _hasPackage: hasPackage, _missedCount: missedItem?.missed, _hasDiscrepancy: hasDiscrepancy };
+      return { ...item, _hasCurrentMeal: hasCurrentMeal, _hasParcel: hasParcel, _isVegOnly: isVegOnly, _hasSpecialMeal: hasSpecialMeal, _hasPackage: hasPackage, _missedCount: missedItem?.missed, _hasDiscrepancy: hasDiscrepancy, _partialCheckoutInfo: partialInfo };
     });
-  }, [subscriptions, subscriptionSearch, activeFilters, selectedBlock, currentMealInfo, kidsEnabled, guestsEnabled, missedData, isAscending, sortBy, dayConfig, hasPackageApplied, foodMenu, foodPackages]);
+  }, [subscriptions, subscriptionSearch, activeFilters, selectedBlock, currentMealInfo, kidsEnabled, guestsEnabled, missedData, partialCheckoutData, isAscending, sortBy, dayConfig, hasPackageApplied, foodMenu, foodPackages]);
 
   const handleExportExcel = useCallback(async () => {
     if (visibleSubscriptions.length === 0) return;
@@ -1116,7 +1183,7 @@ export function SubscriptionListScreen() {
     }
   }, [visibleSubscriptions, dayConfig, kidsEnabled, addActivityLog]);
 
-  const renderItem = useCallback(({ item, index }: { item: Subscription & { _hasCurrentMeal?: boolean; _hasParcel?: boolean; _isVegOnly?: boolean; _hasSpecialMeal?: boolean; _hasPackage?: boolean; _missedCount?: number; _hasDiscrepancy?: boolean }; index: number }) => {
+  const renderItem = useCallback(({ item, index }: { item: Subscription & { _hasCurrentMeal?: boolean; _hasParcel?: boolean; _isVegOnly?: boolean; _hasSpecialMeal?: boolean; _hasPackage?: boolean; _missedCount?: number; _hasDiscrepancy?: boolean; _partialCheckoutInfo?: { taken: number; total: number } }; index: number }) => {
     return (
       <SubscriptionCard
         item={item}
@@ -1140,11 +1207,12 @@ export function SubscriptionListScreen() {
         onSelectBlock={setSelectedBlock}
         addActivityLog={addActivityLog}
         missedCount={item._missedCount}
+        partialCheckoutInfo={item._partialCheckoutInfo}
       />
     );
   }, [theme, styles, s, kidsEnabled, paymentConfig, whatsappCountryCode, isAdmin, onSelect, onOpenQuickCheckout, setSelectedBlock, addActivityLog]);
 
-  const showFilters = (currentMealInfo && hasAnySubscribed) || (kidsEnabled && hasAnyKids) || hasAnyParcel || (isNonVegSeason && hasAnyVegOnly) || (currentMealInfo && hasAnyMissed) || hasAnySpecialOnly || hasAnyPackage || (isAdmin && hasAnyDiscrepancy);
+  const showFilters = (currentMealInfo && hasAnySubscribed) || (currentMealInfo && hasAnyMissed) || (currentMealInfo && hasAnyPartialCheckout) || (kidsEnabled && hasAnyKids) || hasAnyParcel || (isNonVegSeason && hasAnyVegOnly) || hasAnySpecialOnly || hasAnyPackage || (isAdmin && hasAnyDiscrepancy);
 
   return (
     <View style={styles.root}>
@@ -1285,6 +1353,44 @@ export function SubscriptionListScreen() {
                   color: activeFilters.includes(FilterMode.MISSED) ? theme.colors.error : theme.colors.textSecondary
                 }}>
                   {UI_TEXT.mealMissedMarker} ({missedData.count})
+                </Text>
+              </Pressable>
+            )}
+
+            {currentMealInfo && hasAnyPartialCheckout && (
+              <Pressable
+                onPress={() => toggleFilter(FilterMode.PARTIAL_CHECKOUT)}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityState={{ selected: activeFilters.includes(FilterMode.PARTIAL_CHECKOUT) }}
+                accessibilityLabel={`${UI_TEXT.partialCheckoutFilterLabel} (${partialCheckoutData.count})`}
+                style={({ pressed }) => [
+                  {
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: s(4),
+                    paddingHorizontal: s(8),
+                    paddingVertical: s(4),
+                    borderRadius: s(12),
+                    borderWidth: 1,
+                    borderColor: activeFilters.includes(FilterMode.PARTIAL_CHECKOUT) ? (theme.colors.warning || theme.colors.secondary) : theme.colors.border,
+                    backgroundColor: activeFilters.includes(FilterMode.PARTIAL_CHECKOUT) ? (theme.colors.warningLight || theme.colors.secondary + "20") : theme.colors.surface,
+                    marginBottom: s(4)
+                  },
+                  pressed && { opacity: 0.7 }
+                ]}
+              >
+                <Ionicons
+                  name={activeFilters.includes(FilterMode.PARTIAL_CHECKOUT) ? "pie-chart" : "pie-chart-outline"}
+                  size={s(13)}
+                  color={activeFilters.includes(FilterMode.PARTIAL_CHECKOUT) ? (theme.colors.warning || theme.colors.secondary) : theme.colors.textSecondary}
+                />
+                <Text style={{
+                  fontSize: s(11),
+                  fontWeight: "700",
+                  color: activeFilters.includes(FilterMode.PARTIAL_CHECKOUT) ? (theme.colors.warning || theme.colors.secondary) : theme.colors.textSecondary
+                }}>
+                  {UI_TEXT.partialCheckoutFilterLabel} ({partialCheckoutData.count})
                 </Text>
               </Pressable>
             )}

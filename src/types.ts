@@ -56,6 +56,7 @@ export enum FilterMode {
   PARCEL = "parcel",
   VEG_ONLY = "vegOnly",
   MISSED = "missed",
+  PARTIAL_CHECKOUT = "partialCheckout",
   SPECIAL_ONLY = "specialOnly",
   PACKAGE = "package",
   AMOUNT_DISCREPANCY = "amountDiscrepancy",

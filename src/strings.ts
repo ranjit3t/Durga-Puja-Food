@@ -4,7 +4,7 @@
  */
 export const UI_TEXT = {
   appName: "FestiveDesk",
-  appVersion: "1.5.2",
+  appVersion: "1.5.3",
   appUpdateTitle: "Update Available",
   appUpdatedMessage: "An updated version of FestiveDesk is available. Please download and install the latest build.",
   clickHereToUpdatePrefix: "Click ",
@@ -61,7 +61,7 @@ export const UI_TEXT = {
   totalCollection: "Total Payment Collection",
   foodCollection: "Meal Collection",
   parcelCollection: "Parcel Service",
-  totalServed: "Total Plates Served",
+  totalServed: "Total Served",
   totalDemandLabel: "Total Kitchen Demand",
   paymentIntegration: "Payment Tracker",
   paymentIntegrationHelper: "Enable financial tracking for subscriptions",
@@ -370,6 +370,8 @@ export const UI_TEXT = {
   rs: "Rs.",
   mealSubscriberMarker: "Current Meal",
   mealMissedMarker: "Missed Meal Pickup",
+  partialCheckoutFilterLabel: "Partial Pickup",
+  partialCheckoutBadgeLabel: "PARTIAL",
 
   // Details Screen
   flatIdPrefix: "PASS #",

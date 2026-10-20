@@ -295,6 +295,11 @@ The application enforces strict role-based access control (RBAC) distinguishing 
     - Added explicit Vegetarian (`V`) and Non-Vegetarian (`NV`) demand and served sub-counts for Takeaway Parcels on the **Event Summary Card**, **Current Live Meal Summary Card**, and detailed **Meal Metric Grid Cards** across both **Planned View** and **Grid View** whenever both dietary options are enabled (`isBothEnabled === true`).
     - `dashboardData` in `DatabaseContext.tsx` pre-computes `parcelVeg`, `parcelNonVeg`, `parcelVegTaken`, and `parcelNonVegTaken` for each meal slot including free meal parcel checkouts. `DashboardMealSection` forwards these metrics directly to `MealMetricGrid`, guaranteeing zero re-calculation discrepancies across all views.
     - Full WCAG 2.1 AA accessibility compliance (`accessible={true}`, `accessibilityRole="summary"`, `accessibilityLabel`), localized `UI_TEXT` dictionary compliance with zero hardcoded text strings, responsive flexbox wrapping (`flexWrap: "wrap"`), and mobile viewport containment.
+12. **Partial Pickup Filter & Real-Time Card Badging ([`SubscriptionListScreen.tsx`](src/screens/SubscriptionListScreen.tsx), [`types.ts`](src/types.ts), [`strings.ts`](src/strings.ts))**:
+    - Added a dynamic filter mode (`FilterMode.PARTIAL_CHECKOUT`) in the subscription directory active when a current live meal slot is on and at least 1 pass has completed a partial checkout (`0 < takenCount < subscribedCount`).
+    - The `Partial Pickup (X)` filter chip renders directly beside the `Missed Meal Pickup (Y)` filter chip in `SubscriptionListScreen.tsx`, automatically auto-deselecting if all partial checkouts complete or the active meal ends.
+    - Renders a dedicated amber badge pill (`PARTIAL X/Y` with `pie-chart` icon) on `SubscriptionCard` for all multi-member passes with in-flight partial checkouts for the active meal slot.
+    - Full WCAG 2.1 AA accessibility compliance (`accessible={true}`, `accessibilityRole="button"`, `accessibilityLabel`), 100% `UI_TEXT` token localization, zero hardcoding, and responsive mobile flexbox layout.
 
 ---
 
