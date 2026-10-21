@@ -94,6 +94,7 @@ const SubscriptionCard = React.memo(({
   missedCount,
   partialCheckoutInfo,
   completedCheckoutInfo,
+  missedCheckoutInfo,
 }: {
   item: Subscription;
   index: number;
@@ -118,6 +119,7 @@ const SubscriptionCard = React.memo(({
   missedCount?: number;
   partialCheckoutInfo?: { taken: number; total: number };
   completedCheckoutInfo?: { taken: number; total: number };
+  missedCheckoutInfo?: { missed: number; total: number };
 }) => {
   const colorScheme = theme.cardColors[index % theme.cardColors.length];
 
@@ -222,6 +224,31 @@ const SubscriptionCard = React.memo(({
               {hasCurrentMeal && (
                 <View style={{ backgroundColor: theme.colors.successLight, padding: s(6), borderRadius: s(12), borderWidth: 1, borderColor: theme.colors.success + "40" }}>
                   <Ionicons name="restaurant" size={s(14)} color={theme.colors.success} />
+                </View>
+              )}
+              {missedCheckoutInfo && (
+                <View
+                  style={{
+                    backgroundColor: theme.colors.errorLight,
+                    paddingHorizontal: s(6),
+                    paddingVertical: s(2),
+                    borderRadius: s(8),
+                    borderWidth: 1,
+                    borderColor: theme.colors.error,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: s(4),
+                    flexShrink: 1,
+                    maxWidth: "100%",
+                  }}
+                  accessible={true}
+                  accessibilityRole="text"
+                  accessibilityLabel={`${UI_TEXT.missedCheckoutBadgeLabel} 0/${missedCheckoutInfo.total}`}
+                >
+                  <Ionicons name="alert-circle" size={s(12)} color={theme.colors.error} />
+                  <Text style={{ fontSize: s(10), fontWeight: "900", color: theme.colors.error }} numberOfLines={1}>
+                    {UI_TEXT.missedCheckoutBadgeLabel} 0/{missedCheckoutInfo.total}
+                  </Text>
                 </View>
               )}
               {partialCheckoutInfo && (
@@ -607,27 +634,97 @@ export function SubscriptionListScreen() {
   const hasAnySubscribed = subscribedCount > 0;
 
   const missedData = useMemo(() => {
-    if (!currentMealInfo) return { count: 0, list: [] };
+    if (!currentMealInfo) return { count: 0, list: [], map: {} as Record<string, { missed: number; total: number }> };
+    const dayId = currentMealInfo.dayId;
+    const mType = currentMealInfo.type;
+
+    const map: Record<string, { missed: number; total: number }> = {};
     const list = subscriptions.map(sub => {
-      let missed = 0;
-      const slots = sub.mealSlots[currentMealInfo.dayId] || [];
-      const taken = sub.takenByPerson[currentMealInfo.dayId] || [];
+      let totalSubscribed = 0;
+      let totalTaken = 0;
+      const adultCount = sub.peopleCount || 0;
+      const kCount = kidsEnabled ? (sub.kidsCount || 0) : 0;
+      const gCount = guestsEnabled ? (sub.guestsCount || 0) : 0;
+      const totalHeadcount = adultCount + kCount + gCount;
 
-      slots.forEach((s, idx) => {
-        const hasChoice = getDietTypeForChoice(s[currentMealInfo.type]) !== undefined;
-        const isTaken = !!taken[idx]?.[currentMealInfo.type] || !!taken[idx]?.[`${currentMealInfo.type}Parcel` as keyof TakenState];
+      const slots = sub.mealSlots?.[dayId] || [];
+      const takenList = sub.takenByPerson?.[dayId] || [];
 
-        if (hasChoice && !isTaken) {
-           missed++;
+      for (let idx = 0; idx < totalHeadcount; idx++) {
+        const sSlot = slots[idx];
+        if (!sSlot) continue;
+
+        const choice = getValidSlotChoice(dayId, mType, sSlot[mType], dayConfig);
+        if (choice === DietaryOption.NONE) continue;
+
+        totalSubscribed++;
+
+        const personTaken = takenList[idx] as TakenState | undefined;
+        const parcelKey = `${mType}Parcel` as keyof TakenState;
+        const isTaken = toBool(personTaken?.[mType]) || toBool(personTaken?.[parcelKey]);
+
+        if (isTaken) {
+          totalTaken++;
         }
-      });
-      return missed > 0 ? { id: sub.id, missed } : null;
-    }).filter(Boolean) as { id: string, missed: number }[];
+      }
 
-    return { count: list.length, list };
-  }, [subscriptions, currentMealInfo]);
+      if (totalSubscribed > 0 && totalTaken === 0) {
+        map[sub.id] = { missed: totalSubscribed, total: totalSubscribed };
+        return { id: sub.id, missed: totalSubscribed, total: totalSubscribed };
+      }
+      return null;
+    }).filter(Boolean) as { id: string; missed: number; total: number }[];
+
+    return { count: list.length, list, map };
+  }, [subscriptions, currentMealInfo, dayConfig, kidsEnabled, guestsEnabled]);
 
   const hasAnyMissed = missedData.count > 0;
+
+  const unservedCheckoutData = useMemo(() => {
+    if (!currentMealInfo) return { count: 0, list: [], map: {} as Record<string, number> };
+    const dayId = currentMealInfo.dayId;
+    const mType = currentMealInfo.type;
+
+    const map: Record<string, number> = {};
+    const list = subscriptions.map(sub => {
+      let totalSubscribed = 0;
+      let totalTaken = 0;
+      const adultCount = sub.peopleCount || 0;
+      const kCount = kidsEnabled ? (sub.kidsCount || 0) : 0;
+      const gCount = guestsEnabled ? (sub.guestsCount || 0) : 0;
+      const totalHeadcount = adultCount + kCount + gCount;
+
+      const slots = sub.mealSlots?.[dayId] || [];
+      const takenList = sub.takenByPerson?.[dayId] || [];
+
+      for (let idx = 0; idx < totalHeadcount; idx++) {
+        const sSlot = slots[idx];
+        if (!sSlot) continue;
+
+        const choice = getValidSlotChoice(dayId, mType, sSlot[mType], dayConfig);
+        if (choice === DietaryOption.NONE) continue;
+
+        totalSubscribed++;
+
+        const personTaken = takenList[idx] as TakenState | undefined;
+        const parcelKey = `${mType}Parcel` as keyof TakenState;
+        const isTaken = toBool(personTaken?.[mType]) || toBool(personTaken?.[parcelKey]);
+
+        if (isTaken) {
+          totalTaken++;
+        }
+      }
+
+      const unserved = totalSubscribed - totalTaken;
+      if (totalSubscribed > 0 && unserved > 0) {
+        map[sub.id] = unserved;
+        return { id: sub.id, unserved };
+      }
+      return null;
+    }).filter(Boolean) as { id: string; unserved: number }[];
+
+    return { count: list.length, list, map };
+  }, [subscriptions, currentMealInfo, dayConfig, kidsEnabled, guestsEnabled]);
 
   const partialCheckoutData = useMemo(() => {
     if (!currentMealInfo) return { count: 0, list: [], map: {} as Record<string, { taken: number; total: number }> };
@@ -1016,14 +1113,15 @@ export function SubscriptionListScreen() {
       const isVegOnly = hasVeg && !hasNonVeg;
       const hasSpecialMeal = isSpecialOnlySubscribed(item, dayConfig);
       const hasPackage = hasPackageApplied(item);
-      const missedItem = missedData.list.find(m => m.id === item.id);
+      const unservedCount = unservedCheckoutData.map[item.id];
+      const missedInfo = missedData.map[item.id];
       const partialInfo = partialCheckoutData.map[item.id];
       const completedInfo = completedCheckoutData.map[item.id];
 
       const hasDiscrepancy = hasAmountDiscrepancy(item, foodMenu, dayConfig, !!kidsEnabled, !!guestsEnabled, foodPackages);
-      return { ...item, _hasCurrentMeal: hasCurrentMeal, _hasParcel: hasParcel, _isVegOnly: isVegOnly, _hasSpecialMeal: hasSpecialMeal, _hasPackage: hasPackage, _missedCount: missedItem?.missed, _hasDiscrepancy: hasDiscrepancy, _partialCheckoutInfo: partialInfo, _completedCheckoutInfo: completedInfo };
+      return { ...item, _hasCurrentMeal: hasCurrentMeal, _hasParcel: hasParcel, _isVegOnly: isVegOnly, _hasSpecialMeal: hasSpecialMeal, _hasPackage: hasPackage, _missedCount: unservedCount, _hasDiscrepancy: hasDiscrepancy, _partialCheckoutInfo: partialInfo, _completedCheckoutInfo: completedInfo, _missedCheckoutInfo: missedInfo };
     });
-  }, [subscriptions, subscriptionSearch, activeFilters, selectedBlock, currentMealInfo, kidsEnabled, guestsEnabled, missedData, partialCheckoutData, completedCheckoutData, isAscending, sortBy, dayConfig, hasPackageApplied, foodMenu, foodPackages]);
+  }, [subscriptions, subscriptionSearch, activeFilters, selectedBlock, currentMealInfo, kidsEnabled, guestsEnabled, missedData, unservedCheckoutData, partialCheckoutData, completedCheckoutData, isAscending, sortBy, dayConfig, hasPackageApplied, foodMenu, foodPackages]);
 
   const handleExportExcel = useCallback(async () => {
     if (visibleSubscriptions.length === 0) return;
@@ -1332,7 +1430,7 @@ export function SubscriptionListScreen() {
     }
   }, [visibleSubscriptions, dayConfig, kidsEnabled, addActivityLog]);
 
-  const renderItem = useCallback(({ item, index }: { item: Subscription & { _hasCurrentMeal?: boolean; _hasParcel?: boolean; _isVegOnly?: boolean; _hasSpecialMeal?: boolean; _hasPackage?: boolean; _missedCount?: number; _hasDiscrepancy?: boolean; _partialCheckoutInfo?: { taken: number; total: number }; _completedCheckoutInfo?: { taken: number; total: number } }; index: number }) => {
+  const renderItem = useCallback(({ item, index }: { item: Subscription & { _hasCurrentMeal?: boolean; _hasParcel?: boolean; _isVegOnly?: boolean; _hasSpecialMeal?: boolean; _hasPackage?: boolean; _missedCount?: number; _hasDiscrepancy?: boolean; _partialCheckoutInfo?: { taken: number; total: number }; _completedCheckoutInfo?: { taken: number; total: number }; _missedCheckoutInfo?: { missed: number; total: number } }; index: number }) => {
     return (
       <SubscriptionCard
         item={item}
@@ -1358,6 +1456,7 @@ export function SubscriptionListScreen() {
         missedCount={item._missedCount}
         partialCheckoutInfo={item._partialCheckoutInfo}
         completedCheckoutInfo={item._completedCheckoutInfo}
+        missedCheckoutInfo={item._missedCheckoutInfo}
       />
     );
   }, [theme, styles, s, kidsEnabled, paymentConfig, whatsappCountryCode, isAdmin, onSelect, onOpenQuickCheckout, setSelectedBlock, addActivityLog]);
