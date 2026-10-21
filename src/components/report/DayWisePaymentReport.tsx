@@ -55,6 +55,7 @@ export function DayWisePaymentReport({
           adultPortionCount: 0,
           kidsPortionCount: 0,
           guestsPortionCount: 0,
+          freeMealPortionCount: 0,
           meals: {} as any,
         };
         const dayDetail = dayWisePayments.find((d) => d.dayId === dayObj.id) || fallbackDetail;

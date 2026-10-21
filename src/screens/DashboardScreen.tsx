@@ -194,7 +194,11 @@ const DashboardMealSection = memo(
             result: "tmpfile",
           });
           const message = `${seasonName || UI_TEXT.headerTitle}\n${getDayLabel(day, config)}${UI_TEXT.space}${UI_TEXT.hyphen}${UI_TEXT.space}${mealLabel}${UI_TEXT.space}${UI_TEXT.operationalSummary}\n${UI_TEXT.total}${UI_TEXT.colon}${UI_TEXT.space}${total}${UI_TEXT.space}${UI_TEXT.pipe}${UI_TEXT.space}${UI_TEXT.taken}${UI_TEXT.colon}${UI_TEXT.space}${totalMealTaken}`;
-          await shareQr(uri, message);
+          const fileName = UI_TEXT.exportMealSummaryFileName
+            .replace("{day}", day)
+            .replace("{meal}", type)
+            .replace("{date}", new Date().toISOString().slice(0, 10));
+          await shareQr(uri, message, fileName);
         } catch (err) {
           console.error("Meal share error:", err);
         }

@@ -10,7 +10,7 @@ interface UIContextType {
   showAlert: (title: string, message: string, buttons?: AlertButton[], linkUrl?: string) => void;
   showGlobalError: (message: string) => void;
   hideAlert: () => void;
-  shareQr: (uri: string, message?: string) => Promise<void>;
+  shareQr: (uri: string, message?: string, fileName?: string) => Promise<void>;
   printPass: (html: string) => Promise<void>;
 }
 
@@ -46,12 +46,13 @@ export function UIProvider({ children }: { children: React.ReactNode }) {
     setAlertConfig(prev => ({ ...prev, visible: false }));
   }, []);
 
-  const shareQr = useCallback(async (uri: string, message?: string) => {
+  const shareQr = useCallback(async (uri: string, message?: string, fileName?: string) => {
     if (Platform.OS === "web") {
       try {
         const link = document.createElement("a");
         link.href = uri;
-        link.download = `Pass-${Date.now()}.png`;
+        const fallbackName = UI_TEXT.exportPassFileName.replace("{id}", "Pass").replace("{date}", new Date().toISOString().slice(0, 10));
+        link.download = fileName || fallbackName;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);

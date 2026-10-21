@@ -400,12 +400,12 @@ export function QuickCheckoutModal({
           Animated.timing(opacityAnim, {
             toValue: 0.25,
             duration: 650,
-            useNativeDriver: true,
+            useNativeDriver: Platform.OS !== "web",
           }),
           Animated.timing(opacityAnim, {
             toValue: 1,
             duration: 650,
-            useNativeDriver: true,
+            useNativeDriver: Platform.OS !== "web",
           }),
         ])
       );

@@ -53,7 +53,9 @@ export function ViewMenuScreen() {
         });
 
         const message = `${seasonName || UI_TEXT.headerTitle} - ${UI_TEXT.foodMenu}\n${UI_TEXT.day}: ${new Date().toLocaleDateString()}`;
-        shareQr(uri, message);
+        const fileName = UI_TEXT.exportMenuImageFileName
+          .replace("{date}", new Date().toISOString().slice(0, 10));
+        shareQr(uri, message, fileName);
       } catch (err) {
         console.error("Failed to capture menu image", err);
       }

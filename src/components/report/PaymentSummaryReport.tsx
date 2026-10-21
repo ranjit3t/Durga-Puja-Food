@@ -77,6 +77,7 @@ export function PaymentSummaryReport({
   const styles = useStyles();
   const { theme } = useAppTheme();
   const [activeTab, setActiveTab] = useState<PaymentTab>(PaymentTab.SUMMARY);
+  const [summaryMode, setSummaryMode] = useState<"detailed" | "summarized">("detailed");
 
   const discrepancyCount = data.discrepancies ? data.discrepancies.length : 0;
 
@@ -312,9 +313,42 @@ export function PaymentSummaryReport({
 
           {/* 2. Pass-Wise Payment Details List */}
           <View style={{ gap: 12 }}>
-            <Text style={[styles.sectionTitle, { fontSize: 16, color: theme.colors.textPrimary, textTransform: "uppercase" }]}>
-              {UI_TEXT.subscriptions} ({data.details.length} {UI_TEXT.paidPasses || "Paid Passes"})
-            </Text>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+              <Text style={[styles.sectionTitle, { fontSize: 16, color: theme.colors.textPrimary, textTransform: "uppercase", marginBottom: 0 }]}>
+                {UI_TEXT.subscriptions} ({data.details.length})
+              </Text>
+
+              {!isCapturing && (
+                <View style={{ flexDirection: "row", backgroundColor: theme.colors.surfaceDark, borderRadius: 10, padding: 3, borderWidth: 1, borderColor: theme.colors.border }}>
+                  <Pressable
+                    onPress={() => setSummaryMode("detailed")}
+                    style={{
+                      paddingHorizontal: 10,
+                      paddingVertical: 5,
+                      borderRadius: 8,
+                      backgroundColor: summaryMode === "detailed" ? theme.colors.primary : "transparent",
+                    }}
+                  >
+                    <Text style={{ fontSize: 11, fontWeight: "800", color: summaryMode === "detailed" ? theme.colors.white : theme.colors.textSecondary }}>
+                      {UI_TEXT.detailedPayment}
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => setSummaryMode("summarized")}
+                    style={{
+                      paddingHorizontal: 10,
+                      paddingVertical: 5,
+                      borderRadius: 8,
+                      backgroundColor: summaryMode === "summarized" ? theme.colors.primary : "transparent",
+                    }}
+                  >
+                    <Text style={{ fontSize: 11, fontWeight: "800", color: summaryMode === "summarized" ? theme.colors.white : theme.colors.textSecondary }}>
+                      {UI_TEXT.summarizedPayment}
+                    </Text>
+                  </Pressable>
+                </View>
+              )}
+            </View>
 
             <View style={{ gap: 10 }}>
               {(data.details || []).map((flat, flatIdx) => {
@@ -342,7 +376,7 @@ export function PaymentSummaryReport({
                     ]}
                   >
                     {/* Pass Header: Block-Flat & Pass Total Amount */}
-                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 12, borderBottomWidth: flat.payments.length > 0 ? 1 : 0, borderBottomColor: colorScheme.border, paddingBottom: flat.payments.length > 0 ? 8 : 0 }}>
+                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 12, borderBottomWidth: summaryMode === "detailed" && flat.payments.length > 0 ? 1 : 0, borderBottomColor: colorScheme.border, paddingBottom: summaryMode === "detailed" && flat.payments.length > 0 ? 8 : 0 }}>
                       <View style={{ flex: 1, minWidth: 120 }}>
                         <Text style={[styles.dashboardDay, { color: colorScheme.accent, fontSize: 18 }]}>
                           {flat.block}
@@ -367,7 +401,7 @@ export function PaymentSummaryReport({
                     </View>
 
                     {/* Ordered Payment Breakup Entries */}
-                    {flat.payments && flat.payments.length > 0 && (
+                    {summaryMode === "detailed" && flat.payments && flat.payments.length > 0 && (
                       <View style={{ gap: 8, paddingTop: 4 }}>
                         <Text style={{ fontSize: 10, fontWeight: "800", color: theme.colors.textSecondary, textTransform: "uppercase" }}>
                           {UI_TEXT.paymentDetails}

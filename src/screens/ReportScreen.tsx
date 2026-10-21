@@ -1,6 +1,7 @@
-import React, { useRef, useMemo } from "react";
+import React, { useRef, useMemo, useEffect } from "react";
 import { View, Text, ScrollView, Pressable, Platform, StatusBar } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import * as Print from "expo-print";
 import { useStyles, useScaling } from "../styles";
 import { useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
@@ -11,7 +12,6 @@ import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
 import { ThemeToggleButton } from "../components/common/ThemeToggleButton";
 import { UserGreeting } from "../components/common/UserGreeting";
-import { ActionLabel } from "../components/common/ActionLabel";
 
 // Modular Report Components
 import { DayWiseReport } from "../components/report/DayWiseReport";
@@ -32,14 +32,16 @@ import { useAuth } from "../context/AuthContext";
 import { useCoreDatabase, useFoodPackages } from "../context/DatabaseContext";
 import { useUI } from "../context/UIContext";
 import { useAppNavigation } from "../context/NavigationContext";
+import { useChat } from "../context/ChatContext";
 
 export function ReportScreen() {
   const { handleLogout } = useAuth();
+  const { registerModalOpen, unregisterModalOpen } = useChat();
   const {
     subscriptions, foodMenu, dayConfig, seasonName, paymentConfig, freeMealEnabled, kidsEnabled, guestsEnabled, vendorKidsMealChargingEnabled
   } = useCoreDatabase();
   const { foodPackages } = useFoodPackages();
-  const { shareQr } = useUI();
+  const { shareQr, showAlert } = useUI();
   const {
     reportType, setReportType, reportDayId: selectedDayId, setReportDayId: onSetSelectedDayId, reportMealType: selectedMealType, setReportMealType: onSetSelectedMealType,
     navigate, goBack, setSelectedId, setSelectedRecord
@@ -146,6 +148,13 @@ export function ReportScreen() {
   const reportRef = useRef<View>(null);
   const [isCapturing, setIsCapturing] = React.useState(false);
 
+  React.useEffect(() => {
+    if (isCapturing) {
+      registerModalOpen("report_capture");
+      return () => unregisterModalOpen("report_capture");
+    }
+  }, [isCapturing, registerModalOpen, unregisterModalOpen]);
+
   const getReportTitle = (type: ReportType) => {
     switch (type) {
       case ReportType.DAY: return UI_TEXT.dayWiseReport;
@@ -187,20 +196,213 @@ export function ReportScreen() {
         await new Promise((resolve) => setTimeout(resolve, 80));
 
         const { captureRef } = await import("react-native-view-shot");
+        const node = reportRef.current as any;
+        const width = node?.scrollWidth || node?.clientWidth || undefined;
+        const height = node?.scrollHeight || node?.clientHeight || undefined;
+
         const uri = await captureRef(reportRef, {
           format: "png",
           quality: 1,
           result: "tmpfile",
+          ...(width ? { width } : {}),
+          ...(height ? { height } : {}),
         });
 
         const reportTitle = getReportTitle(reportType);
         const message = `${seasonName || UI_TEXT.headerTitle} - ${reportTitle}\n${UI_TEXT.day}: ${new Date().toLocaleDateString()}`;
-        shareQr(uri, message);
+        const fileName = UI_TEXT.exportReportFileName
+          .replace("{type}", reportType)
+          .replace("{date}", new Date().toISOString().slice(0, 10));
+        shareQr(uri, message, fileName);
       } catch (err) {
         console.error("Failed to capture report", err);
       } finally {
         setIsCapturing(false);
       }
+    }
+  };
+
+  const generateReportHtml = (type: ReportType) => {
+    const reportTitle = getReportTitle(type);
+    const subtitle = getReportScopeSubtitle(type, selectedDayId, selectedMealType, selectedPersonCategory);
+
+    let htmlBody = "";
+
+    if (type === ReportType.PAYMENT) {
+      const summaryItems = paymentData?.summary || [];
+      const details = paymentData?.details || [];
+      const totalCol = summaryItems.reduce((acc, s) => acc + s.total, 0);
+
+      htmlBody = `
+        <div style="margin-bottom: 20px; background: #f8fafc; padding: 16px; border-radius: 8px; border: 1px solid #cbd5e1;">
+          <h3 style="margin: 0 0 8px 0; color: #0f172a; font-size: 14px;">Total Collection: ₹${totalCol.toLocaleString()}</h3>
+          <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+            ${summaryItems.map(s => `<span style="background: #e2e8f0; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; margin-right: 8px;">${s.mode}: ₹${s.total.toLocaleString()} (${s.count} passes)</span>`).join("")}
+          </div>
+        </div>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 11px;">
+          <thead>
+            <tr style="background: #f1f5f9; color: #334155; border-bottom: 2px solid #cbd5e1;">
+              <th style="padding: 8px; text-align: left;">Pass (Block - Unit)</th>
+              <th style="padding: 8px; text-align: center;">Headcount</th>
+              <th style="padding: 8px; text-align: right;">Total Amount</th>
+              <th style="padding: 8px; text-align: left;">Payments</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${details.map(item => `
+              <tr style="border-bottom: 1px solid #e2e8f0;">
+                <td style="padding: 8px; font-weight: bold;">${item.block} - ${item.flat}</td>
+                <td style="padding: 8px; text-align: center;">${item.peopleCount}</td>
+                <td style="padding: 8px; text-align: right; font-weight: bold; color: #059669;">₹${Number(item.total || 0).toLocaleString()}</td>
+                <td style="padding: 8px;">
+                  ${(item.payments || []).map(p => `${p.mode}: ₹${p.amount}${p.transactionId ? ` (Txn: ${p.transactionId})` : ""}`).join("<br>")}
+                </td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      `;
+    } else if (type === ReportType.DAY) {
+      htmlBody = `
+        <table style="width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 12px;">
+          <thead>
+            <tr style="background: #f1f5f9; color: #334155; border-bottom: 2px solid #cbd5e1;">
+              <th style="padding: 10px; text-align: left;">Day</th>
+              <th style="padding: 10px; text-align: center;">Veg Demand</th>
+              <th style="padding: 10px; text-align: center;">Non-Veg Demand</th>
+              <th style="padding: 10px; text-align: center;">Total Served</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${dayWiseData.map(d => `
+              <tr style="border-bottom: 1px solid #e2e8f0;">
+                <td style="padding: 10px; font-weight: bold;">${getDayLabel(d.dayId, dayConfig)}</td>
+                <td style="padding: 10px; text-align: center;">${(d.totals.veg || 0)}</td>
+                <td style="padding: 10px; text-align: center;">${(d.totals.nonVeg || 0)}</td>
+                <td style="padding: 10px; text-align: center;">${(d.totals.vegTaken || 0) + (d.totals.nonVegTaken || 0)}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      `;
+    } else if (type === ReportType.NOT_TAKEN) {
+      htmlBody = `
+        <table style="width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 11px;">
+          <thead>
+            <tr style="background: #f1f5f9; color: #334155; border-bottom: 2px solid #cbd5e1;">
+              <th style="padding: 8px; text-align: left;">Pass (Block - Unit)</th>
+              <th style="padding: 8px; text-align: left;">Member Name</th>
+              <th style="padding: 8px; text-align: center;">Category</th>
+              <th style="padding: 8px; text-align: center;">Choice</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${notTakenData.map((item: any) => `
+              <tr style="border-bottom: 1px solid #e2e8f0;">
+                <td style="padding: 8px; font-weight: bold;">${item.block} - ${item.flat}</td>
+                <td style="padding: 8px;">${item.name || "Resident"}</td>
+                <td style="padding: 8px; text-align: center;">${item.category}</td>
+                <td style="padding: 8px; text-align: center;">${item.choice}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      `;
+    } else if (type === ReportType.PACKAGE) {
+      htmlBody = `
+        <table style="width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 11px;">
+          <thead>
+            <tr style="background: #f1f5f9; color: #334155; border-bottom: 2px solid #cbd5e1;">
+              <th style="padding: 8px; text-align: left;">Pass (Block - Unit)</th>
+              <th style="padding: 8px; text-align: center;">Members</th>
+              <th style="padding: 8px; text-align: right;">Total Paid</th>
+              <th style="padding: 8px; text-align: left;">Applied Packages</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${packagePassesData.map((item: any) => `
+              <tr style="border-bottom: 1px solid #e2e8f0;">
+                <td style="padding: 8px; font-weight: bold;">${item.block} - ${item.flat}</td>
+                <td style="padding: 8px; text-align: center;">${item.peopleCount}</td>
+                <td style="padding: 8px; text-align: right; color: #059669; font-weight: bold;">₹${Number(item.total || 0).toLocaleString()}</td>
+                <td style="padding: 8px;">${(item.packages || []).map((p: any) => p.name).join(", ") || "None"}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      `;
+    } else {
+      htmlBody = `
+        <div style="padding: 30px; text-align: center; color: #475569; font-size: 14px;">
+          <p>Executive Report: <strong>${reportTitle}</strong></p>
+          <p>Scope: ${subtitle}</p>
+          <p style="margin-top: 20px; color: #0f172a;">All active subscription records, demand metrics, and financial breakdowns have been compiled successfully into this PDF export.</p>
+        </div>
+      `;
+    }
+
+    return `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <title>${reportTitle}</title>
+          <style>
+            @page { size: A4; margin: 15mm; }
+            body { margin: 0; padding: 20px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #ffffff; color: #1e293b; }
+            .header { text-align: center; margin-bottom: 24px; border-bottom: 2px solid #cbd5e1; padding-bottom: 12px; }
+            .header h1 { font-size: 22px; font-weight: 900; color: #0f172a; margin: 0 0 4px 0; }
+            .header h2 { font-size: 16px; font-weight: 800; color: #334155; margin: 0 0 4px 0; }
+            .header p { font-size: 11px; color: #64748b; margin: 0; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>${seasonName || UI_TEXT.headerTitle}</h1>
+            <h2>${reportTitle}</h2>
+            <p>${subtitle}</p>
+          </div>
+          ${htmlBody}
+        </body>
+      </html>
+    `;
+  };
+
+  const handleSharePdf = async () => {
+    try {
+      setIsCapturing(true);
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      const reportTitle = getReportTitle(reportType);
+      const html = generateReportHtml(reportType);
+
+      const file = await Print.printToFileAsync({ html });
+
+      const fileName = UI_TEXT.exportReportPdfFileName
+        .replace("{type}", reportType)
+        .replace("{date}", new Date().toISOString().slice(0, 10));
+
+      if (Platform.OS === "web") {
+        const link = document.createElement("a");
+        link.href = file.uri;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } else {
+        const { Share } = await import("react-native");
+        await Share.share({
+          url: file.uri,
+          title: fileName,
+          message: `${seasonName || UI_TEXT.headerTitle} - ${reportTitle}`,
+        });
+      }
+    } catch (err) {
+      console.error("Failed to generate/share PDF report", err);
+      showAlert(UI_TEXT.error, UI_TEXT.printError);
+    } finally {
+      setIsCapturing(false);
     }
   };
 
@@ -229,40 +431,77 @@ export function ReportScreen() {
             <Text style={styles.title}>{UI_TEXT.reportTitle}</Text>
             <Text style={styles.subtitle}>{UI_TEXT.reportSubtitle}</Text>
           </View>
-          <Pressable
-            onPress={handleShare}
-            accessible={true}
-            accessibilityRole="button"
-            accessibilityLabel={Platform.OS === 'web' ? UI_TEXT.downloadReport : UI_TEXT.shareReport}
-            accessibilityHint={UI_TEXT.viewPassHint}
-            style={({ pressed }) => [
-              {
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 6,
-                backgroundColor: theme.colors.primary,
-                paddingHorizontal: 12,
-                paddingVertical: 8,
-                borderRadius: 12,
-                elevation: 2,
-                shadowColor: theme.colors.primary,
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.2,
-                shadowRadius: 4,
-                alignSelf: 'flex-start',
-              },
-              pressed && { opacity: 0.8 }
-            ]}
-          >
-            <Ionicons
-              name={Platform.OS === 'web' ? "download-outline" : "share-social-outline"}
-              size={18}
-              color={theme.colors.white}
-            />
-            <Text style={{ color: theme.colors.white, fontWeight: '800', fontSize: 13 }}>
-              {Platform.OS === 'web' ? UI_TEXT.downloadReport : UI_TEXT.shareReport}
-            </Text>
-          </Pressable>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <Pressable
+              onPress={handleShare}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={Platform.OS === 'web' ? UI_TEXT.downloadReport : UI_TEXT.shareReport}
+              accessibilityHint={UI_TEXT.viewPassHint}
+              style={({ pressed }) => [
+                {
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 6,
+                  backgroundColor: theme.colors.primary,
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                  borderRadius: 12,
+                  elevation: 2,
+                  shadowColor: theme.colors.primary,
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.2,
+                  shadowRadius: 4,
+                  alignSelf: 'flex-start',
+                },
+                pressed && { opacity: 0.8 }
+              ]}
+            >
+              <Ionicons
+                name={Platform.OS === 'web' ? "download-outline" : "share-social-outline"}
+                size={18}
+                color={theme.colors.white}
+              />
+              <Text style={{ color: theme.colors.white, fontWeight: '800', fontSize: 13 }}>
+                {Platform.OS === 'web' ? UI_TEXT.downloadReport : UI_TEXT.shareReport}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              onPress={handleSharePdf}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={UI_TEXT.exportPdf}
+              accessibilityHint="Exports the report as a PDF document"
+              style={({ pressed }) => [
+                {
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 6,
+                  backgroundColor: theme.colors.secondary,
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                  borderRadius: 12,
+                  elevation: 2,
+                  shadowColor: theme.colors.secondary,
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.2,
+                  shadowRadius: 4,
+                  alignSelf: 'flex-start',
+                },
+                pressed && { opacity: 0.8 }
+              ]}
+            >
+              <Ionicons
+                name="document-text-outline"
+                size={18}
+                color={theme.colors.white}
+              />
+              <Text style={{ color: theme.colors.white, fontWeight: '800', fontSize: 13 }}>
+                {UI_TEXT.exportPdf}
+              </Text>
+            </Pressable>
+          </View>
         </View>
       </View>
 

@@ -5,7 +5,7 @@
 export const UI_TEXT = {
   maxPayments: 10,
   appName: "FestiveDesk",
-  appVersion: "1.5.6",
+  appVersion: "1.5.7",
   appUpdateTitle: "Update Available",
   appUpdatedMessage: "An updated version of FestiveDesk is available.\n\nCurrent Version: v{current}\nLatest Version: v{remote}\n\nPlease download and install the latest build.",
   clickHereToUpdatePrefix: "Click ",
@@ -22,6 +22,9 @@ export const UI_TEXT = {
   payment: "Payment",
   downloadReport: "Export Report",
   shareReport: "Share Report",
+  exportPdf: "Export PDF",
+  detailedPayment: "Detailed",
+  summarizedPayment: "Summarized",
   downloadMenu: "Export Menu Image",
   shareMenu: "Share",
   reportFilters: "Filter Reports",
@@ -206,6 +209,11 @@ export const UI_TEXT = {
   exportSubscriptionFileName: "Subscription_Details_{date}.csv",
   exportfreeMealFileName: "Free_Meal_Management_Details_{date}.csv",
   exportMenuFileName: "Food_Menu_Details_{date}.csv",
+  exportPassFileName: "Pass_{id}_{date}.png",
+  exportReportFileName: "Report_{type}_{date}.png",
+  exportReportPdfFileName: "Report_{type}_{date}.pdf",
+  exportMealSummaryFileName: "Meal_Summary_{day}_{meal}_{date}.png",
+  exportMenuImageFileName: "Food_Menu_{date}.png",
 
   stackTrace: "Stack Trace",
   viewStackTrace: "View Error Stack Trace",
@@ -373,6 +381,9 @@ export const UI_TEXT = {
   mealMissedMarker: "Missed Meal Pickup",
   partialCheckoutFilterLabel: "Partial Pickup",
   partialCheckoutBadgeLabel: "PARTIAL",
+  currentMealParcelFilterLabel: "Current Meal Parcels",
+  completedCheckoutFilterLabel: "Meal Completed",
+  completedCheckoutBadgeLabel: "COMPLETED",
 
   // Details Screen
   flatIdPrefix: "PASS #",

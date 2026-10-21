@@ -52,7 +52,10 @@ export function QrScreen() {
         description: (Platform.OS === "web" ? UI_TEXT.downloadPass : UI_TEXT.shareQrDialog) + " for " + passLabel
       });
       // Share only the image for the generic share button
-      shareQr(uri);
+      const fileName = UI_TEXT.exportPassFileName
+        .replace("{id}", subscription.id)
+        .replace("{date}", new Date().toISOString().slice(0, 10));
+      shareQr(uri, undefined, fileName);
     }
   };
 

@@ -129,6 +129,10 @@ graph TD
 - **Dashboard Veg & Non-Veg Parcel Breakdown**: Added explicit Vegetarian (`V`) and Non-Vegetarian (`NV`) demand and served sub-counts for Takeaway Parcels on the Event Summary Card, Current Live Meal Summary Card, and detailed Meal Metric Grid Cards when `isBothEnabled === true`.
 - **Enhanced App Version Update Notification Engine**: Formats update alerts with explicit Current and Latest Version numbers.
 - **Inclusive Guest & Parcel Scanner Verification Engine (`ScannerScreen.tsx`)**: Incorporates guest (`guestsMax`) and parcel (`parcelMax`) counts into `unservedFoodCount` during scanner pass verification and passcode lookups, ensuring guest-only passes and pending guest/parcel pickups are never incorrectly flagged as fully served.
+- **Detailed vs Summarized Payment Summary Report Engine (`PaymentSummaryReport.tsx`)**: Provides dual view modes (`Detailed` vs `Summarized`) for payment summaries, allowing operators to toggle between full individual payment line-item breakups and compact season pass totals.
+- **Current Meal Parcels Filter (`SubscriptionListScreen.tsx`)**: Renders a dynamic active meal parcel filter chip beside the main Parcels chip strictly when a current meal is active, parcel service is enabled, and 1+ passes have parcel service subscribed for the slot.
+- **Completed Meal Pickup Filter (`SubscriptionListScreen.tsx`)**: Renders an active meal completed filter chip beside current meal filters whenever a live meal is active and at least 1 pass has completed all meal/parcel redemptions across all registered members (adults, kids, guests).
+- **Cross-Platform Animation Driver Engine (`QuickCheckoutModal.tsx`)**: Sets `useNativeDriver: Platform.OS !== 'web'`, ensuring native hardware acceleration on mobile devices while eliminating RCTAnimation warnings on web browsers.
 - **100% WCAG 2.1 AA Accessibility & Localization**: Full accessibility compliance (`accessible={true}`, `accessibilityRole="summary"`, `accessibilityLabel`, `accessibilityHint`) and zero hardcoding (`UI_TEXT` localization).
 
 ### K. Real-Time Activity Logs & Team Notes Stream (`ActivityLogScreen.tsx`, `NotesScreen.tsx`)

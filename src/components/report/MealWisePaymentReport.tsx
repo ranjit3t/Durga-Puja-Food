@@ -83,6 +83,7 @@ export function MealWisePaymentReport({
                 adultPortionCount: 0,
                 kidsPortionCount: 0,
                 guestsPortionCount: 0,
+                freeMealPortionCount: 0,
               };
 
               return (
