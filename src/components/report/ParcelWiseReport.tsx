@@ -76,6 +76,7 @@ export function ParcelWiseReport({
     let missedSum = 0;
     let missedVegSum = 0;
     let missedNonVegSum = 0;
+    let savedMoneySum = 0;
     dayConfig.forEach((dayObj) => {
       if (!dayObj.enabled) return;
       [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].forEach((mType) => {
@@ -85,10 +86,11 @@ export function ParcelWiseReport({
           missedSum += item.count;
           missedVegSum += (item.vegCount || 0);
           missedNonVegSum += (item.nonVegCount || 0);
+          savedMoneySum += (item.savedParcelCost || 0);
         });
       });
     });
-    return { total: missedSum, veg: missedVegSum, nonVeg: missedNonVegSum };
+    return { total: missedSum, veg: missedVegSum, nonVeg: missedNonVegSum, savedMoney: savedMoneySum };
   }, [dayConfig, getMissedParcelData]);
 
   const summaryTotals = useMemo(() => {
@@ -274,6 +276,16 @@ export function ParcelWiseReport({
                       </Text>
                     )}
                   </View>
+                  {missedParcelSummary.savedMoney > 0 && (
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4 }}>
+                      <Text style={{ color: theme.colors.white + "DD", fontSize: 13, fontWeight: "700" }}>
+                        • {UI_TEXT.savedParcelCostLabel}:
+                      </Text>
+                      <Text style={{ color: theme.colors.white, fontSize: 14, fontWeight: "900" }}>
+                        {UI_TEXT.rs} {missedParcelSummary.savedMoney.toFixed(0)}
+                      </Text>
+                    </View>
+                  )}
                 </View>
               </View>
             </View>
@@ -311,7 +323,7 @@ export function ParcelWiseReport({
                       <View key={mKey} style={{ backgroundColor: theme.colors.surface, borderRadius: 16, padding: 12, borderWidth: 1, borderColor: theme.colors.border }}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
                           <Ionicons name={mKey === MealType.BREAKFAST ? "sunny-outline" : mKey === MealType.LUNCH ? "restaurant-outline" : "moon-outline"} size={16} color={theme.colors.primary} />
-                          <Text style={{ fontSize: 15, fontWeight: '800', color: theme.colors.textPrimary }}>{getMealLabel(mKey)}</Text>
+                          <Text style={{ fontSize: 15, fontWeight: '800', color: theme.colors.textPrimary } }>{getMealLabel(mKey)}</Text>
                         </View>
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
                           <View style={{ gap: 4 }}>

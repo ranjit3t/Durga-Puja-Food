@@ -571,6 +571,7 @@ export const UI_TEXT = {
   freeMealReport: "Free Meal Desk Summary",
   parcelReport: "Parcel Service Report",
   freeMealParcels: "Free Meal Parcels",
+  savedParcelCostLabel: "Saved Container Cost",
   missedParcelReport: "Missed Parcels",
   amountDiscrepancyReport: "Discrepancy",
   discrepancyReport: "Discrepancies",

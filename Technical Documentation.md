@@ -236,6 +236,8 @@ The application follows a **Serverless Layered Architecture** built on the **Exp
   - Verified across all 3 Payment Reports (Payment Summary, Day-Wise Payment, Meal-Wise Payment via `paymentUtils.ts`) and Vendor Price Report (`VendorMealWiseReport.tsx`) that missed parcel meals (opted parcel but taken dine-in) are counted under Dine-In plates (`dineInCount`), with no parcel cost added to actual vendor pricing (`parcelAct = 0`). Fully WCAG 2.1 AA compliant.
 - **Day & Meal Scope Printing on Summary Cards**:
   - Rendered a Day and Meal badge (e.g. `Shashthi - Lunch`) in the top summary card header across all day/meal report views (`PendingReport.tsx`, `MembersReport.tsx`, `MissedParcelReport.tsx`, `DayWiseReport.tsx`), guaranteeing unambiguous context when printing, exporting, or sharing reports. Fully WCAG 2.1 AA compliant.
+- **Saved Container Cost in Opted Dine-In Summary Card**:
+  - Calculated and displayed total saved container cost (`UI_TEXT.savedParcelCostLabel`) by summing individual parcel prices for all missed/opted dine-in parcels in the Opted Dine-In summary cards (`MissedParcelReport.tsx`, `ParcelWiseReport.tsx`, `useReportData.ts`), rendered conditionally when greater than 0. Fully WCAG 2.1 AA compliant and localized (`UI_TEXT`).
 
 ---
 

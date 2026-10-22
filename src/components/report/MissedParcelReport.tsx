@@ -15,6 +15,7 @@ interface MissedParcelItem {
   count: number;
   vegCount?: number;
   nonVegCount?: number;
+  savedParcelCost?: number;
   kids: number;
   guests?: number;
 }
@@ -43,6 +44,7 @@ export function MissedParcelReport({
   const totalMissedParcels = data.reduce((acc, item) => acc + item.count, 0);
   const totalVegMissed = data.reduce((acc, item) => acc + (item.vegCount || 0), 0);
   const totalNonVegMissed = data.reduce((acc, item) => acc + (item.nonVegCount || 0), 0);
+  const totalSavedMoney = data.reduce((acc, item) => acc + (item.savedParcelCost || 0), 0);
   const totalKids = kidsEnabled ? data.reduce((acc, item) => acc + (item.kids || 0), 0) : 0;
   const totalGuests = guestsEnabled ? data.reduce((acc, item) => acc + (item.guests || 0), 0) : 0;
 
@@ -93,6 +95,16 @@ export function MissedParcelReport({
                   </Text>
                 )}
               </View>
+              {totalSavedMoney > 0 && (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 6, paddingTop: 6, borderTopWidth: 1, borderTopColor: theme.colors.white + "20" }}>
+                  <Text style={{ color: theme.colors.white + "DD", fontSize: 13, fontWeight: "700" }}>
+                    • {UI_TEXT.savedParcelCostLabel}:
+                  </Text>
+                  <Text style={{ color: theme.colors.white, fontSize: 15, fontWeight: "900" }}>
+                    {UI_TEXT.rs} {totalSavedMoney.toFixed(0)}
+                  </Text>
+                </View>
+              )}
             </View>
 
             {/* Member Details Block if applicable */}
