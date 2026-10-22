@@ -144,8 +144,9 @@ The application follows a **Serverless Layered Architecture** built on the **Exp
 - **Block-Level Filtering**: Tapping the block label badge in the top-left portion of any pass card instantly filters the directory to show passes of that block only, with a removable block filter chip. Non-nested sibling layout (`e.stopPropagation()`) completely prevents HTML DOM hydration errors (`<button>` inside `<button>`).
 - **100% Theme & Dictionary Compliance**: All labels bind directly to `UI_TEXT` tokens without hardcoded text or colors.
 
-### T. Dashboard & Home Page Dine-In Summary Cards ([`DashboardScreen.tsx`](src/screens/DashboardScreen.tsx), [`HomeScreen.tsx`](src/screens/HomeScreen.tsx))
-- **Explicit Dine-In Metrics**: Event and season summary cards on the Dashboard and Home Page prominently display **Dine-In** counts (treating all non-parcel meals and free meals as Dine-In) alongside parcel subtotals.
+### AC. Dashboard Sub-Category Individual Served & Planned Breakdown Architecture (`DashboardScreen.tsx`, `MealMetricGrid.tsx`, `Metric.tsx`)
+- **Granular Sub-Category Served vs Planned Tracking**: For meals with dietary sub-categorization (multiple veg or non-veg varieties), both inline dashboard breakdown cards and `MealMetricGrid` aggregate and display individual served vs planned counts (`served / planned`, e.g., `3/5 adults, 2/3 kids`) across kids, adults, guests, and free meals when viewing served or grid modes (`!showPlannedOnly`), and planned counts (`adults, kids`) when viewing planned mode (`showPlannedOnly`).
+- **Accessibility, Localization & Scaling**: Fully compliant with WCAG 2.1 AA accessibility contracts (`accessible={true}`, `accessibilityRole="summary"`), mobile-responsive scaling hooks (`s(...)`), and `UI_TEXT` dictionary localization.
 
 ### R. Duplicate Pass Collision Confirmation & View Pass Navigation ([`SubscriptionForm.tsx`](src/screens/SubscriptionForm.tsx))
 - **Pre-Save Collision Detection**: When registering a new pass (`!lockIdentity`), the system checks whether a pass with the exact same Block and Flat number already exists in the database.
@@ -160,6 +161,7 @@ The application follows a **Serverless Layered Architecture** built on the **Exp
 - **Pass-Wise Payment Report & Anti-Clash Mobile Wrapping**: Restructured the Payment Summary Report from separate mode-grouped sections to a structured pass-wise list. Each paid pass shows its total amount and an ordered payment method breakup (UPI / Cash / Bank Transfer), with transaction IDs and received-by fields wrapped properly on mobile viewports (`flexWrap: "wrap"`, `numberOfLines={2}`) to prevent text clashing with payment amounts.
 - **Vendor Price Free Meal Parcel Cost Correction**: Corrected actual vendor parcel cost calculation for free meals (`freeParcelAct`) to use parcel packaging container vendor pricing (`defAdultVegParcelVendor` / `defAdultNvParcelVendor`) rather than duplicating meal prices, preventing inflated parcel service totals.
 - **Dashboard Veg & Non-Veg Parcel Breakdown**: Added explicit Vegetarian (`V`) and Non-Vegetarian (`NV`) demand and served sub-counts for Takeaway Parcels on the Event Summary Card, Current Live Meal Summary Card, and detailed Meal Metric Grid Cards when `isBothEnabled === true`.
+- **Dashboard Meal Day-Name Headers & Descriptive Export Filenames (`DashboardScreen.tsx`)**: Formats individual dashboard meal section titles as `<Day Name> <Meal Name>` and saves exported/shared PNG images with date-stamped descriptive filenames.
 - **100% WCAG 2.1 AA Accessibility & Localization**: Full accessibility compliance (`accessible={true}`, `accessibilityRole="summary"`, `accessibilityLabel`, `accessibilityHint`) and zero hardcoding (`UI_TEXT` localization).
 
 ### G. Vendor Meal-Wise Report & Parcel Pricing Engine (`VendorMealWiseReport.tsx`, `MealMenuEditor.tsx`, `MealDisplay.tsx`, `domain.ts`, `repository.ts`)

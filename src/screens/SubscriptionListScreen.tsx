@@ -861,6 +861,45 @@ export function SubscriptionListScreen() {
 
   const hasAnyCurrentMealParcel = currentMealParcelData.count > 0;
 
+  const currentMealKidsData = useMemo(() => {
+    if (!currentMealInfo || !kidsEnabled) {
+      return { count: 0, list: [], map: {} as Record<string, number> };
+    }
+
+    const dayId = currentMealInfo.dayId;
+    const mType = currentMealInfo.type;
+
+    const map: Record<string, number> = {};
+    const list = subscriptions.map(sub => {
+      let kidsSubscribedCount = 0;
+      const adultCount = sub.peopleCount || 0;
+      const kCount = kidsEnabled ? (sub.kidsCount || 0) : 0;
+      if (kCount <= 0) return null;
+
+      const slots = sub.mealSlots?.[dayId] || [];
+
+      for (let idx = adultCount; idx < adultCount + kCount; idx++) {
+        const sSlot = slots[idx];
+        if (!sSlot) continue;
+
+        const choice = getValidSlotChoice(dayId, mType, sSlot[mType], dayConfig);
+        if (choice !== DietaryOption.NONE) {
+          kidsSubscribedCount++;
+        }
+      }
+
+      if (kidsSubscribedCount > 0) {
+        map[sub.id] = kidsSubscribedCount;
+        return { id: sub.id, count: kidsSubscribedCount };
+      }
+      return null;
+    }).filter(Boolean) as { id: string; count: number }[];
+
+    return { count: list.length, list, map };
+  }, [subscriptions, currentMealInfo, dayConfig, kidsEnabled]);
+
+  const hasAnyCurrentMealKids = currentMealKidsData.count > 0;
+
   // Auto-deselect filters when their selection count drops to 0 (e.g., after quick checkout clears the last missed pass)
   useEffect(() => {
     setActiveFilters(prev => {
@@ -882,6 +921,9 @@ export function SubscriptionListScreen() {
       }
       if (next.includes(FilterMode.KIDS) && (!kidsEnabled || !hasAnyKids)) {
         next = next.filter(m => m !== FilterMode.KIDS);
+      }
+      if (next.includes(FilterMode.CURRENT_MEAL_KIDS) && (!kidsEnabled || !currentMealInfo || !hasAnyCurrentMealKids)) {
+        next = next.filter(m => m !== FilterMode.CURRENT_MEAL_KIDS);
       }
       if (next.includes(FilterMode.PARCEL) && !hasAnyParcel) {
         next = next.filter(m => m !== FilterMode.PARCEL);
@@ -907,7 +949,7 @@ export function SubscriptionListScreen() {
       }
       return next.length === prev.length ? prev : next;
     });
-  }, [currentMealInfo, hasAnyMissed, hasAnyPartialCheckout, hasAnyCompletedCheckout, hasAnySubscribed, kidsEnabled, hasAnyKids, hasAnyParcel, isCurrentMealParcelEnabled, hasAnyCurrentMealParcel, hasAnyVegOnly, hasAnySpecialOnly, hasAnyPackage, hasAnyDiscrepancy]);
+  }, [currentMealInfo, hasAnyMissed, hasAnyPartialCheckout, hasAnyCompletedCheckout, hasAnySubscribed, kidsEnabled, hasAnyKids, hasAnyCurrentMealKids, hasAnyParcel, isCurrentMealParcelEnabled, hasAnyCurrentMealParcel, hasAnyVegOnly, hasAnySpecialOnly, hasAnyPackage, hasAnyDiscrepancy]);
 
   const visibleSubscriptions = useMemo(() => {
     let filtered = subscriptions;
@@ -929,6 +971,11 @@ export function SubscriptionListScreen() {
       if (activeFilters.includes(FilterMode.PARTIAL_CHECKOUT) && currentMealInfo) {
         const partialIds = partialCheckoutData.list.map(m => m.id);
         filtered = filtered.filter(sub => partialIds.includes(sub.id));
+      }
+
+      if (activeFilters.includes(FilterMode.CURRENT_MEAL_KIDS) && kidsEnabled && currentMealInfo) {
+        const currentKidsIds = currentMealKidsData.list.map(m => m.id);
+        filtered = filtered.filter(sub => currentKidsIds.includes(sub.id));
       }
 
       if (activeFilters.includes(FilterMode.COMPLETED_CHECKOUT) && currentMealInfo) {
@@ -1461,7 +1508,7 @@ export function SubscriptionListScreen() {
     );
   }, [theme, styles, s, kidsEnabled, paymentConfig, whatsappCountryCode, isAdmin, onSelect, onOpenQuickCheckout, setSelectedBlock, addActivityLog]);
 
-  const showFilters = (currentMealInfo && hasAnySubscribed) || (currentMealInfo && hasAnyMissed) || (currentMealInfo && hasAnyPartialCheckout) || (currentMealInfo && hasAnyCompletedCheckout) || (kidsEnabled && hasAnyKids) || hasAnyParcel || (isNonVegSeason && hasAnyVegOnly) || hasAnySpecialOnly || hasAnyPackage || (isAdmin && hasAnyDiscrepancy);
+  const showFilters = (currentMealInfo && hasAnySubscribed) || (currentMealInfo && hasAnyMissed) || (currentMealInfo && hasAnyPartialCheckout) || (currentMealInfo && hasAnyCompletedCheckout) || (kidsEnabled && hasAnyKids) || (kidsEnabled && currentMealInfo && hasAnyCurrentMealKids) || hasAnyParcel || (isNonVegSeason && hasAnyVegOnly) || hasAnySpecialOnly || hasAnyPackage || (isAdmin && hasAnyDiscrepancy);
 
   return (
     <View style={styles.root}>
@@ -1716,6 +1763,44 @@ export function SubscriptionListScreen() {
                   color: activeFilters.includes(FilterMode.KIDS) ? theme.colors.nonVeg : theme.colors.textSecondary
                 }}>
                   {UI_TEXT.kids} ({passesWithKidsCount})
+                </Text>
+              </Pressable>
+            )}
+
+            {kidsEnabled && currentMealInfo && hasAnyCurrentMealKids && (
+              <Pressable
+                onPress={() => toggleFilter(FilterMode.CURRENT_MEAL_KIDS)}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityState={{ selected: activeFilters.includes(FilterMode.CURRENT_MEAL_KIDS) }}
+                accessibilityLabel={`${UI_TEXT.currentMealKidsFilterLabel} (${currentMealKidsData.count})`}
+                style={({ pressed }) => [
+                  {
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: s(4),
+                    paddingHorizontal: s(8),
+                    paddingVertical: s(4),
+                    borderRadius: s(12),
+                    borderWidth: 1,
+                    borderColor: activeFilters.includes(FilterMode.CURRENT_MEAL_KIDS) ? theme.colors.nonVeg : theme.colors.border,
+                    backgroundColor: activeFilters.includes(FilterMode.CURRENT_MEAL_KIDS) ? theme.colors.errorLight : theme.colors.surface,
+                    marginBottom: s(4)
+                  },
+                  pressed && { opacity: 0.7 }
+                ]}
+              >
+                <Ionicons
+                  name={activeFilters.includes(FilterMode.CURRENT_MEAL_KIDS) ? "happy" : "happy-outline"}
+                  size={s(13)}
+                  color={activeFilters.includes(FilterMode.CURRENT_MEAL_KIDS) ? theme.colors.nonVeg : theme.colors.textSecondary}
+                />
+                <Text style={{
+                  fontSize: s(11),
+                  fontWeight: "700",
+                  color: activeFilters.includes(FilterMode.CURRENT_MEAL_KIDS) ? theme.colors.nonVeg : theme.colors.textSecondary
+                }}>
+                  {UI_TEXT.currentMealKidsFilterLabel} ({currentMealKidsData.count})
                 </Text>
               </Pressable>
             )}

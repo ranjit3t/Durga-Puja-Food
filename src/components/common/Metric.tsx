@@ -15,7 +15,7 @@ export function Metric({
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
-  value: number;
+  value: number | string;
   color?: string;
 }) {
   const styles = useStyles();

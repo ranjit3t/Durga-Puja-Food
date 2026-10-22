@@ -385,6 +385,7 @@ export const UI_TEXT = {
   completedCheckoutFilterLabel: "Meal Completed",
   completedCheckoutBadgeLabel: "COMPLETED",
   missedCheckoutBadgeLabel: "MISSED",
+  currentMealKidsFilterLabel: "Current Meal Kids",
 
   // Details Screen
   flatIdPrefix: "PASS #",

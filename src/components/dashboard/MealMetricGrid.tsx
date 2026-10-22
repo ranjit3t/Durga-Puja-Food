@@ -254,17 +254,42 @@ export function MealMetricGrid(props: MealMetricProps) {
                   )}
                   {kidsEnabled ? (
                     <>
-                      <Metric icon="person-outline" label={UI_TEXT.adults} value={adultP} color={theme.colors.textSecondary} />
-                      <Metric icon="happy-outline" label={UI_TEXT.kids} value={kidsP} color={theme.colors.primary} />
+                      <Metric
+                        icon="person-outline"
+                        label={UI_TEXT.adults}
+                        value={showPlannedOnly ? adultP : `${adultS}/${adultP}`}
+                        color={theme.colors.textSecondary}
+                      />
+                      <Metric
+                        icon="happy-outline"
+                        label={UI_TEXT.kids}
+                        value={showPlannedOnly ? kidsP : `${kidsS}/${kidsP}`}
+                        color={theme.colors.primary}
+                      />
                     </>
                   ) : (
-                    <Metric icon="person-outline" label={UI_TEXT.members} value={adultP} color={theme.colors.textSecondary} />
+                    <Metric
+                      icon="person-outline"
+                      label={UI_TEXT.members}
+                      value={showPlannedOnly ? adultP : `${adultS}/${adultP}`}
+                      color={theme.colors.textSecondary}
+                    />
                   )}
-                  {guestsEnabled && guestsP > 0 ? (
-                    <Metric icon="people-outline" label={UI_TEXT.guests} value={guestsP} color={theme.colors.primary} />
+                  {guestsEnabled && (guestsP > 0 || guestsS > 0) ? (
+                    <Metric
+                      icon="people-outline"
+                      label={UI_TEXT.guests}
+                      value={showPlannedOnly ? guestsP : `${guestsS}/${guestsP}`}
+                      color={theme.colors.primary}
+                    />
                   ) : null}
-                  {freeMealEnabled && freeMealP > 0 ? (
-                    <Metric icon="people-circle-outline" label={UI_TEXT.freeMeals} value={freeMealP} color={theme.colors.secondary} />
+                  {freeMealEnabled && (freeMealP > 0 || freeMealS > 0) ? (
+                    <Metric
+                      icon="people-circle-outline"
+                      label={UI_TEXT.freeMeals}
+                      value={showPlannedOnly ? freeMealP : `${freeMealS}/${freeMealP}`}
+                      color={theme.colors.secondary}
+                    />
                   ) : null}
                 </View>
               </View>

@@ -193,11 +193,10 @@ const DashboardMealSection = memo(
             quality: 1,
             result: "tmpfile",
           });
-          const message = `${seasonName || UI_TEXT.headerTitle}\n${getDayLabel(day, config)}${UI_TEXT.space}${UI_TEXT.hyphen}${UI_TEXT.space}${mealLabel}${UI_TEXT.space}${UI_TEXT.operationalSummary}\n${UI_TEXT.total}${UI_TEXT.colon}${UI_TEXT.space}${total}${UI_TEXT.space}${UI_TEXT.pipe}${UI_TEXT.space}${UI_TEXT.taken}${UI_TEXT.colon}${UI_TEXT.space}${totalMealTaken}`;
-          const fileName = UI_TEXT.exportMealSummaryFileName
-            .replace("{day}", day)
-            .replace("{meal}", type)
-            .replace("{date}", new Date().toISOString().slice(0, 10));
+          const message = `${seasonName || UI_TEXT.headerTitle}\n${getDayLabel(day, config)} ${mealLabel} ${UI_TEXT.operationalSummary}\n${UI_TEXT.total}${UI_TEXT.colon}${UI_TEXT.space}${total}${UI_TEXT.space}${UI_TEXT.pipe}${UI_TEXT.space}${UI_TEXT.taken}${UI_TEXT.colon}${UI_TEXT.space}${totalMealTaken}`;
+          const dayName = getDayLabel(day, config).replace(/[^a-zA-Z0-9]/g, "_");
+          const mealName = mealLabel.replace(/[^a-zA-Z0-9]/g, "_");
+          const fileName = `${dayName}_${mealName}_${new Date().toISOString().slice(0, 10)}.png`;
           await shareQr(uri, message, fileName);
         } catch (err) {
           console.error("Meal share error:", err);
@@ -227,7 +226,7 @@ const DashboardMealSection = memo(
               <Ionicons name={icon} size={s(22)} color={isCurrent ? theme.colors.primary : isSpecial ? theme.colors.specialMealText : theme.colors.textSecondary} />
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(6), flexWrap: 'wrap', flex: 1 }}>
                 <Text style={[styles.sectionTitle, { marginBottom: 0, fontSize: s(18), color: isCurrent ? theme.colors.primary : isSpecial ? theme.colors.specialMealText : theme.colors.textPrimary }]}>
-                  {mealLabel}
+                  {getDayLabel(day, config)} {mealLabel}
                 </Text>
                 {isSpecial && (
                   <View style={{ backgroundColor: theme.colors.specialMealBorder, paddingHorizontal: s(6), paddingVertical: s(2), borderRadius: s(4), flexDirection: 'row', alignItems: 'center', gap: s(4) }}>
@@ -425,11 +424,24 @@ const DashboardMealSection = memo(
 
                         <Text style={{ fontSize: s(10), fontWeight: "700", color: theme.colors.textSecondary }}>
                           {(() => {
+                            const showPlannedOnly = viewMode === "planned";
                             const parts = [];
-                            parts.push(`${adultP}${UI_TEXT.space}${adultP === 1 ? UI_TEXT.adult : UI_TEXT.adults}`);
-                            if (kidsEnabled && kidsP > 0) parts.push(`${kidsP}${UI_TEXT.space}${kidsP === 1 ? UI_TEXT.kid : UI_TEXT.kids}`);
-                            if (guestsEnabled && guestsP > 0) parts.push(`${guestsP}${UI_TEXT.space}${guestsP === 1 ? UI_TEXT.guest : UI_TEXT.guests}`);
-                            if (freeMealEnabled && freeMealP > 0) parts.push(`${freeMealP}${UI_TEXT.space}${freeMealP === 1 ? UI_TEXT.freeMeal : UI_TEXT.freeMeals}`);
+                            const adultCountStr = showPlannedOnly ? `${adultP}` : `${adultS}/${adultP}`;
+                            if (adultP > 0 || adultS > 0) {
+                              parts.push(`${adultCountStr}${UI_TEXT.space}${adultP === 1 ? UI_TEXT.adult : UI_TEXT.adults}`);
+                            }
+                            if (kidsEnabled && (kidsP > 0 || kidsS > 0)) {
+                              const kidsCountStr = showPlannedOnly ? `${kidsP}` : `${kidsS}/${kidsP}`;
+                              parts.push(`${kidsCountStr}${UI_TEXT.space}${kidsP === 1 ? UI_TEXT.kid : UI_TEXT.kids}`);
+                            }
+                            if (guestsEnabled && (guestsP > 0 || guestsS > 0)) {
+                              const guestsCountStr = showPlannedOnly ? `${guestsP}` : `${guestsS}/${guestsP}`;
+                              parts.push(`${guestsCountStr}${UI_TEXT.space}${guestsP === 1 ? UI_TEXT.guest : UI_TEXT.guests}`);
+                            }
+                            if (freeMealEnabled && (freeMealP > 0 || freeMealS > 0)) {
+                              const freeMealCountStr = showPlannedOnly ? `${freeMealP}` : `${freeMealS}/${freeMealP}`;
+                              parts.push(`${freeMealCountStr}${UI_TEXT.space}${freeMealP === 1 ? UI_TEXT.freeMeal : UI_TEXT.freeMeals}`);
+                            }
                             return parts.join(", ");
                           })()}
                         </Text>

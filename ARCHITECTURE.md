@@ -134,6 +134,7 @@ graph TD
 - **Completed Meal Pickup Filter (`SubscriptionListScreen.tsx`)**: Renders an active meal completed filter chip beside current meal filters whenever a live meal is active and at least 1 pass has completed all meal/parcel redemptions across all registered members (adults, kids, guests).
 - **Missed Meal Filter & Unserved Quick Checkout Badges (`SubscriptionListScreen.tsx`)**: Refined Missed filter to strictly target passes where 0 members have taken food yet (`totalTaken === 0`), while maintaining top-right unserved quick checkout count badges (`missedCount`) on both Missed and Partial cards.
 - **Cross-Platform Animation Driver Engine (`QuickCheckoutModal.tsx`)**: Sets `useNativeDriver: Platform.OS !== 'web'`, ensuring native hardware acceleration on mobile devices while eliminating RCTAnimation warnings on web browsers.
+- **Dashboard Meal Day-Name Headers & Descriptive Export Filenames (`DashboardScreen.tsx`)**: Formats individual dashboard meal section titles as `<Day Name> <Meal Name>` and saves exported/shared PNG images with date-stamped descriptive filenames.
 - **100% WCAG 2.1 AA Accessibility & Localization**: Full accessibility compliance (`accessible={true}`, `accessibilityRole="summary"`, `accessibilityLabel`, `accessibilityHint`) and zero hardcoding (`UI_TEXT` localization).
 
 ### K. Real-Time Activity Logs & Team Notes Stream (`ActivityLogScreen.tsx`, `NotesScreen.tsx`)
@@ -237,6 +238,10 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
 - **Comprehensive Report Guest Isolation & Report Streamlining**:
   - Thoroughly audited and fixed all report hooks and components to ensure guest counts, meals, parcels, and payment collections are tracked and displayed in dedicated guest sections (labeled with the `G` abbreviation / Guest badge) rather than being clubbed into adult data or omitted.
   - Restored auto-focus and auto-selection of the current active enabled meal on report screen load and type change.
+
+### Y. Dashboard Sub-Category Individual Served & Planned Breakdown Architecture (`DashboardScreen.tsx`, `MealMetricGrid.tsx`, `Metric.tsx`)
+- **Granular Sub-Category Served vs Planned Tracking**: For meals with dietary sub-categorization (multiple veg or non-veg varieties), both inline dashboard breakdown cards and `MealMetricGrid` aggregate and display individual served vs planned counts (`served / planned`, e.g., `3/5 adults, 2/3 kids`) across kids, adults, guests, and free meals when viewing served or grid modes (`!showPlannedOnly`), and planned counts (`adults, kids`) when viewing planned mode (`showPlannedOnly`).
+- **Accessibility, Localization & Scaling**: Fully compliant with WCAG 2.1 AA accessibility contracts (`accessible={true}`, `accessibilityRole="summary"`), mobile-responsive scaling hooks (`s(...)`), and `UI_TEXT` dictionary localization.
 - **View Pass Meal Subscription Plan Integration (`DetailsScreen.tsx`)**: Updated the Meal Subscription Plan section (`vCount` and `nvCount` calculations per day) to correctly aggregate and add up adult, kid, and guest meals so that passes with guests show the complete combined meal count.
 - **Accessibility-Compliant Interactive Package Tags & Auto-Pruning (`SubscriptionPaymentSection.tsx`, `SubscriptionForm.tsx`)**: Rendered the green `PACKAGE APPLIED` marker as a pressable accessibility-compliant button (`accessible={true}`, `accessibilityRole="button"`) to directly open the Apply Package Modal. Automatically hides the duplicate `Apply` button when a package is applied, and prunes invalid packages automatically when meals are deselected.
 
