@@ -1,7 +1,7 @@
 /**
  * Shared Application Constants and Logic Helpers
  */
-import { FoodMenu, ConfigDay, AppConfig, MealType, DietType, DietaryOption, normalizeChoice, toBool, PaymentMode, MealAllocation, DietaryVariety, MealConfig, MealMenu, PackageApplicability, MealSlot } from "./domain";
+import { FoodMenu, ConfigDay, AppConfig, MealType, DietType, DietaryOption, normalizeChoice, toBool, PaymentMode, MealAllocation, DietaryVariety, MealConfig, MealMenu, PackageApplicability, MealSlot, TakenState } from "./domain";
 import { UI_TEXT } from "./strings";
 import { Subscription } from "./types";
 
@@ -1176,3 +1176,45 @@ export const getMemberLegend = (
   }
   return `${UI_TEXT.guestsAbbr}${index - (adultCount + kCount) + 1}`;
 };
+
+/**
+ * Checks whether a specific member slot has an opted parcel that was missed (served dine-in instead of parcel).
+ */
+export function isSlotMissedParcel(
+  slot: MealSlot | undefined,
+  takenState: TakenState | undefined,
+  dayId: string,
+  mealType: MealType,
+  idx: number,
+  adultCount: number,
+  kidsCount: number,
+  guestsCount: number,
+  dayConfig: ConfigDay[],
+  kidsEnabled: boolean,
+  guestsEnabled?: boolean
+): boolean {
+  if (!slot) return false;
+  const choice = slot[mealType];
+  if (!choice || choice === DietaryOption.NONE || choice === "None" || choice === "none") return false;
+  if (!isMealEnabled(dayId, mealType, dayConfig)) return false;
+
+  const isKid = kidsEnabled && idx >= adultCount && idx < adultCount + kidsCount;
+  const isGuest = guestsEnabled && idx >= adultCount + kidsCount;
+
+  const parcelKey = `${mealType}Parcel` as keyof MealSlot;
+  const isParcelOpted = toBool((slot as any)?.[parcelKey]);
+  const isParcelAllowed = isParcelOpted && (
+    isGuest
+      ? isGuestsParcelEnabled(dayId, mealType, dayConfig, guestsEnabled)
+      : isKid
+      ? isKidsParcelEnabled(dayId, mealType, dayConfig, kidsEnabled)
+      : isParcelEnabled(dayId, mealType, dayConfig)
+  );
+
+  if (!isParcelAllowed) return false;
+
+  const isMealTaken = toBool(takenState?.[mealType]) || toBool(takenState?.[parcelKey as keyof TakenState]);
+  const isParcelTaken = toBool(takenState?.[parcelKey as keyof TakenState]);
+
+  return isMealTaken && !isParcelTaken;
+}

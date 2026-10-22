@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { View, Text, Pressable } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useStyles } from "../../styles";
 import { useAppTheme } from "../../theme";
 import { UI_TEXT } from "../../strings";
@@ -66,8 +67,61 @@ export function FlatWiseReport({
   const styles = useStyles();
   const { theme } = useAppTheme();
 
+  const summaryTotals = useMemo(() => {
+    let totalPasses = data.length;
+    let totalMembers = 0;
+    let totalAmount = 0;
+
+    data.forEach((item) => {
+      totalMembers += (item.people + item.kids + (item.guests || 0));
+      const cleanAmt = parseFloat(item.amount.replace(/[^0-9.]/g, "")) || 0;
+      totalAmount += cleanAmt;
+    });
+
+    return { totalPasses, totalMembers, totalAmount };
+  }, [data]);
+
   return (
     <View style={{ gap: 16 }}>
+      {/* Red Summary Card for Pass / Flat-Wise Report */}
+      {data.length > 0 && (
+        <View
+          style={[styles.card, { padding: 18, backgroundColor: theme.colors.primary, borderRadius: 16 }]}
+          accessible={true}
+          accessibilityRole="summary"
+          accessibilityLabel={`${UI_TEXT.flatWiseReport}: ${summaryTotals.totalPasses} passes, ${summaryTotals.totalMembers} members`}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
+            <Ionicons name="home-outline" size={20} color={theme.colors.white} />
+            <Text style={{ color: theme.colors.white, fontWeight: "900", fontSize: 18, flex: 1 }}>
+              {UI_TEXT.flatWiseReport}
+            </Text>
+          </View>
+
+          <View style={{ gap: 8, borderTopWidth: 1, borderTopColor: theme.colors.white + "40", paddingTop: 12 }}>
+            {/* Total Passes Block */}
+            <View style={{ gap: 3, marginBottom: 4, borderBottomWidth: 1, borderBottomColor: theme.colors.white + "20", paddingBottom: 8 }}>
+              <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700" }}>
+                {UI_TEXT.totalPassesLabel} ({summaryTotals.totalPasses})
+              </Text>
+              <Text style={{ color: theme.colors.white, fontSize: 18, fontWeight: "900" }}>
+                {summaryTotals.totalPasses} {summaryTotals.totalPasses === 1 ? UI_TEXT.passSingular : UI_TEXT.passPlural} ({summaryTotals.totalMembers} {UI_TEXT.people})
+              </Text>
+            </View>
+
+            {/* Total Collection Block */}
+            <View style={{ gap: 3, paddingBottom: 4 }}>
+              <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700" }}>
+                {UI_TEXT.totalCollection}
+              </Text>
+              <Text style={{ color: theme.colors.white, fontSize: 16, fontWeight: "900" }}>
+                {UI_TEXT.rs}{UI_TEXT.space}{summaryTotals.totalAmount.toFixed(0)}
+              </Text>
+            </View>
+          </View>
+        </View>
+      )}
+
       {data.map((item, index) => {
         const colorScheme = theme.cardColors[index % theme.cardColors.length];
         return (

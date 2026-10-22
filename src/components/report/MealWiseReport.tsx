@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { View, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useStyles } from "../../styles";
@@ -57,8 +57,83 @@ export function MealWiseReport({
   const styles = useStyles();
   const { theme } = useAppTheme();
 
+  const summaryTotals = useMemo(() => {
+    let totalPlanned = 0;
+    let totalServed = 0;
+    let totalVeg = 0;
+    let totalVegTaken = 0;
+    let totalNonVeg = 0;
+    let totalNonVegTaken = 0;
+
+    data.forEach((item) => {
+      [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER]
+        .filter((mKey) => isMealEnabled(item.day, mKey, dayConfig))
+        .forEach((mKey) => {
+          const m = item.meals[mKey];
+          if (!m) return;
+          const tVeg = m.veg + m.freeMealVeg + m.kidsVeg + (m.guestsVeg || 0);
+          const tNonVeg = m.nonVeg + m.freeMealNonVeg + m.kidsNonVeg + (m.guestsNonVeg || 0);
+          const tTakenVeg = m.vegTaken + m.freeMealVegTaken + m.kidsVegTaken + (m.guestsVegTaken || 0);
+          const tTakenNonVeg = m.nonVegTaken + m.freeMealNonVegTaken + m.kidsNonVegTaken + (m.guestsNonVegTaken || 0);
+
+          totalVeg += tVeg;
+          totalNonVeg += tNonVeg;
+          totalVegTaken += tTakenVeg;
+          totalNonVegTaken += tTakenNonVeg;
+          totalPlanned += (tVeg + tNonVeg);
+          totalServed += (tTakenVeg + tTakenNonVeg);
+        });
+    });
+
+    return { totalPlanned, totalServed, totalVeg, totalVegTaken, totalNonVeg, totalNonVegTaken };
+  }, [data, dayConfig]);
+
   return (
     <View style={{ gap: 16 }}>
+      {/* Red Summary Card for Meal-Wise Report */}
+      {data.length > 0 && (
+        <View
+          style={[styles.card, { padding: 18, backgroundColor: theme.colors.primary, borderRadius: 16 }]}
+          accessible={true}
+          accessibilityRole="summary"
+          accessibilityLabel={`${UI_TEXT.mealWiseReport}: ${summaryTotals.totalServed} of ${summaryTotals.totalPlanned} plates served`}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
+            <Ionicons name="restaurant-outline" size={20} color={theme.colors.white} />
+            <Text style={{ color: theme.colors.white, fontWeight: "900", fontSize: 18, flex: 1 }}>
+              {UI_TEXT.mealWiseReport}
+            </Text>
+          </View>
+
+          <View style={{ gap: 8, borderTopWidth: 1, borderTopColor: theme.colors.white + "40", paddingTop: 12 }}>
+            {/* Total Plates Block */}
+            <View style={{ gap: 3, marginBottom: 4, borderBottomWidth: 1, borderBottomColor: theme.colors.white + "20", paddingBottom: 8 }}>
+              <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700" }}>
+                {UI_TEXT.total} {UI_TEXT.plates} ({summaryTotals.totalServed} / {summaryTotals.totalPlanned})
+              </Text>
+              <Text style={{ color: theme.colors.white, fontSize: 18, fontWeight: "900" }}>
+                {summaryTotals.totalServed} / {summaryTotals.totalPlanned} {UI_TEXT.plates}
+              </Text>
+            </View>
+
+            {/* Dietary Breakdown Block */}
+            <View style={{ gap: 3, paddingBottom: 4 }}>
+              <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700" }}>
+                {UI_TEXT.subCategoryBreakdown}
+              </Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flexWrap: "wrap", marginTop: 2 }}>
+                <Text style={{ color: theme.colors.white, fontSize: 13, fontWeight: "800" }}>
+                  • {UI_TEXT.veg}: {summaryTotals.totalVegTaken} / {summaryTotals.totalVeg}
+                </Text>
+                <Text style={{ color: theme.colors.white, fontSize: 13, fontWeight: "800" }}>
+                  • {UI_TEXT.nonVeg}: {summaryTotals.totalNonVegTaken} / {summaryTotals.totalNonVeg}
+                </Text>
+              </View>
+            </View>
+          </View>
+        </View>
+      )}
+
       {data.map((item, index) => {
         const colorScheme = theme.cardColors[index % theme.cardColors.length];
         return (

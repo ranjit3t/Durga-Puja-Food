@@ -194,6 +194,31 @@ The application follows a **Serverless Layered Architecture** built on the **Exp
 - **Dashboard Summary Card Full Plate Count Display**:
   - Daily Demand Summary card on `DashboardScreen.tsx` displays Full Plate Count (`summaryTotals.total`) as the main metric with `PLATES` (`UI_TEXT.plates.toUpperCase()`), and Dine-In vs. Parcel breakdown in a sub-caption `(110 Dine-In, 10 Parcel)`.
 
+### AD. Centralized Missed Parcel & Opted Dine-In Engine (`constants.ts`, `MealMetricGrid.tsx`, `useReportData.ts`, `SubscriptionForm.tsx`)
+- **Centralized Missed Parcel Invariant (`isSlotMissedParcel`)**: Extracted the canonical missed parcel detection function `isSlotMissedParcel` into `src/constants.ts`. Evaluates whether a member slot opted for takeaway parcel service but was served dine-in instead (`isParcelAllowed && isMealTaken && !isParcelTaken`).
+- **Unified Cross-Module Re-use**:
+  - **`src/hooks/useReportData.ts`**: Re-uses `isSlotMissedParcel` in `getMissedParcelData` for generating missed parcel report data.
+  - **`src/screens/SubscriptionForm.tsx`**: Re-uses `isSlotMissedParcel` in `checkParcelInconsistency` for validating parcel collection warnings.
+  - **`src/components/dashboard/MealMetricGrid.tsx`**: Re-uses `isSlotMissedParcel` in `parcelOptedDineInStats` to display Opted Dine In counts in the Takeaway Parcels grid section.
+- **Opted Dine In Dashboard Field**:
+  - Labeled dynamically as `Opted Dine In` (`UI_TEXT.optedDineIn`).
+  - Rendered **strictly when count > 0** (`optedDineIn > 0`), providing accurate inventory tracking for non-used takeaway parcel boxes.
+- **Parcel Report Top Red Summary Cards**:
+  - Rendered at the top of Day-Wise Parcel Summary and Missed Parcel Report sub-tabs (`ParcelWiseReport.tsx`, `MissedParcelReport.tsx`).
+  - Formatted as prominent crimson summary cards (`backgroundColor: theme.colors.primary`, `borderRadius: 16`, `padding: 18`) detailing total served/planned parcel counts, veg vs. non-veg breakdowns, missed parcels count, passes count, and member headcounts.
+- **Free Meal & Guest Parcel Inclusion in Parcel Summary**:
+  - Fully incorporates free meal parcels (`freeMealVegParcelTaken`, `freeMealNonVegParcelTaken`) and guest/kid parcels alongside adult parcels in the Day-Wise Parcel Summary aggregation and top red summary card.
+- **Pending Report Partial & Total Missed Badges**:
+  - Enhanced the Pending (Not Taken) Meal Report summary card and individual pass cards to identify and display both **MISSED** (fully missed, `0/Total taken`) and **PARTIAL** (partially picked up, `Taken/Total taken`) pickup statuses, matching the subscription list directory filter badges. Fully accessible, mobile-responsive, and localized (`UI_TEXT`).
+- **Members Report Top Red Summary Card**:
+  - Added a prominent top red summary card (`backgroundColor: theme.colors.primary`, `borderRadius: 16`, `padding: 18`) to the Members Report tab (`MembersReport.tsx`), summarizing total subscription records, total member headcounts, and dietary/parcel served vs. planned breakdowns (`• Veg`, `• Non-Veg`, `• Parcels`). Fully WCAG 2.1 AA compliant, mobile-responsive, and localized via `UI_TEXT`.
+- **Meal & Pass Reports Top Red Summary Cards**:
+  - Added prominent top red summary cards (`backgroundColor: theme.colors.primary`, `borderRadius: 16`, `padding: 18`) to both the Meal-Wise Report (`MealWiseReport.tsx`) and Pass / Flat-Wise Report (`FlatWiseReport.tsx`). Meal-Wise summary card details total served vs. planned plates and dietary breakdowns (`• Veg`, `• Non-Veg`), while Pass summary card details total active passes count, total member headcounts, and total subscription payment collection. Fully WCAG 2.1 AA compliant, mobile-responsive, and zero hardcoding (`UI_TEXT`).
+- **Free Meal Tab & All-Members Aggregation in Members Report**:
+  - Added a dedicated **Free Meal** filter tab on the Members Report (`MembersReport.tsx`, `useReportData.ts`, `ReportScreen.tsx`) when `freeMealEnabled === true`, displaying free meal desk summaries without pass affiliations. When the **All** tab is selected, free meals are automatically included alongside regular subscription pass members (adults, kids, guests) in both the top red summary card and report list, ensuring complete consolidated membership reporting. Fully WCAG 2.1 AA compliant and localized via `UI_TEXT`.
+- **Zero-Count Omission in Report Summary Cards**:
+  - Refined all report summary card breakdowns (such as Adults, Kids, Guests, Veg, Non-Veg) across report components (`PendingReport.tsx`, `MembersReport.tsx`, `MealWiseReport.tsx`) to conditionally omit categories with `0` counts (e.g. preventing `• Guests: 0`), ensuring clean, clutter-free operational metrics. Fully WCAG 2.1 AA compliant, mobile-friendly, and localized (`UI_TEXT`).
+
 ---
 
 ## 3. Database Security & Indexing Configuration (`database.rules.json`)

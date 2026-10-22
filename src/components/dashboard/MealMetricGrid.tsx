@@ -6,7 +6,7 @@ import { UI_TEXT } from "../../strings";
 import { Metric } from "../common/Metric";
 import { MealType, DietaryOption, DietaryVariety, DietType, TakenState, toBool } from "../../domain";
 import { useCoreDatabase } from "../../context/DatabaseContext";
-import { getMealVarieties, isSpecialMeal, isParcelEnabled, isKidsParcelEnabled, isGuestsParcelEnabled, getDietTypeForChoice, getMealFreeMealCounts } from "../../constants";
+import { getMealVarieties, isSpecialMeal, isMealEnabled, isParcelEnabled, isKidsParcelEnabled, isGuestsParcelEnabled, getDietTypeForChoice, getMealFreeMealCounts, isDietaryEnabled, isSlotMissedParcel } from "../../constants";
 import { Ionicons } from "@expo/vector-icons";
 
 export interface MealMetricProps {
@@ -112,6 +112,33 @@ export function MealMetricGrid(props: MealMetricProps) {
   const showGuests = guestsEnabled && (gTotal > 0 || gTaken > 0);
   const showFreeMeals = freeMealEnabled && (freeMealTotal > 0 || freeMealTakenTotal > 0);
   const showParcels = (isParcelEnabledProp ?? true) && parcel > 0;
+
+  // Calculate opted dine in stats for parcels (opted parcel but taken dine-in)
+  const parcelOptedDineInStats = React.useMemo(() => {
+    let veg = 0;
+    let nonVeg = 0;
+    let total = 0;
+
+    subscriptions.forEach((sub) => {
+      const slots = sub.mealSlots?.[day] || [];
+      const taken = sub.takenByPerson?.[day] || [];
+      const adultCount = sub.peopleCount || 0;
+      const kCount = kidsEnabled ? (sub.kidsCount || 0) : 0;
+      const gCount = guestsEnabled ? (sub.guestsCount || 0) : 0;
+
+      slots.forEach((sSlot, idx) => {
+        if (isSlotMissedParcel(sSlot, taken[idx], day, type, idx, adultCount, kCount, gCount, dayConfig, kidsEnabled, guestsEnabled)) {
+          total++;
+          const choice = sSlot[type];
+          const diet = getDietTypeForChoice(choice, varieties);
+          if (diet === DietType.VEG) veg++;
+          else if (diet === DietType.NON_VEG) nonVeg++;
+        }
+      });
+    });
+
+    return { veg, nonVeg, total };
+  }, [subscriptions, day, type, dayConfig, kidsEnabled, guestsEnabled, varieties]);
 
   const SectionHeader = ({ icon, title, color }: { icon: keyof typeof Ionicons.glyphMap; title: string; color?: string }) => (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6, marginBottom: 2 }}>
@@ -447,12 +474,13 @@ export function MealMetricGrid(props: MealMetricProps) {
           <View style={styles.metricGrid}>
             {showSubCategorization ? (
               varieties.map((v) => {
-                let pParcels = 0, sParcels = 0;
+                let pParcels = 0, sParcels = 0, optedDineIn = 0;
                 subscriptions.forEach((sub) => {
                   const slots = sub.mealSlots?.[day] || [];
                   const taken = sub.takenByPerson?.[day] || [];
                   const adultCount = sub.peopleCount || 0;
                   const kCount = kidsEnabled ? (sub.kidsCount || 0) : 0;
+                  const gCount = guestsEnabled ? (sub.guestsCount || 0) : 0;
                   slots.forEach((sSlot, idx) => {
                     const choice = sSlot[type];
                     if (choice === DietaryOption.NONE) return;
@@ -475,6 +503,9 @@ export function MealMetricGrid(props: MealMetricProps) {
                       const isParcelTaken = toBool(personTaken?.[parcelKey]);
                       if (isParcelAllowed) pParcels++;
                       if (isParcelTaken) sParcels++;
+                      if (isSlotMissedParcel(sSlot, personTaken, day, type, idx, adultCount, kCount, gCount, dayConfig, kidsEnabled, guestsEnabled)) {
+                        optedDineIn++;
+                      }
                     }
                   });
                 });
@@ -491,13 +522,16 @@ export function MealMetricGrid(props: MealMetricProps) {
                     sParcels += mealMenu.freeMealParcelTakenCounts?.[v.id] || 0;
                   }
                 }
-                if (pParcels === 0 && sParcels === 0) return null;
+                if (pParcels === 0 && sParcels === 0 && optedDineIn === 0) return null;
                 const vColor = v.color || (v.type === DietType.VEG ? theme.colors.veg : theme.colors.nonVeg);
                 return (
                   <React.Fragment key={v.id}>
                     <Metric icon={v.type === DietType.VEG ? "leaf-outline" : "flame-outline"} label={v.name} value={pParcels} color={vColor} />
                     {!showPlannedOnly && (
                       <Metric icon="checkmark-done-outline" label={`${v.name} (${UI_TEXT.taken})`} value={sParcels} color={vColor} />
+                    )}
+                    {!showPlannedOnly && optedDineIn > 0 && (
+                      <Metric icon="restaurant-outline" label={`${v.name} (${UI_TEXT.optedDineIn})`} value={optedDineIn} color={vColor} />
                     )}
                   </React.Fragment>
                 );
@@ -508,9 +542,15 @@ export function MealMetricGrid(props: MealMetricProps) {
                 {!showPlannedOnly && (
                   <Metric icon="checkmark-done-outline" label={UI_TEXT.served} value={props.parcelVegTaken || 0} color={theme.colors.veg} />
                 )}
+                {!showPlannedOnly && parcelOptedDineInStats.veg > 0 && (
+                  <Metric icon="restaurant-outline" label={`${vegLabel} (${UI_TEXT.optedDineIn})`} value={parcelOptedDineInStats.veg} color={theme.colors.veg} />
+                )}
                 <Metric icon="flame-outline" label={nonVegLabel} value={props.parcelNonVeg || 0} color={theme.colors.nonVeg} />
                 {!showPlannedOnly && (
                   <Metric icon="checkmark-done-outline" label={UI_TEXT.served} value={props.parcelNonVegTaken || 0} color={theme.colors.nonVeg} />
+                )}
+                {!showPlannedOnly && parcelOptedDineInStats.nonVeg > 0 && (
+                  <Metric icon="restaurant-outline" label={`${nonVegLabel} (${UI_TEXT.optedDineIn})`} value={parcelOptedDineInStats.nonVeg} color={theme.colors.nonVeg} />
                 )}
               </>
             ) : (
@@ -518,6 +558,9 @@ export function MealMetricGrid(props: MealMetricProps) {
                 <Metric icon="cube-outline" label={showPlannedOnly ? UI_TEXT.total : UI_TEXT.planned} value={parcel} color={theme.colors.primary} />
                 {!showPlannedOnly && (
                   <Metric icon="checkmark-circle-outline" label={UI_TEXT.served} value={parcelTaken} color={theme.colors.veg} />
+                )}
+                {!showPlannedOnly && parcelOptedDineInStats.total > 0 && (
+                  <Metric icon="restaurant-outline" label={UI_TEXT.optedDineIn} value={parcelOptedDineInStats.total} color={theme.colors.primary} />
                 )}
               </>
             )}

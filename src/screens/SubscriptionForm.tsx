@@ -47,6 +47,7 @@ import {
   isSpecialMeal,
   isSpecialOnlySubscribed,
   formatTimestamp,
+  isSlotMissedParcel,
 } from "../constants";
 import {
   MealChoice,
@@ -284,15 +285,13 @@ export function SubscriptionForm() {
     const { dayId, type } = currentMealInfo;
     const personSlots = sub.mealSlots[dayId] || [];
     const takenDays = sub.takenByPerson[dayId] || [];
+    const adultCount = sub.peopleCount || 0;
+    const kCount = kidsEnabled ? (sub.kidsCount || 0) : 0;
+    const gCount = guestsEnabled ? (sub.guestsCount || 0) : 0;
 
-    return personSlots.some((slot: MealSlot, pIdx: number) => {
-      const t = takenDays[pIdx];
-      if (!t) return false;
-      const optedParcel = !!slot[`${type}Parcel` as keyof MealSlot];
-      const takenFood = !!t[type];
-      const takenParcel = !!t[`${type}Parcel` as keyof TakenState];
-      return optedParcel && takenFood && !takenParcel;
-    });
+    return personSlots.some((slot: MealSlot, pIdx: number) =>
+      isSlotMissedParcel(slot, takenDays[pIdx], dayId, type, pIdx, adultCount, kCount, gCount, dayConfig, kidsEnabled, guestsEnabled)
+    );
   };
 
   const parcelAlertFiredRef = useRef<string | null>(null);

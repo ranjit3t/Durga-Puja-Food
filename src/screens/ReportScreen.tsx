@@ -182,7 +182,7 @@ export function ReportScreen() {
       if (dayId) parts.push(getDayLabel(dayId, dayConfig));
       if (mealType) parts.push(getMealLabel(mealType));
       if (type === ReportType.MEMBERS_MEAL && category && category !== "all") {
-        parts.push(category === "adult" ? UI_TEXT.adults : category === "kids" ? UI_TEXT.kids : UI_TEXT.guests);
+        parts.push(category === "adult" ? UI_TEXT.adults : category === "kids" ? UI_TEXT.kids : category === "guests" ? UI_TEXT.guests : UI_TEXT.freeMeals);
       }
     }
     parts.push(new Date().toLocaleDateString());
@@ -640,6 +640,7 @@ export function ReportScreen() {
                     { id: "adult", label: UI_TEXT.adults },
                     ...(kidsEnabled ? [{ id: "kids", label: UI_TEXT.kids }] : []),
                     ...(guestsEnabled ? [{ id: "guests", label: UI_TEXT.guests }] : []),
+                    ...(freeMealEnabled ? [{ id: "freeMeal", label: UI_TEXT.freeMeals }] : []),
                   ].map((cat) => {
                     const isSelected = selectedPersonCategory === cat.id;
                     return (
@@ -743,6 +744,7 @@ export function ReportScreen() {
               selectedMealType={selectedMealType}
               dayConfig={dayConfig}
               onSelectFlat={onSelectFlat}
+              freeMealEnabled={!!freeMealEnabled}
             />
           )}
 

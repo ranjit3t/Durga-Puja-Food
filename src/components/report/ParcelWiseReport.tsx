@@ -70,6 +70,55 @@ export function ParcelWiseReport({
     return getMissedParcelData(selectedDayId, selectedMealType);
   }, [getMissedParcelData, selectedDayId, selectedMealType]);
 
+  const totalOverallMissedParcels = useMemo(() => {
+    let missedSum = 0;
+    dayConfig.forEach((dayObj) => {
+      if (!dayObj.enabled) return;
+      [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].forEach((mType) => {
+        if (!isMealEnabled(dayObj.id, mType, dayConfig) || !isParcelEnabled(dayObj.id, mType, dayConfig)) return;
+        const missedItems = getMissedParcelData(dayObj.id, mType);
+        missedItems.forEach((item) => {
+          missedSum += item.count;
+        });
+      });
+    });
+    return missedSum;
+  }, [dayConfig, getMissedParcelData]);
+
+  const summaryTotals = useMemo(() => {
+    let totalVeg = 0;
+    let totalNonVeg = 0;
+    let totalVegTaken = 0;
+    let totalNonVegTaken = 0;
+
+    data.forEach((item) => {
+      const mealsWithParcels = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER]
+        .filter((mKey) => isMealEnabled(item.day, mKey, dayConfig) && isParcelEnabled(item.day, mKey, dayConfig));
+
+      mealsWithParcels.forEach((mKey) => {
+        const m = item.meals[mKey];
+        if (!m) return;
+        const freeVegParcel = (m as any).freeMealVegParcelTaken || 0;
+        const freeNonVegParcel = (m as any).freeMealNonVegParcelTaken || 0;
+
+        const tVeg = (m.vegParcel || 0) + (m.kidsVegParcel || 0) + (m.guestsVegParcel || 0) + freeVegParcel;
+        const tNonVeg = (m.nonVegParcel || 0) + (m.kidsNonVegParcel || 0) + (m.guestsNonVegParcel || 0) + freeNonVegParcel;
+        const tVegTaken = (m.vegParcelTaken || 0) + (m.kidsVegParcelTaken || 0) + (m.guestsVegParcelTaken || 0) + freeVegParcel;
+        const tNonVegTaken = (m.nonVegParcelTaken || 0) + (m.kidsNonVegParcelTaken || 0) + (m.guestsNonVegParcelTaken || 0) + freeNonVegParcel;
+
+        totalVeg += tVeg;
+        totalNonVeg += tNonVeg;
+        totalVegTaken += tVegTaken;
+        totalNonVegTaken += tNonVegTaken;
+      });
+    });
+
+    const totalParcelPlanned = totalVeg + totalNonVeg;
+    const totalParcelServed = totalVegTaken + totalNonVegTaken;
+
+    return { totalVeg, totalNonVeg, totalVegTaken, totalNonVegTaken, totalParcelPlanned, totalParcelServed };
+  }, [data, dayConfig]);
+
   return (
     <View style={{ gap: 16 }}>
       {/* Sub-Tabs */}
@@ -118,62 +167,121 @@ export function ParcelWiseReport({
       )}
 
       {activeTab === ParcelTab.SUMMARY ? (
-        data.map((item, index) => {
-          const colorScheme = theme.cardColors[index % theme.cardColors.length];
-          const mealsWithParcels = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER]
-            .filter((mKey) => isMealEnabled(item.day, mKey, dayConfig) && isParcelEnabled(item.day, mKey, dayConfig));
-
-          if (mealsWithParcels.length === 0) return null;
-
-          return (
-            <View key={item.day} style={[styles.dashboardCard, { backgroundColor: colorScheme.bg, borderColor: colorScheme.border, borderWidth: 1.5 }]}>
-              <View style={{ borderBottomWidth: 1, borderBottomColor: colorScheme.border, paddingBottom: 12, marginBottom: 12 }}>
-                <Text style={[styles.dashboardDay, { color: colorScheme.accent }]}>{getDayLabel(item.day, dayConfig)}</Text>
+        <View style={{ gap: 16 }}>
+          {/* Red Summary Card for Parcel Report */}
+          {summaryTotals.totalParcelPlanned > 0 && (
+            <View
+              style={[styles.card, { padding: 18, backgroundColor: theme.colors.primary, borderRadius: 16 }]}
+              accessible={true}
+              accessibilityRole="summary"
+              accessibilityLabel={`${UI_TEXT.parcelReport}: ${summaryTotals.totalParcelServed} of ${summaryTotals.totalParcelPlanned} parcels served`}
+            >
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                <Ionicons name="cube-outline" size={20} color={theme.colors.white} />
+                <Text style={{ color: theme.colors.white, fontWeight: "900", fontSize: 18, flex: 1 }}>
+                  {UI_TEXT.parcelReport}
+                </Text>
               </View>
-              <View style={{ gap: 12 }}>
-                {mealsWithParcels.map((mKey) => {
-                  const m = item.meals[mKey];
-                  const tVeg = (m.vegParcel || 0) + (m.kidsVegParcel || 0) + (m.guestsVegParcel || 0);
-                  const tNonVeg = (m.nonVegParcel || 0) + (m.kidsNonVegParcel || 0) + (m.guestsNonVegParcel || 0);
-                  const tVegTaken = (m.vegParcelTaken || 0) + (m.kidsVegParcelTaken || 0) + (m.guestsVegParcelTaken || 0);
-                  const tNonVegTaken = (m.nonVegParcelTaken || 0) + (m.kidsNonVegParcelTaken || 0) + (m.guestsNonVegParcelTaken || 0);
 
-                  const totalParcel = tVeg + tNonVeg;
-                  const totalParcelTaken = tVegTaken + tNonVegTaken;
+              <View style={{ gap: 8, borderTopWidth: 1, borderTopColor: theme.colors.white + "40", paddingTop: 12 }}>
+                {/* Total Parcels Block */}
+                <View style={{ gap: 3, marginBottom: 4, borderBottomWidth: 1, borderBottomColor: theme.colors.white + "20", paddingBottom: 8 }}>
+                  <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700" }}>
+                    {UI_TEXT.totalParcels} ({summaryTotals.totalParcelServed} / {summaryTotals.totalParcelPlanned})
+                  </Text>
+                  <Text style={{ color: theme.colors.white, fontSize: 18, fontWeight: "900" }}>
+                    {summaryTotals.totalParcelServed}{UI_TEXT.space}{UI_TEXT.slash}{UI_TEXT.space}{summaryTotals.totalParcelPlanned}{UI_TEXT.space}{UI_TEXT.parcels}
+                  </Text>
+                </View>
 
-                  if (totalParcel === 0) return null;
+                {/* Dietary Breakdown Block */}
+                <View style={{ gap: 3, marginBottom: 4, borderBottomWidth: 1, borderBottomColor: theme.colors.white + "20", paddingBottom: 8 }}>
+                  <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700" }}>
+                    {UI_TEXT.subCategoryBreakdown}
+                  </Text>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flexWrap: "wrap", marginTop: 2 }}>
+                    <Text style={{ color: theme.colors.white, fontSize: 13, fontWeight: "800" }}>
+                      • {UI_TEXT.veg}: {summaryTotals.totalVegTaken} / {summaryTotals.totalVeg}
+                    </Text>
+                    <Text style={{ color: theme.colors.white, fontSize: 13, fontWeight: "800" }}>
+                      • {UI_TEXT.nonVeg}: {summaryTotals.totalNonVegTaken} / {summaryTotals.totalNonVeg}
+                    </Text>
+                  </View>
+                </View>
 
-                  return (
-                    <View key={mKey} style={{ backgroundColor: theme.colors.surface, borderRadius: 16, padding: 12, borderWidth: 1, borderColor: theme.colors.border }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                        <Ionicons name={mKey === MealType.BREAKFAST ? "sunny-outline" : mKey === MealType.LUNCH ? "restaurant-outline" : "moon-outline"} size={16} color={theme.colors.primary} />
-                        <Text style={{ fontSize: 15, fontWeight: '800', color: theme.colors.textPrimary }}>{getMealLabel(mKey)}</Text>
-                      </View>
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-                        <View style={{ gap: 4 }}>
-                          {isDietaryEnabled(item.day, mKey, DietType.VEG, dayConfig) && (
-                            <Text style={{ fontSize: 13, fontWeight: '600', color: theme.colors.veg }}>
-                              {UI_TEXT.veg}{UI_TEXT.colon}{UI_TEXT.space}{tVegTaken}{UI_TEXT.space}{UI_TEXT.slash}{UI_TEXT.space}{tVeg}
-                            </Text>
-                          )}
-                          {isDietaryEnabled(item.day, mKey, DietType.NON_VEG, dayConfig) && (
-                            <Text style={{ fontSize: 13, fontWeight: '600', color: theme.colors.nonVeg }}>
-                              {UI_TEXT.nonVeg}{UI_TEXT.colon}{UI_TEXT.space}{tNonVegTaken}{UI_TEXT.space}{UI_TEXT.slash}{UI_TEXT.space}{tNonVeg}
-                            </Text>
-                          )}
-                        </View>
-                        <View style={{ alignItems: 'flex-end' }}>
-                          <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.textSecondary }}>{UI_TEXT.total.toUpperCase()}</Text>
-                          <Text style={{ fontSize: 18, fontWeight: '900', color: theme.colors.primary }}>{totalParcelTaken}{UI_TEXT.space}{UI_TEXT.slash}{UI_TEXT.space}{totalParcel}{UI_TEXT.space}{UI_TEXT.parcelAbbr}</Text>
-                        </View>
-                      </View>
-                    </View>
-                  );
-                })}
+                {/* Overall Missed Parcels Block */}
+                <View style={{ gap: 3, paddingBottom: 4 }}>
+                  <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700" }}>
+                    {UI_TEXT.missedParcelReport} ({totalOverallMissedParcels})
+                  </Text>
+                  <Text style={{ color: theme.colors.white, fontSize: 14, fontWeight: "900" }}>
+                    {totalOverallMissedParcels} {totalOverallMissedParcels === 1 ? UI_TEXT.parcelSingular : UI_TEXT.parcels}
+                  </Text>
+                </View>
               </View>
             </View>
-          );
-        })
+          )}
+
+          {data.map((item, index) => {
+            const colorScheme = theme.cardColors[index % theme.cardColors.length];
+            const mealsWithParcels = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER]
+              .filter((mKey) => isMealEnabled(item.day, mKey, dayConfig) && isParcelEnabled(item.day, mKey, dayConfig));
+
+            if (mealsWithParcels.length === 0) return null;
+
+            return (
+              <View key={item.day} style={[styles.dashboardCard, { backgroundColor: colorScheme.bg, borderColor: colorScheme.border, borderWidth: 1.5 }]}>
+                <View style={{ borderBottomWidth: 1, borderBottomColor: colorScheme.border, paddingBottom: 12, marginBottom: 12 }}>
+                  <Text style={[styles.dashboardDay, { color: colorScheme.accent }]}>{getDayLabel(item.day, dayConfig)}</Text>
+                </View>
+                <View style={{ gap: 12 }}>
+                  {mealsWithParcels.map((mKey) => {
+                    const m = item.meals[mKey];
+                    const freeVegParcel = (m as any).freeMealVegParcelTaken || 0;
+                    const freeNonVegParcel = (m as any).freeMealNonVegParcelTaken || 0;
+
+                    const tVeg = (m.vegParcel || 0) + (m.kidsVegParcel || 0) + (m.guestsVegParcel || 0) + freeVegParcel;
+                    const tNonVeg = (m.nonVegParcel || 0) + (m.kidsNonVegParcel || 0) + (m.guestsNonVegParcel || 0) + freeNonVegParcel;
+                    const tVegTaken = (m.vegParcelTaken || 0) + (m.kidsVegParcelTaken || 0) + (m.guestsVegParcelTaken || 0) + freeVegParcel;
+                    const tNonVegTaken = (m.nonVegParcelTaken || 0) + (m.kidsNonVegParcelTaken || 0) + (m.guestsNonVegParcelTaken || 0) + freeNonVegParcel;
+
+                    const totalParcel = tVeg + tNonVeg;
+                    const totalParcelTaken = tVegTaken + tNonVegTaken;
+
+                    if (totalParcel === 0) return null;
+
+                    return (
+                      <View key={mKey} style={{ backgroundColor: theme.colors.surface, borderRadius: 16, padding: 12, borderWidth: 1, borderColor: theme.colors.border }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                          <Ionicons name={mKey === MealType.BREAKFAST ? "sunny-outline" : mKey === MealType.LUNCH ? "restaurant-outline" : "moon-outline"} size={16} color={theme.colors.primary} />
+                          <Text style={{ fontSize: 15, fontWeight: '800', color: theme.colors.textPrimary }}>{getMealLabel(mKey)}</Text>
+                        </View>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                          <View style={{ gap: 4 }}>
+                            {isDietaryEnabled(item.day, mKey, DietType.VEG, dayConfig) && (
+                              <Text style={{ fontSize: 13, fontWeight: '600', color: theme.colors.veg }}>
+                                {UI_TEXT.veg}{UI_TEXT.colon}{UI_TEXT.space}{tVegTaken}{UI_TEXT.space}{UI_TEXT.slash}{UI_TEXT.space}{tVeg}
+                              </Text>
+                            )}
+                            {isDietaryEnabled(item.day, mKey, DietType.NON_VEG, dayConfig) && (
+                              <Text style={{ fontSize: 13, fontWeight: '600', color: theme.colors.nonVeg }}>
+                                {UI_TEXT.nonVeg}{UI_TEXT.colon}{UI_TEXT.space}{tNonVegTaken}{UI_TEXT.space}{UI_TEXT.slash}{UI_TEXT.space}{tNonVeg}
+                              </Text>
+                            )}
+                          </View>
+                          <View style={{ alignItems: 'flex-end' }}>
+                            <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.textSecondary }}>{UI_TEXT.total.toUpperCase()}</Text>
+                            <Text style={{ fontSize: 18, fontWeight: '900', color: theme.colors.primary }}>{totalParcelTaken}{UI_TEXT.space}{UI_TEXT.slash}{UI_TEXT.space}{totalParcel}{UI_TEXT.space}{UI_TEXT.parcelAbbr}</Text>
+                          </View>
+                        </View>
+                      </View>
+                    );
+                  })}
+                </View>
+              </View>
+            );
+          })}
+        </View>
       ) : (
         <MissedParcelReport
           data={missedData}
