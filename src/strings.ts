@@ -389,6 +389,7 @@ export const UI_TEXT = {
   completedCheckoutBadgeLabel: "COMPLETED",
   missedCheckoutBadgeLabel: "MISSED",
   currentMealKidsFilterLabel: "Current Meal Kids",
+  currentMealGuestsFilterLabel: "Current Meal Guests",
 
   // Details Screen
   flatIdPrefix: "PASS #",
@@ -569,6 +570,7 @@ export const UI_TEXT = {
   mealWiseReport: "Meal Wise Breakdown",
   freeMealReport: "Free Meal Desk Summary",
   parcelReport: "Parcel Service Report",
+  freeMealParcels: "Free Meal Parcels",
   missedParcelReport: "Missed Parcels",
   amountDiscrepancyReport: "Discrepancy",
   discrepancyReport: "Discrepancies",

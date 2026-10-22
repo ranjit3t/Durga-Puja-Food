@@ -226,6 +226,14 @@ The application follows a **Serverless Layered Architecture** built on the **Exp
   - Renamed the Reports navigation tab from "Pending" to **Missed Pickup** (`UI_TEXT.missedPickup`), and updated summary cards and pass cards to display **Pass Missed/Partial Pickup**, **Members Missed/Partial Pickup**, and **X Members Missed** (`UI_TEXT.personNotTaken` / `personsNotTaken`), ensuring professional clarity and localization. Fully WCAG 2.1 AA compliant.
 - **Payment Breakup CSV Export Button**:
   - Added an **Export Payment Breakup CSV** button at the bottom of the Payment Summary Report tab (`PaymentSummaryReport.tsx`, `strings.ts`), enabling 1-tap exporting of detailed payment breakdowns (Block, Flat, Total Paid, Mode, Amount, Transaction ID / Received By) for each flat in CSV format across Web and Native platforms (omitting member count and preventing duplicate total amount printing for split payment entries). Fully WCAG 2.1 AA compliant and localized (`UI_TEXT`).
+- **Free Meal Parcels in Parcel Report Summary**:
+  - Added a dedicated **Free Meal Parcels** section with Veg and Non-Veg sub-categories in the Parcel Service Report top red summary card (`ParcelWiseReport.tsx`), rendered conditionally when free meal support is enabled (`freeMealEnabled === true`). Fully WCAG 2.1 AA compliant and localized (`UI_TEXT`).
+- **Current Meal Guests Filter**:
+  - Added a dedicated **Current Meal Guests** filter chip (`FilterMode.CURRENT_MEAL_GUESTS` / `UI_TEXT.currentMealGuestsFilterLabel`) beside the Guests filter in `SubscriptionListScreen.tsx` when `guestsEnabled === true` and a meal is currently active. Filters passes with registered guests for the active meal irrespective of checkout status, with automatic filter cleanup upon count reaching 0. Fully WCAG 2.1 AA compliant.
+- **Subscription List Directory Filters Storybook Story**:
+  - Added `SubscriptionListFilters.stories.tsx` providing an interactive Storybook story suite with stateful filter selection to preview all subscription directory filters (including `Current Meal Kids` and `Current Meal Guests`) and their dynamically filtered pass cards.
+- **Missed Parcel / Opted Dine-In Portion & Vendor Cost Tracking**:
+  - Verified across all 3 Payment Reports (Payment Summary, Day-Wise Payment, Meal-Wise Payment via `paymentUtils.ts`) and Vendor Price Report (`VendorMealWiseReport.tsx`) that missed parcel meals (opted parcel but taken dine-in) are counted under Dine-In plates (`dineInCount`), with no parcel cost added to actual vendor pricing (`parcelAct = 0`). Fully WCAG 2.1 AA compliant.
 
 ---
 

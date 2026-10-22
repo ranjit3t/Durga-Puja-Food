@@ -50,6 +50,7 @@ export function ParcelWiseReport({
   onSelectFlat,
   kidsEnabled,
   guestsEnabled,
+  freeMealEnabled,
   isCapturing,
 }: {
   data: MealWiseData[];
@@ -60,6 +61,7 @@ export function ParcelWiseReport({
   onSelectFlat: (id: string) => void;
   kidsEnabled: boolean;
   guestsEnabled?: boolean;
+  freeMealEnabled?: boolean;
   isCapturing?: boolean;
 }) {
   const styles = useStyles();
@@ -94,6 +96,8 @@ export function ParcelWiseReport({
     let totalNonVeg = 0;
     let totalVegTaken = 0;
     let totalNonVegTaken = 0;
+    let totalFreeMealVegParcelTaken = 0;
+    let totalFreeMealNonVegParcelTaken = 0;
 
     data.forEach((item) => {
       const mealsWithParcels = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER]
@@ -104,6 +108,8 @@ export function ParcelWiseReport({
         if (!m) return;
         const freeVegParcel = (m as any).freeMealVegParcelTaken || 0;
         const freeNonVegParcel = (m as any).freeMealNonVegParcelTaken || 0;
+        totalFreeMealVegParcelTaken += freeVegParcel;
+        totalFreeMealNonVegParcelTaken += freeNonVegParcel;
 
         const tVeg = (m.vegParcel || 0) + (m.kidsVegParcel || 0) + (m.guestsVegParcel || 0) + freeVegParcel;
         const tNonVeg = (m.nonVegParcel || 0) + (m.kidsNonVegParcel || 0) + (m.guestsNonVegParcel || 0) + freeNonVegParcel;
@@ -119,8 +125,19 @@ export function ParcelWiseReport({
 
     const totalParcelPlanned = totalVeg + totalNonVeg;
     const totalParcelServed = totalVegTaken + totalNonVegTaken;
+    const totalFreeMealParcelTaken = totalFreeMealVegParcelTaken + totalFreeMealNonVegParcelTaken;
 
-    return { totalVeg, totalNonVeg, totalVegTaken, totalNonVegTaken, totalParcelPlanned, totalParcelServed };
+    return {
+      totalVeg,
+      totalNonVeg,
+      totalVegTaken,
+      totalNonVegTaken,
+      totalParcelPlanned,
+      totalParcelServed,
+      totalFreeMealVegParcelTaken,
+      totalFreeMealNonVegParcelTaken,
+      totalFreeMealParcelTaken,
+    };
   }, [data, dayConfig]);
 
   return (
@@ -213,7 +230,31 @@ export function ParcelWiseReport({
                   </View>
                 </View>
 
-                {/* Overall Missed Parcels Block */}
+                {/* Free Meal Parcels Block (Shown only when free meal enabled) */}
+                {freeMealEnabled && summaryTotals.totalFreeMealParcelTaken > 0 && (
+                  <View style={{ gap: 3, marginBottom: 4, borderBottomWidth: 1, borderBottomColor: theme.colors.white + "20", paddingBottom: 8 }}>
+                    <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700" }}>
+                      {UI_TEXT.freeMealParcels} ({summaryTotals.totalFreeMealParcelTaken})
+                    </Text>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flexWrap: "wrap", marginTop: 2 }}>
+                      <Text style={{ color: theme.colors.white, fontSize: 14, fontWeight: "900" }}>
+                        {summaryTotals.totalFreeMealParcelTaken} {summaryTotals.totalFreeMealParcelTaken === 1 ? UI_TEXT.parcelSingular : UI_TEXT.parcels}
+                      </Text>
+                      {summaryTotals.totalFreeMealVegParcelTaken > 0 && (
+                        <Text style={{ color: theme.colors.white, fontSize: 13, fontWeight: "800" }}>
+                          • {UI_TEXT.veg}: {summaryTotals.totalFreeMealVegParcelTaken}
+                        </Text>
+                      )}
+                      {summaryTotals.totalFreeMealNonVegParcelTaken > 0 && (
+                        <Text style={{ color: theme.colors.white, fontSize: 13, fontWeight: "800" }}>
+                          • {UI_TEXT.nonVeg}: {summaryTotals.totalFreeMealNonVegParcelTaken}
+                        </Text>
+                      )}
+                    </View>
+                  </View>
+                )}
+
+                {/* Overall Missed Parcels / Opted Dine-In Block */}
                 <View style={{ gap: 3, paddingBottom: 4 }}>
                   <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700" }}>
                     {UI_TEXT.optedDineIn} ({missedParcelSummary.total})

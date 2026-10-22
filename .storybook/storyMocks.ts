@@ -206,17 +206,21 @@ type StoryChatOverrides = Record<string, any>;
 const StoryChatOverridesContext = React.createContext<StoryChatOverrides>({});
 type StoryListOverrides = { activityLogs?: any[]; notes?: any[] };
 const StoryListOverridesContext = React.createContext<StoryListOverrides>({});
+type StoryNavigationOverrides = Record<string, any>;
+const StoryNavigationOverridesContext = React.createContext<StoryNavigationOverrides>({});
 
 export function StoryMockProvider({
   children,
   database: overrides = {},
   chat = {},
   lists = {},
+  navigation = {},
 }: {
   children: React.ReactNode;
   database?: StoryDatabaseOverrides;
   chat?: StoryChatOverrides;
   lists?: StoryListOverrides;
+  navigation?: StoryNavigationOverrides;
 }) {
   return React.createElement(
     StoryDatabaseOverridesContext.Provider,
@@ -224,8 +228,16 @@ export function StoryMockProvider({
     React.createElement(
       StoryChatOverridesContext.Provider,
       { value: chat },
-      React.createElement(StoryListOverridesContext.Provider, { value: lists }, children),
-    ),
+      React.createElement(
+        StoryListOverridesContext.Provider,
+        { value: lists },
+        React.createElement(
+          StoryNavigationOverridesContext.Provider,
+          { value: navigation },
+          children
+        )
+      )
+    )
   );
 }
 
@@ -291,6 +303,7 @@ export function useUI() {
 }
 
 export function useAppNavigation() {
+  const overrides = useContext(StoryNavigationOverridesContext);
   return {
     screen: AppScreen.HOME,
     history: [],
@@ -322,6 +335,7 @@ export function useAppNavigation() {
     setTargetMeal: noop,
     startNew: noop,
     openScannedValue: () => true,
+    ...overrides,
   };
 }
 

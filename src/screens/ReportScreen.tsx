@@ -538,6 +538,7 @@ export function ReportScreen() {
               onSelectFlat={onSelectFlat}
               kidsEnabled={!!kidsEnabled}
               guestsEnabled={!!guestsEnabled}
+              freeMealEnabled={!!freeMealEnabled}
               isCapturing={isCapturing}
             />
           )}

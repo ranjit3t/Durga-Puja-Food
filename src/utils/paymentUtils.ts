@@ -951,8 +951,8 @@ export function calculatePassMealBreakdown(
 
         const slotTotalPrice = mFoodPrice + mParcelPrice;
         const tState = taken[i] || {};
-        const isMealTaken = !!tState[mType as keyof typeof tState];
         const isParcelTaken = !!tState[`${mType}Parcel` as keyof typeof tState];
+        const isMealTaken = !!tState[mType as keyof typeof tState] || isParcelTaken;
 
         passMeals.push({
           dayId,
@@ -1211,7 +1211,8 @@ export function calculateDetailedPaymentReportData(
         else if (m.category === "kid") mealMap[key].kidsPortionCount++;
         else mealMap[key].adultPortionCount++;
 
-        if (m.parcelPrice > 0) {
+        const isMissedParcel = m.isParcelAllowed && m.isMealTaken && !m.isParcelTaken;
+        if (m.parcelPrice > 0 && !isMissedParcel) {
           mealMap[key].parcelCount++;
         } else {
           mealMap[key].dineInCount++;

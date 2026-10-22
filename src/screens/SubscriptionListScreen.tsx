@@ -900,6 +900,46 @@ export function SubscriptionListScreen() {
 
   const hasAnyCurrentMealKids = currentMealKidsData.count > 0;
 
+  const currentMealGuestsData = useMemo(() => {
+    if (!currentMealInfo || !guestsEnabled) {
+      return { count: 0, list: [], map: {} as Record<string, number> };
+    }
+
+    const dayId = currentMealInfo.dayId;
+    const mType = currentMealInfo.type;
+
+    const map: Record<string, number> = {};
+    const list = subscriptions.map(sub => {
+      let guestsSubscribedCount = 0;
+      const adultCount = sub.peopleCount || 0;
+      const kCount = kidsEnabled ? (sub.kidsCount || 0) : 0;
+      const gCount = guestsEnabled ? (sub.guestsCount || 0) : 0;
+      if (gCount <= 0) return null;
+
+      const slots = sub.mealSlots?.[dayId] || [];
+
+      for (let idx = adultCount + kCount; idx < adultCount + kCount + gCount; idx++) {
+        const sSlot = slots[idx];
+        if (!sSlot) continue;
+
+        const choice = getValidSlotChoice(dayId, mType, sSlot[mType], dayConfig);
+        if (choice !== DietaryOption.NONE) {
+          guestsSubscribedCount++;
+        }
+      }
+
+      if (guestsSubscribedCount > 0) {
+        map[sub.id] = guestsSubscribedCount;
+        return { id: sub.id, count: guestsSubscribedCount };
+      }
+      return null;
+    }).filter(Boolean) as { id: string; count: number }[];
+
+    return { count: list.length, list, map };
+  }, [subscriptions, currentMealInfo, dayConfig, kidsEnabled, guestsEnabled]);
+
+  const hasAnyCurrentMealGuests = currentMealGuestsData.count > 0;
+
   // Auto-deselect filters when their selection count drops to 0 (e.g., after quick checkout clears the last missed pass)
   useEffect(() => {
     setActiveFilters(prev => {
@@ -925,6 +965,9 @@ export function SubscriptionListScreen() {
       if (next.includes(FilterMode.CURRENT_MEAL_KIDS) && (!kidsEnabled || !currentMealInfo || !hasAnyCurrentMealKids)) {
         next = next.filter(m => m !== FilterMode.CURRENT_MEAL_KIDS);
       }
+      if (next.includes(FilterMode.CURRENT_MEAL_GUESTS) && (!guestsEnabled || !currentMealInfo || !hasAnyCurrentMealGuests)) {
+        next = next.filter(m => m !== FilterMode.CURRENT_MEAL_GUESTS);
+      }
       if (next.includes(FilterMode.PARCEL) && !hasAnyParcel) {
         next = next.filter(m => m !== FilterMode.PARCEL);
       }
@@ -949,7 +992,7 @@ export function SubscriptionListScreen() {
       }
       return next.length === prev.length ? prev : next;
     });
-  }, [currentMealInfo, hasAnyMissed, hasAnyPartialCheckout, hasAnyCompletedCheckout, hasAnySubscribed, kidsEnabled, hasAnyKids, hasAnyCurrentMealKids, hasAnyParcel, isCurrentMealParcelEnabled, hasAnyCurrentMealParcel, hasAnyVegOnly, hasAnySpecialOnly, hasAnyPackage, hasAnyDiscrepancy]);
+  }, [currentMealInfo, hasAnyMissed, hasAnyPartialCheckout, hasAnyCompletedCheckout, hasAnySubscribed, kidsEnabled, hasAnyKids, hasAnyCurrentMealKids, guestsEnabled, hasAnyCurrentMealGuests, hasAnyParcel, isCurrentMealParcelEnabled, hasAnyCurrentMealParcel, hasAnyVegOnly, hasAnySpecialOnly, hasAnyPackage, hasAnyDiscrepancy]);
 
   const visibleSubscriptions = useMemo(() => {
     let filtered = subscriptions;
@@ -976,6 +1019,11 @@ export function SubscriptionListScreen() {
       if (activeFilters.includes(FilterMode.CURRENT_MEAL_KIDS) && kidsEnabled && currentMealInfo) {
         const currentKidsIds = currentMealKidsData.list.map(m => m.id);
         filtered = filtered.filter(sub => currentKidsIds.includes(sub.id));
+      }
+
+      if (activeFilters.includes(FilterMode.CURRENT_MEAL_GUESTS) && guestsEnabled && currentMealInfo) {
+        const currentGuestsIds = currentMealGuestsData.list.map(m => m.id);
+        filtered = filtered.filter(sub => currentGuestsIds.includes(sub.id));
       }
 
       if (activeFilters.includes(FilterMode.COMPLETED_CHECKOUT) && currentMealInfo) {
@@ -1839,6 +1887,44 @@ export function SubscriptionListScreen() {
                   color: activeFilters.includes(FilterMode.GUESTS) ? theme.colors.primary : theme.colors.textSecondary
                 }}>
                   {UI_TEXT.guests} ({passesWithGuestsCount})
+                </Text>
+              </Pressable>
+            )}
+
+            {guestsEnabled && currentMealInfo && hasAnyCurrentMealGuests && (
+              <Pressable
+                onPress={() => toggleFilter(FilterMode.CURRENT_MEAL_GUESTS)}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityState={{ selected: activeFilters.includes(FilterMode.CURRENT_MEAL_GUESTS) }}
+                accessibilityLabel={`${UI_TEXT.currentMealGuestsFilterLabel} (${currentMealGuestsData.count})`}
+                style={({ pressed }) => [
+                  {
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: s(4),
+                    paddingHorizontal: s(8),
+                    paddingVertical: s(4),
+                    borderRadius: s(12),
+                    borderWidth: 1,
+                    borderColor: activeFilters.includes(FilterMode.CURRENT_MEAL_GUESTS) ? theme.colors.primary : theme.colors.border,
+                    backgroundColor: activeFilters.includes(FilterMode.CURRENT_MEAL_GUESTS) ? theme.colors.primary + "22" : theme.colors.surface,
+                    marginBottom: s(4)
+                  },
+                  pressed && { opacity: 0.7 }
+                ]}
+              >
+                <Ionicons
+                  name={activeFilters.includes(FilterMode.CURRENT_MEAL_GUESTS) ? "people" : "people-outline"}
+                  size={s(13)}
+                  color={activeFilters.includes(FilterMode.CURRENT_MEAL_GUESTS) ? theme.colors.primary : theme.colors.textSecondary}
+                />
+                <Text style={{
+                  fontSize: s(11),
+                  fontWeight: "700",
+                  color: activeFilters.includes(FilterMode.CURRENT_MEAL_GUESTS) ? theme.colors.primary : theme.colors.textSecondary
+                }}>
+                  {UI_TEXT.currentMealGuestsFilterLabel} ({currentMealGuestsData.count})
                 </Text>
               </Pressable>
             )}

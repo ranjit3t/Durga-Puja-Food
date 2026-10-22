@@ -53,6 +53,7 @@ export enum FilterMode {
   SUBSCRIBED = "subscribed",
   KIDS = "kids",
   CURRENT_MEAL_KIDS = "currentMealKids",
+  CURRENT_MEAL_GUESTS = "currentMealGuests",
   GUESTS = "guests",
   PARCEL = "parcel",
   CURRENT_MEAL_PARCEL = "currentMealParcel",
