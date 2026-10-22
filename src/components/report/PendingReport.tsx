@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useStyles } from "../../styles";
 import { useAppTheme } from "../../theme";
 import { UI_TEXT } from "../../strings";
-import { isDietaryEnabled } from "../../constants";
+import { isDietaryEnabled, getDayLabel, getMealLabel } from "../../constants";
 import { ConfigDay, DietType } from "../../domain";
 
 interface PendingItem {
@@ -62,11 +62,18 @@ export function PendingReport({
           accessibilityRole="summary"
           accessibilityLabel={`${UI_TEXT.notTakenReport}: ${totalPendingPasses} passes, ${totalMembersMissed} members pending`}
         >
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
             <Ionicons name="alert-circle-outline" size={20} color={theme.colors.white} />
-            <Text style={{ color: theme.colors.white, fontWeight: "900", fontSize: 18, flex: 1 }}>
+            <Text style={{ color: theme.colors.white, fontWeight: "900", fontSize: 18, flex: 1, minWidth: 140 }}>
               {UI_TEXT.notTakenReport}
             </Text>
+            {selectedDayId && selectedMealType && (
+              <View style={{ backgroundColor: theme.colors.white + "25", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 }}>
+                <Text style={{ color: theme.colors.white, fontSize: 13, fontWeight: "900" }}>
+                  {getDayLabel(selectedDayId, dayConfig)} - {getMealLabel(selectedMealType)}
+                </Text>
+              </View>
+            )}
           </View>
 
           <View style={{ gap: 8, borderTopWidth: 1, borderTopColor: theme.colors.white + "40", paddingTop: 12 }}>

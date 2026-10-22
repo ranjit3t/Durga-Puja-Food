@@ -217,7 +217,7 @@ The application follows a **Serverless Layered Architecture** built on the **Exp
 - **Free Meal Tab & All-Members Aggregation in Members Report**:
   - Added a dedicated **Free Meal** filter tab on the Members Report (`MembersReport.tsx`, `useReportData.ts`, `ReportScreen.tsx`) when `freeMealEnabled === true`, displaying free meal desk summaries without pass affiliations. When the **All** tab is selected, free meals are automatically included alongside regular subscription pass members (adults, kids, guests) in both the top red summary card and report list, ensuring complete consolidated membership reporting. Fully WCAG 2.1 AA compliant and localized via `UI_TEXT`.
 - **Zero-Count Omission in Report Summary Cards**:
-  - Refined all report summary card breakdowns (such as Adults, Kids, Guests, Veg, Non-Veg) across report components (`PendingReport.tsx`, `MembersReport.tsx`, `MealWiseReport.tsx`) to conditionally omit categories with `0` counts (e.g. preventing `• Guests: 0`), ensuring clean, clutter-free operational metrics. Fully WCAG 2.1 AA compliant, mobile-friendly, and localized (`UI_TEXT`).
+  - Refined all report summary card breakdowns (such as Adults, Kids, Guests, Veg, Non-Veg, and Overpaid/Underpaid discrepancy counts in `ReportSummaryCard.tsx`, `PendingReport.tsx`, `MembersReport.tsx`, `MealWiseReport.tsx`) to conditionally omit categories with `0` counts (e.g. displaying `(5 Excess)` instead of `(5 Excess | 0 Pending)`), ensuring clean, clutter-free operational metrics. Fully WCAG 2.1 AA compliant, mobile-friendly, and localized (`UI_TEXT`).
 - **Opted Dine-In Parcel Sub-Categorization & White Text Styling**:
   - Renamed the missed parcel tab and summary cards to **Opted Dine-In** (`UI_TEXT.optedDineIn`), and added explicit **Veg** vs. **Non-Veg** parcel sub-categorization in both top red summary cards and individual pass cards (`ParcelWiseReport.tsx`, `MissedParcelReport.tsx`, `useReportData.ts`), rendered as `2 Opted Dine-In` and styled with consistent white text (`theme.colors.white`) matching other categories. Fully WCAG 2.1 AA compliant and localized (`UI_TEXT`).
 - **Export PDF Button & Code Removal**:
@@ -234,6 +234,8 @@ The application follows a **Serverless Layered Architecture** built on the **Exp
   - Added `SubscriptionListFilters.stories.tsx` providing an interactive Storybook story suite with stateful filter selection to preview all subscription directory filters (including `Current Meal Kids` and `Current Meal Guests`) and their dynamically filtered pass cards.
 - **Missed Parcel / Opted Dine-In Portion & Vendor Cost Tracking**:
   - Verified across all 3 Payment Reports (Payment Summary, Day-Wise Payment, Meal-Wise Payment via `paymentUtils.ts`) and Vendor Price Report (`VendorMealWiseReport.tsx`) that missed parcel meals (opted parcel but taken dine-in) are counted under Dine-In plates (`dineInCount`), with no parcel cost added to actual vendor pricing (`parcelAct = 0`). Fully WCAG 2.1 AA compliant.
+- **Day & Meal Scope Printing on Summary Cards**:
+  - Rendered a Day and Meal badge (e.g. `Shashthi - Lunch`) in the top summary card header across all day/meal report views (`PendingReport.tsx`, `MembersReport.tsx`, `MissedParcelReport.tsx`, `DayWiseReport.tsx`), guaranteeing unambiguous context when printing, exporting, or sharing reports. Fully WCAG 2.1 AA compliant.
 
 ---
 
