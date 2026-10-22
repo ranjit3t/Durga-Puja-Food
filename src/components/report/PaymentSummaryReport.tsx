@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, Pressable } from "react-native";
+import { View, Text, Pressable, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useStyles } from "../../styles";
 import { useAppTheme } from "../../theme";
@@ -92,6 +92,62 @@ export function PaymentSummaryReport({
     ...(kidsEnabled ? [{ label: UI_TEXT.kids, amount: data.totalKidsParcel ?? 0 }] : []),
     ...(guestsEnabled ? [{ label: UI_TEXT.guests, amount: data.totalGuestsParcel ?? 0 }] : []),
   ].filter((item) => item.amount > 0);
+
+  const handleExportCsv = async () => {
+    try {
+      const rows: string[] = [];
+      rows.push("Block,Flat,Total Amount (INR),Payment Mode,Amount (INR),Transaction ID / Received By");
+
+      (data.details || []).forEach((flat) => {
+        const block = `"${(flat.block || "").replace(/"/g, '""')}"`;
+        const flatNo = `"${(flat.flat || "").replace(/"/g, '""')}"`;
+        const totalAmt = (flat.total || 0).toFixed(0);
+
+        if (flat.payments && flat.payments.length > 0) {
+          flat.payments.forEach((p, pIdx) => {
+            const mode = `"${getPaymentModeLabel(p.mode).replace(/"/g, '""')}"`;
+            const pAmt = parseFloat(p.amount || "0").toFixed(0);
+            const refInfo = `"${(p.mode === PaymentMode.CASH ? (p.receivedBy || "") : (p.transactionId || "")).replace(/"/g, '""')}"`;
+            const rowTotal = pIdx === 0 ? totalAmt : "";
+            rows.push(`${block},${flatNo},${rowTotal},${mode},${pAmt},${refInfo}`);
+          });
+        } else {
+          rows.push(`${block},${flatNo},${totalAmt},"None","0",""`);
+        }
+      });
+
+      const csvContent = rows.join("\n");
+      const fileName = `payment_breakup_${new Date().toISOString().slice(0, 10)}.csv`;
+
+      if (Platform.OS === "web") {
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.setAttribute("download", fileName);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } else {
+        const { FileSystem, Sharing } = await import("expo-file-system" as any).catch(() => ({}) as any);
+        if (FileSystem && FileSystem.documentDirectory) {
+          const fileUri = `${FileSystem.documentDirectory}${fileName}`;
+          await FileSystem.writeAsStringAsync(fileUri, csvContent, { encoding: FileSystem.EncodingType.UTF8 });
+          if (Sharing && (await Sharing.isAvailableAsync())) {
+            await Sharing.shareAsync(fileUri, { mimeType: "text/csv", dialogTitle: UI_TEXT.exportCsv });
+          }
+        } else {
+          const { Share } = await import("react-native");
+          await Share.share({
+            message: csvContent,
+            title: fileName,
+          });
+        }
+      }
+    } catch (err) {
+      console.error("Failed to export payment breakup CSV", err);
+    }
+  };
 
   return (
     <View style={{ gap: 16 }}>
@@ -465,6 +521,40 @@ export function PaymentSummaryReport({
               })}
             </View>
           </View>
+
+          {/* Export CSV Button */}
+          {!isCapturing && (
+            <Pressable
+              onPress={handleExportCsv}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={UI_TEXT.exportCsv}
+              accessibilityHint="Exports payment breakup for each flat in CSV format"
+              style={({ pressed }) => [
+                {
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  backgroundColor: theme.colors.secondary,
+                  paddingVertical: 14,
+                  paddingHorizontal: 16,
+                  borderRadius: 14,
+                  elevation: 3,
+                  shadowColor: theme.colors.secondary,
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.25,
+                  shadowRadius: 5,
+                },
+                pressed && { opacity: 0.8 }
+              ]}
+            >
+              <Ionicons name="document-text-outline" size={20} color={theme.colors.white} />
+              <Text style={{ color: theme.colors.white, fontWeight: '900', fontSize: 15 }}>
+                {UI_TEXT.exportCsv}
+              </Text>
+            </Pressable>
+          )}
         </View>
       ) : activeTab === PaymentTab.DAY_WISE ? (
         <DayWisePaymentReport

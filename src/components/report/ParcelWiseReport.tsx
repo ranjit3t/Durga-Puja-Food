@@ -70,8 +70,10 @@ export function ParcelWiseReport({
     return getMissedParcelData(selectedDayId, selectedMealType);
   }, [getMissedParcelData, selectedDayId, selectedMealType]);
 
-  const totalOverallMissedParcels = useMemo(() => {
+  const missedParcelSummary = useMemo(() => {
     let missedSum = 0;
+    let missedVegSum = 0;
+    let missedNonVegSum = 0;
     dayConfig.forEach((dayObj) => {
       if (!dayObj.enabled) return;
       [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].forEach((mType) => {
@@ -79,10 +81,12 @@ export function ParcelWiseReport({
         const missedItems = getMissedParcelData(dayObj.id, mType);
         missedItems.forEach((item) => {
           missedSum += item.count;
+          missedVegSum += (item.vegCount || 0);
+          missedNonVegSum += (item.nonVegCount || 0);
         });
       });
     });
-    return missedSum;
+    return { total: missedSum, veg: missedVegSum, nonVeg: missedNonVegSum };
   }, [dayConfig, getMissedParcelData]);
 
   const summaryTotals = useMemo(() => {
@@ -126,7 +130,7 @@ export function ParcelWiseReport({
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 8, paddingHorizontal: 2 }}>
         {[
           { id: ParcelTab.SUMMARY, label: UI_TEXT.dayWiseReport, icon: "list-outline" },
-          { id: ParcelTab.MISSED, label: UI_TEXT.missedParcelReport, icon: "alert-circle-outline" },
+          { id: ParcelTab.MISSED, label: UI_TEXT.optedDineIn, icon: "alert-circle-outline" },
         ].map(tab => (
           <Pressable
             key={tab.id}
@@ -212,11 +216,23 @@ export function ParcelWiseReport({
                 {/* Overall Missed Parcels Block */}
                 <View style={{ gap: 3, paddingBottom: 4 }}>
                   <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700" }}>
-                    {UI_TEXT.missedParcelReport} ({totalOverallMissedParcels})
+                    {UI_TEXT.optedDineIn} ({missedParcelSummary.total})
                   </Text>
-                  <Text style={{ color: theme.colors.white, fontSize: 14, fontWeight: "900" }}>
-                    {totalOverallMissedParcels} {totalOverallMissedParcels === 1 ? UI_TEXT.parcelSingular : UI_TEXT.parcels}
-                  </Text>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flexWrap: "wrap", marginTop: 2 }}>
+                    <Text style={{ color: theme.colors.white, fontSize: 14, fontWeight: "900" }}>
+                      {missedParcelSummary.total} {missedParcelSummary.total === 1 ? UI_TEXT.parcelSingular : UI_TEXT.parcels}
+                    </Text>
+                    {missedParcelSummary.veg > 0 && (
+                      <Text style={{ color: theme.colors.white, fontSize: 13, fontWeight: "800" }}>
+                        • {UI_TEXT.veg}: {missedParcelSummary.veg}
+                      </Text>
+                    )}
+                    {missedParcelSummary.nonVeg > 0 && (
+                      <Text style={{ color: theme.colors.white, fontSize: 13, fontWeight: "800" }}>
+                        • {UI_TEXT.nonVeg}: {missedParcelSummary.nonVeg}
+                      </Text>
+                    )}
+                  </View>
                 </View>
               </View>
             </View>

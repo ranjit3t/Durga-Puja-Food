@@ -846,6 +846,10 @@ export function useReportData(
   }, [subscriptions, dayConfig, kidsEnabled, guestsEnabled, freeMealEnabled, foodMenu]);
 
   const getMissedParcelData = useCallback((selectedDayId: string, selectedMealType: MealType) => {
+    const dayConf = (dayConfig || []).find(d => d.id === selectedDayId);
+    const mConf = dayConf ? dayConf[selectedMealType] : undefined;
+    const varieties = getMealVarieties(mConf);
+
     return subscriptions
       .map((sub) => {
         const slots = sub.mealSlots[selectedDayId] || [];
@@ -855,10 +859,19 @@ export function useReportData(
         const gCount = guestsEnabled ? (sub.guestsCount || 0) : 0;
 
         let count = 0;
+        let vegCount = 0;
+        let nonVegCount = 0;
 
         slots.forEach((s: any, idx: number) => {
           if (isSlotMissedParcel(s, taken[idx], selectedDayId, selectedMealType, idx, adultCount, kCount, gCount, dayConfig, kidsEnabled, guestsEnabled)) {
             count++;
+            const choice = s[selectedMealType];
+            const diet = getDietTypeForChoice(choice, varieties);
+            if (diet === DietType.VEG) {
+              vegCount++;
+            } else if (diet === DietType.NON_VEG) {
+              nonVegCount++;
+            }
           }
         });
 
@@ -868,6 +881,8 @@ export function useReportData(
           flat: sub.flat,
           mobile: sub.mobile,
           count,
+          vegCount,
+          nonVegCount,
           kids: sub.kidsCount || 0,
           guests: sub.guestsCount || 0,
         };

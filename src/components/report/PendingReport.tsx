@@ -73,7 +73,7 @@ export function PendingReport({
             {/* Total Pending Passes Block */}
             <View style={{ gap: 3, marginBottom: 4, borderBottomWidth: 1, borderBottomColor: theme.colors.white + "20", paddingBottom: 8 }}>
               <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700" }}>
-                {UI_TEXT.flat}s {UI_TEXT.pending} ({totalPendingPasses})
+                {UI_TEXT.passMissedPartialPickup} ({totalPendingPasses})
               </Text>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap", marginTop: 2 }}>
                 <Text style={{ color: theme.colors.white, fontSize: 14, fontWeight: "900" }}>
@@ -92,7 +92,7 @@ export function PendingReport({
             {/* Headcount Breakdown Block */}
             <View style={{ gap: 3, marginBottom: 4, paddingBottom: 4 }}>
               <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700" }}>
-                {UI_TEXT.people} {UI_TEXT.pending} ({totalMembersMissed})
+                {UI_TEXT.membersMissedPartialPickup} ({totalMembersMissed})
               </Text>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flexWrap: "wrap", marginTop: 2 }}>
                 {totalAdultsMissed > 0 && (

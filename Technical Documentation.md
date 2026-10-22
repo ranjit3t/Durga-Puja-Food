@@ -218,6 +218,14 @@ The application follows a **Serverless Layered Architecture** built on the **Exp
   - Added a dedicated **Free Meal** filter tab on the Members Report (`MembersReport.tsx`, `useReportData.ts`, `ReportScreen.tsx`) when `freeMealEnabled === true`, displaying free meal desk summaries without pass affiliations. When the **All** tab is selected, free meals are automatically included alongside regular subscription pass members (adults, kids, guests) in both the top red summary card and report list, ensuring complete consolidated membership reporting. Fully WCAG 2.1 AA compliant and localized via `UI_TEXT`.
 - **Zero-Count Omission in Report Summary Cards**:
   - Refined all report summary card breakdowns (such as Adults, Kids, Guests, Veg, Non-Veg) across report components (`PendingReport.tsx`, `MembersReport.tsx`, `MealWiseReport.tsx`) to conditionally omit categories with `0` counts (e.g. preventing `• Guests: 0`), ensuring clean, clutter-free operational metrics. Fully WCAG 2.1 AA compliant, mobile-friendly, and localized (`UI_TEXT`).
+- **Opted Dine-In Parcel Sub-Categorization & White Text Styling**:
+  - Renamed the missed parcel tab and summary cards to **Opted Dine-In** (`UI_TEXT.optedDineIn`), and added explicit **Veg** vs. **Non-Veg** parcel sub-categorization in both top red summary cards and individual pass cards (`ParcelWiseReport.tsx`, `MissedParcelReport.tsx`, `useReportData.ts`), rendered as `2 Opted Dine-In` and styled with consistent white text (`theme.colors.white`) matching other categories. Fully WCAG 2.1 AA compliant and localized (`UI_TEXT`).
+- **Export PDF Button & Code Removal**:
+  - Removed the non-functional Export PDF button and associated `expo-print` HTML report generation routines from the Reports screen (`ReportScreen.tsx`), retaining robust PNG snapshot sharing and web downloading.
+- **Report Tab Renaming & Member Missed Labels**:
+  - Renamed the Reports navigation tab from "Pending" to **Missed Pickup** (`UI_TEXT.missedPickup`), and updated summary cards and pass cards to display **Pass Missed/Partial Pickup**, **Members Missed/Partial Pickup**, and **X Members Missed** (`UI_TEXT.personNotTaken` / `personsNotTaken`), ensuring professional clarity and localization. Fully WCAG 2.1 AA compliant.
+- **Payment Breakup CSV Export Button**:
+  - Added an **Export Payment Breakup CSV** button at the bottom of the Payment Summary Report tab (`PaymentSummaryReport.tsx`, `strings.ts`), enabling 1-tap exporting of detailed payment breakdowns (Block, Flat, Total Paid, Mode, Amount, Transaction ID / Received By) for each flat in CSV format across Web and Native platforms (omitting member count and preventing duplicate total amount printing for split payment entries). Fully WCAG 2.1 AA compliant and localized (`UI_TEXT`).
 
 ---
 

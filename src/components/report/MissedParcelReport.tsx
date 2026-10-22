@@ -12,6 +12,8 @@ interface MissedParcelItem {
   flat: string;
   mobile?: number;
   count: number;
+  vegCount?: number;
+  nonVegCount?: number;
   kids: number;
   guests?: number;
 }
@@ -35,35 +37,51 @@ export function MissedParcelReport({
 
   const totalMissedPasses = data.length;
   const totalMissedParcels = data.reduce((acc, item) => acc + item.count, 0);
+  const totalVegMissed = data.reduce((acc, item) => acc + (item.vegCount || 0), 0);
+  const totalNonVegMissed = data.reduce((acc, item) => acc + (item.nonVegCount || 0), 0);
   const totalKids = kidsEnabled ? data.reduce((acc, item) => acc + (item.kids || 0), 0) : 0;
   const totalGuests = guestsEnabled ? data.reduce((acc, item) => acc + (item.guests || 0), 0) : 0;
 
   return (
     <View style={{ gap: 16 }}>
-      {/* Red Summary Card for Missed Parcels */}
+      {/* Red Summary Card for Opted Dine-In Parcels */}
       {data.length > 0 && (
         <View
           style={[styles.card, { padding: 18, backgroundColor: theme.colors.primary, borderRadius: 16 }]}
           accessible={true}
           accessibilityRole="summary"
-          accessibilityLabel={`${UI_TEXT.missedParcelReport}: ${totalMissedPasses} passes, ${totalMissedParcels} missed parcels`}
+          accessibilityLabel={`${UI_TEXT.optedDineIn}: ${totalMissedPasses} passes, ${totalMissedParcels} parcels`}
         >
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
             <Ionicons name="alert-circle-outline" size={20} color={theme.colors.white} />
             <Text style={{ color: theme.colors.white, fontWeight: "900", fontSize: 18, flex: 1 }}>
-              {UI_TEXT.missedParcelReport}
+              {UI_TEXT.optedDineIn}
             </Text>
           </View>
 
           <View style={{ gap: 8, borderTopWidth: 1, borderTopColor: theme.colors.white + "40", paddingTop: 12 }}>
-            {/* Total Missed Parcels Block */}
+            {/* Total Opted Dine-In Parcels Block */}
             <View style={{ gap: 3, marginBottom: 4, borderBottomWidth: 1, borderBottomColor: theme.colors.white + "20", paddingBottom: 8 }}>
               <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700" }}>
-                {UI_TEXT.missedParcelReport} ({totalMissedParcels})
+                {UI_TEXT.optedDineIn} ({totalMissedParcels})
               </Text>
-              <Text style={{ color: theme.colors.white, fontSize: 18, fontWeight: "900" }}>
-                {totalMissedParcels} {totalMissedParcels === 1 ? UI_TEXT.parcelSingular : UI_TEXT.parcels} ({totalMissedPasses} {totalMissedPasses === 1 ? UI_TEXT.passSingular : UI_TEXT.passPlural})
-              </Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flexWrap: "wrap", marginTop: 2 }}>
+                <Text style={{ color: theme.colors.white, fontSize: 18, fontWeight: "900" }}>
+                  {totalMissedParcels} {totalMissedParcels === 1 ? UI_TEXT.parcelSingular : UI_TEXT.parcels} ({totalMissedPasses} {totalMissedPasses === 1 ? UI_TEXT.passSingular : UI_TEXT.passPlural})
+                </Text>
+              </View>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flexWrap: "wrap", marginTop: 4 }}>
+                {totalVegMissed > 0 && (
+                  <Text style={{ color: theme.colors.white, fontSize: 13, fontWeight: "800" }}>
+                    • {UI_TEXT.veg}: {totalVegMissed}
+                  </Text>
+                )}
+                {totalNonVegMissed > 0 && (
+                  <Text style={{ color: theme.colors.white, fontSize: 13, fontWeight: "800" }}>
+                    • {UI_TEXT.nonVeg}: {totalNonVegMissed}
+                  </Text>
+                )}
+              </View>
             </View>
 
             {/* Member Details Block if applicable */}
@@ -118,9 +136,16 @@ export function MissedParcelReport({
                        </Text>
                      )}
                   </View>
-                  <View style={{ alignItems: 'flex-end' }}>
+                  <View style={{ alignItems: 'flex-end', gap: 2 }}>
                     <Text style={[styles.amount, { color: theme.colors.primary, fontWeight: '900' }]}>
-                      {item.count}{UI_TEXT.space}{UI_TEXT.parcelAbbr}{UI_TEXT.space}{UI_TEXT.pending}
+                      {item.count}{UI_TEXT.space}{UI_TEXT.optedDineIn}
+                    </Text>
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.textSecondary }}>
+                      {UI_TEXT.openParen}
+                      {(item.vegCount || 0) > 0 && <Text style={{ color: colorScheme.accent }}>{item.vegCount} {UI_TEXT.vegAbbr}</Text>}
+                      {(item.vegCount || 0) > 0 && (item.nonVegCount || 0) > 0 && <Text style={{ color: colorScheme.accent }}>{UI_TEXT.comma}{UI_TEXT.space}</Text>}
+                      {(item.nonVegCount || 0) > 0 && <Text style={{ color: colorScheme.accent }}>{item.nonVegCount} {UI_TEXT.nonVegAbbr}</Text>}
+                      {UI_TEXT.closeParen}
                     </Text>
                   </View>
                 </View>
