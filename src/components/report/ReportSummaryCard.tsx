@@ -107,12 +107,12 @@ export function ReportSummaryCard({ title, iconName, activeFilterChips, summary 
               <Text style={{ color: theme.colors.white, fontSize: 14, fontWeight: "900" }}>
                 {summary.seasonTotalPasses} {summary.seasonTotalPasses === 1 ? UI_TEXT.passSingular : UI_TEXT.passPlural}
               </Text>
-              {summary.paidPassesCount !== undefined && summary.unpaidPassesCount !== undefined && (
+              {((summary.paidPassesCount ?? 0) > 0 || (summary.unpaidPassesCount ?? 0) > 0) && (
                 <Text style={{ color: theme.colors.white + "DD", fontSize: 13, fontWeight: "700" }}>
                   {UI_TEXT.openParen}
-                  {summary.paidPassesCount}{UI_TEXT.space}{UI_TEXT.overpaidLabel}
-                  {UI_TEXT.pipe}
-                  {summary.unpaidPassesCount}{UI_TEXT.space}{UI_TEXT.underpaidLabel}
+                  {(summary.paidPassesCount ?? 0) > 0 && `${summary.paidPassesCount}${UI_TEXT.space}${UI_TEXT.overpaidLabel}`}
+                  {(summary.paidPassesCount ?? 0) > 0 && (summary.unpaidPassesCount ?? 0) > 0 && UI_TEXT.pipe}
+                  {(summary.unpaidPassesCount ?? 0) > 0 && `${summary.unpaidPassesCount}${UI_TEXT.space}${UI_TEXT.underpaidLabel}`}
                   {UI_TEXT.closeParen}
                 </Text>
               )}
