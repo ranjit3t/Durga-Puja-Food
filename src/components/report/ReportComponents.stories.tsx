@@ -13,6 +13,7 @@ import { PendingReport } from "./PendingReport";
 import { MealWisePaymentReport } from "./MealWisePaymentReport";
 import { DayWisePaymentReport } from "./DayWisePaymentReport";
 import { AggregateReport } from "./AggregateReport";
+import { CheckoutReport } from "./CheckoutReport";
 import { MealType, DietaryOption, PaymentMode } from "../../domain";
 import { STORY_FIXTURES } from "../../../.storybook/storyMocks";
 
@@ -133,6 +134,79 @@ export const DayWiseReportStory = {
       kidsEnabled={false}
       guestsEnabled={false}
       freeMealEnabled
+    />
+  ),
+};
+
+export const CheckoutReportStory = {
+  name: "CheckoutReport",
+  render: () => (
+    <CheckoutReport
+      data={{
+        passes: [
+          {
+            id: "pass-1",
+            block: "A",
+            flat: "101",
+            mobile: 9876543210,
+            isComplete: true,
+            isMissed: false,
+            takenCount: 3,
+            subscribedCount: 3,
+            memberCheckouts: [
+              { label: "Adult 1", isTaken: true, timeDisplay: "23 Oct, 1:15 PM", numericTime: Date.now() - 3600000 },
+              { label: "Adult 2", isTaken: true, timeDisplay: "23 Oct, 1:15 PM", numericTime: Date.now() - 3600000 },
+              { label: "Kid 1", isTaken: true, timeDisplay: "23 Oct, 1:45 PM", numericTime: Date.now() - 1800000 },
+            ]
+          },
+          {
+            id: "pass-2",
+            block: "B",
+            flat: "202",
+            mobile: 9876543211,
+            isComplete: false,
+            isMissed: false,
+            takenCount: 1,
+            subscribedCount: 2,
+            memberCheckouts: [
+              { label: "Adult 1", isTaken: true, timeDisplay: "23 Oct, 1:30 PM", numericTime: Date.now() - 2700000 },
+              { label: "Adult 2", isTaken: false, timeDisplay: "-" },
+            ]
+          },
+          {
+            id: "pass-3",
+            block: "C",
+            flat: "303",
+            mobile: 9876543212,
+            isComplete: false,
+            isMissed: true,
+            takenCount: 0,
+            subscribedCount: 2,
+            memberCheckouts: [
+              { label: "Adult 1", isTaken: false, timeDisplay: "-" },
+              { label: "Adult 2", isTaken: false, timeDisplay: "-" },
+            ]
+          }
+        ],
+        summary: {
+          totalPassesForMeal: 3,
+          missedCount: 1,
+          partialCount: 1,
+          completeCount: 1,
+          earliestTime: Date.now() - 3600000,
+          latestTime: Date.now() - 1800000,
+          adultsCheckedOut: 3,
+          kidsCheckedOut: 1,
+          guestsCheckedOut: 0,
+          totalMembersCheckedOut: 4,
+        }
+      }}
+      selectedDayId="Shashthi"
+      selectedMealType={MealType.LUNCH}
+      dayConfig={dayConfig}
+      onSelectFlat={noop}
+      kidsEnabled={true}
+      guestsEnabled={true}
     />
   ),
 };

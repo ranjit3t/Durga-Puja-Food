@@ -23,6 +23,7 @@ import { PaymentSummaryReport } from "../components/report/PaymentSummaryReport"
 import { MembersReport } from "../components/report/MembersReport";
 import { PackagePassesReport } from "../components/report/PackagePassesReport";
 import { AggregateReport } from "../components/report/AggregateReport";
+import { CheckoutReport } from "../components/report/CheckoutReport";
 
 // Custom Hook
 import { useReportData } from "../hooks/useReportData";
@@ -43,14 +44,15 @@ export function ReportScreen() {
   const { shareQr, showAlert } = useUI();
   const {
     reportType, setReportType, reportDayId: selectedDayId, setReportDayId: onSetSelectedDayId, reportMealType: selectedMealType, setReportMealType: onSetSelectedMealType,
-    navigate, goBack, setSelectedId, setSelectedRecord
+    setSelectedId, setSelectedRecord, navigate, goBack
   } = useAppNavigation();
 
   const {
-    activeDays, dayWiseData, mealWiseData, flatWiseData, paymentData, getNotTakenData, getMembersMealData, getMissedParcelData, packagePassesData
+    activeDays, dayWiseData, mealWiseData, flatWiseData, paymentData, getNotTakenData, getMembersMealData, getMissedParcelData, getCheckoutReportData, packagePassesData
   } = useReportData(subscriptions, foodMenu, dayConfig, freeMealEnabled, paymentConfig, !!kidsEnabled, !!guestsEnabled, reportType, foodPackages);
 
   const [selectedPersonCategory, setSelectedPersonCategory] = React.useState<"all" | "adult" | "kids" | "guests">("all");
+  const memberLabel = kidsEnabled ? UI_TEXT.adults : UI_TEXT.members;
 
   const styles = useStyles();
   const { s } = useScaling();
@@ -79,7 +81,7 @@ export function ReportScreen() {
 
   const onSetReportType = (type: ReportType) => {
     setReportType(type);
-    if (type === ReportType.DAY || type === ReportType.NOT_TAKEN || type === ReportType.MEMBERS_MEAL || type === ReportType.PARCEL) {
+    if (type === ReportType.DAY || type === ReportType.NOT_TAKEN || type === ReportType.MEMBERS_MEAL || type === ReportType.PARCEL || type === ReportType.CHECKOUT) {
       const active = activeDays;
       for (const dId of active) {
         for (const mType of [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER]) {
@@ -106,7 +108,7 @@ export function ReportScreen() {
   // Ensure selected day is valid and focuses current active meal if available
   React.useEffect(() => {
     if (activeDays.length > 0) {
-      const needsMealSelection = reportType === ReportType.DAY || reportType === ReportType.NOT_TAKEN || reportType === ReportType.MEMBERS_MEAL || reportType === ReportType.PARCEL;
+      const needsMealSelection = reportType === ReportType.DAY || reportType === ReportType.NOT_TAKEN || reportType === ReportType.MEMBERS_MEAL || reportType === ReportType.PARCEL || reportType === ReportType.CHECKOUT;
       if (needsMealSelection) {
         let foundCurrent = false;
         for (const dId of activeDays) {
@@ -136,16 +138,29 @@ export function ReportScreen() {
         }
       }
     }
-  }, [activeDays, dayConfig, selectedDayId, selectedMealType, reportType, onSetSelectedDayId, onSetSelectedMealType]);
+  }, [activeDays, dayConfig, reportType, selectedDayId, selectedMealType]);
+
+  const [isCapturing, setIsCapturing] = React.useState(false);
+  const reportRef = useRef<View>(null);
 
   const isParcelEnabledGlobally = useMemo(() => {
-    return (dayConfig || []).some(d =>
-      [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].some(m => isParcelEnabled(d.id, m, dayConfig))
-    );
+    return dayConfig.some((d) => d.enabled && (d.breakfast.parcel || d.lunch.parcel || d.dinner.parcel));
   }, [dayConfig]);
 
-  const reportRef = useRef<View>(null);
-  const [isCapturing, setIsCapturing] = React.useState(false);
+  const membersMealData = useMemo(() => {
+    if (reportType !== ReportType.MEMBERS_MEAL) return [];
+    return getMembersMealData(selectedDayId, selectedMealType, selectedPersonCategory);
+  }, [reportType, selectedDayId, selectedMealType, selectedPersonCategory, getMembersMealData]);
+
+  const notTakenData = useMemo(() => {
+    if (reportType !== ReportType.NOT_TAKEN) return [];
+    return getNotTakenData(selectedDayId, selectedMealType);
+  }, [reportType, selectedDayId, selectedMealType, getNotTakenData]);
+
+  const parcelData = useMemo(() => {
+    if (reportType !== ReportType.PARCEL) return [];
+    return mealWiseData;
+  }, [reportType, mealWiseData]);
 
   React.useEffect(() => {
     if (isCapturing) {
@@ -158,6 +173,7 @@ export function ReportScreen() {
     switch (type) {
       case ReportType.DAY: return UI_TEXT.dayWiseReport;
       case ReportType.MEAL: return UI_TEXT.mealWiseReport;
+      case ReportType.CHECKOUT: return UI_TEXT.checkoutReport;
       case ReportType.VENDOR_PRICE: return UI_TEXT.vendorPriceReport;
       case ReportType.MEMBERS_MEAL: return UI_TEXT.membersMealReport;
       case ReportType.PARCEL: return UI_TEXT.parcelReport;
@@ -177,7 +193,7 @@ export function ReportScreen() {
     category: string
   ) => {
     const parts: string[] = [];
-    if (type === ReportType.DAY || type === ReportType.NOT_TAKEN || type === ReportType.MEMBERS_MEAL || type === ReportType.PARCEL) {
+    if (type === ReportType.DAY || type === ReportType.NOT_TAKEN || type === ReportType.MEMBERS_MEAL || type === ReportType.PARCEL || type === ReportType.CHECKOUT) {
       if (dayId) parts.push(getDayLabel(dayId, dayConfig));
       if (mealType) parts.push(getMealLabel(mealType));
       if (type === ReportType.MEMBERS_MEAL && category && category !== "all") {
@@ -221,14 +237,11 @@ export function ReportScreen() {
     }
   };
 
-  const notTakenData = useMemo(() => {
-    if (reportType !== ReportType.NOT_TAKEN) return [];
-    return getNotTakenData(selectedDayId, selectedMealType);
-  }, [reportType, selectedDayId, selectedMealType, getNotTakenData]);
-
   return (
-    <View style={styles.root}>
-      <StatusBar barStyle={themeType === AppThemeMode.DARK ? "light-content" : "dark-content"} />
+    <View style={[styles.root, { backgroundColor: theme.colors.background }]}>
+      <StatusBar barStyle={themeType === AppThemeMode.DARK ? "light-content" : "dark-content"} backgroundColor={theme.colors.surface} />
+
+      {/* Top Header */}
       <View style={styles.header}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", height: 40, marginBottom: 8 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 0 }}>
@@ -241,32 +254,34 @@ export function ReportScreen() {
           </View>
         </View>
         <UserGreeting />
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-          <View style={{ flex: 1, minWidth: 160 }}>
-            <Text style={styles.title}>{UI_TEXT.reportTitle}</Text>
-            <Text style={styles.subtitle}>{UI_TEXT.reportSubtitle}</Text>
+      </View>
+
+      <ScrollView
+        style={{ flex: 1, width: "100%" }}
+        contentContainerStyle={[styles.content, { paddingBottom: s(180) }]}
+        showsVerticalScrollIndicator={true}
+      >
+        {/* Title & Share Card */}
+        <View style={[styles.card, { padding: 16, backgroundColor: theme.colors.surface, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 12 }]}>
+          <View style={{ flex: 1, minWidth: 200 }}>
+            <Text style={[styles.title, { fontSize: 22, fontWeight: '900', color: theme.colors.textPrimary }]}>{UI_TEXT.reportTitle}</Text>
+            <Text style={[styles.subtitle, { fontSize: 13, color: theme.colors.textSecondary, marginTop: 4 }]}>{UI_TEXT.reportSubtitle}</Text>
           </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
             <Pressable
               onPress={handleShare}
               accessible={true}
               accessibilityRole="button"
               accessibilityLabel={Platform.OS === 'web' ? UI_TEXT.downloadReport : UI_TEXT.shareReport}
-              accessibilityHint={UI_TEXT.viewPassHint}
               style={({ pressed }) => [
+                styles.primary,
                 {
                   flexDirection: 'row',
                   alignItems: 'center',
                   gap: 6,
-                  backgroundColor: theme.colors.primary,
-                  paddingHorizontal: 12,
-                  paddingVertical: 8,
+                  paddingHorizontal: 14,
+                  paddingVertical: 10,
                   borderRadius: 12,
-                  elevation: 2,
-                  shadowColor: theme.colors.primary,
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.2,
-                  shadowRadius: 4,
                   alignSelf: 'flex-start',
                 },
                 pressed && { opacity: 0.8 }
@@ -283,13 +298,13 @@ export function ReportScreen() {
             </Pressable>
           </View>
         </View>
-      </View>
 
-      <View style={[styles.maxWidthWrapper, { marginTop: 12 }]}>
-        <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginBottom: 12, width: '100%' }}>
+        {/* Report Tabs Selector Bar */}
+        <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginBottom: 16, width: '100%' }}>
           {[
             { id: ReportType.DAY, label: UI_TEXT.day, icon: "calendar-outline" },
             { id: ReportType.MEAL, label: UI_TEXT.meal, icon: "restaurant-outline" },
+            { id: ReportType.CHECKOUT, label: UI_TEXT.checkoutReport, icon: "time-outline" },
             { id: ReportType.VENDOR_PRICE, label: UI_TEXT.vendorPriceReport, icon: "receipt-outline" },
             { id: ReportType.MEMBERS_MEAL, label: UI_TEXT.members, icon: "people-outline" },
             { id: ReportType.PARCEL, label: UI_TEXT.parcels, icon: "cube-outline" },
@@ -329,14 +344,10 @@ export function ReportScreen() {
             );
           })}
         </View>
-      </View>
 
-      <ScrollView
-        style={{ flex: 1, width: "100%" }}
-        contentContainerStyle={[styles.content, { paddingTop: 0 }]}
-      >
-        {(reportType === ReportType.DAY || reportType === ReportType.NOT_TAKEN || reportType === ReportType.MEMBERS_MEAL || reportType === ReportType.PARCEL) && (
-          <View style={[styles.card, { marginBottom: 24, marginTop: 10 }]}>
+        {/* Day & Meal Filters Panel */}
+        {(reportType === ReportType.DAY || reportType === ReportType.NOT_TAKEN || reportType === ReportType.MEMBERS_MEAL || reportType === ReportType.PARCEL || reportType === ReportType.CHECKOUT) && (
+          <View style={[styles.card, { marginBottom: 24 }]}>
             <Text style={[styles.sectionTitle, { fontSize: 16, marginBottom: 12 }]}>{UI_TEXT.reportFilters}</Text>
 
             <Text style={[styles.selectorLabel, { marginTop: 0 }]}>{UI_TEXT.selectDay}</Text>
@@ -413,11 +424,11 @@ export function ReportScreen() {
 
             {reportType === ReportType.MEMBERS_MEAL && (
               <>
-                <Text style={[styles.selectorLabel, { marginTop: 14 }]}>{UI_TEXT.personCategory}</Text>
+                <Text style={[styles.selectorLabel, { marginTop: 16 }]}>{UI_TEXT.selectCategory}</Text>
                 <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
                   {[
-                    { id: "all", label: UI_TEXT.all },
-                    { id: "adult", label: UI_TEXT.adults },
+                    { id: "all", label: UI_TEXT.allMembers },
+                    { id: "adult", label: memberLabel },
                     ...(kidsEnabled ? [{ id: "kids", label: UI_TEXT.kids }] : []),
                     ...(guestsEnabled ? [{ id: "guests", label: UI_TEXT.guests }] : []),
                     ...(freeMealEnabled ? [{ id: "freeMeal", label: UI_TEXT.freeMeals }] : []),
@@ -503,6 +514,18 @@ export function ReportScreen() {
             />
           )}
 
+          {reportType === ReportType.CHECKOUT && (
+            <CheckoutReport
+              data={getCheckoutReportData(selectedDayId, selectedMealType)}
+              selectedDayId={selectedDayId}
+              selectedMealType={selectedMealType}
+              dayConfig={dayConfig}
+              onSelectFlat={onSelectFlat}
+              kidsEnabled={!!kidsEnabled}
+              guestsEnabled={!!guestsEnabled}
+            />
+          )}
+
           {reportType === ReportType.VENDOR_PRICE && (
             <VendorMealWiseReport
               activeDays={activeDays}
@@ -519,18 +542,18 @@ export function ReportScreen() {
 
           {reportType === ReportType.MEMBERS_MEAL && (
             <MembersReport
-              data={getMembersMealData(selectedDayId, selectedMealType, selectedPersonCategory)}
+              data={membersMealData}
               selectedDayId={selectedDayId}
               selectedMealType={selectedMealType}
               dayConfig={dayConfig}
               onSelectFlat={onSelectFlat}
-              freeMealEnabled={!!freeMealEnabled}
+              freeMealEnabled={freeMealEnabled}
             />
           )}
 
           {reportType === ReportType.PARCEL && (
             <ParcelWiseReport
-              data={mealWiseData}
+              data={parcelData}
               dayConfig={dayConfig}
               getMissedParcelData={getMissedParcelData}
               selectedDayId={selectedDayId}
@@ -538,7 +561,7 @@ export function ReportScreen() {
               onSelectFlat={onSelectFlat}
               kidsEnabled={!!kidsEnabled}
               guestsEnabled={!!guestsEnabled}
-              freeMealEnabled={!!freeMealEnabled}
+              freeMealEnabled={freeMealEnabled}
               isCapturing={isCapturing}
             />
           )}
@@ -565,14 +588,12 @@ export function ReportScreen() {
             />
           )}
 
-          {reportType === ReportType.PAYMENT && (
+          {reportType === ReportType.PAYMENT && paymentConfig.enabled && (
             <PaymentSummaryReport
               data={paymentData}
-              dayConfig={dayConfig}
               onSelectFlat={onSelectFlat}
               kidsEnabled={!!kidsEnabled}
               guestsEnabled={!!guestsEnabled}
-              isCapturing={isCapturing}
             />
           )}
 
@@ -582,9 +603,6 @@ export function ReportScreen() {
               onSelectFlat={onSelectFlat}
               kidsEnabled={!!kidsEnabled}
               guestsEnabled={!!guestsEnabled}
-              dayConfig={dayConfig}
-              foodMenu={foodMenu}
-              foodPackages={foodPackages}
             />
           )}
 
@@ -593,14 +611,13 @@ export function ReportScreen() {
               subscriptions={subscriptions}
               dayConfig={dayConfig}
               foodMenu={foodMenu}
-              seasonName={seasonName}
               kidsEnabled={!!kidsEnabled}
               guestsEnabled={!!guestsEnabled}
-              freeMealEnabled={!!freeMealEnabled}
+              freeMealEnabled={freeMealEnabled}
+              seasonName={seasonName}
               paymentConfig={paymentConfig}
               foodPackages={foodPackages}
               onSelectFlat={onSelectFlat}
-              isCapturing={isCapturing}
             />
           )}
         </View>

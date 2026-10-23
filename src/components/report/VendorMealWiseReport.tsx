@@ -11,6 +11,7 @@ import {
   getMealLabel,
   getMealFreeMealCounts,
   getMealVarieties,
+  getVarietyForChoice,
   isParcelEnabled,
   isKidsParcelEnabled,
   isGuestsParcelEnabled,
@@ -98,16 +99,6 @@ export function VendorMealWiseReport({
       const vEnabled = isDietaryEnabled(dayId, mKey, DietType.VEG, dayConfig);
       const nvEnabled = isDietaryEnabled(dayId, mKey, DietType.NON_VEG, dayConfig);
 
-      // Track Dine-In vs Parcel separately for each category
-      let adultDinePlanned = 0, adultDineServed = 0, adultDineSub = 0, adultDineExp = 0, adultDineAct = 0;
-      let adultParcelPlanned = 0, adultParcelServed = 0, adultParcelSub = 0, adultParcelExp = 0, adultParcelAct = 0;
-
-      let kidsDinePlanned = 0, kidsDineServed = 0, kidsDineSub = 0, kidsDineExp = 0, kidsDineAct = 0;
-      let kidsParcelPlanned = 0, kidsParcelServed = 0, kidsParcelSub = 0, kidsParcelExp = 0, kidsParcelAct = 0;
-
-      let guestsDinePlanned = 0, guestsDineServed = 0, guestsDineSub = 0, guestsDineExp = 0, guestsDineAct = 0;
-      let guestsParcelPlanned = 0, guestsParcelServed = 0, guestsParcelSub = 0, guestsParcelExp = 0, guestsParcelAct = 0;
-
       const defAdultVegSub = Number(gm.vegPrice ?? mConf?.vegPrice ?? 0);
       const defAdultNvSub = Number(gm.nonVegPrice ?? mConf?.nonVegPrice ?? 0);
       const defAdultVegParcelSub = Number(gm.vegParcelPrice ?? mConf?.vegParcelPrice ?? 0);
@@ -118,13 +109,23 @@ export function VendorMealWiseReport({
       const defAdultVegParcelVendor = Number(gm.vendorVegParcelPrice ?? defAdultVegParcelSub);
       const defAdultNvParcelVendor = Number(gm.vendorNonVegParcelPrice ?? defAdultNvParcelSub);
 
+      const categoryMap: Record<string, {
+        name: string;
+        planned: number;
+        served: number;
+        catSub: number;
+        catExpVendor: number;
+        catActVendor: number;
+      }> = {};
+
       subscriptions.forEach((sub) => {
         const passMeals = calculatePassMealBreakdown(sub, foodMenu, dayConfig, kidsEnabled, guestsEnabled, foodPackages);
         const mealSlotItems = passMeals.filter((m: any) => m.dayId === dayId && m.mealType === mKey);
 
         mealSlotItems.forEach((m: any) => {
-          const matchedVar = varieties.find(v => v.id === m.choice);
+          const matchedVar = varieties.find(v => v.id === m.choice) || getVarietyForChoice(m.choice, varieties);
           const isVeg = matchedVar ? matchedVar.type === DietType.VEG : (m.choice === DietType.VEG || m.choice.toLowerCase().includes("veg"));
+          const varietyName = matchedVar?.name || (isVeg ? UI_TEXT.veg : UI_TEXT.nonVeg);
           const varMenu = gm.varieties?.[m.choice];
 
           // Vendor meal & parcel prices
@@ -135,162 +136,107 @@ export function VendorMealWiseReport({
           const slotParcelSub = m.isParcelAllowed ? m.parcelPrice : 0;
           const slotDineSub = m.netPayment - slotParcelSub;
 
-          const dineExp = varVendorMeal;
-          const dineAct = m.isMealTaken ? varVendorMeal : 0;
-          const parcelExp = m.isParcelAllowed ? varVendorParcel : 0;
-          const parcelAct = m.isParcelTaken ? varVendorParcel : 0;
+          const categoryPrefix = m.category === "guest" ? UI_TEXT.guests : m.category === "kid" ? UI_TEXT.kids : memberLabel;
 
-          if (m.category === "guest") {
-            if (guestsEnabled) {
-              guestsDineSub += slotDineSub;
-              guestsDineExp += dineExp;
-              guestsDineAct += dineAct;
-              guestsDinePlanned++;
-              if (m.isMealTaken) guestsDineServed++;
+          // Meal (Dine-in)
+          const dineKey = `${m.category}_${m.choice}_dine`;
+          if (!categoryMap[dineKey]) {
+            categoryMap[dineKey] = {
+              name: `${categoryPrefix} (${varietyName} ${UI_TEXT.meal})`,
+              planned: 0,
+              served: 0,
+              catSub: 0,
+              catExpVendor: 0,
+              catActVendor: 0,
+            };
+          }
+          categoryMap[dineKey].planned++;
+          if (m.isMealTaken) categoryMap[dineKey].served++;
+          categoryMap[dineKey].catSub += slotDineSub;
+          categoryMap[dineKey].catExpVendor += varVendorMeal;
+          categoryMap[dineKey].catActVendor += (m.isMealTaken ? varVendorMeal : 0);
 
-              if (m.isParcelAllowed) {
-                guestsParcelSub += slotParcelSub;
-                guestsParcelExp += parcelExp;
-                guestsParcelAct += parcelAct;
-                guestsParcelPlanned++;
-                if (m.isParcelTaken) guestsParcelServed++;
-              }
+          // Parcel
+          if (m.isParcelAllowed) {
+            const parcelKey = `${m.category}_${m.choice}_parcel`;
+            if (!categoryMap[parcelKey]) {
+              categoryMap[parcelKey] = {
+                name: `${categoryPrefix} (${varietyName} ${UI_TEXT.parcel})`,
+                planned: 0,
+                served: 0,
+                catSub: 0,
+                catExpVendor: 0,
+                catActVendor: 0,
+              };
             }
-          } else if (m.category === "kid") {
-            if (kidsEnabled) {
-              kidsDineSub += slotDineSub;
-              kidsDineExp += dineExp;
-              kidsDineAct += dineAct;
-              kidsDinePlanned++;
-              if (m.isMealTaken) kidsDineServed++;
-
-              if (m.isParcelAllowed) {
-                kidsParcelSub += slotParcelSub;
-                kidsParcelExp += parcelExp;
-                kidsParcelAct += parcelAct;
-                kidsParcelPlanned++;
-                if (m.isParcelTaken) kidsParcelServed++;
-              }
-            }
-          } else {
-            adultDineSub += slotDineSub;
-            adultDineExp += dineExp;
-            adultDineAct += dineAct;
-            adultDinePlanned++;
-            if (m.isMealTaken) adultDineServed++;
-
-            if (m.isParcelAllowed) {
-              adultParcelSub += slotParcelSub;
-              adultParcelExp += parcelExp;
-              adultParcelAct += parcelAct;
-              adultParcelPlanned++;
-              if (m.isParcelTaken) adultParcelServed++;
-            }
+            categoryMap[parcelKey].planned++;
+            if (m.isParcelTaken) categoryMap[parcelKey].served++;
+            categoryMap[parcelKey].catSub += slotParcelSub;
+            categoryMap[parcelKey].catExpVendor += varVendorParcel;
+            categoryMap[parcelKey].catActVendor += (m.isParcelTaken ? varVendorParcel : 0);
           }
         });
       });
 
       const freeVegPlanned = (freeMealEnabled && vEnabled) ? fmCounts.freeMealVeg : 0;
       const freeNonVegPlanned = (freeMealEnabled && nvEnabled) ? fmCounts.freeMealNonVeg : 0;
+      const freeVegTotalServed = (freeMealEnabled && vEnabled) ? ((fmCounts.freeMealVegTaken || 0) + (fmCounts.freeMealVegParcelTaken || 0)) : 0;
+      const freeNonVegTotalServed = (freeMealEnabled && nvEnabled) ? ((fmCounts.freeMealNonVegTaken || 0) + (fmCounts.freeMealNonVegParcelTaken || 0)) : 0;
       const freeVegParcelServed = (freeMealEnabled && vEnabled) ? (fmCounts.freeMealVegParcelTaken || 0) : 0;
       const freeNonVegParcelServed = (freeMealEnabled && nvEnabled) ? (fmCounts.freeMealNonVegParcelTaken || 0) : 0;
-      const freeVegDineServed = (freeMealEnabled && vEnabled) ? Math.max(0, (fmCounts.freeMealVegTaken || 0) - freeVegParcelServed) : 0;
-      const freeNonVegDineServed = (freeMealEnabled && nvEnabled) ? Math.max(0, (fmCounts.freeMealNonVegTaken || 0) - freeNonVegParcelServed) : 0;
 
       const freeDineExp = (freeVegPlanned * defAdultVegVendor) + (freeNonVegPlanned * defAdultNvVendor);
-      const freeDineAct = (freeVegDineServed * defAdultVegVendor) + (freeNonVegDineServed * defAdultNvVendor);
+      const freeDineAct = (freeVegTotalServed * defAdultVegVendor) + (freeNonVegTotalServed * defAdultNvVendor);
       const freeParcelAct = (freeVegParcelServed * defAdultVegParcelVendor) + (freeNonVegParcelServed * defAdultNvParcelVendor);
 
-      seasonAdultDineSub += adultDineSub; seasonAdultParcelSub += adultParcelSub;
-      seasonAdultDineExp += adultDineExp; seasonAdultParcelExp += adultParcelExp;
-      seasonAdultDineAct += adultDineAct; seasonAdultParcelAct += adultParcelAct;
-
-      if (kidsEnabled) {
-        seasonKidsDineSub += kidsDineSub; seasonKidsParcelSub += kidsParcelSub;
-        seasonKidsDineExp += kidsDineExp; seasonKidsParcelExp += kidsParcelExp;
-        seasonKidsDineAct += kidsDineAct; seasonKidsParcelAct += kidsParcelAct;
-      }
-      if (guestsEnabled) {
-        seasonGuestsDineSub += guestsDineSub; seasonGuestsParcelSub += guestsParcelSub;
-        seasonGuestsDineExp += guestsDineExp; seasonGuestsParcelExp += guestsParcelExp;
-        seasonGuestsDineAct += guestsDineAct; seasonGuestsParcelAct += guestsParcelAct;
-      }
       if (freeMealEnabled) {
-        seasonFreeDineExp += freeDineExp;
-        seasonFreeDineAct += freeDineAct;
-        seasonFreeParcelAct += freeParcelAct;
+        if (vEnabled && (freeVegPlanned > 0 || freeVegTotalServed > 0)) {
+          const vegName = varieties.find(v => v.type === DietType.VEG)?.name || UI_TEXT.veg;
+          categoryMap[`free_veg_dine`] = {
+            name: `${UI_TEXT.freeMealSuffix} (${vegName} ${UI_TEXT.meal})`,
+            planned: freeVegPlanned,
+            served: freeVegTotalServed,
+            catSub: 0,
+            catExpVendor: freeVegPlanned * defAdultVegVendor,
+            catActVendor: freeVegTotalServed * defAdultVegVendor,
+          };
+        }
+        if (vEnabled && freeVegParcelServed > 0) {
+          const vegName = varieties.find(v => v.type === DietType.VEG)?.name || UI_TEXT.veg;
+          categoryMap[`free_veg_parcel`] = {
+            name: `${UI_TEXT.freeMealSuffix} (${vegName} ${UI_TEXT.parcel})`,
+            planned: 0,
+            served: freeVegParcelServed,
+            catSub: 0,
+            catExpVendor: 0,
+            catActVendor: freeVegParcelServed * defAdultVegParcelVendor,
+          };
+        }
+        if (nvEnabled && (freeNonVegPlanned > 0 || freeNonVegTotalServed > 0)) {
+          const nvName = varieties.find(v => v.type === DietType.NON_VEG)?.name || UI_TEXT.nonVeg;
+          categoryMap[`free_nv_dine`] = {
+            name: `${UI_TEXT.freeMealSuffix} (${nvName} ${UI_TEXT.meal})`,
+            planned: freeNonVegPlanned,
+            served: freeNonVegTotalServed,
+            catSub: 0,
+            catExpVendor: freeNonVegPlanned * defAdultNvVendor,
+            catActVendor: freeNonVegTotalServed * defAdultNvVendor,
+          };
+        }
+        if (nvEnabled && freeNonVegParcelServed > 0) {
+          const nvName = varieties.find(v => v.type === DietType.NON_VEG)?.name || UI_TEXT.nonVeg;
+          categoryMap[`free_nv_parcel`] = {
+            name: `${UI_TEXT.freeMealSuffix} (${nvName} ${UI_TEXT.parcel})`,
+            planned: 0,
+            served: freeNonVegParcelServed,
+            catSub: 0,
+            catExpVendor: 0,
+            catActVendor: freeNonVegParcelServed * defAdultNvParcelVendor,
+          };
+        }
       }
 
-      const categories = [
-        ...(adultDinePlanned > 0 || adultDineServed > 0 || adultDineSub > 0 ? [{
-          name: `${memberLabel} (${UI_TEXT.dineIn})`,
-          planned: adultDinePlanned,
-          served: adultDineServed,
-          catSub: adultDineSub,
-          catExpVendor: adultDineExp,
-          catActVendor: adultDineAct,
-        }] : []),
-        ...(adultParcelPlanned > 0 || adultParcelServed > 0 || adultParcelSub > 0 ? [{
-          name: `${memberLabel} (${UI_TEXT.parcel})`,
-          planned: adultParcelPlanned,
-          served: adultParcelServed,
-          catSub: adultParcelSub,
-          catExpVendor: adultParcelExp,
-          catActVendor: adultParcelAct,
-        }] : []),
-        ...(kidsEnabled ? [
-          ...(kidsDinePlanned > 0 || kidsDineServed > 0 || kidsDineSub > 0 ? [{
-            name: `${UI_TEXT.kids} (${UI_TEXT.dineIn})`,
-            planned: kidsDinePlanned,
-            served: kidsDineServed,
-            catSub: kidsDineSub,
-            catExpVendor: kidsDineExp,
-            catActVendor: kidsDineAct,
-          }] : []),
-          ...(kidsParcelPlanned > 0 || kidsParcelServed > 0 || kidsParcelSub > 0 ? [{
-            name: `${UI_TEXT.kids} (${UI_TEXT.parcel})`,
-            planned: kidsParcelPlanned,
-            served: kidsParcelServed,
-            catSub: kidsParcelSub,
-            catExpVendor: kidsParcelExp,
-            catActVendor: kidsParcelAct,
-          }] : []),
-        ] : []),
-        ...(guestsEnabled ? [
-          ...(guestsDinePlanned > 0 || guestsDineServed > 0 || guestsDineSub > 0 ? [{
-            name: `${UI_TEXT.guests} (${UI_TEXT.dineIn})`,
-            planned: guestsDinePlanned,
-            served: guestsDineServed,
-            catSub: guestsDineSub,
-            catExpVendor: guestsDineExp,
-            catActVendor: guestsDineAct,
-          }] : []),
-          ...(guestsParcelPlanned > 0 || guestsParcelServed > 0 || guestsParcelSub > 0 ? [{
-            name: `${UI_TEXT.guests} (${UI_TEXT.parcel})`,
-            planned: guestsParcelPlanned,
-            served: guestsParcelServed,
-            catSub: guestsParcelSub,
-            catExpVendor: guestsParcelExp,
-            catActVendor: guestsParcelAct,
-          }] : []),
-        ] : []),
-        ...(freeMealEnabled && (freeVegPlanned + freeNonVegPlanned > 0 || freeVegDineServed + freeNonVegDineServed > 0) ? [{
-          name: `${UI_TEXT.freeMealSuffix} (${UI_TEXT.dineIn})`,
-          planned: freeVegPlanned + freeNonVegPlanned,
-          served: freeVegDineServed + freeNonVegDineServed,
-          catSub: 0,
-          catExpVendor: freeDineExp,
-          catActVendor: freeDineAct,
-        }] : []),
-        ...(freeMealEnabled && (freeVegParcelServed + freeNonVegParcelServed > 0) ? [{
-          name: `${UI_TEXT.freeMealSuffix} (${UI_TEXT.parcel})`,
-          planned: 0,
-          served: freeVegParcelServed + freeNonVegParcelServed,
-          catSub: 0,
-          catExpVendor: 0,
-          catActVendor: freeParcelAct,
-        }] : []),
-      ].filter(cat => cat.planned > 0 || cat.served > 0 || cat.catSub > 0 || cat.catExpVendor > 0 || cat.catActVendor > 0);
+      const categories = Object.values(categoryMap).filter(cat => cat.planned > 0 || cat.served > 0 || cat.catSub > 0 || cat.catExpVendor > 0 || cat.catActVendor > 0);
 
       let mealSubTotal = 0;
       let mealExpectedVendorTotal = 0;
@@ -321,9 +267,76 @@ export function VendorMealWiseReport({
       dayExpectedVendorTotal += mealExpectedVendorTotal;
       dayActualVendorTotal += mealActualVendorTotal;
 
+      // Accumulate season totals
+      if (categories.some(c => c.name.includes(memberLabel))) {
+        categories.forEach(c => {
+          if (c.name.includes(memberLabel)) {
+            if (c.name.includes(UI_TEXT.parcel)) {
+              seasonAdultParcelSub += c.catSub;
+              seasonAdultParcelExp += c.catExpVendor;
+              seasonAdultParcelAct += c.catActVendor;
+            } else {
+              seasonAdultDineSub += c.catSub;
+              seasonAdultDineExp += c.catExpVendor;
+              seasonAdultDineAct += c.catActVendor;
+            }
+          }
+        });
+      }
+      if (kidsEnabled) {
+        categories.forEach(c => {
+          if (c.name.includes(UI_TEXT.kids)) {
+            if (c.name.includes(UI_TEXT.parcel)) {
+              seasonKidsParcelSub += c.catSub;
+              seasonKidsParcelExp += c.catExpVendor;
+              seasonKidsParcelAct += c.catActVendor;
+            } else {
+              seasonKidsDineSub += c.catSub;
+              seasonKidsDineExp += c.catExpVendor;
+              seasonKidsDineAct += c.catActVendor;
+            }
+          }
+        });
+      }
+      if (guestsEnabled) {
+        categories.forEach(c => {
+          if (c.name.includes(UI_TEXT.guests)) {
+            if (c.name.includes(UI_TEXT.parcel)) {
+              seasonGuestsParcelSub += c.catSub;
+              seasonGuestsParcelExp += c.catExpVendor;
+              seasonGuestsParcelAct += c.catActVendor;
+            } else {
+              seasonGuestsDineSub += c.catSub;
+              seasonGuestsDineExp += c.catExpVendor;
+              seasonGuestsDineAct += c.catActVendor;
+            }
+          }
+        });
+      }
+      if (freeMealEnabled) {
+        categories.forEach(c => {
+          if (c.name.includes(UI_TEXT.freeMealSuffix)) {
+            if (c.name.includes(UI_TEXT.parcel)) {
+              seasonFreeParcelAct += c.catActVendor;
+            } else {
+              seasonFreeDineExp += c.catExpVendor;
+              seasonFreeDineAct += c.catActVendor;
+            }
+          }
+        });
+      }
+
       return {
         mKey,
         categories,
+        gm,
+        defAdultVegVendor,
+        defAdultNvVendor,
+        defAdultVegParcelVendor,
+        defAdultNvParcelVendor,
+        varieties,
+        vEnabled,
+        nvEnabled,
         mealSubTotal,
         mealExpectedVendorTotal,
         mealActualVendorTotal,
@@ -662,7 +675,24 @@ export function VendorMealWiseReport({
             <View style={{ gap: 12 }}>
               {mealReports.map((mRep: any) => {
                 if (!mRep) return null;
-                const { mKey, categories, mealSubTotal, mealExpectedVendorTotal, mealActualVendorTotal, mealExcessDeficiency, mealDineSub, mealParcelSub } = mRep;
+                const {
+                  mKey,
+                  categories,
+                  gm,
+                  defAdultVegVendor,
+                  defAdultNvVendor,
+                  defAdultVegParcelVendor,
+                  defAdultNvParcelVendor,
+                  varieties,
+                  vEnabled,
+                  nvEnabled,
+                  mealSubTotal,
+                  mealExpectedVendorTotal,
+                  mealActualVendorTotal,
+                  mealExcessDeficiency,
+                  mealDineSub,
+                  mealParcelSub,
+                } = mRep;
 
                 return (
                   <View
@@ -683,7 +713,7 @@ export function VendorMealWiseReport({
                         </View>
                         {mealParcelSub > 0 && (
                           <Text style={{ fontSize: 12, fontWeight: '700', color: theme.colors.textSecondary, paddingLeft: 22 }}>
-                            {UI_TEXT.openParen}{UI_TEXT.dineIn}{UI_TEXT.colon}{UI_TEXT.space}{UI_TEXT.rs}{formatCurrencyAmount(mealDineSub)}{UI_TEXT.space}{UI_TEXT.pipe}{UI_TEXT.space}{UI_TEXT.parcel}{UI_TEXT.colon}{UI_TEXT.space}{UI_TEXT.rs}{formatCurrencyAmount(mealParcelSub)}{UI_TEXT.closeParen}
+                            {UI_TEXT.openParen}{UI_TEXT.meal}{UI_TEXT.colon}{UI_TEXT.space}{UI_TEXT.rs}{formatCurrencyAmount(mealDineSub)}{UI_TEXT.space}{UI_TEXT.pipe}{UI_TEXT.space}{UI_TEXT.parcel}{UI_TEXT.colon}{UI_TEXT.space}{UI_TEXT.rs}{formatCurrencyAmount(mealParcelSub)}{UI_TEXT.closeParen}
                           </Text>
                         )}
                       </View>
@@ -693,6 +723,41 @@ export function VendorMealWiseReport({
                           {getExcessOrDeficiencyLabel(mealExcessDeficiency)}{UI_TEXT.colon}{UI_TEXT.space}{UI_TEXT.rs}{UI_TEXT.space}{formatCurrencyAmount(Math.abs(mealExcessDeficiency))}
                         </Text>
                       </View>
+                    </View>
+
+                    {/* Meal Vendor Prices Info Bar (Showing actual menu varieties if present, or fallback to default veg/non-veg without duplication) */}
+                    <View style={{ backgroundColor: theme.colors.surface + "AA", borderRadius: 10, padding: 8, borderWidth: 1, borderColor: theme.colors.border, gap: 4 }}>
+                      <Text style={{ fontSize: 10, fontWeight: "800", color: theme.colors.textSecondary, textTransform: "uppercase" }}>
+                        {UI_TEXT.vendorPricesLabel}
+                      </Text>
+                      {gm?.varieties && Object.keys(gm.varieties).length > 0 ? (
+                        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 2 }}>
+                          {Object.entries(gm.varieties).map(([vKey, vData]: [string, any]) => {
+                            const matchedVar = varieties.find((v: any) => v.id === vKey) || getVarietyForChoice(vKey, varieties);
+                            const displayName = matchedVar?.name || vData?.name || vKey;
+                            const vPrice = vData?.vendorPrice || vData?.adultPrice || "-";
+                            const vParcelPrice = vData?.vendorParcelPrice || vData?.parcelPrice || "-";
+                            return (
+                              <Text key={vKey} style={{ fontSize: 10, fontWeight: "700", color: theme.colors.textPrimary }}>
+                                • {displayName}: {UI_TEXT.rs}{vPrice} ({UI_TEXT.parcelAbbr}: {UI_TEXT.rs}{vParcelPrice})
+                              </Text>
+                            );
+                          })}
+                        </View>
+                      ) : (
+                        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
+                          {vEnabled && (
+                            <Text style={{ fontSize: 11, fontWeight: "700", color: theme.colors.veg }}>
+                              • {UI_TEXT.veg}: {UI_TEXT.rs}{defAdultVegVendor} ({UI_TEXT.parcelAbbr}: {UI_TEXT.rs}{defAdultVegParcelVendor})
+                            </Text>
+                          )}
+                          {nvEnabled && (
+                            <Text style={{ fontSize: 11, fontWeight: "700", color: theme.colors.nonVeg }}>
+                              • {UI_TEXT.nonVeg}: {UI_TEXT.rs}{defAdultNvVendor} ({UI_TEXT.parcelAbbr}: {UI_TEXT.rs}{defAdultNvParcelVendor})
+                            </Text>
+                          )}
+                        </View>
+                      )}
                     </View>
 
                     {/* Category Breakdown */}
@@ -722,6 +787,26 @@ export function VendorMealWiseReport({
                           </View>
                         );
                       })}
+                    </View>
+
+                    {/* Meal Expected vs Actual Side-by-Side Comparison Footer */}
+                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: 8, marginTop: 4, flexWrap: "wrap", gap: 8 }}>
+                      <View style={{ flex: 1, minWidth: 120 }}>
+                        <Text style={{ fontSize: 10, fontWeight: "700", color: theme.colors.textSecondary, textTransform: "uppercase" }}>
+                          {UI_TEXT.expectedVendorCost}
+                        </Text>
+                        <Text style={{ fontSize: 15, fontWeight: "900", color: theme.colors.textPrimary, marginTop: 1 }}>
+                          {UI_TEXT.rs} {formatCurrencyAmount(mealExpectedVendorTotal)}
+                        </Text>
+                      </View>
+                      <View style={{ flex: 1, minWidth: 120, alignItems: "flex-end" }}>
+                        <Text style={{ fontSize: 10, fontWeight: "700", color: theme.colors.textSecondary, textTransform: "uppercase" }}>
+                          {UI_TEXT.actualVendorCost}
+                        </Text>
+                        <Text style={{ fontSize: 15, fontWeight: "900", color: theme.colors.primary, marginTop: 1 }}>
+                          {UI_TEXT.rs} {formatCurrencyAmount(mealActualVendorTotal)}
+                        </Text>
+                      </View>
                     </View>
                   </View>
                 );

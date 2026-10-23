@@ -252,6 +252,7 @@ export enum ReportType {
   MISSED_PARCEL = "missedParcel",
   PACKAGE = "package",
   AGGREGATE = "aggregate",
+  CHECKOUT = "checkout",
 }
 
 export enum UserRole {

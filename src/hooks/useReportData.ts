@@ -915,6 +915,155 @@ export function useReportData(
       .sort((a, b) => (a.block || "").localeCompare(b.block || "", undefined, { numeric: true, sensitivity: 'base' }) || (a.flat || "").localeCompare(b.flat || "", undefined, { numeric: true, sensitivity: 'base' }));
   }, [subscriptions, dayConfig, kidsEnabled, guestsEnabled, foodMenu]);
 
+  const getCheckoutReportData = useCallback((selectedDayId: string, selectedMealType: MealType) => {
+    const dayConf = (dayConfig || []).find(d => d.id === selectedDayId);
+    const mConf = dayConf ? dayConf[selectedMealType] : undefined;
+    const varieties = getMealVarieties(mConf);
+
+    let totalSubscribedPasses = 0;
+    let missedCount = 0;
+    let partialCount = 0;
+    let completeCount = 0;
+    let earliestTime: number | null = null;
+    let latestTime: number | null = null;
+
+    let adultsCheckedOut = 0;
+    let kidsCheckedOut = 0;
+    let guestsCheckedOut = 0;
+    let dineInCheckedOut = 0;
+    let parcelsCheckedOut = 0;
+
+    const list = subscriptions.map((sub) => {
+      const slots = sub.mealSlots[selectedDayId] || [];
+      const taken = sub.takenByPerson[selectedDayId] || [];
+      const adultCount = sub.peopleCount || 0;
+      const kCount = kidsEnabled ? (sub.kidsCount || 0) : 0;
+      const gCount = guestsEnabled ? (sub.guestsCount || 0) : 0;
+      const totalPeople = adultCount + kCount + gCount;
+
+      let subscribedCount = 0;
+      let takenCount = 0;
+      const memberCheckouts: { label: string; isTaken: boolean; actualServiceType?: string; timeDisplay: string; numericTime?: number | null }[] = [];
+
+      for (let idx = 0; idx < totalPeople; idx++) {
+        const s = slots[idx];
+        if (!s) continue;
+        const choice = s[selectedMealType];
+        const diet = getDietTypeForChoice(choice, varieties);
+        if (!diet || choice === DietaryOption.NONE || !isDietaryEnabled(selectedDayId, selectedMealType, diet, dayConfig)) continue;
+
+        subscribedCount++;
+        const tState = taken[idx] || {};
+        const isParcelAllowed = !!(s as any)[`${selectedMealType}Parcel`];
+        const isParcelTaken = !!tState[`${selectedMealType}Parcel` as keyof TakenState];
+        const isDineInTaken = !!tState[selectedMealType];
+        const isTaken = isDineInTaken || isParcelTaken;
+        const rawTime = tState[`${selectedMealType}Time` as keyof TakenState] || tState[`${selectedMealType}ParcelTime` as keyof TakenState];
+
+        const actualServiceType = isParcelTaken
+          ? UI_TEXT.parcel
+          : isDineInTaken
+          ? (isParcelAllowed ? UI_TEXT.optedDineIn : UI_TEXT.dineIn)
+          : undefined;
+
+        let numericTime: number | null = null;
+        let timeDisplay = "-";
+
+        const isKid = kidsEnabled && idx >= adultCount && idx < adultCount + kCount;
+        const isGuest = guestsEnabled && idx >= adultCount + kCount;
+
+        if (isTaken) {
+          takenCount++;
+          if (isGuest) guestsCheckedOut++;
+          else if (isKid) kidsCheckedOut++;
+          else adultsCheckedOut++;
+
+          if (isParcelTaken) {
+            parcelsCheckedOut++;
+          } else {
+            dineInCheckedOut++;
+          }
+
+          if (rawTime) {
+            timeDisplay = String(rawTime);
+            if (typeof rawTime === "number") {
+              numericTime = rawTime;
+            } else if (typeof rawTime === "string") {
+              const pNum = Number(rawTime);
+              if (!isNaN(pNum) && pNum > 0) {
+                numericTime = pNum;
+              } else {
+                const pDate = new Date(rawTime);
+                if (!isNaN(pDate.getTime())) {
+                  numericTime = pDate.getTime();
+                }
+              }
+            }
+          } else {
+            timeDisplay = "Checked In";
+          }
+
+          if (numericTime !== null) {
+            if (earliestTime === null || numericTime < earliestTime) earliestTime = numericTime;
+            if (latestTime === null || numericTime > latestTime) latestTime = numericTime;
+          }
+        }
+
+        const category = isGuest ? UI_TEXT.guest : isKid ? UI_TEXT.kid : UI_TEXT.adult;
+        const memberNum = isGuest ? idx - adultCount - kCount + 1 : isKid ? idx - adultCount + 1 : idx + 1;
+        const label = `${category} ${memberNum}`;
+
+        memberCheckouts.push({
+          label,
+          isTaken,
+          actualServiceType,
+          timeDisplay,
+          numericTime,
+        });
+      }
+
+      if (subscribedCount === 0) return null;
+      totalSubscribedPasses++;
+
+      const isMissed = takenCount === 0;
+      const isComplete = takenCount >= subscribedCount;
+
+      if (isMissed) missedCount++;
+      else if (isComplete) completeCount++;
+      else partialCount++;
+
+      return {
+        id: sub.id,
+        block: sub.block,
+        flat: sub.flat,
+        mobile: sub.mobile,
+        isMissed,
+        isComplete,
+        takenCount,
+        subscribedCount,
+        memberCheckouts,
+      };
+    }).filter(Boolean) as any[];
+
+    return {
+      passes: list.sort((a, b) => (a.block || "").localeCompare(b.block || "", undefined, { numeric: true, sensitivity: 'base' }) || (a.flat || "").localeCompare(b.flat || "", undefined, { numeric: true, sensitivity: 'base' })),
+      summary: {
+        totalPassesForMeal: totalSubscribedPasses,
+        missedCount,
+        partialCount,
+        completeCount,
+        earliestTime,
+        latestTime,
+        adultsCheckedOut,
+        kidsCheckedOut,
+        guestsCheckedOut,
+        dineInCheckedOut,
+        parcelsCheckedOut,
+        totalMembersCheckedOut: adultsCheckedOut + kidsCheckedOut + guestsCheckedOut,
+      },
+    };
+  }, [subscriptions, dayConfig, kidsEnabled, guestsEnabled]);
+
   const packagePassesData = useMemo(() => {
     return subscriptions.filter(
       (sub) => sub.isPackageApplied || (sub.appliedPackages && Object.keys(sub.appliedPackages).length > 0)
@@ -931,6 +1080,7 @@ export function useReportData(
     getMembersMealData,
     getKidsMealData: getMembersMealData,
     getMissedParcelData,
+    getCheckoutReportData,
     packagePassesData,
   };
 }
