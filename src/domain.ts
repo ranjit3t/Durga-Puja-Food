@@ -187,6 +187,10 @@ export type AppConfig = {
   whatsappCountryCode?: string;
   quickCheckoutAutoCloseMs?: number;
   soundEnabled?: boolean;
+  vendorName?: string;
+  vendorAddress?: string;
+  vendorSettledCost?: string;
+  nonAdminCheckoutEnabled?: boolean;
 };
 
 export enum ActivityModule {

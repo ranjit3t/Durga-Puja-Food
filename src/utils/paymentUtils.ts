@@ -12,6 +12,7 @@ import {
   FoodPackage,
   AppliedPackageInfo,
   PackageMealItem,
+  FoodMenu,
 } from "../domain";
 import { isParcelEnabled, isKidsParcelEnabled, isDietaryEnabled, isMealEnabled, getMealVarieties, getDietTypeForChoice, getVarietyForChoice, isGuestsParcelEnabled, getMealFreeMealCounts } from "../constants";
 
@@ -1463,5 +1464,81 @@ export function calculatePackageReportSummary(
   };
 }
 
+
+export function calculateSeasonVendorTotals(
+  activeDays: string[],
+  foodMenu: FoodMenu,
+  dayConfig: ConfigDay[],
+  subscriptions: SubscriptionRecord[] = [],
+  kidsEnabled: boolean = false,
+  guestsEnabled: boolean = false,
+  foodPackages: FoodPackage[] | Record<string, FoodPackage> = [],
+  vendorKidsMealChargingEnabled: boolean = true,
+  freeMealEnabled: boolean = true
+) {
+  let expectedTotal = 0;
+  let actualTotal = 0;
+
+  activeDays.forEach((dayId) => {
+    const dMenu = foodMenu[dayId];
+    if (!dMenu) return;
+    const meals = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].filter(m => isMealEnabled(dayId, m, dayConfig));
+    meals.forEach((mKey) => {
+      const gm = dMenu[mKey];
+      if (!gm) return;
+      const dayConf = dayConfig.find(d => d.id === dayId);
+      const mConf = dayConf ? dayConf[mKey] : undefined;
+      const varieties = getMealVarieties(mConf, dayConf?.vegOnly);
+      const fmCounts = getMealFreeMealCounts(gm, varieties);
+
+      const vEnabled = isDietaryEnabled(dayId, mKey, DietType.VEG, dayConfig);
+      const nvEnabled = isDietaryEnabled(dayId, mKey, DietType.NON_VEG, dayConfig);
+
+      const defAdultVegSub = Number(gm.vegPrice ?? mConf?.vegPrice ?? 0);
+      const defAdultNvSub = Number(gm.nonVegPrice ?? mConf?.nonVegPrice ?? 0);
+      const defAdultVegParcelSub = Number(gm.vegParcelPrice ?? mConf?.vegParcelPrice ?? 0);
+      const defAdultNvParcelSub = Number(gm.nonVegParcelPrice ?? mConf?.nonVegParcelPrice ?? 0);
+
+      const defAdultVegVendor = Number(gm.vendorVegPrice ?? defAdultVegSub);
+      const defAdultNvVendor = Number(gm.vendorNonVegPrice ?? defAdultNvSub);
+      const defAdultVegParcelVendor = Number(gm.vendorVegParcelPrice ?? defAdultVegParcelSub);
+      const defAdultNvParcelVendor = Number(gm.vendorNonVegParcelPrice ?? defAdultNvParcelSub);
+
+      subscriptions.forEach((sub) => {
+        const passMeals = calculatePassMealBreakdown(sub, foodMenu, dayConfig, kidsEnabled, guestsEnabled, foodPackages);
+        const mealSlotItems = passMeals.filter((m: any) => m.dayId === dayId && m.mealType === mKey);
+
+        mealSlotItems.forEach((m: any) => {
+          const matchedVar = varieties.find(v => v.id === m.choice) || getVarietyForChoice(m.choice, varieties);
+          const isVeg = matchedVar ? matchedVar.type === DietType.VEG : (m.choice === DietType.VEG || m.choice.toLowerCase().includes("veg"));
+          const varMenu = gm.varieties?.[m.choice];
+
+          const baseVendorMeal = varMenu?.vendorPrice ? Number(varMenu.vendorPrice) : (isVeg ? defAdultVegVendor : defAdultNvVendor);
+          const varVendorMeal = (m.category === "kid" && vendorKidsMealChargingEnabled === false) ? 0 : baseVendorMeal;
+          const varVendorParcel = varMenu?.vendorParcelPrice ? Number(varMenu.vendorParcelPrice) : (isVeg ? defAdultVegParcelVendor : defAdultNvParcelVendor);
+
+          expectedTotal += varVendorMeal;
+          if (m.isParcelAllowed) expectedTotal += varVendorParcel;
+
+          if (m.isMealTaken) actualTotal += varVendorMeal;
+          if (m.isParcelTaken) actualTotal += varVendorParcel;
+        });
+      });
+
+      const freeVegPlanned = (freeMealEnabled && vEnabled) ? fmCounts.freeMealVeg : 0;
+      const freeNonVegPlanned = (freeMealEnabled && nvEnabled) ? fmCounts.freeMealNonVeg : 0;
+      const freeVegTotalServed = (freeMealEnabled && vEnabled) ? ((fmCounts.freeMealVegTaken || 0) + (fmCounts.freeMealVegParcelTaken || 0)) : 0;
+      const freeNonVegTotalServed = (freeMealEnabled && nvEnabled) ? ((fmCounts.freeMealNonVegTaken || 0) + (fmCounts.freeMealNonVegParcelTaken || 0)) : 0;
+      const freeVegParcelServed = (freeMealEnabled && vEnabled) ? (fmCounts.freeMealVegParcelTaken || 0) : 0;
+      const freeNonVegParcelServed = (freeMealEnabled && nvEnabled) ? (fmCounts.freeMealNonVegParcelTaken || 0) : 0;
+
+      expectedTotal += (freeVegPlanned * defAdultVegVendor) + (freeNonVegPlanned * defAdultNvVendor);
+      actualTotal += (freeVegTotalServed * defAdultVegVendor) + (freeNonVegTotalServed * defAdultNvVendor);
+      actualTotal += (freeVegParcelServed * defAdultVegParcelVendor) + (freeNonVegParcelServed * defAdultNvParcelVendor);
+    });
+  });
+
+  return { expectedTotal: Math.round(expectedTotal * 100) / 100, actualTotal: Math.round(actualTotal * 100) / 100 };
+}
 
 export { toBool };

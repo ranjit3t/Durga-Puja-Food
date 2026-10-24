@@ -62,7 +62,7 @@ import {
   getPassDisplayLabel,
 } from "../types";
 import { calculatePaidAmount, hasAmountDiscrepancy } from "../utils/paymentUtils";
-import { DirectorySortMode, toBool } from "../domain";
+import { DirectorySortMode, toBool, ConfigDay, EventDay } from "../domain";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
@@ -87,6 +87,9 @@ const SubscriptionCard = React.memo(({
   hasSpecialMeal,
   hasPackage,
   hasDiscrepancy,
+  nonAdminCheckoutEnabled,
+  currentMealInfo,
+  dayConfig,
   onSelect,
   onOpenQuickCheckout,
   onSelectBlock,
@@ -112,6 +115,9 @@ const SubscriptionCard = React.memo(({
   hasSpecialMeal?: boolean;
   hasPackage?: boolean;
   hasDiscrepancy?: boolean;
+  nonAdminCheckoutEnabled?: boolean;
+  currentMealInfo?: { dayId: EventDay; type: MealType } | null;
+  dayConfig?: ConfigDay[];
   onSelect: (sub: Subscription) => void;
   onOpenQuickCheckout?: (sub: Subscription) => void;
   onSelectBlock?: (block: string) => void;
@@ -122,6 +128,81 @@ const SubscriptionCard = React.memo(({
   missedCheckoutInfo?: { missed: number; total: number };
 }) => {
   const colorScheme = theme.cardColors[index % theme.cardColors.length];
+  const canQuickCheckout = isAdmin || nonAdminCheckoutEnabled !== false;
+
+  const currentMealCheckouts = useMemo(() => {
+    if (!currentMealInfo) return [];
+    const dayId = currentMealInfo.dayId;
+    const mType = currentMealInfo.type;
+
+    const adultCount = item.peopleCount || 0;
+    const kCount = kidsEnabled ? (item.kidsCount || 0) : 0;
+    const gCount = guestsEnabled ? (item.guestsCount || 0) : 0;
+    const totalPeople = adultCount + kCount + gCount;
+
+    const slots = item.mealSlots?.[dayId] || [];
+    const takenList = item.takenByPerson?.[dayId] || [];
+    const list: { label: string; isTaken: boolean; actualServiceType?: string; timeDisplay: string }[] = [];
+
+    for (let idx = 0; idx < totalPeople; idx++) {
+      const s = slots[idx];
+      if (!s) continue;
+      const choice = s[mType];
+      if (!choice || choice === DietaryOption.NONE) continue;
+
+      const isKid = kidsEnabled && idx >= adultCount && idx < adultCount + kCount;
+      const isGuest = guestsEnabled && idx >= adultCount + kCount;
+
+      if (isKid && !kidsEnabled) continue;
+      if (isGuest && !guestsEnabled) continue;
+
+      const category = isGuest ? UI_TEXT.guest : isKid ? UI_TEXT.kid : UI_TEXT.adult;
+      const memberNum = isGuest ? idx - adultCount - kCount + 1 : isKid ? idx - adultCount + 1 : idx + 1;
+      const label = `${category} ${memberNum}`;
+
+      const tState = (takenList[idx] || {}) as TakenState;
+      const isParcelAllowed = !!(s as any)[`${mType}Parcel`];
+      const isParcelTaken = !!tState[`${mType}Parcel` as keyof TakenState];
+      const isDineInTaken = !!tState[mType];
+      const isTaken = isDineInTaken || isParcelTaken;
+      const rawTime = tState[`${mType}Time` as keyof TakenState] || tState[`${mType}ParcelTime` as keyof TakenState];
+
+      const actualServiceType = isParcelTaken
+        ? UI_TEXT.parcel
+        : isDineInTaken
+        ? (isParcelAllowed ? UI_TEXT.optedDineIn : UI_TEXT.dineIn)
+        : undefined;
+
+      let timeDisplay = "-";
+      if (isTaken) {
+        if (rawTime) {
+          timeDisplay = typeof rawTime === "number" ? formatTimestamp(rawTime) : String(rawTime);
+        } else {
+          timeDisplay = "Checked In";
+        }
+      }
+
+      list.push({
+        label,
+        isTaken,
+        actualServiceType,
+        timeDisplay,
+      });
+    }
+
+    return list;
+  }, [item, currentMealInfo, kidsEnabled, guestsEnabled]);
+
+  const checkoutOccurrences = useMemo(() => {
+    if (!hasCurrentMeal || currentMealCheckouts.length === 0) return 0;
+    const uniqueTimes = new Set(
+      currentMealCheckouts
+        .filter((m) => m.isTaken)
+        .map((m) => m.timeDisplay)
+    );
+    const takenCount = currentMealCheckouts.filter((m) => m.isTaken).length;
+    return uniqueTimes.size > 0 ? uniqueTimes.size : (takenCount > 0 ? 1 : 0);
+  }, [hasCurrentMeal, currentMealCheckouts]);
 
   return (
     <View
@@ -136,18 +217,41 @@ const SubscriptionCard = React.memo(({
       ]}
     >
       {missedCount ? (
-        <Pressable
-          onPress={(e) => {
-            e.stopPropagation();
-            if (onOpenQuickCheckout) {
-              onOpenQuickCheckout(item);
-            }
-          }}
-          accessible={true}
-          accessibilityRole="button"
-          accessibilityLabel={`${UI_TEXT.quickCheckout} (${missedCount})`}
-          style={({ pressed }) => [
-            {
+        canQuickCheckout ? (
+          <Pressable
+            onPress={(e) => {
+              e.stopPropagation();
+              if (onOpenQuickCheckout) {
+                onOpenQuickCheckout(item);
+              }
+            }}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={`${UI_TEXT.quickCheckout} (${missedCount})`}
+            style={({ pressed }) => [
+              {
+                position: 'absolute',
+                top: -s(10),
+                right: -s(10),
+                width: s(32),
+                height: s(32),
+                borderRadius: s(16),
+                backgroundColor: theme.colors.error,
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 20,
+                elevation: 6,
+                borderWidth: 2,
+                borderColor: theme.colors.white,
+              },
+              pressed && { opacity: 0.8, transform: [{ scale: 1.1 }] }
+            ]}
+          >
+             <Text style={{ color: theme.colors.white, fontSize: s(13), fontWeight: '900' }}>{missedCount}</Text>
+          </Pressable>
+        ) : (
+          <View
+            style={{
               position: 'absolute',
               top: -s(10),
               right: -s(10),
@@ -161,12 +265,14 @@ const SubscriptionCard = React.memo(({
               elevation: 6,
               borderWidth: 2,
               borderColor: theme.colors.white,
-            },
-            pressed && { opacity: 0.8, transform: [{ scale: 1.1 }] }
-          ]}
-        >
-           <Text style={{ color: theme.colors.white, fontSize: s(13), fontWeight: '900' }}>{missedCount}</Text>
-        </Pressable>
+            }}
+            accessible={true}
+            accessibilityRole="text"
+            accessibilityLabel={`${missedCount} unserved`}
+          >
+             <Text style={{ color: theme.colors.white, fontSize: s(13), fontWeight: '900' }}>{missedCount}</Text>
+          </View>
+        )
       ) : null}
 
       <View style={styles.cardTop}>
@@ -224,6 +330,24 @@ const SubscriptionCard = React.memo(({
               {hasCurrentMeal && (
                 <View style={{ backgroundColor: theme.colors.successLight, padding: s(6), borderRadius: s(12), borderWidth: 1, borderColor: theme.colors.success + "40" }}>
                   <Ionicons name="restaurant" size={s(14)} color={theme.colors.success} />
+                </View>
+              )}
+              {hasCurrentMeal && checkoutOccurrences > 0 && (
+                <View style={{
+                  backgroundColor: colorScheme.accent + "20",
+                  paddingHorizontal: s(6),
+                  paddingVertical: s(2),
+                  borderRadius: s(8),
+                  borderWidth: 1,
+                  borderColor: colorScheme.accent,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  flexShrink: 1,
+                  maxWidth: "100%",
+                }}>
+                  <Text style={{ fontSize: s(10), fontWeight: '900', color: colorScheme.accent }} numberOfLines={1}>
+                    {checkoutOccurrences} {checkoutOccurrences === 1 ? UI_TEXT.checkoutSingular : UI_TEXT.checkoutPlural}
+                  </Text>
                 </View>
               )}
               {missedCheckoutInfo && (
@@ -327,6 +451,48 @@ const SubscriptionCard = React.memo(({
               return `${total}${total === 1 ? UI_TEXT.personSuffix : UI_TEXT.personsSuffix}`;
             })()}
           </Text>
+
+          {/* Active Meal Member Checkout Times Section (Rendered ONLY when pass is subscribed to current active meal) */}
+          {hasCurrentMeal && currentMealInfo && currentMealCheckouts.length > 0 && (
+            <View style={{ gap: s(4), paddingTop: s(8), marginTop: s(8), borderTopWidth: 1, borderTopColor: colorScheme.border + "88" }}>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: s(2) }}>
+                <Text style={{ fontSize: s(11), fontWeight: "800", color: theme.colors.textSecondary, textTransform: "uppercase" }}>
+                  {getDayLabel(currentMealInfo.dayId, dayConfig || [])} - {getMealLabel(currentMealInfo.type)} {UI_TEXT.checkoutReport}
+                </Text>
+              </View>
+              {currentMealCheckouts.map((mem, mIdx) => (
+                <View key={mIdx} style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: s(2) }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: s(6), flex: 1, flexWrap: "wrap" }}>
+                    <Ionicons
+                      name={mem.isTaken ? "checkmark-circle" : "ellipse-outline"}
+                      size={s(14)}
+                      color={mem.isTaken ? theme.colors.success : theme.colors.textMuted}
+                    />
+                    <Text style={{ fontSize: s(12), fontWeight: "800", color: theme.colors.textPrimary }}>
+                      {mem.label}
+                    </Text>
+                    {mem.actualServiceType && (
+                      <View style={{
+                        backgroundColor: theme.colors.primary + "18",
+                        paddingHorizontal: s(6),
+                        paddingVertical: s(1),
+                        borderRadius: s(4),
+                        borderWidth: 0.8,
+                        borderColor: theme.colors.primary + "40"
+                      }}>
+                        <Text style={{ fontSize: s(10), fontWeight: "800", color: theme.colors.primary }}>
+                          {mem.actualServiceType}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={{ fontSize: s(12), fontWeight: "700", color: mem.isTaken ? colorScheme.accent : theme.colors.textMuted }}>
+                    {mem.timeDisplay}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
         </View>
       </View>
 
@@ -435,7 +601,7 @@ const SubscriptionCard = React.memo(({
 export function SubscriptionListScreen() {
   const { userRole, handleLogout } = useAuth();
   const {
-    subscriptions, dayConfig, paymentConfig, seasonEnabled, whatsappCountryCode, kidsEnabled, guestsEnabled, refreshAllData, foodMenu
+    subscriptions, dayConfig, paymentConfig, seasonEnabled, whatsappCountryCode, kidsEnabled, guestsEnabled, refreshAllData, foodMenu, nonAdminCheckoutEnabled
   } = useCoreDatabase();
   const { addActivityLog } = useActivityLogs();
 
@@ -1544,6 +1710,9 @@ export function SubscriptionListScreen() {
         hasSpecialMeal={!!item._hasSpecialMeal}
         hasPackage={!!item._hasPackage}
         hasDiscrepancy={!!item._hasDiscrepancy}
+        nonAdminCheckoutEnabled={nonAdminCheckoutEnabled}
+        currentMealInfo={currentMealInfo}
+        dayConfig={dayConfig}
         onSelect={onSelect}
         onOpenQuickCheckout={onOpenQuickCheckout}
         onSelectBlock={setSelectedBlock}
@@ -1554,7 +1723,7 @@ export function SubscriptionListScreen() {
         missedCheckoutInfo={item._missedCheckoutInfo}
       />
     );
-  }, [theme, styles, s, kidsEnabled, paymentConfig, whatsappCountryCode, isAdmin, onSelect, onOpenQuickCheckout, setSelectedBlock, addActivityLog]);
+  }, [theme, styles, s, kidsEnabled, guestsEnabled, paymentConfig, whatsappCountryCode, isAdmin, currentMealInfo, dayConfig, onSelect, onOpenQuickCheckout, setSelectedBlock, addActivityLog]);
 
   const showFilters = (currentMealInfo && hasAnySubscribed) || (currentMealInfo && hasAnyMissed) || (currentMealInfo && hasAnyPartialCheckout) || (currentMealInfo && hasAnyCompletedCheckout) || (kidsEnabled && hasAnyKids) || (kidsEnabled && currentMealInfo && hasAnyCurrentMealKids) || hasAnyParcel || (isNonVegSeason && hasAnyVegOnly) || hasAnySpecialOnly || hasAnyPackage || (isAdmin && hasAnyDiscrepancy);
 

@@ -614,6 +614,10 @@ export function createFirebaseRepository(): SubscriptionRepository {
           whatsappCountryCode: val.whatsappCountryCode || "91",
           quickCheckoutAutoCloseMs: val.quickCheckoutAutoCloseMs ?? 3000,
           soundEnabled: val.soundEnabled !== undefined ? Boolean(val.soundEnabled) : true,
+          vendorName: val.vendorName || "",
+          vendorAddress: val.vendorAddress || "",
+          vendorSettledCost: val.vendorSettledCost || "",
+          nonAdminCheckoutEnabled: val.nonAdminCheckoutEnabled !== false,
         };
       }
       return { seasonName: "", days: [], payment: defaultPayment, freeMealEnabled: true, mobileEnabled: true, foodPriceEnabled: false, seasonEnabled: true, kidsEnabled: false, vendorKidsMealChargingEnabled: true, soundEnabled: true };
@@ -917,6 +921,11 @@ export function createFirebaseRepository(): SubscriptionRepository {
               vendorKidsMealChargingEnabled: val.vendorKidsMealChargingEnabled !== false,
               whatsappCountryCode: val.whatsappCountryCode || "91",
               quickCheckoutAutoCloseMs: val.quickCheckoutAutoCloseMs ?? 3000,
+              soundEnabled: val.soundEnabled !== undefined ? Boolean(val.soundEnabled) : true,
+              nonAdminCheckoutEnabled: val.nonAdminCheckoutEnabled !== false,
+              vendorName: val.vendorName || "",
+              vendorAddress: val.vendorAddress || "",
+              vendorSettledCost: val.vendorSettledCost || "",
             });
           }
         });

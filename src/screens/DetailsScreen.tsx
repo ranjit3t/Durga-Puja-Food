@@ -63,7 +63,7 @@ export function DetailsScreen() {
   const { userRole, handleLogout } = useAuth();
   const {
     subscriptions, dayConfig, paymentConfig, seasonEnabled, foodMenu, mobileEnabled,
-    deleteSubscription, whatsappCountryCode, kidsEnabled, guestsEnabled
+    deleteSubscription, whatsappCountryCode, kidsEnabled, guestsEnabled, nonAdminCheckoutEnabled
   } = useCoreDatabase();
   const { foodPackages } = useFoodPackages();
   const { addActivityLog } = useActivityLogs();
@@ -78,7 +78,9 @@ export function DetailsScreen() {
   const styles = useStyles();
   const { theme, themeType } = useAppTheme();
   const isAdmin = userRole === UserRole.ADMIN;
+  const canQuickCheckout = isAdmin || nonAdminCheckoutEnabled !== false;
   const canEdit = seasonEnabled && !isSeasonDone(dayConfig);
+  const canEditPass = canEdit && canQuickCheckout;
   const activeDays = getActiveDays(dayConfig);
 
   const [showQuickCheckoutModal, setShowQuickCheckoutModal] = React.useState(false);
@@ -340,7 +342,7 @@ export function DetailsScreen() {
                   {UI_TEXT.rs}{UI_TEXT.space}{subscription.amount || UI_TEXT.zero}
                 </Text>
               )}
-              {hasUnservedFoodForCurrentMeal && (
+              {canQuickCheckout && hasUnservedFoodForCurrentMeal && (
                 <Pressable
                   accessibilityLabel={UI_TEXT.quickCheckout}
                   onPress={handleQuickCheckoutClick}
@@ -352,7 +354,7 @@ export function DetailsScreen() {
                   <Ionicons name="flash" size={18} color={theme.colors.white} />
                 </Pressable>
               )}
-              {canEdit && (
+              {canEditPass && (
                 <Pressable
                   onPress={onEdit}
                   accessibilityLabel={UI_TEXT.editPass}
@@ -880,7 +882,7 @@ export function DetailsScreen() {
 
         {/* Actions */}
         <View style={{ gap: 16, marginBottom: 40 }}>
-          {hasUnservedFoodForCurrentMeal && (
+          {canQuickCheckout && hasUnservedFoodForCurrentMeal && (
             <Pressable
               onPress={handleQuickCheckoutClick}
               accessible={true}
@@ -891,7 +893,7 @@ export function DetailsScreen() {
               <ActionLabel icon="flash-outline" label={UI_TEXT.quickCheckout} color={theme.colors.white} />
             </Pressable>
           )}
-          {canEdit && (
+          {canEditPass && (
             <Pressable
               onPress={onEdit}
               accessible={true}

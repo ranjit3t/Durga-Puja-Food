@@ -13,7 +13,7 @@ import {
   Switch,
   Modal,
 } from "react-native";
-import { useStyles } from "../styles";
+import { useStyles, useScaling } from "../styles";
 import { useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
 import { ConfigDay, PaymentConfig, AppScreen, PaymentMode, AppThemeMode, ActivityModule, ActivityAction, DietaryOption, MealSlot, DietaryVariety } from "../types";
@@ -28,7 +28,8 @@ import { useAuth } from "../context/AuthContext";
 import { useCoreDatabase, useActivityLogs } from "../context/DatabaseContext";
 import { useUI } from "../context/UIContext";
 import { useAppNavigation } from "../context/NavigationContext";
-import { getPaymentModeLabel, getMealLabel, getMealConstraints, getMealVarieties } from "../constants";
+import { getPaymentModeLabel, getMealLabel, getMealConstraints, getMealVarieties, isMealEnabled, isMealDone } from "../constants";
+import { calculateSeasonVendorTotals, formatCurrencyAmount } from "../utils/paymentUtils";
 import { MealConfig, MealType, DietType } from "../domain";
 
 type PresetColor = {
@@ -43,13 +44,10 @@ const COLOR_PALETTE: PresetColor[] = [
   { hex: "#2563EB", name: "Royal Blue" },
   { hex: "#4F46E5", name: "Indigo Purple" },
   { hex: "#9333EA", name: "Deep Purple" },
-  { hex: "#DC2626", name: "Crimson Red" },
-  { hex: "#B91C1C", name: "Ruby Red" },
-  { hex: "#E11D48", name: "Rose Pink" },
-  { hex: "#D97706", name: "Amber Gold" },
-  { hex: "#EA580C", name: "Vibrant Orange" },
-  { hex: "#78350F", name: "Saddle Brown" },
-  { hex: "#475569", name: "Slate Gray" },
+  { hex: "#C026D3", name: "Fuchsia Pink" },
+  { hex: "#E11D48", name: "Crimson Red" },
+  { hex: "#EA580C", name: "Sunset Orange" },
+  { hex: "#CA8A04", name: "Amber Gold" },
 ];
 
 function VarietyModal({
@@ -67,137 +65,86 @@ function VarietyModal({
   onSave: (dayId: string, mealKey: MealType, varId: string | null, name: string, type: DietType, color: string) => void;
   theme: any;
 }) {
-  const defaultVegColor = theme.colors.veg || "#16A34A";
-  const defaultNonVegColor = theme.colors.nonVeg || "#DC2626";
-
   const [name, setName] = useState("");
-  const [type, setType] = useState<DietType>(allowedDietTypes[0] || DietType.VEG);
-  const [color, setColor] = useState(defaultVegColor);
+  const [type, setType] = useState<DietType>(DietType.VEG);
+  const [color, setColor] = useState(COLOR_PALETTE[0].hex);
   const [hoveredColor, setHoveredColor] = useState<string | null>(null);
 
-  React.useLayoutEffect(() => {
-    if (editingVariety?.variety) {
-      setName(editingVariety.variety.name);
-      const vType = allowedDietTypes.includes(editingVariety.variety.type)
-        ? editingVariety.variety.type
-        : (allowedDietTypes[0] || DietType.VEG);
-      setType(vType);
-      setColor(editingVariety.variety.color || (vType === DietType.VEG ? defaultVegColor : defaultNonVegColor));
-    } else {
-      setName("");
-      const initialType = allowedDietTypes.includes(DietType.VEG) ? DietType.VEG : (allowedDietTypes[0] || DietType.NON_VEG);
-      setType(initialType);
-      setColor(initialType === DietType.VEG ? defaultVegColor : defaultNonVegColor);
+  React.useEffect(() => {
+    if (editingVariety) {
+      if (editingVariety.variety) {
+        setName(editingVariety.variety.name);
+        setType(editingVariety.variety.type);
+        setColor(editingVariety.variety.color || (editingVariety.variety.type === DietType.VEG ? theme.colors.veg : theme.colors.nonVeg));
+      } else {
+        setName("");
+        const defaultType = allowedDietTypes.includes(DietType.VEG) ? DietType.VEG : allowedDietTypes[0] || DietType.VEG;
+        setType(defaultType);
+        setColor(defaultType === DietType.VEG ? theme.colors.veg : theme.colors.nonVeg);
+      }
     }
-  }, [editingVariety, allowedDietTypes, defaultVegColor, defaultNonVegColor]);
+  }, [editingVariety, allowedDietTypes, theme]);
 
   if (!visible || !editingVariety) return null;
 
-  const isVegSupported = allowedDietTypes.includes(DietType.VEG);
-  const isNonVegSupported = allowedDietTypes.includes(DietType.NON_VEG);
-
-  const activeColorHex = hoveredColor || color;
-  const activeColorObj = COLOR_PALETTE.find(c => c.hex.toLowerCase() === activeColorHex.trim().toLowerCase());
-  const activeColorName = activeColorObj ? activeColorObj.name : activeColorHex;
+  const activeColorName = COLOR_PALETTE.find((c) => c.hex.toLowerCase() === color.trim().toLowerCase())?.name || "Custom Color";
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View
-        accessibilityViewIsModal={true}
-        style={{ flex: 1, backgroundColor: theme.colors.shadow + "99", justifyContent: "center", alignItems: "center", padding: 16 }}
-      >
-        <View style={{ width: "100%", maxWidth: 420, backgroundColor: theme.colors.surface, borderRadius: 20, padding: 20, gap: 16, borderWidth: 1, borderColor: theme.colors.border }}>
+      <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center", padding: 20 }}>
+        <View style={{ width: "100%", maxWidth: 380, backgroundColor: theme.colors.surface, borderRadius: 20, padding: 20, borderWidth: 1, borderColor: theme.colors.border, gap: 16 }}>
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
             <Text style={{ fontSize: 18, fontWeight: "900", color: theme.colors.textPrimary }}>
-              {editingVariety.variety ? UI_TEXT.editVariety : UI_TEXT.addVarietyTitle}
+              {editingVariety.variety ? UI_TEXT.editVariety : UI_TEXT.addVariety}
             </Text>
-            <Pressable
-              onPress={onClose}
-              accessible={true}
-              accessibilityRole="button"
-              accessibilityLabel={UI_TEXT.close}
-            >
+            <Pressable onPress={onClose} accessible={true} accessibilityRole="button" accessibilityLabel={UI_TEXT.cancel}>
               <Ionicons name="close" size={22} color={theme.colors.textSecondary} />
             </Pressable>
           </View>
 
           <View style={{ gap: 6 }}>
             <Text style={{ fontSize: 12, fontWeight: "800", color: theme.colors.textSecondary }}>
-              {UI_TEXT.varietyNameLabel}
+              {UI_TEXT.varietyNameLabel} (Max 15 chars)
             </Text>
             <TextInput
               accessible={true}
               accessibilityLabel={UI_TEXT.varietyNameLabel}
               accessibilityHint={UI_TEXT.varietyNamePlaceholder}
-              style={{
-                backgroundColor: theme.colors.surfaceDark,
-                borderWidth: 1,
-                borderColor: theme.colors.border,
-                borderRadius: 12,
-                paddingHorizontal: 12,
-                paddingVertical: 10,
-                fontSize: 15,
-                fontWeight: "700",
-                color: theme.colors.textPrimary,
-              }}
+              style={{ height: 44, borderRadius: 12, backgroundColor: theme.colors.background, borderWidth: 1, borderColor: theme.colors.border, paddingHorizontal: 12, fontSize: 14, fontWeight: "700", color: theme.colors.textPrimary }}
               value={name}
-              onChangeText={(txt) => setName(txt.slice(0, 15))}
+              onChangeText={setName}
               placeholder={UI_TEXT.varietyNamePlaceholder}
               placeholderTextColor={theme.colors.textMuted}
               maxLength={15}
+              selectTextOnFocus
             />
           </View>
 
           <View style={{ gap: 6 }}>
             <Text style={{ fontSize: 12, fontWeight: "800", color: theme.colors.textSecondary }}>
-              {UI_TEXT.primaryCategoryLabel}
+              {UI_TEXT.dietaryCategoryType}
             </Text>
-            <View style={{ flexDirection: "row", gap: 10 }}>
-              {isVegSupported && (
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              {allowedDietTypes.includes(DietType.VEG) && (
                 <Pressable
                   onPress={() => {
                     setType(DietType.VEG);
-                    if (color.toLowerCase() === defaultNonVegColor.toLowerCase()) setColor(defaultVegColor);
+                    setColor(theme.colors.veg);
                   }}
-                  accessible={true}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: type === DietType.VEG }}
-                  accessibilityLabel={`${UI_TEXT.primaryCategoryLabel}: ${UI_TEXT.veg}`}
-                  style={{
-                    flex: 1,
-                    paddingVertical: 10,
-                    borderRadius: 12,
-                    alignItems: "center",
-                    backgroundColor: type === DietType.VEG ? theme.colors.veg : theme.colors.surfaceDark,
-                    borderWidth: 1.5,
-                    borderColor: type === DietType.VEG ? theme.colors.veg : theme.colors.border,
-                  }}
+                  style={{ flex: 1, height: 40, borderRadius: 10, backgroundColor: type === DietType.VEG ? theme.colors.veg : theme.colors.background, borderWidth: 1, borderColor: type === DietType.VEG ? theme.colors.veg : theme.colors.border, alignItems: "center", justifyContent: "center" }}
                 >
                   <Text style={{ fontWeight: "900", fontSize: 13, color: type === DietType.VEG ? theme.colors.white : theme.colors.textSecondary }}>
                     {UI_TEXT.veg.toUpperCase()}
                   </Text>
                 </Pressable>
               )}
-
-              {isNonVegSupported && (
+              {allowedDietTypes.includes(DietType.NON_VEG) && (
                 <Pressable
                   onPress={() => {
                     setType(DietType.NON_VEG);
-                    if (color.toLowerCase() === defaultVegColor.toLowerCase()) setColor(defaultNonVegColor);
+                    setColor(theme.colors.nonVeg);
                   }}
-                  accessible={true}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: type === DietType.NON_VEG }}
-                  accessibilityLabel={`${UI_TEXT.primaryCategoryLabel}: ${UI_TEXT.nonVeg}`}
-                  style={{
-                    flex: 1,
-                    paddingVertical: 10,
-                    borderRadius: 12,
-                    alignItems: "center",
-                    backgroundColor: type === DietType.NON_VEG ? theme.colors.nonVeg : theme.colors.surfaceDark,
-                    borderWidth: 1.5,
-                    borderColor: type === DietType.NON_VEG ? theme.colors.nonVeg : theme.colors.border,
-                  }}
+                  style={{ flex: 1, height: 40, borderRadius: 10, backgroundColor: type === DietType.NON_VEG ? theme.colors.nonVeg : theme.colors.background, borderWidth: 1, borderColor: type === DietType.NON_VEG ? theme.colors.nonVeg : theme.colors.border, alignItems: "center", justifyContent: "center" }}
                 >
                   <Text style={{ fontWeight: "900", fontSize: 13, color: type === DietType.NON_VEG ? theme.colors.white : theme.colors.textSecondary }}>
                     {UI_TEXT.nonVeg.toUpperCase()}
@@ -280,13 +227,15 @@ export function SettingsScreen() {
   const { handleLogout } = useAuth();
   const {
     dayConfig: config, seasonName, seasonEnabled, paymentConfig: payment, freeMealEnabled, mobileEnabled, foodPriceEnabled,
-    whatsappCountryCode, updateConfig, kidsEnabled, guestsEnabled, vendorKidsMealChargingEnabled, subscriptions, foodMenu, quickCheckoutAutoCloseMs, soundEnabled
+    whatsappCountryCode, updateConfig, kidsEnabled, guestsEnabled, vendorKidsMealChargingEnabled, subscriptions, foodMenu, quickCheckoutAutoCloseMs, soundEnabled,
+    vendorName, vendorAddress, vendorSettledCost, nonAdminCheckoutEnabled
   } = useCoreDatabase();
   const { addActivityLog } = useActivityLogs();
   const { showAlert } = useUI();
   const { navigate, goBack } = useAppNavigation();
 
   const styles = useStyles();
+  const { s } = useScaling();
   const { theme, themeType } = useAppTheme();
 
   const [localConfig, setLocalConfig] = useState<ConfigDay[]>([]);
@@ -305,6 +254,10 @@ export function SettingsScreen() {
   const [localWhatsappCountryCode, setLocalWhatsappCountryCode] = useState(UI_TEXT.defaultCountryCode);
   const [localQuickCheckoutAutoCloseMs, setLocalQuickCheckoutAutoCloseMs] = useState<number>(3000);
   const [localSoundEnabled, setLocalSoundEnabled] = useState<boolean>(true);
+  const [localNonAdminCheckoutEnabled, setLocalNonAdminCheckoutEnabled] = useState<boolean>(true);
+  const [localVendorName, setLocalVendorName] = useState("");
+  const [localVendorAddress, setLocalVendorAddress] = useState("");
+  const [localVendorSettledCost, setLocalVendorSettledCost] = useState("");
   const [saving, setSaving] = useState(false);
 
   // Saved baseline state representing the current persisted configuration
@@ -322,6 +275,10 @@ export function SettingsScreen() {
     whatsappCountryCode: string;
     quickCheckoutAutoCloseMs: number;
     soundEnabled: boolean;
+    nonAdminCheckoutEnabled: boolean;
+    vendorName: string;
+    vendorAddress: string;
+    vendorSettledCost: string;
   } | null>(null);
 
   const [editingVarietyModal, setEditingVarietyModal] = useState<{
@@ -411,7 +368,6 @@ export function SettingsScreen() {
       return;
     }
 
-    // Deletion Protection Rule check
     const isSubscribed = (subscriptions || []).some((sub) => {
       const slots = sub.mealSlots?.[dayId] || [];
       return slots.some((s) => {
@@ -444,6 +400,35 @@ export function SettingsScreen() {
     ]);
   };
 
+  const activeDaysList = useMemo(() => {
+    return localConfig.filter(d => d.enabled).map(d => d.id);
+  }, [localConfig]);
+
+  const { expectedTotal, actualTotal } = useMemo(() => {
+    return calculateSeasonVendorTotals(
+      activeDaysList,
+      foodMenu,
+      localConfig,
+      subscriptions,
+      localKidsEnabled,
+      localGuestsEnabled,
+      [],
+      localVendorKidsMealChargingEnabled,
+      localFreeMealEnabled
+    );
+  }, [activeDaysList, foodMenu, localConfig, subscriptions, localKidsEnabled, localGuestsEnabled, localVendorKidsMealChargingEnabled, localFreeMealEnabled]);
+
+  const areAllMealsDone = useMemo(() => {
+    const activeDays = localConfig.filter(d => d.enabled);
+    if (activeDays.length === 0) return false;
+    return activeDays.every(day => {
+      return [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].every(mealType => {
+        if (!isMealEnabled(day.id, mealType, localConfig)) return true;
+        return isMealDone(day.id, mealType, localConfig);
+      });
+    });
+  }, [localConfig]);
+
   // Sync saved baseline & local state when database config is loaded
   React.useLayoutEffect(() => {
     if (config) {
@@ -461,6 +446,10 @@ export function SettingsScreen() {
         whatsappCountryCode: whatsappCountryCode || UI_TEXT.defaultCountryCode,
         quickCheckoutAutoCloseMs: quickCheckoutAutoCloseMs ?? 3000,
         soundEnabled: soundEnabled !== false,
+        nonAdminCheckoutEnabled: nonAdminCheckoutEnabled !== false,
+        vendorName: vendorName || "",
+        vendorAddress: vendorAddress || "",
+        vendorSettledCost: vendorSettledCost || "",
       };
 
       if (!savedBaseline) {
@@ -477,10 +466,14 @@ export function SettingsScreen() {
         setLocalWhatsappCountryCode(currentContextBaseline.whatsappCountryCode);
         setLocalQuickCheckoutAutoCloseMs(currentContextBaseline.quickCheckoutAutoCloseMs);
         setLocalSoundEnabled(currentContextBaseline.soundEnabled);
+        setLocalNonAdminCheckoutEnabled(currentContextBaseline.nonAdminCheckoutEnabled);
+        setLocalVendorName(currentContextBaseline.vendorName);
+        setLocalVendorAddress(currentContextBaseline.vendorAddress);
+        setLocalVendorSettledCost(currentContextBaseline.vendorSettledCost);
       }
       setSavedBaseline(currentContextBaseline);
     }
-  }, [config, seasonName, seasonEnabled, payment, freeMealEnabled, mobileEnabled, foodPriceEnabled, kidsEnabled, guestsEnabled, vendorKidsMealChargingEnabled, whatsappCountryCode, quickCheckoutAutoCloseMs, soundEnabled]);
+  }, [config, seasonName, seasonEnabled, payment, freeMealEnabled, mobileEnabled, foodPriceEnabled, kidsEnabled, guestsEnabled, vendorKidsMealChargingEnabled, whatsappCountryCode, quickCheckoutAutoCloseMs, soundEnabled, nonAdminCheckoutEnabled, vendorName, vendorAddress, vendorSettledCost]);
 
   const updateDay = (id: string, next: Partial<ConfigDay>) => {
     setLocalConfig((current) =>
@@ -495,17 +488,6 @@ export function SettingsScreen() {
             updated[MealType.DINNER] = { ...updated[MealType.DINNER], current: false };
           }
 
-          if (next.hasOwnProperty("vegOnly")) {
-            if (next.vegOnly) {
-              updated[MealType.BREAKFAST] = { ...updated[MealType.BREAKFAST], veg: true, nonVeg: false };
-              updated[MealType.LUNCH] = { ...updated[MealType.LUNCH], veg: true, nonVeg: false };
-              updated[MealType.DINNER] = { ...updated[MealType.DINNER], veg: true, nonVeg: false };
-            } else {
-              updated[MealType.BREAKFAST] = { ...updated[MealType.BREAKFAST], veg: true, nonVeg: true };
-              updated[MealType.LUNCH] = { ...updated[MealType.LUNCH], veg: true, nonVeg: true };
-              updated[MealType.DINNER] = { ...updated[MealType.DINNER], veg: true, nonVeg: true };
-            }
-          }
           return updated;
         }
         return d;
@@ -513,28 +495,88 @@ export function SettingsScreen() {
     );
   };
 
+  const getMealConstraints = (dayId: string, mealKey: MealType, configToCheck: ConfigDay[]) => {
+    let anyFutureDone = false;
+    let pastDone = false;
+    let canUnmarkCurrent = true;
+
+    const sortedDays = configToCheck.filter(d => d.enabled);
+    const dayIdx = sortedDays.findIndex(d => d.id === dayId);
+    const mealKeys: MealType[] = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER];
+    const mealIdx = mealKeys.indexOf(mealKey);
+
+    sortedDays.forEach((d, dIndex) => {
+      mealKeys.forEach((m, mIndex) => {
+        const mObj = d[m];
+        if (!mObj.enabled) return;
+
+        const isLater = dIndex > dayIdx || (dIndex === dayIdx && mIndex > mealIdx);
+        const isEarlier = dIndex < dayIdx || (dIndex === dayIdx && mIndex < mealIdx);
+
+        if (isLater && mObj.done) anyFutureDone = true;
+        if (isEarlier && !mObj.done) pastDone = true;
+      });
+    });
+
+    const currentDay = sortedDays[dayIdx];
+    if (currentDay) {
+      mealKeys.forEach((m, mIndex) => {
+        if (mIndex < mealIdx && currentDay[m].enabled && !currentDay[m].done) {
+          pastDone = true;
+        }
+      });
+    }
+
+    return { anyFutureDone, pastDone, canUnmarkCurrent };
+  };
+
+  const getMealDoneConstraints = (dayId: string, mealKey: MealType, configToCheck: ConfigDay[]) => {
+    let canMarkDone = true;
+    let canUnmarkDone = true;
+    const { anyFutureDone, pastDone } = getMealConstraints(dayId, mealKey, configToCheck);
+    if (anyFutureDone) canUnmarkDone = false;
+    if (pastDone) canMarkDone = false;
+    return { canMarkDone, canUnmarkDone };
+  };
+
   const validateAndSetSeasonEnabled = (val: boolean) => {
-    if (!val) { // Switching OFF
+    if (!val) {
       const anyMealNotDoneOrEnabled = localConfig.some(d =>
-        d.enabled && (
-          (d[MealType.BREAKFAST].enabled && !d[MealType.BREAKFAST].done) ||
-          (d[MealType.LUNCH].enabled && !d[MealType.LUNCH].done) ||
-          (d[MealType.DINNER].enabled && !d[MealType.DINNER].done)
-        )
+        d.enabled && [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].some(m => d[m].enabled && !d[m].done)
       );
       if (anyMealNotDoneOrEnabled) {
-        showAlert(UI_TEXT.confirmDisableTitle, UI_TEXT.seasonDisabledError);
+        showAlert(
+          UI_TEXT.warning,
+          UI_TEXT.lockSeasonConstraintWarning || "Cannot lock season while active or uncompleted meals remain. Mark all meals as completed first."
+        );
         return;
       }
     }
     setLocalSeasonEnabled(val);
   };
 
+  const validateAndSetPaymentEnabled = (val: boolean) => {
+    if (!val) {
+      const hasPayments = (subscriptions || []).some(s => parseFloat(s.amount || "0") > 0 || (s.payments && s.payments.some(p => parseFloat(p.amount || "0") > 0)));
+      if (hasPayments) {
+        showAlert(
+          UI_TEXT.warning,
+          UI_TEXT.disablePaymentConstraintWarning || "Cannot disable payment integration when active subscription payments exist."
+        );
+        return;
+      }
+    }
+    setLocalPayment({ ...localPayment, enabled: val });
+  };
+
   const validateAndSetKidsEnabled = (val: boolean) => {
-    if (!val) { // Switching OFF
-      const hasKids = (subscriptions || []).some(sub => (sub.kidsCount || 0) > 0);
+    if (!val) {
+      const hasKids = (subscriptions || []).some(s => (s.kidsCount || 0) > 0);
       if (hasKids) {
-        showAlert(UI_TEXT.confirmDisableTitle, UI_TEXT.kidsDisabledError);
+        showAlert(
+          UI_TEXT.warning,
+          UI_TEXT.disableKidsConstraintWarning || "Cannot disable kids support when active passes have registered kids."
+        );
         return;
       }
     }
@@ -542,10 +584,13 @@ export function SettingsScreen() {
   };
 
   const validateAndSetGuestsEnabled = (val: boolean) => {
-    if (!val) { // Switching OFF
-      const hasGuests = (subscriptions || []).some(sub => (sub.guestsCount || 0) > 0);
+    if (!val) {
+      const hasGuests = (subscriptions || []).some(s => (s.guestsCount || 0) > 0);
       if (hasGuests) {
-        showAlert(UI_TEXT.confirmDisableTitle, UI_TEXT.guestsDisabledError);
+        showAlert(
+          UI_TEXT.warning,
+          UI_TEXT.disableGuestsConstraintWarning || "Cannot disable guests support when active passes have registered guests."
+        );
         return;
       }
     }
@@ -553,205 +598,192 @@ export function SettingsScreen() {
   };
 
   const validateAndSetFreeMealEnabled = (val: boolean) => {
-    if (!val) { // Switching OFF
-      const hasFreeMealSubscriptions = Object.values(foodMenu || {}).some(dayMenu =>
-        [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].some(mKey => {
-           const m = dayMenu[mKey as keyof typeof dayMenu];
-           return m && ((m.freeMealVeg || 0) > 0 || (m.freeMealNonVeg || 0) > 0);
-        })
-      );
-      if (hasFreeMealSubscriptions) {
-        showAlert(UI_TEXT.confirmDisableTitle, UI_TEXT.freeMealDisabledError);
+    if (!val) {
+      const hasFreeMeals = (foodMenu && Object.values(foodMenu).some((d: any) =>
+        Object.values(d || {}).some((m: any) => (m.freeMealVeg || 0) > 0 || (m.freeMealNonVeg || 0) > 0)
+      ));
+      if (hasFreeMeals) {
+        showAlert(
+          UI_TEXT.warning,
+          UI_TEXT.disableFreeMealConstraintWarning || "Cannot disable Free Meal Desk when free meal quotas are configured."
+        );
         return;
       }
     }
     setLocalFreeMealEnabled(val);
   };
 
-  const validateAndSetPaymentEnabled = (val: boolean) => {
-    if (!val) { // Switching OFF
-      const hasPayment = (subscriptions || []).some(sub =>
-        (parseFloat(sub.amount) > 0) ||
-        (sub.payments && sub.payments.some(p => parseFloat(p.amount) > 0))
-      );
-      if (hasPayment) {
-        showAlert(UI_TEXT.confirmDisableTitle, UI_TEXT.paymentDisabledError);
+  const validateAndSetMobileEnabled = (val: boolean) => {
+    if (!val) {
+      const hasMobile = (subscriptions || []).some(s => !!s.mobile);
+      if (hasMobile) {
+        showAlert(
+          UI_TEXT.warning,
+          UI_TEXT.disableMobileConstraintWarning || "Cannot disable Mobile Number Tracking when registered passes contain mobile numbers."
+        );
         return;
       }
     }
-    setLocalPayment({ ...localPayment, enabled: val });
+    setLocalMobileEnabled(val);
+  };
+
+  const validateAndSetFoodPriceEnabled = (val: boolean) => {
+    if (!val) {
+      const hasPrices = (foodMenu && Object.values(foodMenu).some((d: any) =>
+        Object.values(d || {}).some((m: any) => parseFloat(m.vegPrice || "0") > 0 || parseFloat(m.nonVegPrice || "0") > 0)
+      ));
+      if (hasPrices) {
+        showAlert(
+          UI_TEXT.warning,
+          UI_TEXT.disableFoodPriceConstraintWarning || "Cannot disable Menu Pricing when meal prices are configured."
+        );
+        return;
+      }
+    }
+    setLocalFoodPriceEnabled(val);
   };
 
   const validateAndSetPaymentOption = (key: keyof PaymentConfig['options'], mode: PaymentMode, val: boolean) => {
-    if (!val) { // Switching OFF
-      const hasPaymentOnChannel = (subscriptions || []).some(sub =>
-        sub.payments && sub.payments.some(p => p.mode === mode && parseFloat(p.amount) > 0)
+    if (!val) {
+      const hasModePayments = (subscriptions || []).some(s =>
+        s.paymentMode === mode || (s.payments && s.payments.some(p => p.mode === mode && parseFloat(p.amount || "0") > 0))
       );
-      if (hasPaymentOnChannel) {
-        showAlert(UI_TEXT.confirmDisableTitle, UI_TEXT.paymentChannelDisabledError);
+      if (hasModePayments) {
+        showAlert(
+          UI_TEXT.warning,
+          UI_TEXT.disablePaymentMethodConstraintWarning.replace("{method}", getPaymentModeLabel(mode)) || `Cannot disable ${getPaymentModeLabel(mode)} when active passes have used this payment method.`
+        );
         return;
       }
     }
-    setLocalPayment({ ...localPayment, options: { ...localPayment.options, [key]: val } });
-  };
-  const validateAndSetEnabled = (dayId: string, meal: MealType, val: boolean) => {
-    if (!val) { // Switching OFF
-      const hasSub = (subscriptions || []).some(sub =>
-        sub.mealSlots[dayId]?.some(slot => slot[meal] !== DietaryOption.NONE)
-      );
-      if (hasSub) {
-        showAlert(UI_TEXT.confirmDisableTitle, UI_TEXT.mealSubscribedError);
-        return;
-      }
-    }
-    updateMealConfig(dayId, meal as any, { enabled: val });
-  };
-
-  const validateAndSetKidsParcel = (dayId: string, meal: MealType, val: boolean) => {
-    if (!val) { // Switching OFF
-      const hasKidsParcelSub = (subscriptions || []).some(sub => {
-        const slots = sub.mealSlots[dayId] || [];
-        return slots.some((slot, idx) => {
-          const isKid = (sub.kidsCount || 0) > 0 && idx >= (sub.peopleCount || 0) && idx < (sub.peopleCount || 0) + (sub.kidsCount || 0);
-          const parcelKey = `${meal}Parcel` as keyof MealSlot;
-          return isKid && slot[parcelKey];
-        });
-      });
-      if (hasKidsParcelSub) {
-        showAlert(UI_TEXT.confirmDisableTitle, UI_TEXT.kidsParcelSubscribedError);
-        return;
-      }
-    }
-    updateMealConfig(dayId, meal, { kidsParcel: val });
-  };
-
-  const validateAndSetGuestsParcel = (dayId: string, meal: MealType, val: boolean) => {
-    if (!val) { // Switching OFF
-      const hasGuestsParcelSub = (subscriptions || []).some(sub => {
-        const slots = sub.mealSlots[dayId] || [];
-        return slots.some((slot, idx) => {
-          const kCount = (sub.kidsCount || 0);
-          const isGuest = (sub.guestsCount || 0) > 0 && idx >= (sub.peopleCount || 0) + kCount;
-          const parcelKey = `${meal}Parcel` as keyof MealSlot;
-          return isGuest && slot[parcelKey];
-        });
-      });
-      if (hasGuestsParcelSub) {
-        showAlert(UI_TEXT.confirmDisableTitle, UI_TEXT.guestsParcelSubscribedError);
-        return;
-      }
-    }
-    updateMealConfig(dayId, meal, { guestsParcel: val });
-  };
-
-  const validateAndSetDone = (dayId: string, meal: MealType, val: boolean) => {
-    const { canMarkDone, canUnmarkDone } = getMealConstraints(dayId, meal, localConfig);
-    if (val && !canMarkDone) {
-      showAlert(UI_TEXT.confirmDisableTitle, UI_TEXT.markDoneError);
-      return;
-    }
-    if (!val && !canUnmarkDone) {
-      showAlert(UI_TEXT.confirmDisableTitle, UI_TEXT.unmarkDoneError);
-      return;
-    }
-    const currentM = (localConfig.find(d => d.id === dayId) as any)?.[meal];
-    updateMealConfig(dayId, meal as any, { done: val, current: val ? false : currentM?.current });
-  };
-
-  const validateAndSetCurrent = (dayId: string, meal: MealType, val: boolean) => {
-    const { anyFutureDone, pastDone, canUnmarkCurrent } = getMealConstraints(dayId, meal, localConfig);
-    if (val) {
-      if (anyFutureDone) {
-        showAlert(UI_TEXT.confirmDisableTitle, UI_TEXT.enableCurrentError);
-        return;
-      }
-      if (!pastDone) {
-        showAlert(UI_TEXT.confirmDisableTitle, UI_TEXT.enableCurrentPastError);
-        return;
-      }
-    }
-    if (!val && !canUnmarkCurrent) {
-      showAlert(UI_TEXT.confirmDisableTitle, UI_TEXT.disableCurrentError);
-      return;
-    }
-    updateMealConfig(dayId, meal as any, { current: val });
+    setLocalPayment({
+      ...localPayment,
+      options: { ...localPayment.options, [key]: val }
+    });
   };
 
   const updateMealConfig = (
     dayId: string,
-    meal: MealType,
+    mealKey: MealType,
     next: Partial<MealConfig>
   ) => {
     setLocalConfig((prev) => {
-      const updated = prev.map((d) => {
-        if (d.id !== dayId) return d;
-        return {
-          ...d,
-          [meal]: { ...d[meal], ...next }
-        };
-      });
-
-      if (next.current) {
-        return updated.map((d) => {
-          const isTargetDay = d.id === dayId;
+      return (prev || []).map((day) => {
+        if (day.id === dayId) {
+          const currentMeal = day[mealKey];
           return {
-            ...d,
-            [MealType.BREAKFAST]: {
-              ...d[MealType.BREAKFAST],
-              current: isTargetDay && meal === MealType.BREAKFAST
-            },
-            [MealType.LUNCH]: {
-              ...d[MealType.LUNCH],
-              current: isTargetDay && meal === MealType.LUNCH
-            },
-            [MealType.DINNER]: {
-              ...d[MealType.DINNER],
-              current: isTargetDay && meal === MealType.DINNER
-            },
+            ...day,
+            [mealKey]: { ...currentMeal, ...next },
           };
-        });
-      }
-
-      // If meal was disabled or marked done, ensure current is off
-      return updated.map(d => {
-        if (d.id !== dayId) return d;
-        const m = d[meal];
-        if (m.enabled === false || m.done === true) {
-          return { ...d, [meal]: { ...m, current: false } };
         }
-        return d;
+        return day;
       });
     });
   };
 
-  const addNewDay = () => {
+  const validateAndSetEnabled = (dayId: string, mealKey: MealType, val: boolean) => {
+    if (!val) {
+      const hasSubscribed = (subscriptions || []).some((sub) => {
+        const slots = sub.mealSlots?.[dayId] || [];
+        return slots.some((s) => s[mealKey] && s[mealKey] !== DietaryOption.NONE);
+      });
+      if (hasSubscribed) {
+        showAlert(UI_TEXT.confirmDisableTitle, "Cannot disable this meal as active passes have subscribed to it.");
+        return;
+      }
+    }
+    updateMealConfig(dayId, mealKey, { enabled: val });
+  };
+
+  const validateAndSetKidsParcel = (dayId: string, mealKey: MealType, val: boolean) => {
+    if (!val) {
+      const hasKidsParcel = (subscriptions || []).some((sub) => {
+        const slots = sub.mealSlots?.[dayId] || [];
+        const adultCount = sub.peopleCount || 0;
+        const kCount = kidsEnabled ? (sub.kidsCount || 0) : 0;
+        for (let i = adultCount; i < adultCount + kCount; i++) {
+          const slot = slots[i];
+          if (slot && slot[mealKey] && slot[mealKey] !== DietaryOption.NONE && slot[`${mealKey}Parcel` as keyof MealSlot]) {
+            return true;
+          }
+        }
+        return false;
+      });
+      if (hasKidsParcel) {
+        showAlert(UI_TEXT.confirmDisableTitle, "Cannot disable kids parcel as active kids have opted for parcel on this meal.");
+        return;
+      }
+    }
+    updateMealConfig(dayId, mealKey, { kidsParcel: val });
+  };
+
+  const validateAndSetDone = (dayId: string, mealKey: MealType, val: boolean) => {
+    const { canMarkDone, canUnmarkDone } = getMealDoneConstraints(dayId, mealKey, localConfig);
+    if (val && !canMarkDone) {
+      showAlert(UI_TEXT.warning, "Previous meals or days must be completed first.");
+      return;
+    }
+    if (!val && !canUnmarkDone) {
+      showAlert(UI_TEXT.warning, "Cannot unmark as completed because a later meal has already been marked completed.");
+      return;
+    }
+    updateMealConfig(dayId, mealKey, { done: val, current: val ? false : localConfig.find(d => d.id === dayId)?.[mealKey]?.current });
+  };
+
+  const validateAndSetCurrent = (dayId: string, mealKey: MealType, val: boolean) => {
+    if (val) {
+      const isDone = localConfig.find(d => d.id === dayId)?.[mealKey]?.done;
+      if (isDone) {
+        showAlert(UI_TEXT.warning, "Completed meals cannot be marked as current.");
+        return;
+      }
+      setLocalConfig(prev => prev.map(d => {
+        const nextD = { ...d };
+        ([MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER]).forEach(m => {
+          nextD[m] = { ...nextD[m], current: d.id === dayId && m === mealKey ? val : false };
+        });
+        return nextD;
+      }));
+    } else {
+      updateMealConfig(dayId, mealKey, { current: false });
+    }
+  };
+
+  const handleAddDay = () => {
     const maxSuffix = localConfig.reduce((max, d) => {
-      const match = d.id.match(/^Day(\d+)$/);
-      return match ? Math.max(max, parseInt(match[1], 10)) : max;
+      const match = d.id.match(/^day(\d+)$/i);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        return num > max ? num : max;
+      }
+      return max;
     }, 0);
 
-    const id = `Day${maxSuffix + 1}`;
-    const emptyMeal: MealConfig = { enabled: false, veg: true, nonVeg: true, parcel: false, parcelAlert: false, kidsParcel: false, dineInFallbackParcel: false, vegParcelPrice: UI_TEXT.zero, nonVegParcelPrice: UI_TEXT.zero };
+    const newId = `day${maxSuffix + 1}`;
+    const emptyMeal: MealConfig = { enabled: false, veg: true, nonVeg: true, parcel: false, parcelAlert: false, done: false, current: false };
     const newDay: ConfigDay = {
-      id,
-      label: UI_TEXT.newDayLabel,
-      abbr: UI_TEXT.newDayAbbr,
+      id: newId,
+      label: `Day ${maxSuffix + 1}`,
+      abbr: `D${maxSuffix + 1}`,
       enabled: true,
-      [MealType.BREAKFAST]: { ...emptyMeal },
-      [MealType.LUNCH]: { ...emptyMeal },
-      [MealType.DINNER]: { ...emptyMeal },
+      vegOnly: false,
+      breakfast: { ...emptyMeal },
+      lunch: { ...emptyMeal, enabled: true },
+      dinner: { ...emptyMeal, enabled: true },
     };
+
     setLocalConfig([...localConfig, newDay]);
   };
 
-  const removeDay = (id: string) => {
-    showAlert(UI_TEXT.removeDayConfirmTitle, UI_TEXT.removeDayConfirmMessage, [
+  const handleDeleteDay = (id: string) => {
+    showAlert(UI_TEXT.confirmDeleteDay, UI_TEXT.confirmDeleteDayMessage, [
       { text: UI_TEXT.cancel, style: "cancel" },
       {
-        text: UI_TEXT.removeButton,
+        text: UI_TEXT.delete,
         style: "destructive",
-        onPress: () =>
-          setLocalConfig((current) => current.filter((d) => d.id !== id)),
+        onPress: () => {
+          setLocalConfig((current) => current.filter((d) => d.id !== id));
+        },
       },
     ]);
   };
@@ -768,10 +800,13 @@ export function SettingsScreen() {
     if (localWhatsappCountryCode !== whatsappCountryCode) changes.push(`WA Code: ${whatsappCountryCode} -> ${localWhatsappCountryCode}`);
     if (localQuickCheckoutAutoCloseMs !== quickCheckoutAutoCloseMs) changes.push(`Splash Timeout: ${quickCheckoutAutoCloseMs ?? 3000}ms -> ${localQuickCheckoutAutoCloseMs}ms`);
     if (localSoundEnabled !== soundEnabled) changes.push(`Sound: ${soundEnabled ? 'ON' : 'OFF'} -> ${localSoundEnabled ? 'ON' : 'OFF'}`);
+    if (localNonAdminCheckoutEnabled !== nonAdminCheckoutEnabled) changes.push(`Non-Admin Quick Checkout: ${nonAdminCheckoutEnabled ? 'ON' : 'OFF'} -> ${localNonAdminCheckoutEnabled ? 'ON' : 'OFF'}`);
+    if (localVendorName !== vendorName) changes.push(`Vendor Name: ${vendorName || 'None'} -> ${localVendorName}`);
+    if (localVendorAddress !== vendorAddress) changes.push(`Vendor Address: ${vendorAddress || 'None'} -> ${localVendorAddress}`);
+    if (areAllMealsDone && localVendorSettledCost !== vendorSettledCost) changes.push(`Vendor Settled Cost: ${vendorSettledCost || 'None'} -> ${localVendorSettledCost}`);
 
     if (JSON.stringify(localPayment) !== JSON.stringify(payment)) {
       if (localPayment.enabled !== payment.enabled) changes.push(`Payment: ${payment.enabled ? 'ON' : 'OFF'} -> ${localPayment.enabled ? 'ON' : 'OFF'}`);
-      // Simple summary for options
       const oldOpts = Object.entries(payment.options).filter(([_, v]) => v).map(([k]) => k).join(',');
       const newOpts = Object.entries(localPayment.options).filter(([_, v]) => v).map(([k]) => k).join(',');
       if (oldOpts !== newOpts) changes.push(`Methods: [${oldOpts}] -> [${newOpts}]`);
@@ -809,39 +844,9 @@ export function SettingsScreen() {
               if (newM.parcelAlert !== oldM.parcelAlert) mChanges.push(`ParcelAlert:${newM.parcelAlert ? 'ON' : 'OFF'}`);
               if (newM.done !== oldM.done) mChanges.push(`Done:${newM.done ? 'ON' : 'OFF'}`);
               if (newM.current !== oldM.current) mChanges.push(`Current:${newM.current ? 'ON' : 'OFF'}`);
-
-              // Variety / Sub-category changes audit trail
-              const oldVars = getMealVarieties(oldM, oldDay.vegOnly);
-              const newVars = getMealVarieties(newM, newDay.vegOnly);
-
-              if (JSON.stringify(oldVars) !== JSON.stringify(newVars)) {
-                const addedVars = newVars.filter(nv => !oldVars.some(ov => ov.id === nv.id));
-                const removedVars = oldVars.filter(ov => !newVars.some(nv => nv.id === ov.id));
-                const modifiedVars = newVars.filter(nv => {
-                  const ov = oldVars.find(o => o.id === nv.id);
-                  return ov && (ov.name !== nv.name || ov.type !== nv.type || ov.color !== nv.color);
-                });
-
-                if (addedVars.length > 0) {
-                  mChanges.push(`Added Varieties:${addedVars.map(v => `${v.name}(${v.type})`).join(', ')}`);
-                }
-                if (removedVars.length > 0) {
-                  mChanges.push(`Deleted Varieties:${removedVars.map(v => v.name).join(', ')}`);
-                }
-                if (modifiedVars.length > 0) {
-                  mChanges.push(`Edited Varieties:${modifiedVars.map(nv => {
-                    const ov = oldVars.find(o => o.id === nv.id);
-                    return `${ov?.name || nv.id}->${nv.name}(${nv.type})`;
-                  }).join(', ')}`);
-                }
-              }
-
-              if (mChanges.length > 0) {
-                dayChanges.push(`${getMealLabel(m as MealType).toUpperCase()}(${mChanges.join(',')})`);
-              }
+              dayChanges.push(`Meal ${m}: [${mChanges.join(',')}]`);
             }
           });
-
           if (dayChanges.length > 0) changes.push(`${newDay.label || newDay.id}: [${dayChanges.join('|')}]`);
         }
       });
@@ -869,6 +874,10 @@ export function SettingsScreen() {
         whatsappCountryCode: localWhatsappCountryCode,
         quickCheckoutAutoCloseMs: localQuickCheckoutAutoCloseMs,
         soundEnabled: localSoundEnabled,
+        nonAdminCheckoutEnabled: localNonAdminCheckoutEnabled,
+        vendorName: localVendorName,
+        vendorAddress: localVendorAddress,
+        vendorSettledCost: areAllMealsDone ? localVendorSettledCost : vendorSettledCost,
       };
 
       await updateConfig({
@@ -885,6 +894,10 @@ export function SettingsScreen() {
         whatsappCountryCode: localWhatsappCountryCode,
         quickCheckoutAutoCloseMs: localQuickCheckoutAutoCloseMs,
         soundEnabled: localSoundEnabled,
+        nonAdminCheckoutEnabled: localNonAdminCheckoutEnabled,
+        vendorName: localVendorName,
+        vendorAddress: localVendorAddress,
+        vendorSettledCost: areAllMealsDone ? localVendorSettledCost : vendorSettledCost,
       });
 
       setSavedBaseline(newBaseline);
@@ -922,7 +935,11 @@ export function SettingsScreen() {
       localVendorKidsMealChargingEnabled !== savedBaseline.vendorKidsMealChargingEnabled ||
       localWhatsappCountryCode !== savedBaseline.whatsappCountryCode ||
       localQuickCheckoutAutoCloseMs !== savedBaseline.quickCheckoutAutoCloseMs ||
-      localSoundEnabled !== savedBaseline.soundEnabled
+      localSoundEnabled !== savedBaseline.soundEnabled ||
+      localNonAdminCheckoutEnabled !== savedBaseline.nonAdminCheckoutEnabled ||
+      localVendorName !== savedBaseline.vendorName ||
+      localVendorAddress !== savedBaseline.vendorAddress ||
+      (areAllMealsDone && localVendorSettledCost !== savedBaseline.vendorSettledCost)
     );
   }, [
     savedBaseline,
@@ -939,28 +956,66 @@ export function SettingsScreen() {
     localWhatsappCountryCode,
     localQuickCheckoutAutoCloseMs,
     localSoundEnabled,
+    localNonAdminCheckoutEnabled,
+    localVendorName,
+    localVendorAddress,
+    localVendorSettledCost,
+    areAllMealsDone
   ]);
 
   return (
-    <View style={styles.root}>
-      <StatusBar barStyle={themeType === AppThemeMode.DARK ? "light-content" : "dark-content"} />
+    <View style={[styles.root, { backgroundColor: theme.colors.background }]}>
+      <StatusBar barStyle={themeType === AppThemeMode.DARK ? "light-content" : "dark-content"} backgroundColor={theme.colors.surface} />
+
+      {/* Header */}
       <View style={styles.header}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", height: 40, marginBottom: 8 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 0 }}>
             <BackButton onPress={goBack} />
             <HomeButton onPress={() => navigate(AppScreen.HOME)} />
           </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            {hasChanged && (
+              <Pressable
+                onPress={handleSave}
+                disabled={saving}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={UI_TEXT.saveChanges}
+                style={({ pressed }) => [
+                  {
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 4,
+                    backgroundColor: theme.colors.primary,
+                    paddingHorizontal: s(10),
+                    paddingVertical: s(6),
+                    borderRadius: s(10),
+                    elevation: 2,
+                    shadowColor: theme.colors.primary,
+                    shadowOffset: { width: 0, height: 1 },
+                    shadowOpacity: 0.2,
+                    shadowRadius: 2,
+                  },
+                  pressed && { opacity: 0.8 },
+                  saving && { opacity: 0.6 }
+                ]}
+              >
+                <Ionicons name="save-outline" size={s(14)} color={theme.colors.white} />
+                <Text style={{ color: theme.colors.white, fontWeight: '800', fontSize: s(11) }}>
+                  {saving ? UI_TEXT.saving : UI_TEXT.save}
+                </Text>
+              </Pressable>
+            )}
             <ThemeToggleButton />
             <LogoutButton onLogout={handleLogout} />
           </View>
         </View>
         <UserGreeting />
-        <Text style={styles.title}>{UI_TEXT.settingsTitle}</Text>
-        <Text style={styles.subtitle}>{UI_TEXT.settingsSubtitle}</Text>
       </View>
 
-      <ScrollView style={{ flex: 1, width: "100%" }} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <ScrollView style={{ flex: 1, width: "100%" }} contentContainerStyle={[styles.content, { paddingBottom: s(180) }]} keyboardShouldPersistTaps="handled">
+        {/* Season & General Settings Card */}
         <View style={[styles.dashboardCard, { backgroundColor: theme.cardColors[1].bg, borderColor: theme.cardColors[1].border, borderWidth: 1.5 }, !localSeasonEnabled && { opacity: 0.6 }]}>
            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <View style={{ flex: 1, marginRight: 10 }}>
@@ -1031,6 +1086,24 @@ export function SettingsScreen() {
            <View style={{ height: 1, backgroundColor: theme.colors.border, marginVertical: 20 }} />
            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
               <View style={{ flex: 1, marginRight: 10 }}>
+                 <Text style={{ fontSize: 16, fontWeight: '800', color: theme.colors.textPrimary }}>{UI_TEXT.nonAdminCheckoutLabel}</Text>
+                 <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600' }}>{UI_TEXT.nonAdminCheckoutHelper}</Text>
+              </View>
+              <Switch
+                accessible={true}
+                accessibilityRole="switch"
+                accessibilityLabel={UI_TEXT.nonAdminCheckoutLabel}
+                accessibilityHint={UI_TEXT.nonAdminCheckoutHelper}
+                accessibilityState={{ checked: localNonAdminCheckoutEnabled }}
+                value={localNonAdminCheckoutEnabled}
+                onValueChange={setLocalNonAdminCheckoutEnabled}
+                trackColor={{ true: theme.colors.primary }}
+                style={{ flexShrink: 0 }}
+              />
+           </View>
+           <View style={{ height: 1, backgroundColor: theme.colors.border, marginVertical: 20 }} />
+           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <View style={{ flex: 1, marginRight: 10 }}>
                  <Text style={{ fontSize: 16, fontWeight: '800', color: theme.colors.textPrimary }}>{UI_TEXT.enableKidsSupport}</Text>
                  <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600' }}>{UI_TEXT.enableKidsSupportHelper}</Text>
               </View>
@@ -1060,8 +1133,8 @@ export function SettingsScreen() {
                   accessibilityState={{ checked: localVendorKidsMealChargingEnabled }}
                   value={localVendorKidsMealChargingEnabled}
                   onValueChange={(val) => setLocalVendorKidsMealChargingEnabled(val)}
-                  trackColor={{ true: theme.colors.primary }}
-                  style={{ flexShrink: 0 }}
+                  trackColor={{ true: theme.colors.success }}
+                  style={{ transform: [{ scale: 0.8 }], flexShrink: 0 }}
                 />
              </View>
            )}
@@ -1086,14 +1159,13 @@ export function SettingsScreen() {
            <View style={{ height: 1, backgroundColor: theme.colors.border, marginVertical: 20 }} />
            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
               <View style={{ flex: 1, marginRight: 10 }}>
-                 <Text style={{ fontSize: 16, fontWeight: '800', color: theme.colors.textPrimary }}>{UI_TEXT.freeMealManagementLabel}</Text>
-                 <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600' }}>{UI_TEXT.freeMealManagementHelper}</Text>
+                 <Text style={{ fontSize: 16, fontWeight: '800', color: theme.colors.textPrimary }}>{UI_TEXT.freeMealReport}</Text>
+                 <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600' }}>{UI_TEXT.freeMealDeskHelper || "Enable Free Meal desk tracking"}</Text>
               </View>
               <Switch
                 accessible={true}
                 accessibilityRole="switch"
-                accessibilityLabel={UI_TEXT.freeMealManagementLabel}
-                accessibilityHint={UI_TEXT.freeMealManagementHelper}
+                accessibilityLabel={UI_TEXT.freeMealReport}
                 accessibilityState={{ checked: localFreeMealEnabled }}
                 value={localFreeMealEnabled}
                 onValueChange={(val) => validateAndSetFreeMealEnabled(val)}
@@ -1114,106 +1186,125 @@ export function SettingsScreen() {
                 accessibilityHint={UI_TEXT.addMobileInPassHelper}
                 accessibilityState={{ checked: localMobileEnabled }}
                 value={localMobileEnabled}
-                onValueChange={setLocalMobileEnabled}
+                onValueChange={(val) => validateAndSetMobileEnabled(val)}
                 trackColor={{ true: theme.colors.primary }}
                 style={{ flexShrink: 0 }}
               />
            </View>
-           {localMobileEnabled && (
-             <View style={{ marginTop: 20 }}>
-                <Text style={{ fontSize: 12, color: theme.colors.textSecondary, fontWeight: "700", marginBottom: 6, marginLeft: 4 }}>{UI_TEXT.whatsappCountryCodeLabel.toUpperCase()}</Text>
-                <TextInput
-                  accessible={true}
-                  accessibilityLabel={UI_TEXT.whatsappCountryCodeLabel}
-                  accessibilityHint={UI_TEXT.whatsappCountryCodePlaceholder}
-                  style={styles.input}
-                  value={localWhatsappCountryCode}
-                  onChangeText={setLocalWhatsappCountryCode}
-                  placeholder={UI_TEXT.whatsappCountryCodePlaceholder}
-                  placeholderTextColor={theme.colors.textMuted}
-                  keyboardType="phone-pad"
-                  selectTextOnFocus
-                />
-             </View>
-           )}
-           <View style={{ height: 1, backgroundColor: theme.colors.border, marginVertical: 20 }} />
-           {localPayment.enabled && (
-             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                <View style={{ flex: 1, marginRight: 10 }}>
-                   <Text style={{ fontSize: 16, fontWeight: '800', color: theme.colors.textPrimary }}>{UI_TEXT.enableFoodPrice}</Text>
-                   <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600' }}>{UI_TEXT.enableFoodPriceHelper}</Text>
-                </View>
-                <Switch
-                  accessible={true}
-                  accessibilityRole="switch"
-                  accessibilityLabel={UI_TEXT.enableFoodPrice}
-                  accessibilityHint={UI_TEXT.enableFoodPriceHelper}
-                  accessibilityState={{ checked: localFoodPriceEnabled }}
-                  value={localFoodPriceEnabled}
-                  onValueChange={setLocalFoodPriceEnabled}
-                  trackColor={{ true: theme.colors.primary }}
-                  style={{ flexShrink: 0 }}
-                />
-             </View>
-           )}
-
-           <View style={{ height: 1, backgroundColor: theme.colors.border, marginVertical: 20 }} />
-           <View style={{ gap: 8 }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                 <View style={{ flex: 1, marginRight: 10 }}>
-                    <Text style={{ fontSize: 16, fontWeight: '800', color: theme.colors.textPrimary }}>{UI_TEXT.splashTimeoutLabel}</Text>
-                    <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600', marginTop: 2 }}>{UI_TEXT.splashTimeoutHelper}</Text>
-                 </View>
-              </View>
-              <TextInput
-                 accessible={true}
-                 accessibilityLabel={UI_TEXT.splashTimeoutLabel}
-                 accessibilityHint={UI_TEXT.splashTimeoutHelper}
-                 style={styles.input}
-                 value={String(localQuickCheckoutAutoCloseMs)}
-                 onChangeText={(txt) => {
-                   const num = parseInt(txt.replace(/[^0-9]/g, ""), 10);
-                   if (isNaN(num)) {
-                     setLocalQuickCheckoutAutoCloseMs(0);
-                   } else {
-                     setLocalQuickCheckoutAutoCloseMs(Math.min(10000, Math.max(0, num)));
-                   }
-                 }}
-                 keyboardType="numeric"
-                 selectTextOnFocus
-              />
-           </View>
-
            <View style={{ height: 1, backgroundColor: theme.colors.border, marginVertical: 20 }} />
            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
               <View style={{ flex: 1, marginRight: 10 }}>
-                 <Text style={{ fontSize: 16, fontWeight: '800', color: theme.colors.textPrimary }}>{UI_TEXT.soundEnabledLabel}</Text>
-                 <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600', marginTop: 2 }}>{UI_TEXT.soundEnabledHelper}</Text>
+                 <Text style={{ fontSize: 16, fontWeight: '800', color: theme.colors.textPrimary }}>{UI_TEXT.vendorPriceReport}</Text>
+                 <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600' }}>{UI_TEXT.vendorPriceReportHelper || "Enable vendor menu pricing and cost reports"}</Text>
               </View>
               <Switch
                 accessible={true}
                 accessibilityRole="switch"
-                accessibilityLabel={UI_TEXT.soundEnabledLabel}
-                accessibilityHint={UI_TEXT.soundEnabledHelper}
-                accessibilityState={{ checked: localSoundEnabled }}
-                value={localSoundEnabled}
-                onValueChange={setLocalSoundEnabled}
+                accessibilityLabel={UI_TEXT.vendorPriceReport}
+                accessibilityState={{ checked: localFoodPriceEnabled }}
+                value={localFoodPriceEnabled}
+                onValueChange={(val) => validateAndSetFoodPriceEnabled(val)}
                 trackColor={{ true: theme.colors.primary }}
                 style={{ flexShrink: 0 }}
               />
            </View>
+        </View>
 
-           <Pressable
-             accessible={true}
-             accessibilityRole="button"
-             accessibilityLabel={UI_TEXT.saveChanges}
-             accessibilityState={{ disabled: saving || !hasChanged }}
-             onPress={handleSave}
-             style={[styles.primary, { height: 44, marginTop: 24, backgroundColor: theme.colors.primary }, (saving || !hasChanged) && { opacity: 0.5 }]}
-             disabled={saving || !hasChanged}
-           >
-             <ActionLabel icon="save-outline" label={UI_TEXT.saveChanges} color={theme.colors.white} size={18} />
-           </Pressable>
+        {/* Vendor Details & Financial Settlement Section Card */}
+        <View style={[styles.dashboardCard, { backgroundColor: theme.cardColors[2].bg, borderColor: theme.cardColors[2].border, borderWidth: 1.5, marginTop: 16 }]}>
+           <View style={{ marginBottom: 16 }}>
+              <Text style={{ fontSize: 18, fontWeight: '900', color: theme.cardColors[2].accent }}>{UI_TEXT.vendorSettingsSectionTitle}</Text>
+              <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600', marginTop: 2 }}>{UI_TEXT.vendorSettledCostHelper}</Text>
+           </View>
+
+           <View style={{ gap: 12 }}>
+             {/* Vendor Name */}
+             <View>
+               <Text style={[styles.selectorLabel, { marginTop: 0 }]}>{UI_TEXT.vendorNameLabel}</Text>
+               <TextInput
+                 accessible={true}
+                 accessibilityLabel={UI_TEXT.vendorNameLabel}
+                 accessibilityHint={UI_TEXT.vendorNamePlaceholder}
+                 style={styles.input}
+                 value={localVendorName}
+                 onChangeText={setLocalVendorName}
+                 placeholder={UI_TEXT.vendorNamePlaceholder}
+                 placeholderTextColor={theme.colors.textMuted}
+                 selectTextOnFocus
+               />
+             </View>
+
+             {/* Vendor Address */}
+             <View>
+               <Text style={styles.selectorLabel}>{UI_TEXT.vendorAddressLabel}</Text>
+               <TextInput
+                 accessible={true}
+                 accessibilityLabel={UI_TEXT.vendorAddressLabel}
+                 accessibilityHint={UI_TEXT.vendorAddressPlaceholder}
+                 style={styles.input}
+                 value={localVendorAddress}
+                 onChangeText={setLocalVendorAddress}
+                 placeholder={UI_TEXT.vendorAddressPlaceholder}
+                 placeholderTextColor={theme.colors.textMuted}
+                 selectTextOnFocus
+               />
+             </View>
+
+             {/* Vendor Food Expected Cost (Automatic & Non-editable) */}
+             <View>
+               <Text style={styles.selectorLabel}>{UI_TEXT.vendorExpectedCostLabel}</Text>
+               <View style={[styles.input, { backgroundColor: theme.colors.surfaceDark, justifyContent: 'center' }]}>
+                 <Text style={{ fontSize: 15, fontWeight: '900', color: theme.colors.textPrimary }}>
+                   {UI_TEXT.rs} {formatCurrencyAmount(expectedTotal)}
+                 </Text>
+               </View>
+             </View>
+
+             {/* Vendor Food Actual Cost (Automatic & Non-editable) */}
+             <View>
+               <Text style={styles.selectorLabel}>{UI_TEXT.vendorActualCostLabel}</Text>
+               <View style={[styles.input, { backgroundColor: theme.colors.surfaceDark, justifyContent: 'center' }]}>
+                 <Text style={{ fontSize: 15, fontWeight: '900', color: theme.colors.primary }}>
+                   {UI_TEXT.rs} {formatCurrencyAmount(actualTotal)}
+                 </Text>
+               </View>
+             </View>
+
+             {/* Vendor Food Settled Cost (Editable only when all meals are done) */}
+             <View>
+               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                 <Text style={[styles.selectorLabel, { marginTop: 0 }]}>{UI_TEXT.vendorSettledCostLabel}</Text>
+                 {!areAllMealsDone && (
+                   <View style={{ backgroundColor: theme.colors.warningLight || theme.colors.primary + "20", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                     <Text style={{ fontSize: 10, fontWeight: "800", color: theme.colors.warning || theme.colors.primary }}>
+                       {UI_TEXT.locked}
+                     </Text>
+                   </View>
+                 )}
+               </View>
+               <TextInput
+                 accessible={true}
+                 accessibilityLabel={UI_TEXT.vendorSettledCostLabel}
+                 accessibilityHint={UI_TEXT.vendorSettledCostPlaceholder}
+                 style={[styles.input, !areAllMealsDone && { backgroundColor: theme.colors.surfaceDark, opacity: 0.7 }]}
+                 value={localVendorSettledCost}
+                 onChangeText={(txt) => {
+                   const filtered = txt.replace(/[^0-9.]/g, "");
+                   const parts = filtered.split(".");
+                   const sanitized = parts.length > 1 ? `${parts[0]}.${parts.slice(1).join("")}` : filtered;
+                   setLocalVendorSettledCost(sanitized);
+                 }}
+                 placeholder={UI_TEXT.vendorSettledCostPlaceholder}
+                 placeholderTextColor={theme.colors.textMuted}
+                 keyboardType="numeric"
+                 editable={areAllMealsDone}
+                 selectTextOnFocus={areAllMealsDone}
+               />
+               <Text style={{ fontSize: 11, color: areAllMealsDone ? theme.colors.success : theme.colors.textSecondary, fontWeight: "700", marginTop: 4 }}>
+                 {areAllMealsDone ? UI_TEXT.unlocked : UI_TEXT.vendorSettledCostHelper}
+               </Text>
+             </View>
+           </View>
         </View>
 
         {(localConfig || []).map((day, index) => {
@@ -1331,22 +1422,6 @@ export function SettingsScreen() {
                                     accessibilityRole="switch"
                                     accessibilityLabel={UI_TEXT.kidsParcelLabel}
                                     accessibilityState={{ checked: !!m.kidsParcel }}
-                                  />
-                               </View>
-                            )}
-                            {m.parcel && localGuestsEnabled && (
-                               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: theme.colors.background, padding: 10, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border }}>
-                                  <Text style={{ fontSize: 12, fontWeight: '800', color: theme.colors.textSecondary, flex: 1, marginRight: 10 }}>{UI_TEXT.guestsParcelLabel.toUpperCase()}</Text>
-                                  <Switch
-                                    value={!!m.guestsParcel}
-                                    disabled={m.done}
-                                    onValueChange={(val) => validateAndSetGuestsParcel(day.id, mKey as MealType, val)}
-                                    trackColor={{ true: theme.colors.primary }}
-                                    style={{ transform: [{ scale: 0.8 }], flexShrink: 0 }}
-                                    accessible={true}
-                                    accessibilityRole="switch"
-                                    accessibilityLabel={UI_TEXT.guestsParcelLabel}
-                                    accessibilityState={{ checked: !!m.guestsParcel }}
                                   />
                                </View>
                             )}
@@ -1529,7 +1604,7 @@ export function SettingsScreen() {
                     return (
                       <Pressable
                         disabled={isDaySubscribed}
-                        onPress={() => removeDay(day.id)}
+                        onPress={() => handleDeleteDay(day.id)}
                         accessible={true}
                         accessibilityRole="button"
                         accessibilityLabel={UI_TEXT.removeDayLabel}
@@ -1557,7 +1632,7 @@ export function SettingsScreen() {
           );
         })}
         <Pressable
-          onPress={addNewDay}
+          onPress={handleAddDay}
           accessible={true}
           accessibilityRole="button"
           accessibilityLabel={UI_TEXT.addDayButton}

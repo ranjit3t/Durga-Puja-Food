@@ -6,7 +6,7 @@ import { useAppTheme } from "../../theme";
 import { UI_TEXT } from "../../strings";
 import { Dropdown } from "../common/Dropdown";
 import { ReportSummaryCard } from "./ReportSummaryCard";
-import { ConfigDay, MealType, DietType, DietaryOption, SubscriptionRecord, FoodMenu, PaymentMode, FoodPackage } from "../../domain";
+import { ConfigDay, MealType, DietType, DietaryOption, SubscriptionRecord, FoodMenu, PaymentMode, FoodPackage, TakenState } from "../../domain";
 import {
   getDayLabel,
   getMealLabel,
@@ -14,6 +14,8 @@ import {
   getDietTypeForChoice,
   getMealVarieties,
   isParcelEnabled,
+  formatTimestamp,
+  isDietaryEnabled,
 } from "../../constants";
 import {
   calculatePassMealBreakdown,
@@ -482,6 +484,7 @@ export function AggregateReport({
     let netPayment = 0;
     let packagedMembersCount = 0;
     const packageCounts: Record<string, { packageName: string; count: number }> = {};
+    const paymentModeTotals: Record<string, number> = {};
 
     filteredData.forEach((item) => {
       totalPortions += item.matchingPortions;
@@ -522,6 +525,22 @@ export function AggregateReport({
       excessDeficient += item.excessDeficientSum;
       const subNet = Number(item.amount || 0);
       netPayment += subNet;
+
+      // Payment channels accumulation
+      const pList = item.payments && item.payments.length > 0
+        ? item.payments
+        : [{ amount: item.amount || "0", mode: item.paymentMode || PaymentMode.CASH }];
+
+      pList.forEach((p: any) => {
+        const amt = parseFloat(p.amount) || 0;
+        const mode = p.mode || PaymentMode.CASH;
+        if (amt > 0) {
+          if (!paymentModeTotals[mode]) {
+            paymentModeTotals[mode] = 0;
+          }
+          paymentModeTotals[mode] += amt;
+        }
+      });
 
       // Package breakdown calculation
       const applied = item.appliedPackages || {};
@@ -574,6 +593,7 @@ export function AggregateReport({
       netPayment,
       packagedMembersCount,
       packageCounts,
+      paymentModeTotals,
     };
   }, [filteredData, kidsEnabled, guestsEnabled, selectedPersonType, pkgList]);
 
@@ -728,6 +748,87 @@ export function AggregateReport({
         <View style={{ gap: 12 }}>
           {filteredData.map((item, index) => {
             const colorScheme = theme.cardColors[index % theme.cardColors.length];
+            const isSpecificDayMealSelected = selectedDay !== UI_TEXT.allDays && selectedMeal !== UI_TEXT.allMeals;
+
+            const isMissed = isSpecificDayMealSelected && item.servedPortions === 0;
+            const isComplete = isSpecificDayMealSelected && item.servedPortions >= item.matchingPortions && item.matchingPortions > 0;
+            const isPartial = isSpecificDayMealSelected && item.servedPortions > 0 && item.servedPortions < item.matchingPortions;
+
+            const badgeColor = isMissed
+              ? theme.colors.error
+              : isComplete
+              ? theme.colors.success
+              : theme.colors.warning || theme.colors.primary;
+
+            const badgeBg = isMissed
+              ? theme.colors.errorLight
+              : isComplete
+              ? theme.colors.successLight
+              : theme.colors.warningLight || theme.colors.primary + "20";
+
+            const badgeText = isMissed
+              ? UI_TEXT.missedCheckoutBadgeLabel
+              : isComplete
+              ? UI_TEXT.completedCheckoutBadgeLabel
+              : UI_TEXT.partialCheckoutBadgeLabel;
+
+            const memberCheckouts = isSpecificDayMealSelected ? (() => {
+              const aCount = item.peopleCount || 0;
+              const kCount = kidsEnabled ? (item.kidsCount || 0) : 0;
+              const gCount = guestsEnabled ? (item.guestsCount || 0) : 0;
+              const totalPeople = aCount + kCount + gCount;
+              const takenList = item.takenByPerson?.[selectedDay] || [];
+              const slotsList = item.mealSlots?.[selectedDay] || [];
+              const list: { label: string; isTaken: boolean; actualServiceType?: string; timeDisplay: string }[] = [];
+
+              for (let i = 0; i < totalPeople; i++) {
+                const sSlot = (slotsList[i] || {}) as any;
+                const choice = sSlot[selectedMeal];
+                const dayConf = dayConfig.find((d) => d.id === selectedDay);
+                const mConf = dayConf ? dayConf[selectedMeal as MealType] : undefined;
+                const varieties = getMealVarieties(mConf);
+                const diet = getDietTypeForChoice(choice, varieties);
+
+                // Only include members who have subscribed to the selected meal
+                if (!diet || choice === DietaryOption.NONE || !isDietaryEnabled(selectedDay, selectedMeal as MealType, diet, dayConfig)) continue;
+
+                const isKid = kidsEnabled && i >= aCount && i < aCount + kCount;
+                const isGuest = guestsEnabled && i >= aCount + kCount;
+
+                if (isKid && !kidsEnabled) continue;
+                if (isGuest && !guestsEnabled) continue;
+
+                const category = isGuest ? UI_TEXT.guest : isKid ? UI_TEXT.kid : UI_TEXT.adult;
+                const memberNum = isGuest ? i - aCount - kCount + 1 : isKid ? i - aCount + 1 : i + 1;
+                const label = `${category} ${memberNum}`;
+
+                const tState = (takenList[i] || {}) as TakenState;
+                const isParcelAllowed = sSlot ? !!sSlot[`${selectedMeal}Parcel`] : false;
+                const isParcelTaken = !!tState[`${selectedMeal}Parcel` as keyof TakenState];
+                const isDineInTaken = !!tState[selectedMeal as MealType];
+                const isTaken = isDineInTaken || isParcelTaken;
+                const rawTime = tState[`${selectedMeal}Time` as keyof TakenState] || tState[`${selectedMeal}ParcelTime` as keyof TakenState];
+
+                const actualServiceType = isParcelTaken
+                  ? UI_TEXT.parcel
+                  : isDineInTaken
+                  ? (isParcelAllowed ? UI_TEXT.optedDineIn : UI_TEXT.dineIn)
+                  : undefined;
+
+                let timeDisplay = "-";
+                if (isTaken) {
+                  if (rawTime) {
+                    timeDisplay = typeof rawTime === "number" ? formatTimestamp(rawTime) : String(rawTime);
+                  } else {
+                    timeDisplay = "Checked In";
+                  }
+                }
+
+                list.push({ label, isTaken, actualServiceType, timeDisplay });
+              }
+              return list;
+            })() : [];
+
             return (
               <Pressable
                 key={item.id}
@@ -757,6 +858,21 @@ export function AggregateReport({
                     </Text>
                   </View>
                   <View style={{ alignItems: "flex-end" }}>
+                    {isSpecificDayMealSelected && (
+                      <View style={{
+                        backgroundColor: badgeBg,
+                        paddingHorizontal: 8,
+                        paddingVertical: 3,
+                        borderRadius: 6,
+                        borderWidth: 1,
+                        borderColor: badgeColor,
+                        marginBottom: 4,
+                      }}>
+                        <Text style={{ fontSize: 11, fontWeight: '900', color: badgeColor }}>
+                          {badgeText}
+                        </Text>
+                      </View>
+                    )}
                     <Text style={{ color: colorScheme.accent, fontSize: 18, fontWeight: "900" }}>
                       {UI_TEXT.rs} {item.amount}
                     </Text>
@@ -772,6 +888,43 @@ export function AggregateReport({
                     )}
                   </View>
                 </View>
+
+                {/* Individual Member Checkouts list when specific day and meal are selected */}
+                {isSpecificDayMealSelected && memberCheckouts.length > 0 && (
+                  <View style={{ gap: 6, borderTopWidth: 1, borderTopColor: colorScheme.border, paddingTop: 10, marginTop: 10 }}>
+                    {memberCheckouts.map((mem, mIdx) => (
+                      <View key={mIdx} style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 2 }}>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flex: 1, flexWrap: "wrap" }}>
+                          <Ionicons
+                            name={mem.isTaken ? "checkmark-circle" : "ellipse-outline"}
+                            size={14}
+                            color={mem.isTaken ? theme.colors.success : theme.colors.textMuted}
+                          />
+                          <Text style={{ fontSize: 12, fontWeight: "800", color: theme.colors.textPrimary }}>
+                            {mem.label}
+                          </Text>
+                          {mem.actualServiceType && (
+                            <View style={{
+                              backgroundColor: theme.colors.primary + "18",
+                              paddingHorizontal: 6,
+                              paddingVertical: 1,
+                              borderRadius: 4,
+                              borderWidth: 0.8,
+                              borderColor: theme.colors.primary + "40"
+                            }}>
+                              <Text style={{ fontSize: 10, fontWeight: "800", color: theme.colors.primary }}>
+                                {mem.actualServiceType}
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+                        <Text style={{ fontSize: 12, fontWeight: "700", color: mem.isTaken ? colorScheme.accent : theme.colors.textMuted }}>
+                          {mem.timeDisplay}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
               </Pressable>
             );
           })}

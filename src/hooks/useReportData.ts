@@ -460,10 +460,10 @@ export function useReportData(
     if (activeReportType && activeReportType !== ReportType.PAYMENT) {
       return { summary: [], details: [], totalFood: 0, totalAdultFood: 0, totalKidsFood: 0, totalGuestsFood: 0, totalParcel: 0, totalAdultParcel: 0, totalKidsParcel: 0, totalGuestsParcel: 0, discrepancies: [] };
     }
-    const summary: Record<string, { count: number; total: number }> = {
-      [PaymentMode.UPI]: { count: 0, total: 0 },
-      [PaymentMode.CASH]: { count: 0, total: 0 },
-      [PaymentMode.BANK_TRANSFER]: { count: 0, total: 0 },
+    const summary: Record<string, { count: number; total: number; passesCount: number }> = {
+      [PaymentMode.UPI]: { count: 0, total: 0, passesCount: 0 },
+      [PaymentMode.CASH]: { count: 0, total: 0, passesCount: 0 },
+      [PaymentMode.BANK_TRANSFER]: { count: 0, total: 0, passesCount: 0 },
     };
 
     let totalFood = 0;
@@ -481,12 +481,24 @@ export function useReportData(
           ? sub.payments
           : [{ amount: sub.amount || "0", mode: sub.paymentMode || PaymentMode.CASH, transactionId: sub.transactionId }];
 
+        const usedModesInPass = new Set<string>();
+
         pList.forEach((p: any) => {
           const amt = parseFloat(p.amount) || 0;
           const mode = p.mode || PaymentMode.CASH;
-          if (summary[mode]) {
-            summary[mode].count++;
-            summary[mode].total += amt;
+          if (!summary[mode]) {
+            summary[mode] = { count: 0, total: 0, passesCount: 0 };
+          }
+          summary[mode].count++;
+          summary[mode].total += amt;
+          if (amt > 0) {
+            usedModesInPass.add(mode);
+          }
+        });
+
+        usedModesInPass.forEach((m) => {
+          if (summary[m]) {
+            summary[m].passesCount++;
           }
         });
 

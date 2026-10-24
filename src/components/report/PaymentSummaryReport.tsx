@@ -15,6 +15,7 @@ interface PaymentSummaryItem {
   mode: PaymentMode;
   count: number;
   total: number;
+  passesCount?: number;
 }
 
 interface FlatPaymentDetail {
@@ -214,27 +215,44 @@ export function PaymentSummaryReport({
         <View style={{ gap: 24 }}>
           {/* 1. Global Financial Summary Card */}
           <View style={[styles.card, { padding: 0, overflow: "hidden" }]}>
-            {(data.summary || []).map((item) => (
-              <View
-                key={item.mode}
-                style={{
-                  flexDirection: "row",
-                  justifyContent: "space-between",
-                  padding: 16,
-                  borderBottomWidth: 1,
-                  borderBottomColor: theme.colors.border,
-                }}
-              >
-                <Text style={{ fontWeight: "800", color: theme.colors.textPrimary }}>
-                  {getPaymentModeLabel(item.mode)}
-                </Text>
-                <Text style={{ fontWeight: "900", color: theme.colors.textPrimary }}>
-                  {UI_TEXT.rs}
-                  {UI_TEXT.space}
-                  {item.total.toFixed(0)}
-                </Text>
-              </View>
-            ))}
+            {(data.summary || [])
+              .filter((item) => item.total > 0 || item.count > 0 || (item.passesCount ?? 0) > 0)
+              .map((item) => {
+                const passNum = item.passesCount ?? item.count;
+                const txNum = item.count;
+
+                return (
+                  <View
+                    key={item.mode}
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      padding: 16,
+                      borderBottomWidth: 1,
+                      borderBottomColor: theme.colors.border,
+                      flexWrap: "wrap",
+                      gap: 8,
+                    }}
+                  >
+                    <View style={{ flex: 1, minWidth: 140 }}>
+                      <Text style={{ fontWeight: "800", fontSize: 14, color: theme.colors.textPrimary }}>
+                        {getPaymentModeLabel(item.mode)}
+                      </Text>
+                      <Text style={{ fontSize: 11, fontWeight: "700", color: theme.colors.textSecondary, marginTop: 2 }}>
+                        {passNum} {passNum === 1 ? UI_TEXT.passSingular : UI_TEXT.passPlural} {UI_TEXT.opted || "opted"}
+                        {txNum !== passNum ? ` (${txNum} ${txNum === 1 ? UI_TEXT.paymentTransaction || "transaction" : UI_TEXT.paymentTransactions || "transactions"})` : ""}
+                      </Text>
+                    </View>
+
+                    <Text style={{ fontWeight: "900", fontSize: 16, color: theme.colors.textPrimary, flexShrink: 0 }}>
+                      {UI_TEXT.rs}
+                      {UI_TEXT.space}
+                      {item.total.toFixed(0)}
+                    </Text>
+                  </View>
+                );
+              })}
             <View
               style={{ backgroundColor: theme.colors.primary, padding: 16 }}
               accessible={true}

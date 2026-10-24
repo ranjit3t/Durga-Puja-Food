@@ -205,7 +205,7 @@ export function NotesScreen() {
     showAlert(UI_TEXT.deleteNoteConfirmTitle, UI_TEXT.deleteNoteConfirmMessage, [
       { text: UI_TEXT.cancel, style: "cancel" },
       {
-        text: UI_TEXT.deleteButton,
+        text: UI_TEXT.deleteNote,
         style: "destructive",
         onPress: async () => {
           try {

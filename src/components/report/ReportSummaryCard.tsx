@@ -4,7 +4,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { useStyles } from "../../styles";
 import { useAppTheme } from "../../theme";
 import { UI_TEXT } from "../../strings";
+import { getPaymentModeLabel } from "../../constants";
 import { formatCurrencyAmount } from "../../utils/paymentUtils";
+import { PaymentMode } from "../../domain";
 
 export interface ReportSummaryCardProps {
   title: string;
@@ -37,6 +39,7 @@ export interface ReportSummaryCardProps {
     unpaidPassesCount?: number;
     packagedMembersCount?: number;
     packageCounts?: Record<string, { packageName: string; count: number }>;
+    paymentModeTotals?: Record<string, number>;
   };
 }
 
@@ -282,6 +285,29 @@ export function ReportSummaryCard({ title, iconName, activeFilterChips, summary 
             {UI_TEXT.rs} {formatCurrencyAmount(summary.netPayment)}
           </Text>
         </View>
+
+        {/* Payment Channels Breakdown Subsection */}
+        {summary.paymentModeTotals && Object.keys(summary.paymentModeTotals).length > 0 && (
+          <View style={{ gap: 4, marginTop: 4, borderTopWidth: 1, borderTopColor: theme.colors.white + "30", paddingTop: 8 }}>
+            <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700" }}>
+              {UI_TEXT.paymentChannelsLabel}
+            </Text>
+            <View style={{ gap: 3, marginTop: 2 }}>
+              {Object.entries(summary.paymentModeTotals)
+                .filter(([_, amt]) => amt > 0)
+                .map(([mode, amt]) => (
+                  <View key={mode} style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 4, paddingLeft: 10 }}>
+                    <Text style={{ color: theme.colors.white + "DD", fontSize: 12, fontWeight: "700", flex: 1, minWidth: 120 }}>
+                      • {getPaymentModeLabel(mode as PaymentMode)}
+                    </Text>
+                    <Text style={{ color: theme.colors.white, fontSize: 13, fontWeight: "800", flexShrink: 0 }}>
+                      {UI_TEXT.rs} {formatCurrencyAmount(amt)}
+                    </Text>
+                  </View>
+                ))}
+            </View>
+          </View>
+        )}
       </View>
     </View>
   );
