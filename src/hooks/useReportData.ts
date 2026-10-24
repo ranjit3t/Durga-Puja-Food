@@ -1008,6 +1008,19 @@ export function useReportData(
                 const pDate = new Date(rawTime);
                 if (!isNaN(pDate.getTime())) {
                   numericTime = pDate.getTime();
+                } else {
+                  const timeMatch = rawTime.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?/i);
+                  if (timeMatch) {
+                    let hours = parseInt(timeMatch[1], 10);
+                    const minutes = parseInt(timeMatch[2], 10);
+                    const seconds = timeMatch[3] ? parseInt(timeMatch[3], 10) : 0;
+                    const ampm = timeMatch[4] ? timeMatch[4].toUpperCase() : null;
+                    if (ampm === "PM" && hours < 12) hours += 12;
+                    if (ampm === "AM" && hours === 12) hours = 0;
+                    const today = new Date();
+                    today.setHours(hours, minutes, seconds, 0);
+                    numericTime = today.getTime();
+                  }
                 }
               }
             }

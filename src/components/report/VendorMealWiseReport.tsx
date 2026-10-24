@@ -12,9 +12,7 @@ import {
   getMealFreeMealCounts,
   getMealVarieties,
   getVarietyForChoice,
-  isParcelEnabled,
-  isKidsParcelEnabled,
-  isGuestsParcelEnabled,
+  isSpecialMeal,
 } from "../../constants";
 import {
   ConfigDay,
@@ -694,14 +692,23 @@ export function VendorMealWiseReport({
                   mealParcelSub,
                 } = mRep;
 
+                const isSpecial = isSpecialMeal(dayId, mKey, dayConfig);
+
                 return (
                   <View
                     key={mKey}
-                    style={{ backgroundColor: theme.colors.surfaceDark + (theme.themeType === AppThemeMode.DARK ? "66" : "80"), borderRadius: 16, padding: 12, borderWidth: 1, borderColor: theme.colors.border, gap: 10 }}
+                    style={{
+                      backgroundColor: theme.colors.surfaceDark + (theme.themeType === AppThemeMode.DARK ? "66" : "80"),
+                      borderRadius: 16,
+                      padding: 12,
+                      borderWidth: isSpecial ? 2 : 1,
+                      borderColor: isSpecial ? theme.colors.specialMealBorder : theme.colors.border,
+                      gap: 10
+                    }}
                   >
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 }}>
                       <View style={{ flex: 1, minWidth: 120, gap: 2 }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                           <Ionicons
                             name={mKey === MealType.BREAKFAST ? "sunny-outline" : mKey === MealType.LUNCH ? "restaurant-outline" : "moon-outline"}
                             size={16}
@@ -710,6 +717,12 @@ export function VendorMealWiseReport({
                           <Text style={{ fontSize: 15, fontWeight: '800', color: theme.colors.textPrimary }}>
                             {getMealLabel(mKey)}
                           </Text>
+                          {isSpecial && (
+                            <View style={{ backgroundColor: theme.colors.specialMealBorder, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, flexDirection: "row", alignItems: "center", gap: 4 }}>
+                              <Ionicons name="star" size={10} color={theme.colors.white} />
+                              <Text style={{ color: theme.colors.white, fontSize: 10, fontWeight: "900" }}>{UI_TEXT.specialMealBadge}</Text>
+                            </View>
+                          )}
                         </View>
                         {mealParcelSub > 0 && (
                           <Text style={{ fontSize: 12, fontWeight: '700', color: theme.colors.textSecondary, paddingLeft: 22 }}>

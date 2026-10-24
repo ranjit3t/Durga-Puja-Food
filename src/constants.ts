@@ -1088,11 +1088,20 @@ export const formatTakenTime = (d: Date = new Date()): string => {
  */
 export const formatTimestamp = (ts?: number | string | Date | null): string => {
   if (!ts) return "";
+  if (typeof ts === "string") {
+    if (ts.match(/^\d{1,2}:\d{2}/) && isNaN(Number(ts))) {
+      return ts;
+    }
+  }
   try {
     const d = ts instanceof Date ? ts : new Date(typeof ts === "string" ? (isNaN(Number(ts)) ? ts : Number(ts)) : ts);
-    if (isNaN(d.getTime())) return "";
+    if (isNaN(d.getTime())) {
+      if (typeof ts === "string") return ts;
+      return "";
+    }
     return formatTakenTime(d);
   } catch {
+    if (typeof ts === "string") return ts;
     return "";
   }
 };

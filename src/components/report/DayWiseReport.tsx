@@ -101,7 +101,7 @@ export function DayWiseReport({
   const styles = useStyles();
   const { theme } = useAppTheme();
   const { subscriptions, foodMenu } = useCoreDatabase();
-  const [viewMode, setViewMode] = useState<"complete" | "planned">("complete");
+  const [viewMode, setViewMode] = useState<"complete" | "planned">("planned");
 
   const currentDayId = selectedDayId || (data.length > 0 ? data[0].day : "");
   const currentMealType = selectedMealType || MealType.LUNCH;
@@ -190,59 +190,6 @@ export function DayWiseReport({
           }}
         >
           <Pressable
-            onPress={() => setViewMode("complete")}
-            accessible={true}
-            accessibilityRole="button"
-            accessibilityLabel={UI_TEXT.completeView}
-            accessibilityState={{ selected: viewMode === "complete" }}
-            style={({ pressed }) => [
-              {
-                flex: 1,
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 8,
-                paddingVertical: 10,
-                paddingHorizontal: 12,
-                borderRadius: 10,
-                backgroundColor: viewMode === "complete" ? theme.colors.primary : theme.colors.surface,
-                borderWidth: 1,
-                borderColor: viewMode === "complete" ? theme.colors.primary : theme.colors.border,
-                ...Platform.select({
-                  ios: {
-                    shadowColor: viewMode === "complete" ? theme.colors.primary : theme.colors.shadow,
-                    shadowOffset: { width: 0, height: 1 },
-                    shadowOpacity: viewMode === "complete" ? 0.3 : 0.05,
-                    shadowRadius: 2,
-                  },
-                  android: {
-                    elevation: viewMode === "complete" ? 2 : 0,
-                  },
-                  web: {
-                    boxShadow: viewMode === "complete" ? `0px 1px 4px ${theme.colors.primary}40` : 'none',
-                  },
-                }),
-              },
-              pressed && { opacity: 0.8 },
-            ]}
-          >
-            <Ionicons
-              name="grid-outline"
-              size={18}
-              color={viewMode === "complete" ? theme.colors.white : theme.colors.textSecondary}
-            />
-            <Text
-              style={{
-                fontSize: 13,
-                fontWeight: "800",
-                color: viewMode === "complete" ? theme.colors.white : theme.colors.textSecondary,
-              }}
-            >
-              {UI_TEXT.completeView}
-            </Text>
-          </Pressable>
-
-          <Pressable
             onPress={() => setViewMode("planned")}
             accessible={true}
             accessibilityRole="button"
@@ -292,6 +239,59 @@ export function DayWiseReport({
               }}
             >
               {UI_TEXT.plannedView}
+            </Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => setViewMode("complete")}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={UI_TEXT.completeView}
+            accessibilityState={{ selected: viewMode === "complete" }}
+            style={({ pressed }) => [
+              {
+                flex: 1,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+                paddingVertical: 10,
+                paddingHorizontal: 12,
+                borderRadius: 10,
+                backgroundColor: viewMode === "complete" ? theme.colors.primary : theme.colors.surface,
+                borderWidth: 1,
+                borderColor: viewMode === "complete" ? theme.colors.primary : theme.colors.border,
+                ...Platform.select({
+                  ios: {
+                    shadowColor: viewMode === "complete" ? theme.colors.primary : theme.colors.shadow,
+                    shadowOffset: { width: 0, height: 1 },
+                    shadowOpacity: viewMode === "complete" ? 0.3 : 0.05,
+                    shadowRadius: 2,
+                  },
+                  android: {
+                    elevation: viewMode === "complete" ? 2 : 0,
+                  },
+                  web: {
+                    boxShadow: viewMode === "complete" ? `0px 1px 4px ${theme.colors.primary}40` : 'none',
+                  },
+                }),
+              },
+              pressed && { opacity: 0.8 },
+            ]}
+          >
+            <Ionicons
+              name="grid-outline"
+              size={18}
+              color={viewMode === "complete" ? theme.colors.white : theme.colors.textSecondary}
+            />
+            <Text
+              style={{
+                fontSize: 13,
+                fontWeight: "800",
+                color: viewMode === "complete" ? theme.colors.white : theme.colors.textSecondary,
+              }}
+            >
+              {UI_TEXT.completeView}
             </Text>
           </Pressable>
         </View>
