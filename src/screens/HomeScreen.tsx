@@ -24,7 +24,7 @@ export function HomeScreen() {
   const {
     subscriptions, dayConfig, seasonName, seasonEnabled, freeMealEnabled, totalPeople, firebaseError, paymentConfig, collections, kidsEnabled, guestsEnabled, foodMenu, remoteAppVersion, androidAppLocation, iosAppLocation, loading
   } = useCoreDatabase();
-  const { navigate, startNew, setIsQuickCheckout, setIsQuickFreeMealMode } = useAppNavigation();
+  const { navigate, startNew, setIsQuickCheckout, setIsParcelCheckout, setIsQuickFreeMealMode } = useAppNavigation();
   const { showAlert, showGlobalError } = useUI();
   const { width } = useWindowDimensions();
 
@@ -627,18 +627,34 @@ export function HomeScreen() {
             </Pressable>
           )}
           {userRole !== UserRole.CATERER && currentMealInfo && (
-            <Pressable
-              accessible={true}
-              accessibilityRole="button"
-              accessibilityLabel={UI_TEXT.quickCheckout}
-              onPress={() => {
-                setIsQuickCheckout(true);
-                navigate(AppScreen.SCANNER);
-              }}
-              style={[styles.compactSecondary, { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary }]}
-            >
-              <ActionLabel icon="flash-outline" label={UI_TEXT.quickCheckout} color={theme.colors.white} size={iconSize} vertical />
-            </Pressable>
+            <>
+              <Pressable
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={UI_TEXT.quickCheckout}
+                onPress={() => {
+                  setIsQuickCheckout(true);
+                  setIsParcelCheckout(false);
+                  navigate(AppScreen.SCANNER);
+                }}
+                style={[styles.compactSecondary, { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary }]}
+              >
+                <ActionLabel icon="flash-outline" label={UI_TEXT.quickCheckout} color={theme.colors.white} size={iconSize} vertical />
+              </Pressable>
+              <Pressable
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={UI_TEXT.parcelCheckout}
+                onPress={() => {
+                  setIsQuickCheckout(true);
+                  setIsParcelCheckout(true);
+                  navigate(AppScreen.SCANNER);
+                }}
+                style={[styles.compactSecondary, { backgroundColor: theme.cardColors[2].accent || theme.colors.secondary, borderColor: theme.cardColors[2].accent || theme.colors.secondary }]}
+              >
+                <ActionLabel icon="cube-outline" label={UI_TEXT.parcelCheckout} color={theme.colors.white} size={iconSize} vertical />
+              </Pressable>
+            </>
           )}
           <Pressable
             accessible={true}

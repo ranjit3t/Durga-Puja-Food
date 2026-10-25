@@ -368,6 +368,12 @@ The application enforces strict role-based access control (RBAC) distinguishing 
     - The `Partial Pickup (X)` filter chip renders directly beside the `Missed Meal Pickup (Y)` filter chip in `SubscriptionListScreen.tsx`, automatically auto-deselecting if all partial checkouts complete or the active meal ends.
     - Renders a dedicated amber badge pill (`PARTIAL X/Y` with `pie-chart` icon) on `SubscriptionCard` for all multi-member passes with in-flight partial checkouts for the active meal slot.
     - Full WCAG 2.1 AA accessibility compliance (`accessible={true}`, `accessibilityRole="button"`, `accessibilityLabel`), 100% `UI_TEXT` token localization, zero hardcoding, and responsive mobile flexbox layout.
+13. **Dedicated Parcel Checkout Feature & Modal ([`ParcelCheckoutModal.tsx`](src/components/common/ParcelCheckoutModal.tsx))**:
+    - When the current live meal is active, a dedicated parcel checkout button (`cube` icon) appears beside the quick checkout button for both admins and vendors (`canQuickCheckout = isAdmin || nonAdminCheckoutEnabled !== false`) across the Home screen (`HomeScreen.tsx`), QR/passcode Scanner (`ScannerScreen.tsx`), Subscription List pass cards (`SubscriptionListScreen.tsx`), and View Pass details view (`DetailsScreen.tsx`).
+    - Rendered strictly when parcels are subscribed for the active meal slot and unserved parcels remain (`hasParcelSubscribed && remParcels > 0`), accurately recognizing members who took dine-in (`foodTaken = true`, `parcelTaken = false`) as fulfilled.
+    - Modeled on Quick Checkout validations, it verifies pass existence, active meal slot eligibility, parcel subscription status (`parcelSupported` and total parcel planned > 0), and ensures unserved parcels remain (`totalParcelRemaining > 0`), displaying alert dialogs on validation failures without opening the checkout modal.
+    - Processes adult, kids, and guest parcel categories based on applicability (`kidsEnabled`, `guestsEnabled`, `isKidsParcelEnabled`, `isGuestsParcelEnabled`), saves individual parcel collection timestamps (`${mealType}ParcelTime`), logs detailed checkout activities (`ActivityAction.UPDATE`), plays the success audio chime (`checkout.mp3`) when enabled, and presents a responsive success summary splash window.
+    - Full WCAG 2.1 AA accessibility compliance (`accessible={true}`, `accessibilityRole="button"`, `accessibilityLabel`), localized `UI_TEXT` token compliance with zero hardcoding, responsive mobile-friendly layout, and zero nested `<Pressable>` elements.
 
 ---
 

@@ -167,6 +167,8 @@ Quick Checkout can be triggered from 4 distinct application entry methods, track
 - **`Numeric Passcode Keypad`** ([`ScannerScreen.tsx`](src/screens/ScannerScreen.tsx)): Verified via 4-digit numeric passcode keypad entry.
 - **`Pass Details`** ([`DetailsScreen.tsx`](src/screens/DetailsScreen.tsx)): Triggered from the pass inspection view.
 - **`Pass Directory`** ([`SubscriptionListScreen.tsx`](src/screens/SubscriptionListScreen.tsx)): Interactive red missed meal badge tap.
+- **`Home Screen & Scanner`** ([`HomeScreen.tsx`](src/screens/HomeScreen.tsx), [`ScannerScreen.tsx`](src/screens/ScannerScreen.tsx)): Direct 1-tap launcher and scanner verification in parcel checkout mode.
+- **`Dedicated Parcel Checkout`** ([`ParcelCheckoutModal.tsx`](src/components/common/ParcelCheckoutModal.tsx)): Dedicated parcel checkout button & modal for checking out only parcels when current meal is active (visible to both admins and vendors when `canQuickCheckout` is active). Treats dine-in served members as fulfilled, saves individual parcel collection timestamps (`${mealType}ParcelTime`), and models Quick Checkout validations with WCAG 2.1 AA compliance and success audio chimes.
 
 **Category-Wise 4-Category Engine & Ordered Priority Allocation Algorithm**:
 - **Current Day & Meal Scope**: All limits and allocations strictly target the active current day and meal slot (`currentMealInfo.dayId`, `currentMealInfo.mealType`). Non-current meals cannot be modified via Quick Checkout.

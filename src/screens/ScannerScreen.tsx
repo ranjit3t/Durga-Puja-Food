@@ -6,6 +6,7 @@ import { useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
 import { BackButton } from "../components/common/BackButton";
 import { QuickCheckoutModal } from "../components/common/QuickCheckoutModal";
+import { ParcelCheckoutModal } from "../components/common/ParcelCheckoutModal";
 
 import { useAppNavigation } from "../context/NavigationContext";
 import { useCoreDatabase, useActivityLogs } from "../context/DatabaseContext";
@@ -32,7 +33,7 @@ export function ScannerScreen() {
   const { width } = useWindowDimensions();
   const [permission, requestPermission] = useCameraPermissions();
 
-  const { openScannedValue, goBack, navigate, isQuickCheckout } = useAppNavigation();
+  const { openScannedValue, goBack, navigate, isQuickCheckout, isParcelCheckout } = useAppNavigation();
   const { subscriptions, dayConfig, kidsEnabled, guestsEnabled } = useCoreDatabase();
   const { addActivityLog } = useActivityLogs();
   const { showAlert } = useUI();
@@ -234,6 +235,64 @@ export function ScannerScreen() {
 
     // Modal is shown ONLY when any person of the pass for current day has NOT taken food
     const unservedFoodCount = adultsMax + kidsMax + guestsMax + parcelMax;
+
+    if (isParcelCheckout) {
+      if (parcelPlanned === 0) {
+        addActivityLog({
+          module: ActivityModule.SCANNER,
+          action: isPassCode ? ActivityAction.PASS : ActivityAction.SCAN,
+          targetId: match.id,
+          description: `${UI_TEXT.parcelCheckout}${UI_TEXT.colon}${UI_TEXT.space}${UI_TEXT.parcelCheckoutNoParcelSubscribed}`
+        });
+        showAlert(UI_TEXT.error, UI_TEXT.parcelCheckoutNoParcelSubscribed, [
+          {
+            text: UI_TEXT.ok,
+            onPress: () => {
+              setPassCode("");
+              setError("");
+              isScanning.current = false;
+            },
+          },
+        ]);
+        return;
+      }
+
+      if (parcelMax === 0) {
+        addActivityLog({
+          module: ActivityModule.SCANNER,
+          action: isPassCode ? ActivityAction.PASS : ActivityAction.SCAN,
+          targetId: match.id,
+          description: `${UI_TEXT.parcelCheckout}${UI_TEXT.colon}${UI_TEXT.space}${UI_TEXT.parcelCheckoutAllServed}`
+        });
+        showAlert(UI_TEXT.error, UI_TEXT.parcelCheckoutAllServed, [
+          {
+            text: UI_TEXT.ok,
+            onPress: () => {
+              setPassCode("");
+              setError("");
+              isScanning.current = false;
+            },
+          },
+        ]);
+        return;
+      }
+
+      const currentCheckoutSource = isPassCode ? CheckoutSource.PASSCODE : CheckoutSource.SCANNER;
+      setLastCheckoutSource(currentCheckoutSource);
+
+      addActivityLog({
+        module: ActivityModule.SCANNER,
+        action: isPassCode ? ActivityAction.PASS : ActivityAction.SCAN,
+        targetId: match.id,
+        description: UI_TEXT.logParcelCheckoutOpened
+          .replace("{id}", match.id)
+          .replace("{source}", currentCheckoutSource)
+      });
+
+      setSelectedPass(match);
+      setCurrentMealInfo(currentMeal);
+      return;
+    }
 
     if (subscribedCount === 0) {
       addActivityLog({
@@ -458,15 +517,26 @@ export function ScannerScreen() {
 
       </View>
 
-      {/* Quick Checkout Modal */}
-      <QuickCheckoutModal
-        visible={!!selectedPass}
-        subscription={selectedPass}
-        currentMealInfo={currentMealInfo}
-        source={lastCheckoutSource}
-        onClose={handleCancelQuickCheckout}
-        onSuccess={handleCheckoutSuccess}
-      />
+      {/* Quick / Parcel Checkout Modal */}
+      {isParcelCheckout ? (
+        <ParcelCheckoutModal
+          visible={!!selectedPass}
+          subscription={selectedPass}
+          currentMealInfo={currentMealInfo}
+          source={lastCheckoutSource}
+          onClose={handleCancelQuickCheckout}
+          onSuccess={handleCheckoutSuccess}
+        />
+      ) : (
+        <QuickCheckoutModal
+          visible={!!selectedPass}
+          subscription={selectedPass}
+          currentMealInfo={currentMealInfo}
+          source={lastCheckoutSource}
+          onClose={handleCancelQuickCheckout}
+          onSuccess={handleCheckoutSuccess}
+        />
+      )}
     </View>
   );
 }

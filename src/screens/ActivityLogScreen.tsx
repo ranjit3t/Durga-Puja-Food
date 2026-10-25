@@ -50,7 +50,7 @@ export function ActivityLogScreen() {
   const { theme, themeType } = useAppTheme();
 
   const [refreshing, setRefreshing] = useState(false);
-  const [dbLimit, setDbLimit] = useState(50);
+  const [dbLimit, setDbLimit] = useState(100);
   const [fetchingMore, setFetchingMore] = useState(false);
   const [expandedStacks, setExpandedStacks] = useState<Record<string, boolean>>({});
 
@@ -76,7 +76,7 @@ export function ActivityLogScreen() {
   const [showFilters, setShowFilters] = useState(false);
   const [isAscending, setIsAscending] = useState(false);
 
-  // Automatically fetch a larger log set from DB when search query or filters are active
+  // Automatically fetch all logs from DB when search query or filters are active
   React.useEffect(() => {
     const isSearchingOrFiltering =
       !!searchText ||
@@ -86,11 +86,11 @@ export function ActivityLogScreen() {
       selectedDate !== UI_TEXT.all ||
       errorsOnly;
 
-    if (isSearchingOrFiltering && dbLimit < 250) {
-      setDbLimit(250);
-      fetchMoreLogs(250);
+    if (isSearchingOrFiltering) {
+      setFetchingMore(true);
+      void fetchMoreLogs(0).finally(() => setFetchingMore(false));
     }
-  }, [searchText, selectedUser, selectedModule, selectedTarget, selectedDate, errorsOnly, dbLimit, fetchMoreLogs]);
+  }, [searchText, selectedUser, selectedModule, selectedTarget, selectedDate, errorsOnly, fetchMoreLogs]);
 
   const logs = activityLogs || [];
 
@@ -365,6 +365,37 @@ export function ActivityLogScreen() {
         </View>
       </View>
 
+      <View style={[styles.maxWidthWrapper, { paddingVertical: 12 }]}>
+        <ActivityLogFilterBar
+          searchText={searchText}
+          setSearchText={setSearchText}
+          isAscending={isAscending}
+          setIsAscending={setIsAscending}
+          showFilters={showFilters}
+          setShowFilters={setShowFilters}
+          errorsOnly={errorsOnly}
+          setErrorsOnly={setErrorsOnly}
+          selectedUser={selectedUser}
+          setSelectedUser={setSelectedUser}
+          userOptions={userOptions}
+          selectedDate={selectedDate}
+          setSelectedDate={setSelectedDate}
+          dateOptions={dateOptions}
+          selectedModule={selectedModule}
+          setSelectedModule={setSelectedModule}
+          moduleOptions={moduleOptions}
+          selectedTarget={selectedTarget}
+          setSelectedTarget={setSelectedTarget}
+          targetOptions={targetOptions}
+          handleExport={handleExport}
+          handleSummarizeLogs={handleSummarizeLogs}
+          filteredLogsCount={filteredLogs.length}
+          theme={theme}
+          styles={styles}
+          s={s}
+        />
+      </View>
+
       {loading && !refreshing && logs.length === 0 ? (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
@@ -375,43 +406,13 @@ export function ActivityLogScreen() {
           data={filteredLogs}
           renderItem={renderItem}
           keyExtractor={item => item.id}
-          contentContainerStyle={[styles.content, { paddingTop: 20 }]}
+          contentContainerStyle={[styles.content, { paddingTop: 10 }]}
           refreshing={refreshing}
           onRefresh={handleRefresh}
           removeClippedSubviews={Platform.OS === 'android'}
           initialNumToRender={10}
           maxToRenderPerBatch={10}
           windowSize={5}
-          ListHeaderComponent={
-            <ActivityLogFilterBar
-              searchText={searchText}
-              setSearchText={setSearchText}
-              isAscending={isAscending}
-              setIsAscending={setIsAscending}
-              showFilters={showFilters}
-              setShowFilters={setShowFilters}
-              errorsOnly={errorsOnly}
-              setErrorsOnly={setErrorsOnly}
-              selectedUser={selectedUser}
-              setSelectedUser={setSelectedUser}
-              userOptions={userOptions}
-              selectedDate={selectedDate}
-              setSelectedDate={setSelectedDate}
-              dateOptions={dateOptions}
-              selectedModule={selectedModule}
-              setSelectedModule={setSelectedModule}
-              moduleOptions={moduleOptions}
-              selectedTarget={selectedTarget}
-              setSelectedTarget={setSelectedTarget}
-              targetOptions={targetOptions}
-              handleExport={handleExport}
-              handleSummarizeLogs={handleSummarizeLogs}
-              filteredLogsCount={filteredLogs.length}
-              theme={theme}
-              styles={styles}
-              s={s}
-            />
-          }
           ListEmptyComponent={
             <View style={{ alignItems: 'center', marginTop: 60 }}>
               <View style={{ backgroundColor: theme.colors.surfaceDark, padding: 20, borderRadius: 30, marginBottom: 16 }}>
@@ -423,7 +424,12 @@ export function ActivityLogScreen() {
           }
           ListFooterComponent={
             <View style={{ gap: 20 }}>
-              {logs.length >= dbLimit && (
+              {fetchingMore && (
+                <View style={{ padding: 12, alignItems: 'center' }}>
+                  <ActivityIndicator size="small" color={theme.colors.primary} />
+                </View>
+              )}
+              {!searchText && selectedUser === UI_TEXT.all && selectedModule === UI_TEXT.all && selectedTarget === UI_TEXT.all && selectedDate === UI_TEXT.all && !errorsOnly && logs.length >= dbLimit && dbLimit < 2000 && (
                 <Pressable
                   onPress={handleLoadMore}
                   disabled={fetchingMore}

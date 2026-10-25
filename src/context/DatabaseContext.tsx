@@ -222,7 +222,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
         repository.getNotes(),
         repository.getFoodPackages(),
         repository.getAppVersion(),
-        repository.getActivityLogs(50),
+        repository.getActivityLogs(100),
         repository.getMetrics(),
       ]);
 
@@ -284,7 +284,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       repository.getFoodPackages(),
       repository.getAppVersion(),
       repository.getMetrics(),
-      repository.getActivityLogs(50)
+      repository.getActivityLogs(100)
     ]).then(([config, menu, notesData, packagesData, appVer, metricsData, logsData]) => {
       if (!isMounted) return;
 

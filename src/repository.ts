@@ -668,7 +668,7 @@ export function createFirebaseRepository(): SubscriptionRepository {
     async getActivityLogs(limitCount = 50) {
       const services = await ensureFirebaseAuth();
       if (!services) return [];
-      const logsRef = query(ref(services.db, logsPath), limitToLast(limitCount));
+      const logsRef = limitCount > 0 ? query(ref(services.db, logsPath), limitToLast(limitCount)) : ref(services.db, logsPath);
       const snapshot = await get(logsRef);
       const data = snapshot.val() as Record<string, ActivityLog> | null;
       if (!data) return [];

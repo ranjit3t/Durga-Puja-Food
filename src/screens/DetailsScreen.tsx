@@ -38,7 +38,7 @@ import {
   formatTimestamp,
   isGuestsParcelEnabled,
 } from "../constants";
-import { MealMenu, MealType, DietType, DietaryOption, normalizeChoice, toBool, AppScreen, UserRole, PaymentMode, ReportType, AppThemeMode, ActivityModule, ActivityAction, CheckoutSource, getPassDisplayLabel, FoodPackage } from "../types";
+import { MealMenu, MealType, DietType, DietaryOption, normalizeChoice, toBool, AppScreen, UserRole, PaymentMode, ReportType, AppThemeMode, ActivityModule, ActivityAction, CheckoutSource, getPassDisplayLabel, FoodPackage, TakenState } from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
@@ -47,6 +47,7 @@ import { UserGreeting } from "../components/common/UserGreeting";
 import { ActionLabel } from "../components/common/ActionLabel";
 import { MealSummaryInline } from "../components/menu/MealSummaryInline";
 import { QuickCheckoutModal } from "../components/common/QuickCheckoutModal";
+import { ParcelCheckoutModal } from "../components/common/ParcelCheckoutModal";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useAuth } from "../context/AuthContext";
@@ -84,6 +85,7 @@ export function DetailsScreen() {
   const activeDays = getActiveDays(dayConfig);
 
   const [showQuickCheckoutModal, setShowQuickCheckoutModal] = React.useState(false);
+  const [showParcelCheckoutModal, setShowParcelCheckoutModal] = React.useState(false);
   const [viewingPackage, setViewingPackage] = React.useState<FoodPackage | null>(null);
 
   const discrepancyDetail = React.useMemo(() => {
@@ -131,6 +133,52 @@ export function DetailsScreen() {
     return false;
   }, [currentMealInfo, subscription, kidsEnabled]);
 
+  const parcelCheckoutInfo = React.useMemo(() => {
+    if (!currentMealInfo || !subscription) return { hasParcelSubscribed: false, remParcels: 0 };
+    const { dayId, mealType } = currentMealInfo;
+    const parcelKey = `${mealType}Parcel`;
+    const mealKey = mealType;
+    const headcount = subscription.peopleCount + (kidsEnabled ? (subscription.kidsCount || 0) : 0) + (guestsEnabled ? (subscription.guestsCount || 0) : 0);
+    const slots = subscription.mealSlots?.[dayId] || [];
+    const taken = subscription.takenByPerson?.[dayId] || [];
+
+    const parcelSupported = isParcelEnabled(dayId, mealType, dayConfig);
+    const kidParcelOpt = isKidsParcelEnabled(dayId, mealType, dayConfig);
+    const guestParcelOpt = isGuestsParcelEnabled(dayId, mealType, dayConfig);
+
+    let planned = 0;
+    let served = 0;
+
+    for (let i = 0; i < headcount; i++) {
+      const isKid = kidsEnabled && i >= subscription.peopleCount && i < subscription.peopleCount + (subscription.kidsCount || 0);
+      const isGuest = guestsEnabled && i >= subscription.peopleCount + (subscription.kidsCount || 0);
+      const slot = slots[i];
+      const takenRecord = taken[i];
+
+      const choice = getValidSlotChoice(dayId, mealType, slot?.[mealKey], dayConfig);
+      if (choice === DietaryOption.NONE) continue;
+
+      const isParcelAllowed = parcelSupported && (isGuest ? guestParcelOpt : (isKid ? kidParcelOpt : true));
+      const isParcelOpted = isParcelAllowed && !!(slot && (slot as any)[parcelKey]);
+
+      if (!isParcelOpted) continue;
+
+      planned += 1;
+      const isParcelCollected = !!(takenRecord && (takenRecord as any)[parcelKey]);
+      const isDineInTaken = !!(takenRecord && (takenRecord as any)[mealKey]);
+      if (isParcelCollected || isDineInTaken) {
+        served += 1;
+      }
+    }
+
+    return {
+      hasParcelSubscribed: planned > 0,
+      remParcels: planned - served
+    };
+  }, [currentMealInfo, subscription, kidsEnabled, guestsEnabled, dayConfig]);
+
+  const hasUnservedParcelForCurrentMeal = parcelCheckoutInfo.hasParcelSubscribed && parcelCheckoutInfo.remParcels > 0;
+
   const handleQuickCheckoutClick = () => {
     if (!currentMealInfo) {
       showGlobalAlert(UI_TEXT.currentMealClosedTitle, UI_TEXT.currentMealClosed, [
@@ -152,6 +200,27 @@ export function DetailsScreen() {
     setShowQuickCheckoutModal(true);
   };
 
+  const handleParcelCheckoutClick = () => {
+    if (!currentMealInfo) {
+      showGlobalAlert(UI_TEXT.currentMealClosedTitle, UI_TEXT.currentMealClosed, [
+        {
+          text: UI_TEXT.ok,
+          onPress: () => navigate(AppScreen.HOME)
+        }
+      ]);
+      return;
+    }
+    if (!subscription) return;
+    const passLabel = getPassDisplayLabel(subscription);
+    addActivityLog({
+      module: ActivityModule.SCANNER,
+      action: ActivityAction.UPDATE,
+      targetId: subscription.id,
+      description: UI_TEXT.logParcelCheckoutOpened.replace("{id}", passLabel).replace("{source}", CheckoutSource.DETAILS)
+    });
+    setShowParcelCheckoutModal(true);
+  };
+
   React.useEffect(() => {
     if (showQuickCheckoutModal && !currentMealInfo) {
       setShowQuickCheckoutModal(false);
@@ -162,7 +231,16 @@ export function DetailsScreen() {
         }
       ]);
     }
-  }, [showQuickCheckoutModal, currentMealInfo, navigate, showGlobalAlert]);
+    if (showParcelCheckoutModal && !currentMealInfo) {
+      setShowParcelCheckoutModal(false);
+      showGlobalAlert(UI_TEXT.currentMealClosedTitle, UI_TEXT.currentMealClosed, [
+        {
+          text: UI_TEXT.ok,
+          onPress: () => navigate(AppScreen.HOME)
+        }
+      ]);
+    }
+  }, [showQuickCheckoutModal, showParcelCheckoutModal, currentMealInfo, navigate, showGlobalAlert]);
 
   const onBack = () => goBack();
   const onHome = () => navigate(AppScreen.HOME);
@@ -343,16 +421,30 @@ export function DetailsScreen() {
                 </Text>
               )}
               {canQuickCheckout && hasUnservedFoodForCurrentMeal && (
-                <Pressable
-                  accessibilityLabel={UI_TEXT.quickCheckout}
-                  onPress={handleQuickCheckoutClick}
-                  style={({ pressed }) => [
-                    { padding: 6, borderRadius: 20, backgroundColor: theme.colors.white + "33" },
-                    pressed && { opacity: 0.7 }
-                  ]}
-                >
-                  <Ionicons name="flash" size={18} color={theme.colors.white} />
-                </Pressable>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Pressable
+                    accessibilityLabel={UI_TEXT.quickCheckout}
+                    onPress={handleQuickCheckoutClick}
+                    style={({ pressed }) => [
+                      { padding: 6, borderRadius: 20, backgroundColor: theme.colors.white + "33" },
+                      pressed && { opacity: 0.7 }
+                    ]}
+                  >
+                    <Ionicons name="flash" size={18} color={theme.colors.white} />
+                  </Pressable>
+                  {canQuickCheckout && hasUnservedParcelForCurrentMeal && (
+                    <Pressable
+                      accessibilityLabel={UI_TEXT.parcelCheckout}
+                      onPress={handleParcelCheckoutClick}
+                      style={({ pressed }) => [
+                        { padding: 6, borderRadius: 20, backgroundColor: theme.colors.white + "33" },
+                        pressed && { opacity: 0.7 }
+                      ]}
+                    >
+                      <Ionicons name="cube" size={18} color={theme.colors.white} />
+                    </Pressable>
+                  )}
+                </View>
               )}
               {canEditPass && (
                 <Pressable
@@ -883,15 +975,26 @@ export function DetailsScreen() {
         {/* Actions */}
         <View style={{ gap: 16, marginBottom: 40 }}>
           {canQuickCheckout && hasUnservedFoodForCurrentMeal && (
-            <Pressable
-              onPress={handleQuickCheckoutClick}
-              accessible={true}
-              accessibilityRole="button"
-              accessibilityLabel={UI_TEXT.quickCheckout}
-              style={[styles.primary, { backgroundColor: theme.colors.primary, marginTop: 0, height: 52, borderRadius: 16 }]}
-            >
-              <ActionLabel icon="flash-outline" label={UI_TEXT.quickCheckout} color={theme.colors.white} />
-            </Pressable>
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <Pressable
+                onPress={handleQuickCheckoutClick}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={UI_TEXT.quickCheckout}
+                style={[styles.primary, { flex: 1, backgroundColor: theme.colors.warning || theme.colors.secondary, marginTop: 0, height: 52, borderRadius: 16 }]}
+              >
+                <ActionLabel icon="flash-outline" label={UI_TEXT.quickCheckout} color={theme.colors.white} />
+              </Pressable>
+              <Pressable
+                onPress={handleParcelCheckoutClick}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={UI_TEXT.parcelCheckout}
+                style={[styles.primary, { flex: 1, backgroundColor: theme.colors.primary, marginTop: 0, height: 52, borderRadius: 16 }]}
+              >
+                <ActionLabel icon="cube-outline" label={UI_TEXT.parcelCheckout} color={theme.colors.white} />
+              </Pressable>
+            </View>
           )}
           {canEditPass && (
             <Pressable
@@ -1051,6 +1154,18 @@ export function DetailsScreen() {
         onClose={() => setShowQuickCheckoutModal(false)}
         onSuccess={() => {
           setShowQuickCheckoutModal(false);
+        }}
+      />
+
+      {/* Parcel Checkout Modal */}
+      <ParcelCheckoutModal
+        visible={showParcelCheckoutModal}
+        subscription={subscription}
+        currentMealInfo={currentMealInfo}
+        source={CheckoutSource.DETAILS}
+        onClose={() => setShowParcelCheckoutModal(false)}
+        onSuccess={() => {
+          setShowParcelCheckoutModal(false);
         }}
       />
     </View>

@@ -69,6 +69,7 @@ import { LogoutButton } from "../components/common/LogoutButton";
 import { ThemeToggleButton } from "../components/common/ThemeToggleButton";
 import { UserGreeting } from "../components/common/UserGreeting";
 import { QuickCheckoutModal } from "../components/common/QuickCheckoutModal";
+import { ParcelCheckoutModal } from "../components/common/ParcelCheckoutModal";
 
 const SubscriptionCard = React.memo(({
   item,
@@ -92,9 +93,11 @@ const SubscriptionCard = React.memo(({
   dayConfig,
   onSelect,
   onOpenQuickCheckout,
+  onOpenParcelCheckout,
   onSelectBlock,
   addActivityLog,
   missedCount,
+  parcelCheckoutInfo,
   partialCheckoutInfo,
   completedCheckoutInfo,
   missedCheckoutInfo,
@@ -120,15 +123,18 @@ const SubscriptionCard = React.memo(({
   dayConfig?: ConfigDay[];
   onSelect: (sub: Subscription) => void;
   onOpenQuickCheckout?: (sub: Subscription) => void;
+  onOpenParcelCheckout?: (sub: Subscription) => void;
   onSelectBlock?: (block: string) => void;
   addActivityLog: any;
   missedCount?: number;
+  parcelCheckoutInfo?: { hasParcelSubscribed: boolean; remParcels: number };
   partialCheckoutInfo?: { taken: number; total: number };
   completedCheckoutInfo?: { taken: number; total: number };
   missedCheckoutInfo?: { missed: number; total: number };
 }) => {
   const colorScheme = theme.cardColors[index % theme.cardColors.length];
   const canQuickCheckout = isAdmin || nonAdminCheckoutEnabled !== false;
+  const hasUnservedParcel = parcelCheckoutInfo?.hasParcelSubscribed && parcelCheckoutInfo?.remParcels > 0;
 
   const currentMealCheckouts = useMemo(() => {
     if (!currentMealInfo) return [];
@@ -216,7 +222,64 @@ const SubscriptionCard = React.memo(({
         }
       ]}
     >
-      {missedCount ? (
+      {hasCurrentMeal && canQuickCheckout && hasUnservedParcel ? (
+        <View style={{ position: 'absolute', top: -s(10), right: -s(10), flexDirection: 'row', gap: s(4), zIndex: 20, elevation: 6 }}>
+          {missedCount ? (
+            <Pressable
+              onPress={(e) => {
+                e.stopPropagation();
+                if (onOpenQuickCheckout) {
+                  onOpenQuickCheckout(item);
+                }
+              }}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={`${UI_TEXT.quickCheckout} (${missedCount})`}
+              style={({ pressed }) => [
+                {
+                  width: s(32),
+                  height: s(32),
+                  borderRadius: s(16),
+                  backgroundColor: theme.colors.error,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderWidth: 2,
+                  borderColor: theme.colors.white,
+                },
+                pressed && { opacity: 0.8, transform: [{ scale: 1.1 }] }
+              ]}
+            >
+               <Text style={{ color: theme.colors.white, fontSize: s(12), fontWeight: '900' }}>{missedCount}</Text>
+            </Pressable>
+          ) : null}
+          <Pressable
+            onPress={(e) => {
+              e.stopPropagation();
+              if (onOpenParcelCheckout) {
+                onOpenParcelCheckout(item);
+              }
+            }}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={UI_TEXT.parcelCheckout}
+            style={({ pressed }) => [
+              {
+                width: s(32),
+                height: s(32),
+                borderRadius: s(16),
+                backgroundColor: theme.colors.primary,
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderWidth: 2,
+                borderColor: theme.colors.white,
+              },
+              pressed && { opacity: 0.8, transform: [{ scale: 1.1 }] }
+            ]}
+          >
+             <Ionicons name="cube" size={s(15)} color={theme.colors.white} />
+          </Pressable>
+        </View>
+      ) : (missedCount ? (
         canQuickCheckout ? (
           <Pressable
             onPress={(e) => {
@@ -273,7 +336,7 @@ const SubscriptionCard = React.memo(({
              <Text style={{ color: theme.colors.white, fontSize: s(13), fontWeight: '900' }}>{missedCount}</Text>
           </View>
         )
-      ) : null}
+      ) : null)}
 
       <View style={styles.cardTop}>
         <View style={{ flex: 1 }}>
@@ -609,7 +672,7 @@ export function SubscriptionListScreen() {
     subscriptionSearch, setSubscriptionSearch, activeFilters, setActiveFilters, selectedBlock, setSelectedBlock,
     subscriptionSortBy: sortBy, setSubscriptionSortBy: setSortBy,
     subscriptionIsAscending: isAscending, setSubscriptionIsAscending: setIsAscending,
-    navigate, goBack, startNew, setSelectedId, setSelectedRecord
+    navigate, goBack, setSelectedId, setSelectedRecord
   } = useAppNavigation();
 
   const activeFiltersList = activeFilters || [FilterMode.ALL];
@@ -620,13 +683,10 @@ export function SubscriptionListScreen() {
     navigate(AppScreen.DETAILS);
   }, [navigate, setSelectedId, setSelectedRecord]);
 
-  const onAdd = () => startNew(dayConfig, "", paymentConfig, true, true, seasonEnabled);
-
   const styles = useStyles();
   const { s } = useScaling();
   const { theme } = useAppTheme();
   const isAdmin = userRole === UserRole.ADMIN;
-  const canAdd = getActiveDays(dayConfig).length > 0 && seasonEnabled;
 
   const currentMealInfo = useMemo(() => {
     const active = getActiveDays(dayConfig);
@@ -648,6 +708,8 @@ export function SubscriptionListScreen() {
 
   const [quickCheckoutSub, setQuickCheckoutSub] = useState<Subscription | null>(null);
   const [quickCheckoutVisible, setQuickCheckoutVisible] = useState(false);
+  const [parcelCheckoutSub, setParcelCheckoutSub] = useState<Subscription | null>(null);
+  const [parcelCheckoutVisible, setParcelCheckoutVisible] = useState(false);
 
   const onOpenQuickCheckout = useCallback((sub: Subscription) => {
     const passLabel = getPassDisplayLabel(sub);
@@ -659,6 +721,18 @@ export function SubscriptionListScreen() {
     });
     setQuickCheckoutSub(sub);
     setQuickCheckoutVisible(true);
+  }, [addActivityLog]);
+
+  const onOpenParcelCheckout = useCallback((sub: Subscription) => {
+    const passLabel = getPassDisplayLabel(sub);
+    addActivityLog({
+      module: ActivityModule.SCANNER,
+      action: ActivityAction.UPDATE,
+      targetId: sub.id,
+      description: UI_TEXT.logParcelCheckoutOpened.replace("{id}", passLabel).replace("{source}", CheckoutSource.SUBSCRIPTION_LIST)
+    });
+    setParcelCheckoutSub(sub);
+    setParcelCheckoutVisible(true);
   }, [addActivityLog]);
 
   const toggleFilter = useCallback((mode: FilterMode) => {
@@ -1380,7 +1454,54 @@ export function SubscriptionListScreen() {
       const completedInfo = completedCheckoutData.map[item.id];
 
       const hasDiscrepancy = hasAmountDiscrepancy(item, foodMenu, dayConfig, !!kidsEnabled, !!guestsEnabled, foodPackages);
-      return { ...item, _hasCurrentMeal: hasCurrentMeal, _hasParcel: hasParcel, _isVegOnly: isVegOnly, _hasSpecialMeal: hasSpecialMeal, _hasPackage: hasPackage, _missedCount: unservedCount, _hasDiscrepancy: hasDiscrepancy, _partialCheckoutInfo: partialInfo, _completedCheckoutInfo: completedInfo, _missedCheckoutInfo: missedInfo };
+
+      let parcelCheckoutInfo = { hasParcelSubscribed: false, remParcels: 0 };
+      if (currentMealInfo) {
+        const { dayId, mealType } = currentMealInfo;
+        const parcelKey = `${mealType}Parcel`;
+        const mealKey = mealType;
+        const adultCount = item.peopleCount || 0;
+        const kCount = kidsEnabled ? (item.kidsCount || 0) : 0;
+        const gCount = guestsEnabled ? (item.guestsCount || 0) : 0;
+        const headcount = adultCount + kCount + gCount;
+        const slots = item.mealSlots?.[dayId] || [];
+        const taken = item.takenByPerson?.[dayId] || [];
+
+        const parcelSupported = isParcelEnabled(dayId, mealType, dayConfig);
+        const kidParcelOpt = isKidsParcelEnabled(dayId, mealType, dayConfig, kidsEnabled);
+        const guestParcelOpt = isGuestsParcelEnabled(dayId, mealType, dayConfig, guestsEnabled);
+
+        let planned = 0;
+        let served = 0;
+
+        for (let i = 0; i < headcount; i++) {
+          const isKid = kidsEnabled && i >= adultCount && i < adultCount + kCount;
+          const isGuest = guestsEnabled && i >= adultCount + kCount;
+          const slot = slots[i];
+          const takenRecord = taken[i];
+
+          const choice = getValidSlotChoice(dayId, mealType, slot?.[mealKey], dayConfig);
+          if (choice === DietaryOption.NONE) continue;
+
+          const isParcelAllowed = parcelSupported && (isGuest ? guestParcelOpt : (isKid ? kidParcelOpt : true));
+          const isParcelOpted = isParcelAllowed && !!(slot && (slot as any)[parcelKey]);
+
+          if (!isParcelOpted) continue;
+
+          planned += 1;
+          const isParcelCollected = !!(takenRecord && takenRecord[parcelKey as keyof TakenState]);
+          const isDineInTaken = !!(takenRecord && takenRecord[mealKey as keyof TakenState]);
+          if (isParcelCollected || isDineInTaken) {
+            served += 1;
+          }
+        }
+        parcelCheckoutInfo = {
+          hasParcelSubscribed: planned > 0,
+          remParcels: planned - served
+        };
+      }
+
+      return { ...item, _hasCurrentMeal: hasCurrentMeal, _hasParcel: hasParcel, _isVegOnly: isVegOnly, _hasSpecialMeal: hasSpecialMeal, _hasPackage: hasPackage, _missedCount: unservedCount, _hasDiscrepancy: hasDiscrepancy, _parcelCheckoutInfo: parcelCheckoutInfo, _partialCheckoutInfo: partialInfo, _completedCheckoutInfo: completedInfo, _missedCheckoutInfo: missedInfo };
     });
   }, [subscriptions, subscriptionSearch, activeFilters, selectedBlock, currentMealInfo, kidsEnabled, guestsEnabled, missedData, unservedCheckoutData, partialCheckoutData, completedCheckoutData, isAscending, sortBy, dayConfig, hasPackageApplied, foodMenu, foodPackages]);
 
@@ -1691,7 +1812,7 @@ export function SubscriptionListScreen() {
     }
   }, [visibleSubscriptions, dayConfig, kidsEnabled, addActivityLog]);
 
-  const renderItem = useCallback(({ item, index }: { item: Subscription & { _hasCurrentMeal?: boolean; _hasParcel?: boolean; _isVegOnly?: boolean; _hasSpecialMeal?: boolean; _hasPackage?: boolean; _missedCount?: number; _hasDiscrepancy?: boolean; _partialCheckoutInfo?: { taken: number; total: number }; _completedCheckoutInfo?: { taken: number; total: number }; _missedCheckoutInfo?: { missed: number; total: number } }; index: number }) => {
+  const renderItem = useCallback(({ item, index }: { item: Subscription & { _hasCurrentMeal?: boolean; _hasParcel?: boolean; _isVegOnly?: boolean; _hasSpecialMeal?: boolean; _hasPackage?: boolean; _missedCount?: number; _hasDiscrepancy?: boolean; _parcelCheckoutInfo?: { hasParcelSubscribed: boolean; remParcels: number }; _partialCheckoutInfo?: { taken: number; total: number }; _completedCheckoutInfo?: { taken: number; total: number }; _missedCheckoutInfo?: { missed: number; total: number } }; index: number }) => {
     return (
       <SubscriptionCard
         item={item}
@@ -1715,15 +1836,17 @@ export function SubscriptionListScreen() {
         dayConfig={dayConfig}
         onSelect={onSelect}
         onOpenQuickCheckout={onOpenQuickCheckout}
+        onOpenParcelCheckout={onOpenParcelCheckout}
         onSelectBlock={setSelectedBlock}
         addActivityLog={addActivityLog}
         missedCount={item._missedCount}
+        parcelCheckoutInfo={item._parcelCheckoutInfo}
         partialCheckoutInfo={item._partialCheckoutInfo}
         completedCheckoutInfo={item._completedCheckoutInfo}
         missedCheckoutInfo={item._missedCheckoutInfo}
       />
     );
-  }, [theme, styles, s, kidsEnabled, guestsEnabled, paymentConfig, whatsappCountryCode, isAdmin, currentMealInfo, dayConfig, onSelect, onOpenQuickCheckout, setSelectedBlock, addActivityLog]);
+  }, [theme, styles, s, kidsEnabled, guestsEnabled, paymentConfig, whatsappCountryCode, isAdmin, currentMealInfo, dayConfig, onSelect, onOpenQuickCheckout, onOpenParcelCheckout, setSelectedBlock, addActivityLog]);
 
   const showFilters = (currentMealInfo && hasAnySubscribed) || (currentMealInfo && hasAnyMissed) || (currentMealInfo && hasAnyPartialCheckout) || (currentMealInfo && hasAnyCompletedCheckout) || (kidsEnabled && hasAnyKids) || (kidsEnabled && currentMealInfo && hasAnyCurrentMealKids) || hasAnyParcel || (isNonVegSeason && hasAnyVegOnly) || hasAnySpecialOnly || hasAnyPackage || (isAdmin && hasAnyDiscrepancy);
 
@@ -2538,24 +2661,6 @@ export function SubscriptionListScreen() {
         />
       </KeyboardAvoidingView>
 
-      {isAdmin && seasonEnabled ? (
-        <Pressable
-          style={({ pressed }) => [
-            styles.fab,
-            { bottom: Platform.OS === 'web' ? s(100) : s(140) },
-            !canAdd && { opacity: 0.4 },
-            pressed && { opacity: 0.8 }
-          ]}
-          onPress={onAdd}
-          disabled={!canAdd}
-          accessible={true}
-          accessibilityRole="button"
-          accessibilityLabel={UI_TEXT.addFlat}
-        >
-          <Ionicons name="add" size={s(32)} color={theme.colors.white} />
-        </Pressable>
-      ) : null}
-
       <QuickCheckoutModal
         visible={quickCheckoutVisible && !!quickCheckoutSub}
         subscription={quickCheckoutSub}
@@ -2568,6 +2673,22 @@ export function SubscriptionListScreen() {
         onSuccess={() => {
           setQuickCheckoutVisible(false);
           setQuickCheckoutSub(null);
+          void refreshAllData(true);
+        }}
+      />
+
+      <ParcelCheckoutModal
+        visible={parcelCheckoutVisible && !!parcelCheckoutSub}
+        subscription={parcelCheckoutSub}
+        currentMealInfo={currentMealInfo}
+        source={CheckoutSource.SUBSCRIPTION_LIST}
+        onClose={() => {
+          setParcelCheckoutVisible(false);
+          setParcelCheckoutSub(null);
+        }}
+        onSuccess={() => {
+          setParcelCheckoutVisible(false);
+          setParcelCheckoutSub(null);
           void refreshAllData(true);
         }}
       />

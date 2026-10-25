@@ -61,6 +61,8 @@ interface NavigationContextType {
   // Quick Checkout State
   isQuickCheckout: boolean;
   setIsQuickCheckout: (val: boolean) => void;
+  isParcelCheckout: boolean;
+  setIsParcelCheckout: (val: boolean) => void;
 
   // Quick Free Meal Mode State
   isQuickFreeMealMode: boolean;
@@ -103,6 +105,7 @@ export function NavigationProvider({ children }: { children: React.ReactNode }) 
 
   // Quick Checkout & Free Meal States
   const [isQuickCheckout, setIsQuickCheckout] = useState(false);
+  const [isParcelCheckout, setIsParcelCheckout] = useState(false);
   const [isQuickFreeMealMode, setIsQuickFreeMealMode] = useState(false);
 
   // View Filter states
@@ -209,6 +212,7 @@ export function NavigationProvider({ children }: { children: React.ReactNode }) 
     setTargetMeal(null);
     if (!preserveQuickCheckout) {
       setIsQuickCheckout(false);
+      setIsParcelCheckout(false);
     }
     if (!preserveQuickFreeMeal) {
       setIsQuickFreeMealMode(false);
@@ -223,7 +227,10 @@ export function NavigationProvider({ children }: { children: React.ReactNode }) 
       if (screen === AppScreen.HOME) {
         resetViewStates(next === AppScreen.SCANNER, next === AppScreen.FREE_MEAL_MANAGEMENT);
       } else {
-        if (next !== AppScreen.SCANNER) setIsQuickCheckout(false);
+        if (next !== AppScreen.SCANNER) {
+          setIsQuickCheckout(false);
+          setIsParcelCheckout(false);
+        }
         if (next !== AppScreen.FREE_MEAL_MANAGEMENT) setIsQuickFreeMealMode(false);
       }
 
@@ -250,7 +257,10 @@ export function NavigationProvider({ children }: { children: React.ReactNode }) 
         setHistory([]);
         resetViewStates(false, false);
       } else {
-        if (prev !== AppScreen.SCANNER) setIsQuickCheckout(false);
+        if (prev !== AppScreen.SCANNER) {
+          setIsQuickCheckout(false);
+          setIsParcelCheckout(false);
+        }
         if (prev !== AppScreen.FREE_MEAL_MANAGEMENT) setIsQuickFreeMealMode(false);
       }
       setScreen(prev);
@@ -303,6 +313,7 @@ export function NavigationProvider({ children }: { children: React.ReactNode }) 
     subscriptionIsAscending, setSubscriptionIsAscending,
     targetDay, setTargetDay, targetMeal, setTargetMeal,
     isQuickCheckout, setIsQuickCheckout,
+    isParcelCheckout, setIsParcelCheckout,
     isQuickFreeMealMode, setIsQuickFreeMealMode
   }), [
     screen, history, selectedId, selectedRecord, editing,
@@ -310,7 +321,7 @@ export function NavigationProvider({ children }: { children: React.ReactNode }) 
     aggregateBlock, aggregateFlat, aggregatePersonType, aggregateDiet, aggregateDay, aggregateMeal, aggregateService, aggregatePaymentMode, aggregatePaymentStatus, aggregatePackage, resetAggregateFilters,
     subscriptionSearch, activeFilters, selectedBlock,
     subscriptionSortBy, subscriptionIsAscending,
-    targetDay, targetMeal, isQuickCheckout, isQuickFreeMealMode,
+    targetDay, targetMeal, isQuickCheckout, isParcelCheckout, isQuickFreeMealMode,
     startNew, openScannedValue, navigate, goBack
   ]);
 
