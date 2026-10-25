@@ -382,6 +382,11 @@ The application enforces strict role-based access control (RBAC) distinguishing 
     - Added a dedicated active meal parcel pending filter chip (`FilterMode.CURRENT_MEAL_PARCEL_PENDING` / `"Current Meal Parcels Pending"`) in `SubscriptionListScreen.tsx` rendered beside the `"Current Meal Parcels"` filter chip when a live meal is active and parcel service is enabled.
     - Filters passes where 1+ members have subscribed to parcel service for the active slot but have not collected their parcel or meal yet (`!isTaken`, considering both parcel pickup and dine-in fulfillment).
     - Features real-time count aggregation (`currentMealParcelPendingData`), auto-deselection upon complete parcel collection or active meal closure, full WCAG 2.1 AA accessibility compliance (`accessible={true}`, `accessibilityRole="button"`, `accessibilityLabel`), 100% `UI_TEXT` dictionary localization, zero hardcoding, and responsive mobile flexbox layout.
+16. **Operator Username Filter in Checkout Report ([`CheckoutReport.tsx`](src/components/report/CheckoutReport.tsx), [`useReportData.ts`](src/hooks/useReportData.ts), [`ReportScreen.tsx`](src/screens/ReportScreen.tsx))**:
+    - Added an interactive horizontal operator filter bar (`"All Users"`, `admin`, `vendor`, `atanu`, `samrat`, `suman`, `chhoton`, etc.) at the top of the Checkout Report.
+    - Default mode ("All Users") considers all operators selected, presenting consolidated season-wide checkout metrics, earliest/latest times, and pass cards.
+    - Tapping an operator button filters summary statistics, headcount, service mode, earliest/latest timestamps, and individual pass cards to display checkouts performed exclusively by that operator.
+    - Fully WCAG 2.1 AA accessibility compliant (`accessible={true}`, `accessibilityRole="button"`, localized `accessibilityLabel`), mobile-responsive layout (`s(...)`), and 100% `UI_TEXT` dictionary localized with zero hardcoding.
 
 ---
 

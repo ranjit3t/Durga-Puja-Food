@@ -52,6 +52,7 @@ export function ReportScreen() {
   } = useReportData(subscriptions, foodMenu, dayConfig, freeMealEnabled, paymentConfig, !!kidsEnabled, !!guestsEnabled, reportType, foodPackages);
 
   const [selectedPersonCategory, setSelectedPersonCategory] = React.useState<"all" | "adult" | "kids" | "guests">("all");
+  const [selectedCheckoutUser, setSelectedCheckoutUser] = React.useState<string>("");
   const memberLabel = kidsEnabled ? UI_TEXT.adults : UI_TEXT.members;
 
   const styles = useStyles();
@@ -81,6 +82,7 @@ export function ReportScreen() {
 
   const onSetReportType = (type: ReportType) => {
     setReportType(type);
+    setSelectedCheckoutUser("");
     if (type === ReportType.CHECKOUT) {
       onSetSelectedDayId("" as any);
       onSetSelectedMealType("" as any);
@@ -521,9 +523,11 @@ export function ReportScreen() {
 
           {reportType === ReportType.CHECKOUT && (
             <CheckoutReport
-              data={getCheckoutReportData(selectedDayId, selectedMealType)}
+              data={getCheckoutReportData(selectedDayId, selectedMealType, selectedCheckoutUser)}
               selectedDayId={selectedDayId}
               selectedMealType={selectedMealType}
+              selectedCheckoutUser={selectedCheckoutUser}
+              onSelectUser={setSelectedCheckoutUser}
               dayConfig={dayConfig}
               onSelectFlat={onSelectFlat}
               kidsEnabled={!!kidsEnabled}

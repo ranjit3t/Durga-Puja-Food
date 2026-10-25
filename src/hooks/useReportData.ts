@@ -929,7 +929,7 @@ export function useReportData(
       .sort((a, b) => (a.block || "").localeCompare(b.block || "", undefined, { numeric: true, sensitivity: 'base' }) || (a.flat || "").localeCompare(b.flat || "", undefined, { numeric: true, sensitivity: 'base' }));
   }, [subscriptions, dayConfig, kidsEnabled, guestsEnabled, foodMenu]);
 
-  const getCheckoutReportData = useCallback((selectedDayId: string, selectedMealType: MealType) => {
+  const getCheckoutReportData = useCallback((selectedDayId: string, selectedMealType: MealType, selectedCheckoutUser?: string) => {
     if (!selectedDayId || !selectedMealType) {
       let missedCount = 0;
       let partialCount = 0;
@@ -975,12 +975,15 @@ export function useReportData(
               const isParcelAllowed = !!(s as any)[`${mType}Parcel`];
               const isParcelTaken = !!tState[`${mType}Parcel` as keyof TakenState];
               const isDineInTaken = !!tState[mType];
-              const isTaken = isDineInTaken || isParcelTaken;
               const rawTime = tState[`${mType}Time` as keyof TakenState] || tState[`${mType}ParcelTime` as keyof TakenState];
               const rawUser = isParcelTaken
                 ? (tState[`${mType}ParcelUser` as keyof TakenState] || tState[`${mType}User` as keyof TakenState])
                 : (tState[`${mType}User` as keyof TakenState] || tState[`${mType}ParcelUser` as keyof TakenState]);
               const userStr = rawUser && typeof rawUser === "string" && !/^\d{10,}$/.test(rawUser.trim()) ? rawUser.trim() : undefined;
+
+              const isTakenRaw = isDineInTaken || isParcelTaken;
+              const userMatch = !selectedCheckoutUser || (userStr && userStr.toLowerCase().trim() === selectedCheckoutUser.toLowerCase().trim());
+              const isTaken = Boolean(isTakenRaw && userMatch);
 
               const actualServiceType = isParcelTaken
                 ? UI_TEXT.parcel
@@ -1134,12 +1137,15 @@ export function useReportData(
         const isParcelAllowed = !!(s as any)[`${selectedMealType}Parcel`];
         const isParcelTaken = !!tState[`${selectedMealType}Parcel` as keyof TakenState];
         const isDineInTaken = !!tState[selectedMealType];
-        const isTaken = isDineInTaken || isParcelTaken;
         const rawTime = tState[`${selectedMealType}Time` as keyof TakenState] || tState[`${selectedMealType}ParcelTime` as keyof TakenState];
         const rawUser = isParcelTaken
           ? (tState[`${selectedMealType}ParcelUser` as keyof TakenState] || tState[`${selectedMealType}User` as keyof TakenState])
           : (tState[`${selectedMealType}User` as keyof TakenState] || tState[`${selectedMealType}ParcelUser` as keyof TakenState]);
         const userStr = rawUser && typeof rawUser === "string" && !/^\d{10,}$/.test(rawUser.trim()) ? rawUser.trim() : undefined;
+
+        const isTakenRaw = isDineInTaken || isParcelTaken;
+        const userMatch = !selectedCheckoutUser || (userStr && userStr.toLowerCase().trim() === selectedCheckoutUser.toLowerCase().trim());
+        const isTaken = Boolean(isTakenRaw && userMatch);
 
         const actualServiceType = isParcelTaken
           ? UI_TEXT.parcel

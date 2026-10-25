@@ -401,6 +401,8 @@ export const UI_TEXT = {
   currentMealKidsFilterLabel: "Current Meal Kids",
   checkoutOperatorsLabel: "Checkouts by Operator",
   selectDayAndMealPrompt: "Select a Day and Meal Slot above to view individual pass checkouts.",
+  filterByOperator: "Filter by Operator",
+  allUsers: "All Users",
   currentMealGuestsFilterLabel: "Current Meal Guests",
 
   // Details Screen
