@@ -97,7 +97,7 @@ import {
 } from "../utils/paymentUtils";
 
 export function SubscriptionForm() {
-  const { userRole, handleLogout } = useAuth();
+  const { userRole, userName, userAccountName, handleLogout } = useAuth();
   const {
     dayConfig, paymentConfig, seasonEnabled, foodPriceEnabled, foodMenu, mobileEnabled,
     upsertSubscription, deleteSubscription, kidsEnabled, guestsEnabled, subscriptions
@@ -199,6 +199,12 @@ export function SubscriptionForm() {
           breakfastParcelTime: t?.breakfastParcelTime ? String(t.breakfastParcelTime) : undefined,
           lunchParcelTime: t?.lunchParcelTime ? String(t.lunchParcelTime) : undefined,
           dinnerParcelTime: t?.dinnerParcelTime ? String(t.dinnerParcelTime) : undefined,
+          breakfastUser: t?.breakfastUser ? String(t.breakfastUser) : undefined,
+          lunchUser: t?.lunchUser ? String(t.lunchUser) : undefined,
+          dinnerUser: t?.dinnerUser ? String(t.dinnerUser) : undefined,
+          breakfastParcelUser: t?.breakfastParcelUser ? String(t.breakfastParcelUser) : undefined,
+          lunchParcelUser: t?.lunchParcelUser ? String(t.lunchParcelUser) : undefined,
+          dinnerParcelUser: t?.dinnerParcelUser ? String(t.dinnerParcelUser) : undefined,
         };
       });
     });
@@ -774,17 +780,18 @@ export function SubscriptionForm() {
     : `${form.block}-${form.flat.trim().toUpperCase()}`;
 
   const saveTime = formatTakenTime(new Date());
+  const currentUser = userAccountName || userName || String(userRole || "Operator");
   const stampedTakenByPerson = { ...form.takenByPerson };
   Object.keys(stampedTakenByPerson).forEach((dayId) => {
     if (Array.isArray(stampedTakenByPerson[dayId])) {
       stampedTakenByPerson[dayId] = stampedTakenByPerson[dayId].map((t) => {
         const updated = { ...t };
-        if (updated.breakfast && !updated.breakfastTime) updated.breakfastTime = saveTime;
-        if (updated.lunch && !updated.lunchTime) updated.lunchTime = saveTime;
-        if (updated.dinner && !updated.dinnerTime) updated.dinnerTime = saveTime;
-        if (updated.breakfastParcel && !updated.breakfastParcelTime) updated.breakfastParcelTime = saveTime;
-        if (updated.lunchParcel && !updated.lunchParcelTime) updated.lunchParcelTime = saveTime;
-        if (updated.dinnerParcel && !updated.dinnerParcelTime) updated.dinnerParcelTime = saveTime;
+        if (updated.breakfast && !updated.breakfastTime) { updated.breakfastTime = saveTime; updated.breakfastUser = currentUser; }
+        if (updated.lunch && !updated.lunchTime) { updated.lunchTime = saveTime; updated.lunchUser = currentUser; }
+        if (updated.dinner && !updated.dinnerTime) { updated.dinnerTime = saveTime; updated.dinnerUser = currentUser; }
+        if (updated.breakfastParcel && !updated.breakfastParcelTime) { updated.breakfastParcelTime = saveTime; updated.breakfastParcelUser = currentUser; }
+        if (updated.lunchParcel && !updated.lunchParcelTime) { updated.lunchParcelTime = saveTime; updated.lunchParcelUser = currentUser; }
+        if (updated.dinnerParcel && !updated.dinnerParcelTime) { updated.dinnerParcelTime = saveTime; updated.dinnerParcelUser = currentUser; }
         return updated;
       });
     }
@@ -964,31 +971,49 @@ export function SubscriptionForm() {
     const parcelKey = `${mealKey}Parcel`;
     const timeKey = `${slot}Time`;
     const parcelTimeKey = `${parcelKey}Time`;
+    const userKey = `${slot}User`;
+    const parcelUserKey = `${parcelKey}User`;
     const currentTaken = getEnsureTaken(selectedDay);
     const nowTime = formatTakenTime(new Date());
+    const currentUser = userAccountName || userName || String(userRole || "Operator");
 
     set("takenByPerson", {
       ...form.takenByPerson,
       [selectedDay]: currentTaken.map((item, index) => {
         if (index === selectedPerson) {
           const existingTime = item[timeKey as keyof TakenState] as string | undefined;
+          const existingUser = item[userKey as keyof TakenState] as string | undefined;
           const existingParcelTime = item[parcelTimeKey as keyof TakenState] as string | undefined;
+          const existingParcelUser = item[parcelUserKey as keyof TakenState] as string | undefined;
           const optedParcel = !!form.mealSlots[selectedDay]?.[selectedPerson]?.[parcelKey as keyof MealSlot];
 
           const updated: any = {
             ...item,
             [slot]: taken,
             [timeKey]: taken ? (existingTime || nowTime) : undefined,
+            [userKey]: taken ? (existingUser || currentUser) : undefined,
           };
+          // Rule: If parcel taken is toggled ON, force meal taken to ON as well!
+          if (isParcel && taken) {
+            const mealTimeKey = `${mealKey}Time`;
+            const mealUserKey = `${mealKey}User`;
+            const existingMealTime = item[mealTimeKey as keyof TakenState] as string | undefined;
+            const existingMealUser = item[mealUserKey as keyof TakenState] as string | undefined;
+            updated[mealKey] = true;
+            updated[mealTimeKey] = existingMealTime || nowTime;
+            updated[mealUserKey] = existingMealUser || currentUser;
+          }
           // Rule: If food taken is toggled ON, and person opted for parcel for this meal, auto select parcel taken!
           if (!isParcel && taken && optedParcel) {
             updated[parcelKey] = true;
             updated[parcelTimeKey] = existingParcelTime || nowTime;
+            updated[parcelUserKey] = existingParcelUser || currentUser;
           }
           // Rule: If food taken is toggled OFF, also force parcel taken to OFF
           if (!isParcel && !taken) {
             updated[parcelKey] = false;
             updated[parcelTimeKey] = undefined;
+            updated[parcelUserKey] = undefined;
           }
           return updated;
         }

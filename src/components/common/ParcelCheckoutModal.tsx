@@ -3,6 +3,7 @@ import { View, Text, Pressable, Platform, Modal, ScrollView, useWindowDimensions
 import { Ionicons } from "@expo/vector-icons";
 import { useAppTheme } from "../../theme";
 import { UI_TEXT } from "../../strings";
+import { useAuth } from "../../context/AuthContext";
 import { useDatabase } from "../../context/DatabaseContext";
 import { useUI } from "../../context/UIContext";
 import { useAppNavigation } from "../../context/NavigationContext";
@@ -90,14 +91,18 @@ export function ParcelCheckoutModal({
   onSuccess
 }: ParcelCheckoutModalProps) {
   const { theme } = useAppTheme();
+  const { userName, userAccountName, userRole } = useAuth();
+  const currentUser = userAccountName || userName || String(userRole || "Operator");
   const { dayConfig, kidsEnabled, guestsEnabled, addActivityLog, upsertSubscription, subscriptions, quickCheckoutAutoCloseMs, soundEnabled } = useDatabase();
   const { showAlert } = useUI();
   const { navigate } = useAppNavigation();
   const { width } = useWindowDimensions();
   const { registerModalOpen, unregisterModalOpen } = useChat();
+  const hasCheckedOutRef = useRef(false);
 
   useEffect(() => {
     if (visible) {
+      hasCheckedOutRef.current = false;
       registerModalOpen("parcel_checkout");
       return () => unregisterModalOpen("parcel_checkout");
     }
@@ -262,15 +267,21 @@ export function ParcelCheckoutModal({
       const initial: Record<string, number> = {};
       Object.keys(parcelCheckoutDetails.categories).forEach((catKey) => {
         const cat = parcelCheckoutDetails.categories[catKey];
-        initial[catKey] = cat.remParcelCount;
+        initial[catKey] = 0;
       });
       setParcelInputs(initial);
       setSuccessData(null);
     }
   }, [visible, activeSubscription, parcelCheckoutDetails]);
 
+  const totalSelectedParcels = useMemo(() => {
+    return Object.values(parcelInputs).reduce((sum, val) => sum + (val || 0), 0);
+  }, [parcelInputs]);
+
+  const isCheckoutEnabled = totalSelectedParcels > 0;
+
   useEffect(() => {
-    if (visible && activeSubscription && currentMealInfo) {
+    if (visible && activeSubscription && currentMealInfo && !successData && !hasCheckedOutRef.current) {
       if (!activeSubscription) {
         showAlert(UI_TEXT.error, UI_TEXT.quickCheckoutNoSubscription);
         onClose();
@@ -287,7 +298,7 @@ export function ParcelCheckoutModal({
         return;
       }
     }
-  }, [visible, activeSubscription, currentMealInfo, parcelCheckoutDetails, showAlert, onClose]);
+  }, [visible, activeSubscription, currentMealInfo, parcelCheckoutDetails, successData, showAlert, onClose]);
 
   const handleParcelCountChange = (catKey: string, delta: number) => {
     if (!parcelCheckoutDetails) return;
@@ -301,9 +312,14 @@ export function ParcelCheckoutModal({
     if (!activeSubscription || !currentMealInfo || !parcelCheckoutDetails) return;
 
     const { dayId, mealType, categories } = parcelCheckoutDetails;
+    const mealKey = mealType;
     const parcelKey = `${mealType}Parcel`;
+    const timeKey = `${mealType}Time`;
     const parcelTimeKey = `${mealType}ParcelTime`;
+    const userKey = `${mealType}User`;
+    const parcelUserKey = `${mealType}ParcelUser`;
     const now = Date.now();
+    const formattedTime = formatTakenTime(new Date(now));
 
     const updatedMealSlots = { ...(activeSubscription.mealSlots || {}) };
     const updatedTakenByPerson = { ...(activeSubscription.takenByPerson || {}) };
@@ -326,8 +342,12 @@ export function ParcelCheckoutModal({
         if (!isParcelCollected && !isDineInTaken) {
           dayTaken[idx] = {
             ...currentTaken,
+            [mealKey]: true,
+            [timeKey]: formattedTime,
+            [userKey]: currentUser,
             [parcelKey]: true,
-            [parcelTimeKey]: now
+            [parcelTimeKey]: formattedTime,
+            [parcelUserKey]: currentUser
           };
           checkedOutForCategory += 1;
           totalParcelsCheckedOut += 1;
@@ -357,44 +377,46 @@ export function ParcelCheckoutModal({
       updatedAt: now
     };
 
+    hasCheckedOutRef.current = true;
+
+    const passLabel = `${activeSubscription.block} - ${activeSubscription.flat}`;
+    const countsStr = categoryDetails.map(c => `${c.parcel} ${c.categoryLabel}`).join(", ");
+    addActivityLog({
+      module: ActivityModule.SCANNER,
+      action: ActivityAction.UPDATE,
+      targetId: activeSubscription.id,
+      description: UI_TEXT.logParcelCheckout
+        .replace("{flatId}", passLabel)
+        .replace("{source}", String(source))
+        .replace("{meal}", `${currentMealInfo.dayLabel} ${currentMealInfo.mealLabel}`)
+        .replace("{counts}", countsStr)
+        .replace("{total}", String(totalParcelsCheckedOut))
+    });
+
+    const sData: SuccessData = {
+      passId: passLabel,
+      block: activeSubscription.block,
+      flat: activeSubscription.flat,
+      dayLabel: currentMealInfo.dayLabel,
+      mealLabel: currentMealInfo.mealLabel,
+      categoryDetails,
+      totalParcels: totalParcelsCheckedOut,
+      timestamp: formatTakenTime(new Date(now)),
+      countsText: countsStr,
+      totalsText: `${totalParcelsCheckedOut} ${totalParcelsCheckedOut === 1 ? UI_TEXT.parcelSingular : UI_TEXT.parcels}`
+    };
+
+    setSuccessData(sData);
+
     try {
-      await upsertSubscription(updatedSub);
-
-      const passLabel = `${activeSubscription.block} - ${activeSubscription.flat}`;
-      const countsStr = categoryDetails.map(c => `${c.parcel} ${c.categoryLabel}`).join(", ");
-      addActivityLog({
-        module: ActivityModule.SCANNER,
-        action: ActivityAction.UPDATE,
-        targetId: activeSubscription.id,
-        description: UI_TEXT.logParcelCheckout
-          .replace("{flatId}", passLabel)
-          .replace("{source}", String(source))
-          .replace("{meal}", `${currentMealInfo.dayLabel} ${currentMealInfo.mealLabel}`)
-          .replace("{counts}", countsStr)
-          .replace("{total}", String(totalParcelsCheckedOut))
-      });
-
-      const sData: SuccessData = {
-        passId: passLabel,
-        block: activeSubscription.block,
-        flat: activeSubscription.flat,
-        dayLabel: currentMealInfo.dayLabel,
-        mealLabel: currentMealInfo.mealLabel,
-        categoryDetails,
-        totalParcels: totalParcelsCheckedOut,
-        timestamp: formatTakenTime(new Date(now)),
-        countsText: countsStr,
-        totalsText: `${totalParcelsCheckedOut} ${totalParcelsCheckedOut === 1 ? UI_TEXT.parcelSingular : UI_TEXT.parcels}`
-      };
-
-      setSuccessData(sData);
-
+      void upsertSubscription(updatedSub);
       const autoClose = quickCheckoutAutoCloseMs ?? 3000;
+      if (successTimerRef.current) clearTimeout(successTimerRef.current);
       successTimerRef.current = setTimeout(() => {
+        setSuccessData(null);
         onSuccess();
         onClose();
       }, autoClose);
-
     } catch (err) {
       console.error("Parcel checkout error:", err);
       showAlert(UI_TEXT.error, UI_TEXT.syncError);
@@ -545,12 +567,15 @@ export function ParcelCheckoutModal({
 
               <Pressable
                 onPress={handleCompleteParcelCheckout}
+                disabled={!isCheckoutEnabled}
                 accessible={true}
                 accessibilityRole="button"
                 accessibilityLabel={UI_TEXT.parcelCheckout}
+                accessibilityState={{ disabled: !isCheckoutEnabled }}
                 style={({ pressed }) => [
                   { backgroundColor: theme.colors.primary, borderRadius: 14, height: 50, alignItems: 'center', justifyContent: 'center', marginTop: 12 },
-                  pressed && { opacity: 0.8 }
+                  !isCheckoutEnabled && { opacity: 0.4, backgroundColor: theme.colors.border },
+                  pressed && isCheckoutEnabled && { opacity: 0.8 }
                 ]}
               >
                 <Text style={{ color: theme.colors.white, fontWeight: '900', fontSize: 16 }}>

@@ -3,6 +3,7 @@ import { View, Text, Pressable, StyleSheet, Platform, Modal, ScrollView, useWind
 import { Ionicons } from "@expo/vector-icons";
 import { useAppTheme } from "../../theme";
 import { UI_TEXT } from "../../strings";
+import { useAuth } from "../../context/AuthContext";
 import { useDatabase } from "../../context/DatabaseContext";
 import { useUI } from "../../context/UIContext";
 import { useAppNavigation } from "../../context/NavigationContext";
@@ -126,6 +127,8 @@ export function QuickCheckoutModal({
   onSuccess
 }: QuickCheckoutModalProps) {
   const { theme } = useAppTheme();
+  const { userName, userAccountName, userRole } = useAuth();
+  const currentUser = userAccountName || userName || String(userRole || "Operator");
   const { dayConfig, kidsEnabled, guestsEnabled, addActivityLog, upsertSubscription, subscriptions, quickCheckoutAutoCloseMs, soundEnabled } = useDatabase();
   const { showAlert } = useUI();
   const { navigate } = useAppNavigation();
@@ -633,6 +636,8 @@ export function QuickCheckoutModal({
     const nowTime = formatTakenTime(new Date());
     const timeKey = `${mealKey}Time`;
     const parcelTimeKey = `${parcelKey}Time`;
+    const userKey = `${mealKey}User`;
+    const parcelUserKey = `${parcelKey}User`;
 
     const categoryServedDetails: Array<{
       categoryLabel: string;
@@ -724,8 +729,10 @@ export function QuickCheckoutModal({
               ...takenList[i],
               [mealKey]: true,
               [timeKey]: nowTime,
+              [userKey]: currentUser,
               [parcelKey]: true,
               [parcelTimeKey]: nowTime,
+              [parcelUserKey]: currentUser,
             };
             remParcelToAllocate--;
           }
@@ -745,6 +752,7 @@ export function QuickCheckoutModal({
               ...takenList[i],
               [mealKey]: true,
               [timeKey]: nowTime,
+              [userKey]: currentUser,
               [parcelKey]: false,
             };
             remDineInToAllocate--;
@@ -764,6 +772,7 @@ export function QuickCheckoutModal({
                 ...takenList[i],
                 [mealKey]: true,
                 [timeKey]: nowTime,
+                [userKey]: currentUser,
                 [parcelKey]: false,
               };
               remDineInToAllocate--;

@@ -955,7 +955,7 @@ export function useReportData(
 
       let subscribedCount = 0;
       let takenCount = 0;
-      const memberCheckouts: { label: string; isTaken: boolean; actualServiceType?: string; timeDisplay: string; numericTime?: number | null }[] = [];
+      const memberCheckouts: { label: string; isTaken: boolean; actualServiceType?: string; timeDisplay: string; numericTime?: number | null; userName?: string }[] = [];
 
       for (let idx = 0; idx < totalPeople; idx++) {
         const s = slots[idx];
@@ -971,6 +971,10 @@ export function useReportData(
         const isDineInTaken = !!tState[selectedMealType];
         const isTaken = isDineInTaken || isParcelTaken;
         const rawTime = tState[`${selectedMealType}Time` as keyof TakenState] || tState[`${selectedMealType}ParcelTime` as keyof TakenState];
+        const rawUser = isParcelTaken
+          ? (tState[`${selectedMealType}ParcelUser` as keyof TakenState] || tState[`${selectedMealType}User` as keyof TakenState])
+          : (tState[`${selectedMealType}User` as keyof TakenState] || tState[`${selectedMealType}ParcelUser` as keyof TakenState]);
+        const userStr = rawUser && typeof rawUser === "string" && !/^\d{10,}$/.test(rawUser.trim()) ? rawUser.trim() : undefined;
 
         const actualServiceType = isParcelTaken
           ? UI_TEXT.parcel
@@ -1044,6 +1048,7 @@ export function useReportData(
           actualServiceType,
           timeDisplay,
           numericTime,
+          userName: userStr,
         });
       }
 

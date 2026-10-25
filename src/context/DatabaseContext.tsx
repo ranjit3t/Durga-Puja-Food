@@ -840,17 +840,25 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
        const mealKey = isParcel ? slot.replace("Parcel", "") : slot;
        const parcelKey = `${mealKey}Parcel`;
        const timeKey = `${slot}Time`;
+       const userKey = `${slot}User`;
        const parcelTimeKey = `${parcelKey}Time`;
+       const parcelUserKey = `${parcelKey}User`;
        const nowTime = formatTakenTime(new Date());
+       const currentUser = userAccountName || userName || String(userRole || "Operator");
 
        const targetSub = subscriptions.find(s => s.id === flatId);
        const existingTime = targetSub?.takenByPerson?.[dayId]?.[personIndex]?.[timeKey as keyof TakenState] as string | undefined;
+       const existingUser = targetSub?.takenByPerson?.[dayId]?.[personIndex]?.[userKey as keyof TakenState] as string | undefined;
        const stampTime = taken ? (existingTime || nowTime) : undefined;
+       const stampUser = taken ? (existingUser || currentUser) : undefined;
 
-       await repository.updateSubscriptionStatus(flatId, dayId, personIndex, slot, taken, stampTime);
+       await repository.updateSubscriptionStatus(flatId, dayId, personIndex, slot, taken, stampTime, stampUser);
 
        if (!isParcel && !taken) {
          await repository.updateSubscriptionStatus(flatId, dayId, personIndex, parcelKey, false);
+       }
+       if (isParcel && taken) {
+         await repository.updateSubscriptionStatus(flatId, dayId, personIndex, mealKey, true, stampTime, stampUser);
        }
 
        setSubscriptions(prev => prev.map(s => {
@@ -862,11 +870,18 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
                 ...dayList[personIndex],
                 [slot]: taken,
                 [timeKey]: stampTime,
+                [userKey]: stampUser,
               };
 
               if (!isParcel && !taken) {
                 personTaken[parcelKey] = false;
                 personTaken[parcelTimeKey] = undefined;
+                personTaken[parcelUserKey] = undefined;
+              }
+              if (isParcel && taken) {
+                personTaken[mealKey] = true;
+                personTaken[`${mealKey}Time`] = stampTime;
+                personTaken[`${mealKey}User`] = stampUser;
               }
 
               dayList[personIndex] = personTaken;

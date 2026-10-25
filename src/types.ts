@@ -57,6 +57,7 @@ export enum FilterMode {
   GUESTS = "guests",
   PARCEL = "parcel",
   CURRENT_MEAL_PARCEL = "currentMealParcel",
+  CURRENT_MEAL_PARCEL_PENDING = "currentMealParcelPending",
   VEG_ONLY = "vegOnly",
   MISSED = "missed",
   PARTIAL_CHECKOUT = "partialCheckout",

@@ -324,9 +324,16 @@ export function CheckoutReport({
                           </View>
                         )}
                       </View>
-                      <Text style={{ fontSize: 12, fontWeight: "700", color: mem.isTaken ? colorScheme.accent : theme.colors.textMuted }}>
-                        {mem.timeDisplay ? formatTime(mem.timeDisplay) : formatTime(mem.numericTime)}
-                      </Text>
+                      <View style={{ alignItems: "flex-end" }}>
+                        <Text style={{ fontSize: 12, fontWeight: "700", color: mem.isTaken ? colorScheme.accent : theme.colors.textMuted }}>
+                          {mem.timeDisplay ? formatTime(mem.timeDisplay) : formatTime(mem.numericTime)}
+                        </Text>
+                        {mem.isTaken && mem.userName ? (
+                          <Text style={{ fontSize: 10, fontWeight: "600", color: theme.colors.textSecondary, marginTop: 1 }}>
+                            {UI_TEXT.byPrefix} {mem.userName}
+                          </Text>
+                        ) : null}
+                      </View>
                     </View>
                   ))}
                 </View>

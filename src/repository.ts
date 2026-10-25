@@ -67,7 +67,7 @@ export interface SubscriptionRepository {
   updateFreeMealCounts(dayId: string, mealKey: MealType, data: Record<string, any>): Promise<void>;
   getConfig(): Promise<AppConfig>;
   updateConfig(config: AppConfig): Promise<void>;
-  updateSubscriptionStatus(flatId: string, dayId: string, personIndex: number, slot: string, taken: boolean, timeStr?: string): Promise<void>;
+  updateSubscriptionStatus(flatId: string, dayId: string, personIndex: number, slot: string, taken: boolean, timeStr?: string, userStr?: string): Promise<void>;
   checkInPassAtomic(flatId: string, updatesMap: Record<string, boolean>, metricsIncrements?: Record<string, number>): Promise<void>;
   getAuthConfig(): Promise<any>;
   addActivityLog(log: Omit<ActivityLog, "id">): Promise<void>;
@@ -320,6 +320,12 @@ export function normalizeRecord(
             breakfastParcelTime: t?.breakfastParcelTime ? String(t.breakfastParcelTime) : undefined,
             lunchParcelTime: t?.lunchParcelTime ? String(t.lunchParcelTime) : undefined,
             dinnerParcelTime: t?.dinnerParcelTime ? String(t.dinnerParcelTime) : undefined,
+            breakfastUser: t?.breakfastUser ? String(t.breakfastUser) : undefined,
+            lunchUser: t?.lunchUser ? String(t.lunchUser) : undefined,
+            dinnerUser: t?.dinnerUser ? String(t.dinnerUser) : undefined,
+            breakfastParcelUser: t?.breakfastParcelUser ? String(t.breakfastParcelUser) : undefined,
+            lunchParcelUser: t?.lunchParcelUser ? String(t.lunchParcelUser) : undefined,
+            dinnerParcelUser: t?.dinnerParcelUser ? String(t.dinnerParcelUser) : undefined,
           }))
         : Array.from({ length: totalPeople }, () => {
             const isTaken = Boolean(legacyTaken[day]);
@@ -627,12 +633,13 @@ export function createFirebaseRepository(): SubscriptionRepository {
       if (!services) return;
       await set(ref(services.db, configPath), cleanUndefined(config));
     },
-    async updateSubscriptionStatus(flatId, dayId, personIndex, slot, taken, timeStr) {
+    async updateSubscriptionStatus(flatId, dayId, personIndex, slot, taken, timeStr, userStr) {
       const services = await ensureFirebaseAuth();
       if (!services) return;
       const updates: Record<string, any> = {};
       updates[`${subscriptionsPath}/${flatId}/takenByPerson/${dayId}/${personIndex}/${slot}`] = taken;
       updates[`${subscriptionsPath}/${flatId}/takenByPerson/${dayId}/${personIndex}/${slot}Time`] = taken ? (timeStr || "") : null;
+      updates[`${subscriptionsPath}/${flatId}/takenByPerson/${dayId}/${personIndex}/${slot}User`] = taken ? (userStr || "") : null;
       await update(ref(services.db), updates);
     },
     async checkInPassAtomic(flatId, updatesMap, metricsIncrements) {

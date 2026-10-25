@@ -779,7 +779,7 @@ export function AggregateReport({
               const totalPeople = aCount + kCount + gCount;
               const takenList = item.takenByPerson?.[selectedDay] || [];
               const slotsList = item.mealSlots?.[selectedDay] || [];
-              const list: { label: string; isTaken: boolean; actualServiceType?: string; timeDisplay: string }[] = [];
+              const list: { label: string; isTaken: boolean; actualServiceType?: string; timeDisplay: string; userName?: string }[] = [];
 
               for (let i = 0; i < totalPeople; i++) {
                 const sSlot = (slotsList[i] || {}) as any;
@@ -808,6 +808,10 @@ export function AggregateReport({
                 const isDineInTaken = !!tState[selectedMeal as MealType];
                 const isTaken = isDineInTaken || isParcelTaken;
                 const rawTime = tState[`${selectedMeal}Time` as keyof TakenState] || tState[`${selectedMeal}ParcelTime` as keyof TakenState];
+                const rawUser = isParcelTaken
+                  ? (tState[`${selectedMeal}ParcelUser` as keyof TakenState] || tState[`${selectedMeal}User` as keyof TakenState])
+                  : (tState[`${selectedMeal}User` as keyof TakenState] || tState[`${selectedMeal}ParcelUser` as keyof TakenState]);
+                const userStr = rawUser && typeof rawUser === "string" && !/^\d{10,}$/.test(rawUser.trim()) ? rawUser.trim() : undefined;
 
                 const actualServiceType = isParcelTaken
                   ? UI_TEXT.parcel
@@ -824,7 +828,7 @@ export function AggregateReport({
                   }
                 }
 
-                list.push({ label, isTaken, actualServiceType, timeDisplay });
+                list.push({ label, isTaken, actualServiceType, timeDisplay, userName: userStr });
               }
               return list;
             })() : [];
@@ -918,9 +922,16 @@ export function AggregateReport({
                             </View>
                           )}
                         </View>
-                        <Text style={{ fontSize: 12, fontWeight: "700", color: mem.isTaken ? colorScheme.accent : theme.colors.textMuted }}>
-                          {mem.timeDisplay}
-                        </Text>
+                        <View style={{ alignItems: "flex-end" }}>
+                          <Text style={{ fontSize: 12, fontWeight: "700", color: mem.isTaken ? colorScheme.accent : theme.colors.textMuted }}>
+                            {mem.timeDisplay}
+                          </Text>
+                          {mem.isTaken && mem.userName ? (
+                            <Text style={{ fontSize: 10, fontWeight: "600", color: theme.colors.textSecondary, marginTop: 1 }}>
+                              {UI_TEXT.byPrefix} {mem.userName}
+                            </Text>
+                          ) : null}
+                        </View>
                       </View>
                     ))}
                   </View>

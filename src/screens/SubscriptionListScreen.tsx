@@ -148,7 +148,7 @@ const SubscriptionCard = React.memo(({
 
     const slots = item.mealSlots?.[dayId] || [];
     const takenList = item.takenByPerson?.[dayId] || [];
-    const list: { label: string; isTaken: boolean; actualServiceType?: string; timeDisplay: string }[] = [];
+    const list: { label: string; isTaken: boolean; actualServiceType?: string; timeDisplay: string; userName?: string }[] = [];
 
     for (let idx = 0; idx < totalPeople; idx++) {
       const s = slots[idx];
@@ -172,6 +172,10 @@ const SubscriptionCard = React.memo(({
       const isDineInTaken = !!tState[mType];
       const isTaken = isDineInTaken || isParcelTaken;
       const rawTime = tState[`${mType}Time` as keyof TakenState] || tState[`${mType}ParcelTime` as keyof TakenState];
+      const rawUser = isParcelTaken
+        ? (tState[`${mType}ParcelUser` as keyof TakenState] || tState[`${mType}User` as keyof TakenState])
+        : (tState[`${mType}User` as keyof TakenState] || tState[`${mType}ParcelUser` as keyof TakenState]);
+      const userStr = rawUser && typeof rawUser === "string" && !/^\d{10,}$/.test(rawUser.trim()) ? rawUser.trim() : undefined;
 
       const actualServiceType = isParcelTaken
         ? UI_TEXT.parcel
@@ -193,6 +197,7 @@ const SubscriptionCard = React.memo(({
         isTaken,
         actualServiceType,
         timeDisplay,
+        userName: userStr,
       });
     }
 
@@ -549,9 +554,16 @@ const SubscriptionCard = React.memo(({
                       </View>
                     )}
                   </View>
-                  <Text style={{ fontSize: s(12), fontWeight: "700", color: mem.isTaken ? colorScheme.accent : theme.colors.textMuted }}>
-                    {mem.timeDisplay}
-                  </Text>
+                  <View style={{ alignItems: "flex-end" }}>
+                    <Text style={{ fontSize: s(12), fontWeight: "700", color: mem.isTaken ? colorScheme.accent : theme.colors.textMuted }}>
+                      {mem.timeDisplay}
+                    </Text>
+                    {mem.isTaken && mem.userName ? (
+                      <Text style={{ fontSize: s(9), fontWeight: "600", color: theme.colors.textSecondary, marginTop: 1 }}>
+                        {UI_TEXT.byPrefix} {mem.userName}
+                      </Text>
+                    ) : null}
+                  </View>
                 </View>
               ))}
             </View>
@@ -1101,6 +1113,66 @@ export function SubscriptionListScreen() {
 
   const hasAnyCurrentMealParcel = currentMealParcelData.count > 0;
 
+  const currentMealParcelPendingData = useMemo(() => {
+    if (!currentMealInfo || !isCurrentMealParcelEnabled) {
+      return { count: 0, list: [], map: {} as Record<string, number> };
+    }
+
+    const dayId = currentMealInfo.dayId;
+    const mType = currentMealInfo.type;
+
+    const map: Record<string, number> = {};
+    const list = subscriptions.map(sub => {
+      let pendingParcelCount = 0;
+      const adultCount = sub.peopleCount || 0;
+      const kCount = kidsEnabled ? (sub.kidsCount || 0) : 0;
+      const gCount = guestsEnabled ? (sub.guestsCount || 0) : 0;
+      const totalHeadcount = adultCount + kCount + gCount;
+
+      const slots = sub.mealSlots?.[dayId] || [];
+      const taken = sub.takenByPerson?.[dayId] || [];
+
+      for (let idx = 0; idx < totalHeadcount; idx++) {
+        const sSlot = slots[idx];
+        if (!sSlot) continue;
+
+        const choice = getValidSlotChoice(dayId, mType, sSlot[mType], dayConfig);
+        if (choice === DietaryOption.NONE) continue;
+
+        const isKid = kidsEnabled && idx >= adultCount && idx < adultCount + kCount;
+        const isGuest = guestsEnabled && idx >= adultCount + kCount;
+
+        const isParcelOpted = toBool((sSlot as any)?.[`${mType}Parcel`]);
+        const isParcelAllowed = isParcelOpted && (
+          isGuest ? isGuestsParcelEnabled(dayId, mType, dayConfig, guestsEnabled) :
+          isKid ? isKidsParcelEnabled(dayId, mType, dayConfig, kidsEnabled) :
+          isParcelEnabled(dayId, mType, dayConfig)
+        );
+
+        if (isParcelAllowed) {
+          const tState = (taken[idx] || {}) as TakenState;
+          const isParcelCollected = !!tState[`${mType}Parcel` as keyof TakenState];
+          const isDineInTaken = !!tState[mType];
+          const isTaken = isParcelCollected || isDineInTaken;
+
+          if (!isTaken) {
+            pendingParcelCount++;
+          }
+        }
+      }
+
+      if (pendingParcelCount > 0) {
+        map[sub.id] = pendingParcelCount;
+        return { id: sub.id, count: pendingParcelCount };
+      }
+      return null;
+    }).filter(Boolean) as { id: string; count: number }[];
+
+    return { count: list.length, list, map };
+  }, [subscriptions, currentMealInfo, isCurrentMealParcelEnabled, dayConfig, kidsEnabled, guestsEnabled]);
+
+  const hasAnyCurrentMealParcelPending = currentMealParcelPendingData.count > 0;
+
   const currentMealKidsData = useMemo(() => {
     if (!currentMealInfo || !kidsEnabled) {
       return { count: 0, list: [], map: {} as Record<string, number> };
@@ -1214,6 +1286,9 @@ export function SubscriptionListScreen() {
       if (next.includes(FilterMode.CURRENT_MEAL_PARCEL) && (!isCurrentMealParcelEnabled || !hasAnyCurrentMealParcel)) {
         next = next.filter(m => m !== FilterMode.CURRENT_MEAL_PARCEL);
       }
+      if (next.includes(FilterMode.CURRENT_MEAL_PARCEL_PENDING) && (!isCurrentMealParcelEnabled || !hasAnyCurrentMealParcelPending)) {
+        next = next.filter(m => m !== FilterMode.CURRENT_MEAL_PARCEL_PENDING);
+      }
       if (next.includes(FilterMode.VEG_ONLY) && !hasAnyVegOnly) {
         next = next.filter(m => m !== FilterMode.VEG_ONLY);
       }
@@ -1232,7 +1307,7 @@ export function SubscriptionListScreen() {
       }
       return next.length === prev.length ? prev : next;
     });
-  }, [currentMealInfo, hasAnyMissed, hasAnyPartialCheckout, hasAnyCompletedCheckout, hasAnySubscribed, kidsEnabled, hasAnyKids, hasAnyCurrentMealKids, guestsEnabled, hasAnyCurrentMealGuests, hasAnyParcel, isCurrentMealParcelEnabled, hasAnyCurrentMealParcel, hasAnyVegOnly, hasAnySpecialOnly, hasAnyPackage, hasAnyDiscrepancy]);
+  }, [currentMealInfo, hasAnyMissed, hasAnyPartialCheckout, hasAnyCompletedCheckout, hasAnySubscribed, kidsEnabled, hasAnyKids, hasAnyCurrentMealKids, guestsEnabled, hasAnyCurrentMealGuests, hasAnyParcel, isCurrentMealParcelEnabled, hasAnyCurrentMealParcel, hasAnyCurrentMealParcelPending, hasAnyVegOnly, hasAnySpecialOnly, hasAnyPackage, hasAnyDiscrepancy]);
 
   const visibleSubscriptions = useMemo(() => {
     let filtered = subscriptions;
@@ -1316,6 +1391,11 @@ export function SubscriptionListScreen() {
       if (activeFilters.includes(FilterMode.CURRENT_MEAL_PARCEL) && isCurrentMealParcelEnabled) {
         const currentParcelIds = currentMealParcelData.list.map(m => m.id);
         filtered = filtered.filter(sub => currentParcelIds.includes(sub.id));
+      }
+
+      if (activeFilters.includes(FilterMode.CURRENT_MEAL_PARCEL_PENDING) && isCurrentMealParcelEnabled) {
+        const currentParcelPendingIds = currentMealParcelPendingData.list.map(m => m.id);
+        filtered = filtered.filter(sub => currentParcelPendingIds.includes(sub.id));
       }
 
       if (activeFilters.includes(FilterMode.VEG_ONLY)) {
@@ -1503,7 +1583,7 @@ export function SubscriptionListScreen() {
 
       return { ...item, _hasCurrentMeal: hasCurrentMeal, _hasParcel: hasParcel, _isVegOnly: isVegOnly, _hasSpecialMeal: hasSpecialMeal, _hasPackage: hasPackage, _missedCount: unservedCount, _hasDiscrepancy: hasDiscrepancy, _parcelCheckoutInfo: parcelCheckoutInfo, _partialCheckoutInfo: partialInfo, _completedCheckoutInfo: completedInfo, _missedCheckoutInfo: missedInfo };
     });
-  }, [subscriptions, subscriptionSearch, activeFilters, selectedBlock, currentMealInfo, kidsEnabled, guestsEnabled, missedData, unservedCheckoutData, partialCheckoutData, completedCheckoutData, isAscending, sortBy, dayConfig, hasPackageApplied, foodMenu, foodPackages]);
+  }, [subscriptions, subscriptionSearch, activeFilters, selectedBlock, currentMealInfo, kidsEnabled, guestsEnabled, missedData, unservedCheckoutData, partialCheckoutData, completedCheckoutData, currentMealParcelPendingData, isAscending, sortBy, dayConfig, hasPackageApplied, foodMenu, foodPackages]);
 
   const handleExportExcel = useCallback(async () => {
     if (visibleSubscriptions.length === 0) return;
@@ -1711,13 +1791,16 @@ export function SubscriptionListScreen() {
                 const isParcelTaken = takenItem ? !!takenItem[takenParcelKey] : false;
                 const mealTime = takenItem ? (takenItem[`${mType}Time` as keyof TakenState] as string | undefined) : undefined;
                 const parcelTime = takenItem ? (takenItem[`${mType}ParcelTime` as keyof TakenState] as string | undefined) : undefined;
+                const mealUser = takenItem ? (takenItem[`${mType}User` as keyof TakenState] as string | undefined) : undefined;
+                const parcelUser = takenItem ? (takenItem[`${mType}ParcelUser` as keyof TakenState] as string | undefined) : undefined;
 
                 let takenStatusStr = `${memberLabel}: `;
                 if (isParcelTaken) {
                   const displayTime = parcelTime || mealTime;
-                  takenStatusStr += `${UI_TEXT.parcelTakenLabel}${displayTime ? ` (${displayTime})` : ""}`;
+                  const displayUser = parcelUser || mealUser;
+                  takenStatusStr += `${UI_TEXT.parcelTakenLabel}${displayTime ? ` (${displayTime}${displayUser ? ` by ${displayUser}` : ""})` : ""}`;
                 } else if (isMealTaken) {
-                  takenStatusStr += `${UI_TEXT.foodTakenLabel}${mealTime ? ` (${mealTime})` : ""}`;
+                  takenStatusStr += `${UI_TEXT.foodTakenLabel}${mealTime ? ` (${mealTime}${mealUser ? ` by ${mealUser}` : ""})` : ""}`;
                 } else {
                   takenStatusStr += `${UI_TEXT.foodNotTakenLabel}`;
                 }
@@ -2293,6 +2376,44 @@ export function SubscriptionListScreen() {
                   color: activeFilters.includes(FilterMode.CURRENT_MEAL_PARCEL) ? theme.colors.primary : theme.colors.textSecondary
                 }}>
                   {UI_TEXT.currentMealParcelFilterLabel} ({currentMealParcelData.count})
+                </Text>
+              </Pressable>
+            )}
+
+            {isCurrentMealParcelEnabled && hasAnyCurrentMealParcelPending && (
+              <Pressable
+                onPress={() => toggleFilter(FilterMode.CURRENT_MEAL_PARCEL_PENDING)}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityState={{ selected: activeFilters.includes(FilterMode.CURRENT_MEAL_PARCEL_PENDING) }}
+                accessibilityLabel={`${UI_TEXT.currentMealParcelPendingFilterLabel} (${currentMealParcelPendingData.count})`}
+                style={({ pressed }) => [
+                  {
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: s(4),
+                    paddingHorizontal: s(8),
+                    paddingVertical: s(4),
+                    borderRadius: s(12),
+                    borderWidth: 1,
+                    borderColor: activeFilters.includes(FilterMode.CURRENT_MEAL_PARCEL_PENDING) ? (theme.colors.warning || theme.colors.secondary) : theme.colors.border,
+                    backgroundColor: activeFilters.includes(FilterMode.CURRENT_MEAL_PARCEL_PENDING) ? (theme.colors.warningLight || theme.colors.secondary + "22") : theme.colors.surface,
+                    marginBottom: s(4)
+                  },
+                  pressed && { opacity: 0.7 }
+                ]}
+              >
+                <Ionicons
+                  name={activeFilters.includes(FilterMode.CURRENT_MEAL_PARCEL_PENDING) ? "cube" : "cube-outline"}
+                  size={s(13)}
+                  color={activeFilters.includes(FilterMode.CURRENT_MEAL_PARCEL_PENDING) ? (theme.colors.warning || theme.colors.secondary) : theme.colors.textSecondary}
+                />
+                <Text style={{
+                  fontSize: s(11),
+                  fontWeight: "700",
+                  color: activeFilters.includes(FilterMode.CURRENT_MEAL_PARCEL_PENDING) ? (theme.colors.warning || theme.colors.secondary) : theme.colors.textSecondary
+                }}>
+                  {UI_TEXT.currentMealParcelPendingFilterLabel} ({currentMealParcelPendingData.count})
                 </Text>
               </Pressable>
             )}
