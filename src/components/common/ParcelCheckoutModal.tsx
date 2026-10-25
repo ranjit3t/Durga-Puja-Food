@@ -182,8 +182,8 @@ export function ParcelCheckoutModal({
     const taken = activeSubscription.takenByPerson?.[dayId] || [];
 
     const parcelSupported = isParcelEnabled(dayId, mealType, dayConfig);
-    const kidParcelOpt = isKidsParcelEnabled(dayId, mealType, dayConfig);
-    const guestParcelOpt = isGuestsParcelEnabled(dayId, mealType, dayConfig);
+    const kidParcelOpt = isKidsParcelEnabled(dayId, mealType, dayConfig, kidsEnabled);
+    const guestParcelOpt = isGuestsParcelEnabled(dayId, mealType, dayConfig, guestsEnabled);
 
     const dayConf = (dayConfig || []).find((d) => d.id === dayId);
     const mConf = dayConf ? dayConf[mealType] : undefined;

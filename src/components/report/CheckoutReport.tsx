@@ -61,6 +61,24 @@ export function CheckoutReport({
     return count > 1;
   }).length;
 
+  const userCheckoutCounts = React.useMemo(() => {
+    if (summary.userCheckoutCounts && Object.keys(summary.userCheckoutCounts).length > 0) {
+      return summary.userCheckoutCounts;
+    }
+    const counts: Record<string, number> = {};
+    passes.forEach((p: any) => {
+      (p.memberCheckouts || []).forEach((m: any) => {
+        if (m.isTaken && m.userName) {
+          const u = String(m.userName).trim();
+          counts[u] = (counts[u] || 0) + 1;
+        }
+      });
+    });
+    return counts;
+  }, [passes, summary.userCheckoutCounts]);
+
+  const userEntries = Object.entries(userCheckoutCounts);
+
   return (
     <View style={{ gap: 16 }}>
       {/* Top Summary Card */}
@@ -130,6 +148,22 @@ export function CheckoutReport({
                     • {UI_TEXT.multipleCheckoutLabel}: {multipleCheckoutPasses} {multipleCheckoutPasses === 1 ? UI_TEXT.passSingular : UI_TEXT.passPlural}
                   </Text>
                 )}
+              </View>
+            </View>
+          )}
+
+          {/* Operator / Checkout User Breakdown Block */}
+          {userEntries.length > 0 && (
+            <View style={{ gap: 3, marginBottom: 4, borderBottomWidth: 1, borderBottomColor: theme.colors.white + "20", paddingBottom: 8 }}>
+              <Text style={{ color: theme.colors.white + "CC", fontSize: 13, fontWeight: "700" }}>
+                {UI_TEXT.checkoutOperatorsLabel} ({summary.totalMembersCheckedOut})
+              </Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flexWrap: "wrap", marginTop: 2 }}>
+                {userEntries.map(([username, count], uIdx) => (
+                  <Text key={uIdx} style={{ color: theme.colors.white, fontSize: 13, fontWeight: "800" }}>
+                    • {username}: {String(count)}
+                  </Text>
+                ))}
               </View>
             </View>
           )}

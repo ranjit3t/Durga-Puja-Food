@@ -11,6 +11,7 @@ import { LogoutButton } from "./LogoutButton";
 import { Metric } from "./Metric";
 import { PaymentScannerModal } from "./PaymentScannerModal";
 import { QuickCheckoutModal } from "./QuickCheckoutModal";
+import { ParcelCheckoutModal } from "./ParcelCheckoutModal";
 import { QuickFreeMealModal } from "./QuickFreeMealModal";
 import { ThemeToggleButton } from "./ThemeToggleButton";
 import { UserGreeting } from "./UserGreeting";
@@ -164,6 +165,18 @@ function QuickCheckoutPass({ subscription }: { subscription: any }) {
   );
 }
 
+function ParcelCheckoutPass({ subscription }: { subscription: any }) {
+  return (
+    <ParcelCheckoutModal
+      visible
+      subscription={subscription}
+      currentMealInfo={{ dayId: "Shashthi", mealType: MealType.LUNCH, dayLabel: "Shashthi", mealLabel: "Lunch" }}
+      onClose={noop}
+      onSuccess={noop}
+    />
+  );
+}
+
 function QuickFreeMealExample() {
   return (
     <QuickFreeMealModal
@@ -258,6 +271,63 @@ export const QuickCheckoutAdultsAndKidsStory = {
     [{ choice: DietaryOption.VEG, parcel: true }],
   )} />,
   parameters: { storyMocks: { database: { kidsEnabled: true, guestsEnabled: false, dayConfig: multiCategoryDayConfig } } },
+};
+
+export const ParcelCheckoutModalStory = {
+  name: "ParcelCheckoutModal",
+  render: () => <ParcelCheckoutPass subscription={createCheckoutPass(
+    "parcel-all-cat-pass",
+    [{ choice: DietaryOption.VEG, parcel: true }, { choice: DietaryOption.NON_VEG, parcel: true }],
+    [{ choice: DietaryOption.VEG, parcel: true }],
+    [{ choice: DietaryOption.NON_VEG, parcel: true }],
+  )} />,
+  parameters: { storyMocks: { database: { kidsEnabled: true, guestsEnabled: true, dayConfig: multiCategoryDayConfig } } },
+};
+
+export const ParcelCheckoutAdultsOnlyStory = {
+  name: "ParcelCheckoutModal/AdultsOnly",
+  render: () => <ParcelCheckoutPass subscription={createCheckoutPass(
+    "parcel-adults-only-pass",
+    [{ choice: DietaryOption.VEG, parcel: true }, { choice: DietaryOption.NON_VEG, parcel: true }],
+  )} />,
+  parameters: { storyMocks: { database: { kidsEnabled: false, guestsEnabled: false } } },
+};
+
+export const ParcelCheckoutAdultsAndKidsStory = {
+  name: "ParcelCheckoutModal/AdultsAndKids",
+  render: () => <ParcelCheckoutPass subscription={createCheckoutPass(
+    "parcel-adult-kid-pass",
+    [{ choice: DietaryOption.VEG, parcel: true }, { choice: DietaryOption.NON_VEG, parcel: true }],
+    [{ choice: DietaryOption.VEG, parcel: true }],
+  )} />,
+  parameters: { storyMocks: { database: { kidsEnabled: true, guestsEnabled: false, dayConfig: multiCategoryDayConfig } } },
+};
+
+export const ParcelCheckoutDineInFulfilledStory = {
+  name: "ParcelCheckoutModal/DineInFulfilled",
+  render: () => <ParcelCheckoutPass subscription={createCheckoutPass(
+    "parcel-fulfilled-pass",
+    [{ choice: DietaryOption.VEG, parcel: true }, { choice: DietaryOption.NON_VEG, parcel: true }],
+    [{ choice: DietaryOption.VEG, parcel: true }],
+    [{ choice: DietaryOption.NON_VEG, parcel: true }],
+    [0, 1],
+  )} />,
+  parameters: { storyMocks: { database: { kidsEnabled: true, guestsEnabled: true, dayConfig: multiCategoryDayConfig } } },
+};
+
+export const ParcelCheckoutVarietyFoodStory = {
+  name: "ParcelCheckoutModal/FoodVarieties (Veg, Fish, Mutton)",
+  render: () => <ParcelCheckoutPass subscription={createVarietyCheckoutPass("variety-parcel-pass")} />,
+  parameters: {
+    storyMocks: {
+      database: {
+        kidsEnabled: true,
+        guestsEnabled: true,
+        dayConfig: varietyDayConfig,
+        foodMenu: varietyFoodMenu,
+      },
+    },
+  },
 };
 export const QuickCheckoutAllCategoriesStory = {
   name: "QuickCheckoutModal/AdultsKidsGuests",

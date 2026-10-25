@@ -81,7 +81,12 @@ export function ReportScreen() {
 
   const onSetReportType = (type: ReportType) => {
     setReportType(type);
-    if (type === ReportType.DAY || type === ReportType.NOT_TAKEN || type === ReportType.MEMBERS_MEAL || type === ReportType.PARCEL || type === ReportType.CHECKOUT) {
+    if (type === ReportType.CHECKOUT) {
+      onSetSelectedDayId("" as any);
+      onSetSelectedMealType("" as any);
+      return;
+    }
+    if (type === ReportType.DAY || type === ReportType.NOT_TAKEN || type === ReportType.MEMBERS_MEAL || type === ReportType.PARCEL) {
       const active = activeDays;
       for (const dId of active) {
         for (const mType of [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER]) {
@@ -108,7 +113,7 @@ export function ReportScreen() {
   // Ensure selected day is valid and focuses current active meal if available
   React.useEffect(() => {
     if (activeDays.length > 0) {
-      const needsMealSelection = reportType === ReportType.DAY || reportType === ReportType.NOT_TAKEN || reportType === ReportType.MEMBERS_MEAL || reportType === ReportType.PARCEL || reportType === ReportType.CHECKOUT;
+      const needsMealSelection = reportType === ReportType.DAY || reportType === ReportType.NOT_TAKEN || reportType === ReportType.MEMBERS_MEAL || reportType === ReportType.PARCEL;
       if (needsMealSelection) {
         let foundCurrent = false;
         for (const dId of activeDays) {

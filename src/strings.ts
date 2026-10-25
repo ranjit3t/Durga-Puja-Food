@@ -399,6 +399,8 @@ export const UI_TEXT = {
   completedCheckoutBadgeLabel: "COMPLETED",
   missedCheckoutBadgeLabel: "MISSED",
   currentMealKidsFilterLabel: "Current Meal Kids",
+  checkoutOperatorsLabel: "Checkouts by Operator",
+  selectDayAndMealPrompt: "Select a Day and Meal Slot above to view individual pass checkouts.",
   currentMealGuestsFilterLabel: "Current Meal Guests",
 
   // Details Screen

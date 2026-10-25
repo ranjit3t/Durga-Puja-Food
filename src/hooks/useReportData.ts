@@ -24,6 +24,8 @@ import {
   getMealFreeMealCounts,
   isGuestsParcelEnabled,
   isSlotMissedParcel,
+  getDayLabel,
+  getMealLabel,
 } from "../constants";
 import { getAmountDiscrepancyData, calculatePersonMealAndParcelCost, calculateDetailedPaymentReportData, resolvePrice, resolveGuestPrice } from "../utils/paymentUtils";
 
@@ -928,6 +930,169 @@ export function useReportData(
   }, [subscriptions, dayConfig, kidsEnabled, guestsEnabled, foodMenu]);
 
   const getCheckoutReportData = useCallback((selectedDayId: string, selectedMealType: MealType) => {
+    if (!selectedDayId || !selectedMealType) {
+      let missedCount = 0;
+      let partialCount = 0;
+      let completeCount = 0;
+      let earliestTime: number | null = null;
+      let latestTime: number | null = null;
+      let adultsCheckedOut = 0;
+      let kidsCheckedOut = 0;
+      let guestsCheckedOut = 0;
+      let dineInCheckedOut = 0;
+      let parcelsCheckedOut = 0;
+      const userCheckoutCounts: Record<string, number> = {};
+
+      const list = subscriptions.map((sub) => {
+        let totalSlots = 0;
+        let totalTakenSlots = 0;
+        const passCheckouts: any[] = [];
+
+        activeDays.forEach((dayId) => {
+          const dayConf = (dayConfig || []).find(d => d.id === dayId);
+          if (!dayConf || !dayConf.enabled) return;
+          const slots = sub.mealSlots?.[dayId] || [];
+          const taken = sub.takenByPerson?.[dayId] || [];
+          const adultCount = sub.peopleCount || 0;
+          const kCount = kidsEnabled ? (sub.kidsCount || 0) : 0;
+          const gCount = guestsEnabled ? (sub.guestsCount || 0) : 0;
+          const totalPeople = adultCount + kCount + gCount;
+
+          for (const mType of [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER]) {
+            if (!isMealEnabled(dayId, mType, dayConfig)) continue;
+            const mConf = dayConf[mType];
+            const varieties = getMealVarieties(mConf);
+
+            for (let idx = 0; idx < totalPeople; idx++) {
+              const s = slots[idx];
+              if (!s) continue;
+              const choice = s[mType];
+              const diet = getDietTypeForChoice(choice, varieties);
+              if (!diet || choice === DietaryOption.NONE || !isDietaryEnabled(dayId, mType, diet, dayConfig)) continue;
+
+              totalSlots++;
+              const tState = taken[idx] || {};
+              const isParcelAllowed = !!(s as any)[`${mType}Parcel`];
+              const isParcelTaken = !!tState[`${mType}Parcel` as keyof TakenState];
+              const isDineInTaken = !!tState[mType];
+              const isTaken = isDineInTaken || isParcelTaken;
+              const rawTime = tState[`${mType}Time` as keyof TakenState] || tState[`${mType}ParcelTime` as keyof TakenState];
+              const rawUser = isParcelTaken
+                ? (tState[`${mType}ParcelUser` as keyof TakenState] || tState[`${mType}User` as keyof TakenState])
+                : (tState[`${mType}User` as keyof TakenState] || tState[`${mType}ParcelUser` as keyof TakenState]);
+              const userStr = rawUser && typeof rawUser === "string" && !/^\d{10,}$/.test(rawUser.trim()) ? rawUser.trim() : undefined;
+
+              const actualServiceType = isParcelTaken
+                ? UI_TEXT.parcel
+                : isDineInTaken
+                ? (isParcelAllowed ? UI_TEXT.optedDineIn : UI_TEXT.dineIn)
+                : undefined;
+
+              let numericTime: number | null = null;
+              let timeDisplay = "-";
+
+              const isKid = kidsEnabled && idx >= adultCount && idx < adultCount + kCount;
+              const isGuest = guestsEnabled && idx >= adultCount + kCount;
+              const category = isGuest ? UI_TEXT.guest : isKid ? UI_TEXT.kid : UI_TEXT.adult;
+              const memberNum = isGuest ? idx - adultCount - kCount + 1 : isKid ? idx - adultCount + 1 : idx + 1;
+              const label = `${getDayLabel(dayId, dayConfig)} ${getMealLabel(mType)} • ${category} ${memberNum}`;
+
+              if (isTaken) {
+                totalTakenSlots++;
+                if (isParcelTaken) parcelsCheckedOut++;
+                else dineInCheckedOut++;
+                if (isGuest) guestsCheckedOut++;
+                else if (isKid) kidsCheckedOut++;
+                else adultsCheckedOut++;
+
+                const finalUser = userStr || "admin";
+                userCheckoutCounts[finalUser] = (userCheckoutCounts[finalUser] || 0) + 1;
+
+                if (rawTime && typeof rawTime !== "boolean") {
+                  timeDisplay = String(rawTime);
+                  const pNum = Number(rawTime);
+                  if (!isNaN(pNum) && pNum > 0) {
+                    numericTime = pNum;
+                  } else {
+                    const pDate = new Date(rawTime);
+                    if (!isNaN(pDate.getTime())) {
+                      numericTime = pDate.getTime();
+                    } else {
+                      const timeMatch = String(rawTime).match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?/i);
+                      if (timeMatch) {
+                        let hours = parseInt(timeMatch[1], 10);
+                        const minutes = parseInt(timeMatch[2], 10);
+                        const seconds = timeMatch[3] ? parseInt(timeMatch[3], 10) : 0;
+                        const ampm = timeMatch[4] ? timeMatch[4].toUpperCase() : null;
+                        if (ampm === "PM" && hours < 12) hours += 12;
+                        if (ampm === "AM" && hours === 12) hours = 0;
+                        const today = new Date();
+                        today.setHours(hours, minutes, seconds, 0);
+                        numericTime = today.getTime();
+                      }
+                    }
+                  }
+                  if (numericTime !== null) {
+                    if (earliestTime === null || numericTime < earliestTime) earliestTime = numericTime;
+                    if (latestTime === null || numericTime > latestTime) latestTime = numericTime;
+                  }
+                }
+              }
+
+              passCheckouts.push({
+                label,
+                isTaken,
+                actualServiceType,
+                timeDisplay,
+                numericTime,
+                userName: userStr,
+              });
+            }
+          }
+        });
+
+        if (totalSlots === 0) return null;
+
+        const isMissed = totalTakenSlots === 0;
+        const isComplete = totalTakenSlots >= totalSlots;
+
+        if (isMissed) missedCount++;
+        else if (isComplete) completeCount++;
+        else partialCount++;
+
+        return {
+          id: sub.id,
+          block: sub.block,
+          flat: sub.flat,
+          mobile: sub.mobile,
+          isMissed,
+          isComplete,
+          takenCount: totalTakenSlots,
+          subscribedCount: totalSlots,
+          memberCheckouts: passCheckouts,
+        };
+      }).filter(Boolean) as any[];
+
+      return {
+        passes: list.sort((a, b) => (a.block || "").localeCompare(b.block || "", undefined, { numeric: true, sensitivity: 'base' }) || (a.flat || "").localeCompare(b.flat || "", undefined, { numeric: true, sensitivity: 'base' })),
+        summary: {
+          totalPassesForMeal: subscriptions.length,
+          missedCount,
+          partialCount,
+          completeCount,
+          earliestTime,
+          latestTime,
+          adultsCheckedOut,
+          kidsCheckedOut,
+          guestsCheckedOut,
+          dineInCheckedOut,
+          parcelsCheckedOut,
+          totalMembersCheckedOut: adultsCheckedOut + kidsCheckedOut + guestsCheckedOut,
+          userCheckoutCounts,
+        }
+      };
+    }
+
     const dayConf = (dayConfig || []).find(d => d.id === selectedDayId);
     const mConf = dayConf ? dayConf[selectedMealType] : undefined;
     const varieties = getMealVarieties(mConf);
