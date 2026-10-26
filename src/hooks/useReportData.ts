@@ -29,6 +29,59 @@ import {
 } from "../constants";
 import { getAmountDiscrepancyData, calculatePersonMealAndParcelCost, calculateDetailedPaymentReportData, resolvePrice, resolveGuestPrice } from "../utils/paymentUtils";
 
+const parseRawTime = (rawTime: any): number | null => {
+  if (!rawTime) return null;
+  if (typeof rawTime === "number") return rawTime;
+  const pNum = Number(rawTime);
+  if (!isNaN(pNum) && pNum > 0) return pNum;
+
+  const str = String(rawTime).trim();
+  const d = new Date(str);
+  if (!isNaN(d.getTime())) return d.getTime();
+
+  // Handle formats like "12 Oct, 1:15 PM" which Hermes fails to parse natively on Android
+  const fullMatch = str.match(/^(\d{1,2})\s+([A-Za-z]+),?\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?/i);
+  if (fullMatch) {
+    const dayNum = parseInt(fullMatch[1], 10);
+    const monthStr = fullMatch[2].toLowerCase();
+    let hours = parseInt(fullMatch[3], 10);
+    const minutes = parseInt(fullMatch[4], 10);
+    const seconds = fullMatch[5] ? parseInt(fullMatch[5], 10) : 0;
+    const ampm = fullMatch[6] ? fullMatch[6].toUpperCase() : null;
+
+    if (ampm === "PM" && hours < 12) hours += 12;
+    if (ampm === "AM" && hours === 12) hours = 0;
+
+    const monthMap: Record<string, number> = {
+      jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
+      jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11
+    };
+    const monthIndex = monthMap[monthStr.substring(0, 3)] ?? new Date().getMonth();
+
+    const targetDate = new Date();
+    targetDate.setMonth(monthIndex);
+    targetDate.setDate(dayNum);
+    targetDate.setHours(hours, minutes, seconds, 0);
+    return targetDate.getTime();
+  }
+
+  // Fallback if only time is present
+  const timeMatch = str.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?/i);
+  if (timeMatch) {
+    let hours = parseInt(timeMatch[1], 10);
+    const minutes = parseInt(timeMatch[2], 10);
+    const seconds = timeMatch[3] ? parseInt(timeMatch[3], 10) : 0;
+    const ampm = timeMatch[4] ? timeMatch[4].toUpperCase() : null;
+    if (ampm === "PM" && hours < 12) hours += 12;
+    if (ampm === "AM" && hours === 12) hours = 0;
+    const today = new Date();
+    today.setHours(hours, minutes, seconds, 0);
+    return today.getTime();
+  }
+
+  return null;
+};
+
 export function useReportData(
   subscriptions: SubscriptionRecord[],
   foodMenu: FoodMenu,
@@ -1013,28 +1066,7 @@ export function useReportData(
 
                 if (rawTime && typeof rawTime !== "boolean") {
                   timeDisplay = String(rawTime);
-                  const pNum = Number(rawTime);
-                  if (!isNaN(pNum) && pNum > 0) {
-                    numericTime = pNum;
-                  } else {
-                    const pDate = new Date(rawTime);
-                    if (!isNaN(pDate.getTime())) {
-                      numericTime = pDate.getTime();
-                    } else {
-                      const timeMatch = String(rawTime).match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?/i);
-                      if (timeMatch) {
-                        let hours = parseInt(timeMatch[1], 10);
-                        const minutes = parseInt(timeMatch[2], 10);
-                        const seconds = timeMatch[3] ? parseInt(timeMatch[3], 10) : 0;
-                        const ampm = timeMatch[4] ? timeMatch[4].toUpperCase() : null;
-                        if (ampm === "PM" && hours < 12) hours += 12;
-                        if (ampm === "AM" && hours === 12) hours = 0;
-                        const today = new Date();
-                        today.setHours(hours, minutes, seconds, 0);
-                        numericTime = today.getTime();
-                      }
-                    }
-                  }
+                  numericTime = parseRawTime(rawTime);
                   if (numericTime !== null) {
                     if (earliestTime === null || numericTime < earliestTime) earliestTime = numericTime;
                     if (latestTime === null || numericTime > latestTime) latestTime = numericTime;
@@ -1176,32 +1208,7 @@ export function useReportData(
 
           if (rawTime) {
             timeDisplay = String(rawTime);
-            if (typeof rawTime === "number") {
-              numericTime = rawTime;
-            } else if (typeof rawTime === "string") {
-              const pNum = Number(rawTime);
-              if (!isNaN(pNum) && pNum > 0) {
-                numericTime = pNum;
-              } else {
-                const pDate = new Date(rawTime);
-                if (!isNaN(pDate.getTime())) {
-                  numericTime = pDate.getTime();
-                } else {
-                  const timeMatch = rawTime.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?/i);
-                  if (timeMatch) {
-                    let hours = parseInt(timeMatch[1], 10);
-                    const minutes = parseInt(timeMatch[2], 10);
-                    const seconds = timeMatch[3] ? parseInt(timeMatch[3], 10) : 0;
-                    const ampm = timeMatch[4] ? timeMatch[4].toUpperCase() : null;
-                    if (ampm === "PM" && hours < 12) hours += 12;
-                    if (ampm === "AM" && hours === 12) hours = 0;
-                    const today = new Date();
-                    today.setHours(hours, minutes, seconds, 0);
-                    numericTime = today.getTime();
-                  }
-                }
-              }
-            }
+            numericTime = parseRawTime(rawTime);
           } else {
             timeDisplay = "Checked In";
           }
