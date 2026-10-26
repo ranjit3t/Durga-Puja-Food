@@ -136,6 +136,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
   const [seasonEnabled, setSeasonEnabled] = useState(true);
   const [paymentConfig, setPaymentConfig] = useState<PaymentConfig>({
     enabled: true,
+    maxPayments: 10,
     options: { upi: true, cash: true, bankTransfer: true }
   });
   const [freeMealEnabled, setFreeMealEnabled] = useState(true);

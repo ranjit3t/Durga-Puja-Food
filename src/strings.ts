@@ -3,7 +3,6 @@
  * Centralized dictionary for all application text.
  */
 export const UI_TEXT = {
-  maxPayments: 10,
   appName: "FestiveDesk",
   appVersion: "1.5.9",
   appUpdateTitle: "Update Available",
@@ -404,6 +403,10 @@ export const UI_TEXT = {
   filterByOperator: "Filter by Operator",
   allUsers: "All Users",
   currentMealGuestsFilterLabel: "Current Meal Guests",
+  maxPaymentsLabel: "Maximum Payment Entries Allowed",
+  maxPaymentsHelper: "Maximum split payment entries allowed per pass (default: 10)",
+  cannotDecreaseMaxPaymentsTitle: "Cannot Decrease Max Payments",
+  cannotDecreaseMaxPaymentsMessage: "Payment records already exist in active subscription passes. Decreasing maximum payment entries is disabled to protect existing payment data.",
 
   // Details Screen
   flatIdPrefix: "PASS #",

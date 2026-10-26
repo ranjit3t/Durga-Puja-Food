@@ -384,9 +384,14 @@ The application enforces strict role-based access control (RBAC) distinguishing 
     - Features real-time count aggregation (`currentMealParcelPendingData`), auto-deselection upon complete parcel collection or active meal closure, full WCAG 2.1 AA accessibility compliance (`accessible={true}`, `accessibilityRole="button"`, `accessibilityLabel`), 100% `UI_TEXT` dictionary localization, zero hardcoding, and responsive mobile flexbox layout.
 16. **Operator Username Filter in Checkout Report ([`CheckoutReport.tsx`](src/components/report/CheckoutReport.tsx), [`useReportData.ts`](src/hooks/useReportData.ts), [`ReportScreen.tsx`](src/screens/ReportScreen.tsx))**:
     - Added an interactive horizontal operator filter bar (`"All Users"`, `admin`, `vendor`, `atanu`, `samrat`, `suman`, `chhoton`, etc.) at the top of the Checkout Report.
-    - Default mode ("All Users") considers all operators selected, presenting consolidated season-wide checkout metrics, earliest/latest times, and pass cards.
-    - Tapping an operator button filters summary statistics, headcount, service mode, earliest/latest timestamps, and individual pass cards to display checkouts performed exclusively by that operator.
+    - Default mode ("All Users") considers all operators selected, presenting consolidated season-wide checkout metrics, earliest/latest times, and pass cards with status badges (`COMPLETED`, `PARTIAL`, `MISSED`).
+    - Tapping an operator button filters summary statistics, headcount, service mode, earliest/latest timestamps, and individual pass cards to display checkouts performed exclusively by that operator (hiding status badges and omitting unserved or other-operator member checkouts and pass cards with 0 checkouts).
     - Fully WCAG 2.1 AA accessibility compliant (`accessible={true}`, `accessibilityRole="button"`, localized `accessibilityLabel`), mobile-responsive layout (`s(...)`), and 100% `UI_TEXT` dictionary localized with zero hardcoding.
+17. **Dynamic Max Payments Setting & Database Protection ([`SettingsScreen.tsx`](src/screens/SettingsScreen.tsx), [`SubscriptionForm.tsx`](src/screens/SubscriptionForm.tsx), [`domain.ts`](src/domain.ts))**:
+    - Moved the maximum split payment entries configuration into System Settings under Payment Options (`PaymentConfig.maxPayments`, defaulting to 10).
+    - Dynamically binds Add Pass and Edit Pass payment entry limits (`maxPaymentsAllowed`) to the system settings value.
+    - Implemented a database protection check (`hasAnyPaymentTaken`) prohibiting decreasing `maxPayments` when active payment records exist in the database, displaying a clear alert (`UI_TEXT.cannotDecreaseMaxPaymentsTitle`) if an operator attempts to lower the limit while payments exist.
+    - Fully WCAG 2.1 AA accessibility compliant (`accessible={true}`, `accessibilityRole="button"`), mobile-responsive layout (`s(...)`), and 100% `UI_TEXT` localized.
 
 ---
 

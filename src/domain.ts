@@ -166,6 +166,7 @@ export type ConfigDay = {
 
 export type PaymentConfig = {
   enabled: boolean;
+  maxPayments?: number;
   options: {
     upi: boolean;
     cash: boolean;

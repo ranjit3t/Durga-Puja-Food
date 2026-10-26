@@ -33,6 +33,7 @@ interface SubscriptionPaymentSectionProps {
     type: "deficiency" | "excess" | "none";
     amount: number;
   };
+  maxPayments?: number;
 }
 
 export const SubscriptionPaymentSection: React.FC<SubscriptionPaymentSectionProps> = ({
@@ -58,6 +59,7 @@ export const SubscriptionPaymentSection: React.FC<SubscriptionPaymentSectionProp
   onViewAppliedPackage,
   getPersonLabel,
   discrepancyDetail,
+  maxPayments = 10,
 }) => {
   return (
     <View
@@ -344,7 +346,7 @@ export const SubscriptionPaymentSection: React.FC<SubscriptionPaymentSectionProp
         </View>
       ))}
 
-      {isAdmin && canEdit && payments.length < UI_TEXT.maxPayments && (
+      {isAdmin && canEdit && payments.length < maxPayments && (
         <Pressable
           onPress={addPayment}
           style={({ pressed }) => [

@@ -383,18 +383,20 @@ export function CheckoutReport({
                   </View>
 
                   <View style={{ alignItems: 'flex-end' }}>
-                    <View style={{
-                      backgroundColor: badgeBg,
-                      paddingHorizontal: 8,
-                      paddingVertical: 3,
-                      borderRadius: 6,
-                      borderWidth: 1,
-                      borderColor: badgeColor,
-                    }}>
-                      <Text style={{ fontSize: 11, fontWeight: '900', color: badgeColor }}>
-                        {badgeText}
-                      </Text>
-                    </View>
+                    {!selectedCheckoutUser ? (
+                      <View style={{
+                        backgroundColor: badgeBg,
+                        paddingHorizontal: 8,
+                        paddingVertical: 3,
+                        borderRadius: 6,
+                        borderWidth: 1,
+                        borderColor: badgeColor,
+                      }}>
+                        <Text style={{ fontSize: 11, fontWeight: '900', color: badgeColor }}>
+                          {badgeText}
+                        </Text>
+                      </View>
+                    ) : null}
                   </View>
                 </View>
 

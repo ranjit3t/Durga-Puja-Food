@@ -1042,19 +1042,22 @@ export function useReportData(
                 }
               }
 
-              passCheckouts.push({
-                label,
-                isTaken,
-                actualServiceType,
-                timeDisplay,
-                numericTime,
-                userName: userStr,
-              });
+              if (!selectedCheckoutUser || isTaken) {
+                passCheckouts.push({
+                  label,
+                  isTaken,
+                  actualServiceType,
+                  timeDisplay,
+                  numericTime,
+                  userName: userStr,
+                });
+              }
             }
           }
         });
 
         if (totalSlots === 0) return null;
+        if (selectedCheckoutUser && totalTakenSlots === 0) return null;
 
         const isMissed = totalTakenSlots === 0;
         const isComplete = totalTakenSlots >= totalSlots;
@@ -1213,17 +1216,20 @@ export function useReportData(
         const memberNum = isGuest ? idx - adultCount - kCount + 1 : isKid ? idx - adultCount + 1 : idx + 1;
         const label = `${category} ${memberNum}`;
 
-        memberCheckouts.push({
-          label,
-          isTaken,
-          actualServiceType,
-          timeDisplay,
-          numericTime,
-          userName: userStr,
-        });
+        if (!selectedCheckoutUser || isTaken) {
+          memberCheckouts.push({
+            label,
+            isTaken,
+            actualServiceType,
+            timeDisplay,
+            numericTime,
+            userName: userStr,
+          });
+        }
       }
 
       if (subscribedCount === 0) return null;
+      if (selectedCheckoutUser && takenCount === 0) return null;
       totalSubscribedPasses++;
 
       const isMissed = takenCount === 0;

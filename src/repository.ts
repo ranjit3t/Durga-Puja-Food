@@ -141,7 +141,7 @@ function cleanUndefined(obj: any, seen = new WeakSet()): any {
   if (Array.isArray(obj)) {
     return obj
       .map(v => cleanUndefined(v, seen))
-      .filter((v) => v !== undefined && v !== null);
+      .filter((v) => v !== undefined);
   }
 
   if (seen.has(obj)) return undefined;
@@ -590,7 +590,7 @@ export function createFirebaseRepository(): SubscriptionRepository {
       const snapshot = await get(ref(services.db, configPath));
       const val = snapshot.val();
 
-      const defaultPayment = { enabled: true, options: { upi: true, cash: true, bankTransfer: true } };
+      const defaultPayment = { enabled: true, maxPayments: 10, options: { upi: true, cash: true, bankTransfer: true } };
 
       if (snapshot.exists() && val) {
         if (Array.isArray(val)) {
@@ -906,7 +906,7 @@ export function createFirebaseRepository(): SubscriptionRepository {
         unsub = onValue(ref(services.db, configPath), (snapshot) => {
           if (!snapshot.exists()) return;
           const val = snapshot.val();
-          const defaultPayment = { enabled: true, options: { upi: true, cash: true, bankTransfer: true } };
+          const defaultPayment = { enabled: true, maxPayments: 10, options: { upi: true, cash: true, bankTransfer: true } };
           if (Array.isArray(val)) {
             callback({ seasonName: "", days: normalizeDayConfig(val), payment: defaultPayment, freeMealEnabled: true, mobileEnabled: true, foodPriceEnabled: false, seasonEnabled: true, kidsEnabled: false });
           } else {

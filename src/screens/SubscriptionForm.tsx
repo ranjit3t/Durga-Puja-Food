@@ -109,7 +109,21 @@ export function SubscriptionForm() {
   } = useAppNavigation();
 
   const { foodPackages } = useFoodPackages();
-  const [appliedPackages, setAppliedPackages] = useState<Record<number, AppliedPackageInfo>>(() => value?.appliedPackages || {});
+  const [appliedPackages, setAppliedPackages] = useState<Record<number, AppliedPackageInfo>>(() => {
+    const pkgs: Record<number, AppliedPackageInfo> = {};
+    if (value?.appliedPackages) {
+      if (Array.isArray(value.appliedPackages)) {
+        value.appliedPackages.forEach((pkg, idx) => {
+          if (pkg) pkgs[idx] = pkg;
+        });
+      } else {
+        Object.entries(value.appliedPackages).forEach(([k, pkg]) => {
+          if (pkg) pkgs[Number(k)] = pkg;
+        });
+      }
+    }
+    return pkgs;
+  });
   const [showApplyPackageModal, setShowApplyPackageModal] = useState(false);
   const [viewingPackage, setViewingPackage] = useState<FoodPackage | null>(null);
 
@@ -561,17 +575,6 @@ export function SubscriptionForm() {
         );
   }, [form, appliedPackages, isPackageApplied, foodPackages, foodMenu, dayConfig, kidsEnabled, guestsEnabled]);
 
-  const currentTotalAmount = useMemo(() => {
-    return payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
-  }, [payments]);
-
-  const formDiscrepancyDetail = useMemo(() => {
-    if (!isAdmin || !paymentConfig?.enabled) return { hasDiscrepancy: false, type: "none" as const, amount: 0 };
-    return getDiscrepancyDetail(currentTotalAmount, calculatedExpectedAmount);
-  }, [isAdmin, paymentConfig, currentTotalAmount, calculatedExpectedAmount]);
-
-  const hasFormDiscrepancy = formDiscrepancyDetail.hasDiscrepancy;
-
   // Capture initial meal state snapshot for Edit Pass to detect meal/parcel choice variations
   const initialMealSnapshot = useRef({
     mealSlots: value.mealSlots,
@@ -579,33 +582,6 @@ export function SubscriptionForm() {
     kidsCount: value.kidsCount || 0,
     guestsCount: value.guestsCount || 0,
   });
-
-  // Capture initial payment snapshot for Edit Pass to calculate baseline paid sum & entry count
-  const initialPaymentSnapshot = useRef(() => {
-    let initialList: PaymentEntry[] = [];
-    if (value?.payments && value.payments.length > 0) {
-      initialList = value.payments.map((p: PaymentEntry) => ({
-        ...p,
-        amount: (p.amount !== undefined && p.amount !== null && String(p.amount).trim() !== "")
-          ? String(p.amount)
-          : UI_TEXT.zero,
-      }));
-    } else {
-      const rawAmt = value?.amount !== undefined && value?.amount !== null ? String(value.amount).trim() : "";
-      initialList = [{
-        amount: rawAmt !== "" ? rawAmt : UI_TEXT.zero,
-        mode: value?.paymentMode || enabledMethods[0],
-        transactionId: value?.transactionId,
-      }];
-    }
-    const count = initialList.length;
-    const baseSum = initialList.reduce((sum, p) => sum + (parseFloat(p.amount || "0") || 0), 0);
-    return { count, baseSum, initialList };
-  });
-
-  const basePaymentSnapshot = useMemo(() => {
-    return initialPaymentSnapshot.current();
-  }, []);
 
   const hasMealOrParcelChoicesChanged = useMemo(() => {
     if (!lockIdentity) return true;
@@ -640,6 +616,48 @@ export function SubscriptionForm() {
 
     return false;
   }, [lockIdentity, form.peopleCount, form.kidsCount, form.guestsCount, form.mealSlots]);
+
+  const currentTotalAmount = useMemo(() => {
+    return payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+  }, [payments]);
+
+  const formDiscrepancyDetail = useMemo(() => {
+    if (!isAdmin || !paymentConfig?.enabled) {
+      return { hasDiscrepancy: false, type: "none" as const, amount: 0, paidAmount: 0, calculatedAmount: 0 };
+    }
+    return getDiscrepancyDetail(currentTotalAmount, calculatedExpectedAmount);
+  }, [isAdmin, paymentConfig?.enabled, currentTotalAmount, calculatedExpectedAmount]);
+
+  const hasFormDiscrepancy = formDiscrepancyDetail.hasDiscrepancy;
+
+  // Capture initial payment snapshot for Edit Pass to calculate baseline paid sum & entry count
+  const initialPaymentSnapshot = useRef(() => {
+    let initialList: PaymentEntry[] = [];
+    if (value?.payments && value.payments.length > 0) {
+      initialList = value.payments.map((p: PaymentEntry) => ({
+        ...p,
+        amount: (p.amount !== undefined && p.amount !== null && String(p.amount).trim() !== "")
+          ? String(p.amount)
+          : UI_TEXT.zero,
+      }));
+    } else {
+      const rawAmt = value?.amount !== undefined && value?.amount !== null ? String(value.amount).trim() : "";
+      initialList = [{
+        amount: rawAmt !== "" ? rawAmt : UI_TEXT.zero,
+        mode: value?.paymentMode || enabledMethods[0],
+        transactionId: value?.transactionId,
+      }];
+    }
+    const count = initialList.length;
+    const baseSum = initialList.reduce((sum, p) => sum + (parseFloat(p.amount || "0") || 0), 0);
+    return { count, baseSum, initialList };
+  });
+
+  const basePaymentSnapshot = useMemo(() => {
+    return initialPaymentSnapshot.current();
+  }, []);
+
+
 
   const sanitizeAmountText = useCallback((text: string): string => {
     let sanitized = text.replace(/[^0-9.]/g, "");
@@ -1022,8 +1040,10 @@ export function SubscriptionForm() {
     });
   };
 
+  const maxPaymentsAllowed = paymentConfig.maxPayments || 10;
+
   const addPayment = () => {
-    if (payments.length < UI_TEXT.maxPayments) {
+    if (payments.length < maxPaymentsAllowed) {
       setPayments([...payments, { amount: UI_TEXT.zero, mode: (enabledMethods[0] as any) || PaymentMode.CASH }]);
     }
   };
@@ -1116,33 +1136,59 @@ export function SubscriptionForm() {
 
     if (shouldAutoPopulateSingle) {
       const currentVal = payments[0]?.amount || UI_TEXT.zero;
-      if (currentVal !== String(total)) {
-        setPayments([{ ...payments[0], amount: String(total) }]);
+      if (!lockIdentity || (lockIdentity && total > 0)) {
+        if (currentVal !== String(total)) {
+          setPayments([{ ...payments[0], amount: String(total) }]);
+        }
       }
       return;
     }
 
-    // Case 2: Editing an existing pass with 1+ non-zero payment entries (lockIdentity && hasNonZeroPayment)
-    if (lockIdentity && hasNonZeroPayment && !isManualAmount) {
+    // Case 2: Editing an existing pass with changed choices (when not manually entering payment amounts)
+    if (lockIdentity && hasMealOrParcelChoicesChanged && !isManualAmount) {
       const defaultMode = enabledMethods.includes(PaymentMode.UPI)
         ? PaymentMode.UPI
         : (enabledMethods[0] as any) || PaymentMode.UPI;
 
-      const currentSum = payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+      const initialCount = basePaymentSnapshot.count;
 
-      if (total > currentSum) {
-        const excess = total - currentSum;
-        if (payments.length < UI_TEXT.maxPayments) {
-          setPayments([
-            ...payments,
+      // All initial payment entries (idx < initialCount) and manually added payments are locked user payments
+      const userPayments = payments.filter((p, idx) => idx < initialCount || !p.isAutoExcess);
+      const userSum = userPayments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+
+      const hasAutoExcess = payments.length > userPayments.length && payments[payments.length - 1]?.isAutoExcess;
+
+      if (total > userSum) {
+        const excess = total - userSum;
+        const targetExcessAmount = String(excess);
+
+        if (hasAutoExcess) {
+          const autoExcessPayment = payments[payments.length - 1];
+          if (autoExcessPayment.amount !== targetExcessAmount) {
+            const updated = [
+              ...userPayments,
+              {
+                ...autoExcessPayment,
+                amount: targetExcessAmount,
+                isAutoExcess: true,
+              },
+            ];
+            setPayments(updated);
+          }
+        } else if (payments.length < maxPaymentsAllowed) {
+          const updated = [
+            ...userPayments,
             {
-              amount: String(excess),
+              amount: targetExcessAmount,
               mode: defaultMode,
               transactionId: "",
               isAutoExcess: true,
             },
-          ]);
+          ];
+          setPayments(updated);
         }
+      } else if (hasAutoExcess) {
+        setPayments(userPayments);
       }
     }
   }, [
@@ -1932,6 +1978,7 @@ export function SubscriptionForm() {
             }}
             getPersonLabel={(idx) => getMemberLegend(idx, form.peopleCount, !!kidsEnabled)}
             discrepancyDetail={hasFormDiscrepancy ? formDiscrepancyDetail : undefined}
+            maxPayments={maxPaymentsAllowed}
           />
         )}
 

@@ -662,6 +662,27 @@ export function SettingsScreen() {
     });
   };
 
+  const hasAnyPaymentTaken = useMemo(() => {
+    return (subscriptions || []).some((sub) => {
+      if (sub.payments && sub.payments.length > 0) {
+        return sub.payments.some((p) => (parseFloat(p.amount) || 0) > 0);
+      }
+      return (parseFloat(sub.amount || "0") || 0) > 0;
+    });
+  }, [subscriptions]);
+
+  const validateAndSetMaxPayments = (newVal: number) => {
+    const baselineMax = savedBaseline?.payment?.maxPayments || payment?.maxPayments || 10;
+    if (newVal < baselineMax && hasAnyPaymentTaken) {
+      showAlert(UI_TEXT.cannotDecreaseMaxPaymentsTitle, UI_TEXT.cannotDecreaseMaxPaymentsMessage);
+      return;
+    }
+    setLocalPayment({
+      ...localPayment,
+      maxPayments: Math.max(1, Math.min(20, newVal)),
+    });
+  };
+
   const updateMealConfig = (
     dayId: string,
     mealKey: MealType,
@@ -1081,6 +1102,42 @@ export function SettingsScreen() {
                      />
                   </View>
                 ))}
+
+                <View style={{ height: 1, backgroundColor: theme.colors.border, marginVertical: 4 }} />
+
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                  <View style={{ flex: 1, marginRight: 10 }}>
+                    <Text style={{ fontSize: 14, fontWeight: "700", color: theme.colors.textPrimary }}>
+                      {UI_TEXT.maxPaymentsLabel}
+                    </Text>
+                    <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: "600", marginTop: 2 }}>
+                      {UI_TEXT.maxPaymentsHelper}
+                    </Text>
+                  </View>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: theme.colors.surfaceDark, borderRadius: 8, paddingHorizontal: 6, paddingVertical: 4 }}>
+                    <Pressable
+                      onPress={() => validateAndSetMaxPayments((localPayment.maxPayments || 10) - 1)}
+                      accessible={true}
+                      accessibilityRole="button"
+                      accessibilityLabel="Decrease Max Payments"
+                      style={{ padding: 4 }}
+                    >
+                      <Ionicons name="remove-circle-outline" size={20} color={theme.colors.primary} />
+                    </Pressable>
+                    <Text style={{ fontSize: 15, fontWeight: "900", color: theme.colors.textPrimary, minWidth: 24, textAlign: "center" }}>
+                      {localPayment.maxPayments || 10}
+                    </Text>
+                    <Pressable
+                      onPress={() => validateAndSetMaxPayments((localPayment.maxPayments || 10) + 1)}
+                      accessible={true}
+                      accessibilityRole="button"
+                      accessibilityLabel="Increase Max Payments"
+                      style={{ padding: 4 }}
+                    >
+                      <Ionicons name="add-circle-outline" size={20} color={theme.colors.primary} />
+                    </Pressable>
+                  </View>
+                </View>
              </View>
            )}
            <View style={{ height: 1, backgroundColor: theme.colors.border, marginVertical: 20 }} />
