@@ -536,6 +536,7 @@ export function NotesScreen() {
         addActivityLog({
           module: ActivityModule.NOTE,
           action: ActivityAction.SHARE,
+          targetId: updatedNote.subject,
           description: UI_TEXT.logShareNote.replace("{subject}", updatedNote.subject).replace("{recipient}", recipientSummary),
           newData: { subject: updatedNote.subject, sharedWith: finalSharedWith, shareMode: finalShareMode, userShareModes: finalUserShareModes }
         });
@@ -545,6 +546,7 @@ export function NotesScreen() {
         addActivityLog({
           module: ActivityModule.NOTE,
           action: ActivityAction.UPDATE,
+          targetId: updatedNote.subject,
           description: UI_TEXT.logUnshareNote.replace("{subject}", updatedNote.subject),
           newData: { subject: updatedNote.subject, unshared: true }
         });

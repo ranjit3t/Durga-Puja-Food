@@ -403,6 +403,7 @@ The application enforces strict role-based access control (RBAC) distinguishing 
     - Supports targeted multi-user sharing and unsharing: notes can be shared with per-user share modes (**Read-Only** vs **Read-Write**) for individual non-admin recipients or "All" non-admins.
     - Targeted unsharing allows revoking access for individual users while preserving access for other shared recipients.
     - Instant peer-to-peer notification messages (`noteShareMessage`) are sent **one time only** upon newly granting access to a recipient with their specific mode, with zero notification messages sent on unsharing.
+    - Generates structured audit trail logs (`ActivityAction.SHARE` / `ActivityAction.UPDATE`) under `ActivityModule.NOTE` with `targetId: note.subject`, maintaining 100% parity with Create, Update, and Delete note audit log entries.
     - Shared notes cannot be deleted by non-admins; only admins can delete shared notes, ensuring strict administrative governance over shared operational notes. Non-admins can delete only their own unshared notes.
     - Ownership badges display the owner's exact username (`Owned by: {username}`) exclusively when viewed by non-owners without duplication. Sharing status markers (`Shared: {count} user(s) ({mode})`) are rendered exclusively for note owners and admins.
     - Fully WCAG 2.1 AA accessibility compliant (`accessible={true}`, `accessibilityRole="button"`), 100% `UI_TEXT` dictionary localization with zero hardcoding, and mobile-friendly responsive layout.

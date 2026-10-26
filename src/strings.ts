@@ -886,7 +886,7 @@ export const UI_TEXT = {
   noteShareError: "Unable to update note sharing.",
   deleteSharedNoteForbidden: "Shared notes cannot be deleted by non-admins.",
   logShareNote: "Shared note: {subject} with {recipient}",
-  logUnshareNote: "Updated note sharing for: {subject}",
+  logUnshareNote: "Unshared note: {subject}",
   noteShareMessage: "📌 Shared Note from {sender} [{mode}]: \"{subject}\"",
   noteUnsharedMessage: "📌 Note \"{subject}\" is no longer shared with you by {sender}.",
   verifying: "Authenticating...",
