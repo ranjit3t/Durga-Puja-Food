@@ -676,6 +676,17 @@ export function HomeScreen() {
               <ActionLabel icon="document-text-outline" label={UI_TEXT.report} color={theme.colors.white} size={iconSize} vertical />
             </Pressable>
           )}
+          {(userRole === UserRole.CATERER || userRole === UserRole.ADMIN) && (
+            <Pressable
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={UI_TEXT.catererFinanceButton}
+              onPress={() => navigate(AppScreen.CATERER_INCOME_EXPENSE)}
+              style={[styles.compactSecondary, { backgroundColor: theme.cardColors[4].accent || theme.colors.primary, borderColor: theme.cardColors[4].accent || theme.colors.primary }]}
+            >
+              <ActionLabel icon="wallet-outline" label={UI_TEXT.catererFinanceButton} color={theme.colors.white} size={iconSize} vertical />
+            </Pressable>
+          )}
           <Pressable
             accessible={true}
             accessibilityRole="button"

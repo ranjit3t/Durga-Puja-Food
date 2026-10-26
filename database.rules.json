@@ -63,6 +63,11 @@
         ".write": "auth != null",
         ".indexOn": ["sender", "recipient", "timestamp"]
       }
+    },
+    "caterer_finance": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      ".indexOn": ["date", "type"]
     }
   }
 }

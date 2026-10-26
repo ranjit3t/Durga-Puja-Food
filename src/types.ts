@@ -46,6 +46,7 @@ import type {
   PackageApplicability,
   FoodPackage,
   AppliedPackageInfo,
+  CatererTransaction,
 } from "./domain";
 
 export enum FilterMode {
@@ -125,6 +126,7 @@ export type {
   PackageApplicability,
   FoodPackage,
   AppliedPackageInfo,
+  CatererTransaction,
 };
 
 export {

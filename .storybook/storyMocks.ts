@@ -159,9 +159,9 @@ const sampleActivityLogs = [
 ];
 
 const sampleNotes = [
-  { id: "preview-note-1", timestamp: Date.now() - 60_000, userName: "Kitchen Vendor", subject: "Lunch counter", content: "Keep one parcel counter open until 1:30 PM." },
-  { id: "preview-note-2", timestamp: Date.now() - 120_000, userName: "Preview Administrator", subject: "Menu update", content: "The Shashthi lunch menu is ready for service." },
-  { id: "preview-note-3", timestamp: Date.now() - 180_000, userName: "Kitchen Vendor", subject: "Stock check", content: "Confirm plates and takeaway boxes before dinner." },
+  { id: "preview-note-1", timestamp: Date.now() - 60_000, userName: "vendor", subject: "Lunch counter", content: "Keep one parcel counter open until 1:30 PM." },
+  { id: "preview-note-2", timestamp: Date.now() - 120_000, userName: "admin", subject: "Menu update", content: "The Shashthi lunch menu is ready for service.", sharedWith: ["vendor", "caterer"], shareMode: "read-write", userShareModes: { vendor: "read-write", caterer: "read-only" } },
+  { id: "preview-note-3", timestamp: Date.now() - 180_000, userName: "caterer", subject: "Stock check", content: "Confirm plates and takeaway boxes before dinner.", sharedWith: "all", shareMode: "read-only" },
 ];
 
 const database = {
@@ -196,7 +196,13 @@ const database = {
   updateSubscriptionStatus: async () => {},
   checkInPassAtomic: async () => {},
   getByPasscode: async () => sampleSubscription,
-  getAuthConfig: async () => ({ users: [] }),
+  getAuthConfig: async () => ({
+    users: [
+      { username: "admin", name: "Preview Administrator", role: "admin" },
+      { username: "vendor", name: "Kitchen Vendor", role: "vendor" },
+      { username: "caterer", name: "Head Caterer", role: "caterer" },
+    ]
+  }),
   updateFreeMealCountDebounced: noop,
 };
 
@@ -208,6 +214,8 @@ type StoryListOverrides = { activityLogs?: any[]; notes?: any[] };
 const StoryListOverridesContext = React.createContext<StoryListOverrides>({});
 type StoryNavigationOverrides = Record<string, any>;
 const StoryNavigationOverridesContext = React.createContext<StoryNavigationOverrides>({});
+type StoryAuthOverrides = { userRole?: UserRole | string; userName?: string; userAccountName?: string };
+const StoryAuthOverridesContext = React.createContext<StoryAuthOverrides>({});
 
 export function StoryMockProvider({
   children,
@@ -215,12 +223,14 @@ export function StoryMockProvider({
   chat = {},
   lists = {},
   navigation = {},
+  auth = {},
 }: {
   children: React.ReactNode;
   database?: StoryDatabaseOverrides;
   chat?: StoryChatOverrides;
   lists?: StoryListOverrides;
   navigation?: StoryNavigationOverrides;
+  auth?: StoryAuthOverrides;
 }) {
   return React.createElement(
     StoryDatabaseOverridesContext.Provider,
@@ -234,7 +244,11 @@ export function StoryMockProvider({
         React.createElement(
           StoryNavigationOverridesContext.Provider,
           { value: navigation },
-          children
+          React.createElement(
+            StoryAuthOverridesContext.Provider,
+            { value: auth },
+            children
+          )
         )
       )
     )
@@ -242,10 +256,11 @@ export function StoryMockProvider({
 }
 
 export function useAuth() {
+  const overrides = useContext(StoryAuthOverridesContext);
   return {
-    userRole: UserRole.ADMIN,
-    userName: "Preview Administrator",
-    userAccountName: "admin",
+    userRole: overrides.userRole ?? UserRole.ADMIN,
+    userName: overrides.userName ?? "Preview Administrator",
+    userAccountName: overrides.userAccountName ?? "admin",
     handleLogin: noop,
     handleLogout: noop,
     isAuthenticated: true,

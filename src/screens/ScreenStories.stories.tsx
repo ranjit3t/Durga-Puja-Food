@@ -16,6 +16,7 @@ import { SettingsScreen } from "./SettingsScreen";
 import { SubscriptionForm } from "./SubscriptionForm";
 import { SubscriptionListScreen } from "./SubscriptionListScreen";
 import { ViewMenuScreen } from "./ViewMenuScreen";
+import { CatererIncomeExpenseScreen } from "./CatererIncomeExpenseScreen";
 import { AppNavigator } from "../navigation/AppNavigator";
 import { STORY_FIXTURES, StoryMockProvider } from "../../.storybook/storyMocks";
 
@@ -65,8 +66,19 @@ export const HomeScreenStory = { name: "HomeScreen", render: () => <HomeScreen /
 export const LoginScreenStory = { name: "LoginScreen", render: () => <LoginScreen /> };
 export const MenuEditorScreenStory = { name: "MenuEditorScreen", render: () => <MenuEditorScreen /> };
 export const NotesScreenStory = {
-  name: "NotesScreen/TeamNotes",
+  name: "NotesScreen/TeamNotesAdmin",
   render: () => <ListScreenScenario><NotesScreen /></ListScreenScenario>,
+};
+export const NotesScreenVendorStory = {
+  name: "NotesScreen/TeamNotesVendor",
+  render: () => (
+    <StoryMockProvider
+      auth={{ userRole: "vendor", userName: "Kitchen Vendor", userAccountName: "vendor" }}
+      lists={{ notes: STORY_FIXTURES.notes }}
+    >
+      <NotesScreen />
+    </StoryMockProvider>
+  ),
 };
 export const NotesScreenEmptyStory = {
   name: "NotesScreen/Empty",
@@ -86,4 +98,5 @@ export const SubscriptionListScreenEmptyStory = {
   render: () => <ListScreenScenario empty><SubscriptionListScreen /></ListScreenScenario>,
 };
 export const ViewMenuScreenStory = { name: "ViewMenuScreen", render: () => <ViewMenuScreen /> };
+export const CatererIncomeExpenseScreenStory = { name: "CatererIncomeExpenseScreen", render: () => <CatererIncomeExpenseScreen /> };
 export const AppNavigatorStory = { name: "AppNavigator", render: () => <AppNavigator /> };

@@ -99,7 +99,30 @@ export enum AppScreen {
   NOTES = "notes",
   CONTACTS = "contacts",
   FOOD_PACKAGE = "foodPackage",
+  CATERER_INCOME_EXPENSE = "catererIncomeExpense",
 }
+
+export enum CatererFinanceCategory {
+  RAW_MATERIALS = "rawMaterials",
+  LOGISTICS = "logistics",
+  UTILITIES = "utilities",
+  LABOR = "labor",
+  MISC = "misc",
+  ORGANIZER_PAYMENTS = "organizerPayments",
+  SUBSCRIPTIONS = "subscriptions",
+  PACKAGES = "packages",
+  OTHER_INCOME = "otherIncome",
+}
+
+export type CatererTransaction = {
+  id: string;
+  type: "income" | "expense";
+  category: CatererFinanceCategory;
+  amount: number;
+  description: string;
+  date: number;
+  addedBy: string;
+};
 
 export enum AppThemeMode {
   LIGHT = "primary",
@@ -429,12 +452,20 @@ export type SubscriptionRecord = {
   updatedAt?: number;
 };
 
+export enum NoteShareMode {
+  READ_ONLY = "read-only",
+  READ_WRITE = "read-write",
+}
+
 export type Note = {
   id: string;
   timestamp: number;
   userName: string;
   subject: string;
   content: string;
+  sharedWith?: string[] | string; // "all", array of usernames, or single username
+  shareMode?: NoteShareMode | string; // default mode or "all" mode
+  userShareModes?: Record<string, NoteShareMode | string>; // per-user share modes
 };
 
 export type AppVersionInfo = {

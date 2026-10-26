@@ -323,7 +323,8 @@ The application follows a **Serverless Layered Architecture** built on the **Exp
 The application enforces strict role-based access control (RBAC) distinguishing between administrators (`UserRole.ADMIN`), vendors (`UserRole.VENDOR`), and caterers (`UserRole.CATERER`):
 
 ### Caterer Role (`UserRole.CATERER`) & Safeguards:
-- **Home Page (`HomeScreen.tsx`)**: Features only 4 action buttons (Free Meals, Analytics/Dashboard, Menu/View Menu, Operational Notes/Notes). Administrative and financial actions (Add Flat, Pass Subscriptions, QR Scanner, Quick Checkout, Reports, Contacts, Settings) are hidden.
+- **Home Page (`HomeScreen.tsx`)**: Features action buttons for Free Meals, Caterer Finance (Income & Expenses), Analytics/Dashboard, Menu/View Menu, and Operational Notes/Notes. Administrative actions (Add Flat, Pass Subscriptions, QR Scanner, Quick Checkout, Reports, Contacts, Settings) are hidden.
+- **Caterer Income & Expense Page (`CatererIncomeExpenseScreen.tsx`)**: Accessible exclusively to `UserRole.CATERER` and `UserRole.ADMIN`. Provides real-time financial tracking categorized into Raw Materials, Logistics, Fuel & Utilities, Labor & Staff Wages, and Miscellaneous expenses alongside income streams (Payments from Organizer, Other Income, Subscriptions, Packages). Persistently saved in Firebase Realtime Database under `caterer_finance` with real-time WebSocket sync (retained across sessions and re-logins). Starts completely clean/empty to protect subscription privacy, calculates total income, total expenses, and net balance (Credit / Deficit), supports adding and deleting custom transactions, and exports CSV logs. Fully WCAG 2.1 AA accessible and localized via `UI_TEXT`.
 - **Free Meals Page (`FreeMealManagementScreen.tsx`)**: Operates in **read-only mode**. Caterers can view planned and served counts/demands but cannot modify them. Pressing Free Meals on Home Page opens the page directly without opening any modal for the current day.
 - **Menu View (`ViewMenuScreen.tsx`)**: Displays the menu without pricing information (`!isAdmin`).
 
@@ -392,6 +393,15 @@ The application enforces strict role-based access control (RBAC) distinguishing 
     - Dynamically binds Add Pass and Edit Pass payment entry limits (`maxPaymentsAllowed`) to the system settings value.
     - Implemented a database protection check (`hasAnyPaymentTaken`) prohibiting decreasing `maxPayments` when active payment records exist in the database, displaying a clear alert (`UI_TEXT.cannotDecreaseMaxPaymentsTitle`) if an operator attempts to lower the limit while payments exist.
     - Fully WCAG 2.1 AA accessibility compliant (`accessible={true}`, `accessibilityRole="button"`), mobile-responsive layout (`s(...)`), and 100% `UI_TEXT` localized.
+18. **Team Notes & Decoupled Targeted Note Sharing ([`NotesScreen.tsx`](src/screens/NotesScreen.tsx), [`domain.ts`](src/domain.ts))**:
+    - Decouples Note Sharing from Note UI via a dedicated share icon (`share-social-outline`) on each note card in the list, opening a dedicated `ShareNoteModal`.
+    - Non-admin users can view notes they own, plus notes shared with them or with "all" non-admin users. Admins can view and manage all notes.
+    - Supports targeted multi-user sharing and unsharing: notes can be shared with per-user share modes (**Read-Only** vs **Read-Write**) for individual non-admin recipients or "All" non-admins.
+    - Targeted unsharing allows revoking access for individual users while preserving access for other shared recipients.
+    - Instant peer-to-peer notification messages (`noteShareMessage`) are sent **one time only** upon newly granting access to a recipient with their specific mode, with zero notification messages sent on unsharing.
+    - Shared notes cannot be deleted by non-admins; only admins can delete shared notes, ensuring strict administrative governance over shared operational notes. Non-admins can delete only their own unshared notes.
+    - Ownership badges display the owner's exact username (`Owned by: {username}`) exclusively when viewed by non-owners without duplication. Sharing status markers (`Shared: {count} user(s) ({mode})`) are rendered exclusively for note owners and admins.
+    - Fully WCAG 2.1 AA accessibility compliant (`accessible={true}`, `accessibilityRole="button"`), 100% `UI_TEXT` dictionary localization with zero hardcoding, and mobile-friendly responsive layout.
 
 ---
 

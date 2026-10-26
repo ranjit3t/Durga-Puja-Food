@@ -48,6 +48,7 @@ import {
   ChatUser,
   MessageStatus,
   FoodPackage,
+  CatererTransaction,
 } from "./domain";
 import { ConfigDay, AppConfig } from "./types";
 import { generatePasscode, getDietTypeForChoice } from "./constants";
@@ -78,6 +79,9 @@ export interface SubscriptionRepository {
   getFoodPackages(): Promise<FoodPackage[]>;
   upsertFoodPackage(pkg: FoodPackage): Promise<FoodPackage>;
   removeFoodPackage(id: string): Promise<void>;
+  getCatererTransactions(): Promise<CatererTransaction[]>;
+  upsertCatererTransaction(tx: CatererTransaction): Promise<CatererTransaction>;
+  removeCatererTransaction(id: string): Promise<void>;
   getAppVersion(): Promise<AppVersionInfo | null>;
   updateAppVersion(version: string): Promise<void>;
   getMetrics(): Promise<KitchenMetrics | null>;
@@ -96,6 +100,11 @@ export interface SubscriptionRepository {
   onFoodPackagesDelta(
     onAdded: (pkg: FoodPackage) => void,
     onChanged: (pkg: FoodPackage) => void,
+    onRemoved: (id: string) => void
+  ): () => void;
+  onCatererTransactionsDelta(
+    onAdded: (tx: CatererTransaction) => void,
+    onChanged: (tx: CatererTransaction) => void,
     onRemoved: (id: string) => void
   ): () => void;
   onLogsDelta(onAdded: (log: ActivityLog) => void): () => void;
@@ -122,6 +131,7 @@ const authConfigPath = "auth_config";
 const logsPath = "logs";
 const notesPath = "notes";
 const foodPackagesPath = "food_packages";
+const catererFinancePath = "caterer_finance";
 const appVersionPath = "appVersion";
 const metricsPath = "metrics";
 const presencePath = "presence";
@@ -731,6 +741,31 @@ export function createFirebaseRepository(): SubscriptionRepository {
       if (!services) return;
       await remove(ref(services.db, `${foodPackagesPath}/${id}`));
     },
+    async getCatererTransactions() {
+      const services = await ensureFirebaseAuth();
+      if (!services) return [];
+      const snapshot = await get(ref(services.db, catererFinancePath));
+      const data = snapshot.val() as Record<string, CatererTransaction> | null;
+      if (!data) return [];
+      return Object.values(data).sort((a, b) => b.date - a.date);
+    },
+    async upsertCatererTransaction(tx) {
+      const services = await ensureFirebaseAuth();
+      if (!services) return tx;
+      let targetId = tx.id;
+      if (!targetId) {
+        const newRef = push(ref(services.db, catererFinancePath));
+        targetId = newRef.key as string;
+      }
+      const data = cleanUndefined({ ...tx, id: targetId });
+      await set(ref(services.db, `${catererFinancePath}/${targetId}`), data);
+      return { ...tx, id: targetId };
+    },
+    async removeCatererTransaction(id) {
+      const services = await ensureFirebaseAuth();
+      if (!services) return;
+      await remove(ref(services.db, `${catererFinancePath}/${id}`));
+    },
     async getAppVersion() {
       const services = await ensureFirebaseAuth();
       if (!services) return null;
@@ -858,6 +893,41 @@ export function createFirebaseRepository(): SubscriptionRepository {
           }
         });
       }).catch(err => console.error("Food packages listener error:", err));
+
+      return () => {
+        if (unsubAdded) unsubAdded();
+        if (unsubChanged) unsubChanged();
+        if (unsubRemoved) unsubRemoved();
+      };
+    },
+
+    onCatererTransactionsDelta(onAdded, onChanged, onRemoved) {
+      let unsubAdded: (() => void) | null = null;
+      let unsubChanged: (() => void) | null = null;
+      let unsubRemoved: (() => void) | null = null;
+
+      ensureFirebaseAuth().then((services) => {
+        if (!services?.db) return;
+        const cRef = ref(services.db, catererFinancePath);
+
+        unsubAdded = onChildAdded(cRef, (snapshot) => {
+          if (snapshot.exists()) {
+            onAdded(snapshot.val() as CatererTransaction);
+          }
+        });
+
+        unsubChanged = onChildChanged(cRef, (snapshot) => {
+          if (snapshot.exists()) {
+            onChanged(snapshot.val() as CatererTransaction);
+          }
+        });
+
+        unsubRemoved = onChildRemoved(cRef, (snapshot) => {
+          if (snapshot.key) {
+            onRemoved(snapshot.key);
+          }
+        });
+      }).catch(err => console.error("Caterer finance listener error:", err));
 
       return () => {
         if (unsubAdded) unsubAdded();
