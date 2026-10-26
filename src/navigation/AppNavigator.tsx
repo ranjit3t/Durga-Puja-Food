@@ -1,7 +1,7 @@
 import React from "react";
 import {
   View,
-  ImageBackground,
+  Image,
   ActivityIndicator,
   Text,
 } from "react-native";
@@ -44,12 +44,16 @@ export function AppNavigator() {
 
   if (loading) {
     return (
-      <ImageBackground source={{ uri: "https://picsum.photos/id/1080/1200/1800" }} style={styles.root} imageStyle={styles.backgroundImage}>
+      <View style={styles.root}>
+        <Image
+          source={{ uri: "https://picsum.photos/id/1080/1200/1800" }}
+          style={[styles.backgroundImage, { position: "absolute", width: "100%", height: "100%" }]}
+        />
         <View style={[styles.rootOverlay, styles.center]}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
           <Text style={styles.loadingText}>{UI_TEXT.loading}</Text>
         </View>
-      </ImageBackground>
+      </View>
     );
   }
 

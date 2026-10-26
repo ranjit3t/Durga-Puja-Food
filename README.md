@@ -37,15 +37,15 @@ The application follows a decoupled, context-driven component architecture with 
 
 | Technology / Library | Purpose & Usage |
 | :--- | :--- |
-| **React Native / Expo (v57+)** | Core cross-platform app framework targeting Android, iOS, and Web. |
-| **TypeScript (v5.3+)** | Strict type safety for domain models, context providers, and props. |
+| **React Native / Expo (v58)** | Core cross-platform app framework targeting Android, iOS, and Web (React 19.3, RN 0.88). |
+| **TypeScript (~6.0.3)** | Strict type safety for domain models, context providers, and props. |
 | **Metro Transformer (`inlineRequires: true`)** | Defers JS module loading at runtime in `metro.config.js`, accelerating TTI by ~25% and lowering initial baseline RAM. |
 | **Firebase Realtime Database** | Sub-100ms WebSocket real-time delta streams across subscriptions, menus, notes, audit logs, and pre-aggregated kitchen metrics. |
 | **`expo-camera`** | High-performance camera integration for QR Code pass scanning with isolated memoization for 60 FPS scanning. |
 | **`expo-image-picker`** | Camera capture and gallery screenshot selection for payment receipt scanning. |
 | **`@react-native-ml-kit/text-recognition`** | On-device Google ML Kit Text Recognition for sub-15ms payment OCR on mobile app bundles (~1MB RAM footprint). |
 | **`tesseract.js`** | Open-source client-side OCR engine for extracting UPI transaction IDs & amounts on Web browsers and as fallback on mobile. |
-| **`expo-audio` (~57.0.5)** | Modern Expo SDK 57 native audio player engine for triggering checkout completion sound feedback (`assets/checkout.mp3`). |
+| **`expo-audio` (~58.0.10)** | Modern Expo SDK 58 native audio player engine for triggering checkout completion sound feedback (`assets/checkout.mp3`). |
 | **`assets/checkout.mp3`** | Custom audio chime tone played strictly when quick checkout success splash window opens (if sound is enabled). |
 | **`react-native-qrcode-svg`** | SVG-based QR code pass matrix generation. |
 | **`react-native-view-shot` (`captureRef`)** | Snapshot engine for capturing report cards and digital food passes as theme-padded PNG images. |

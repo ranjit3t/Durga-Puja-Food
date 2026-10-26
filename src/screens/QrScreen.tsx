@@ -35,8 +35,8 @@ export function QrScreen() {
   const { s } = useScaling();
   const { theme, themeType } = useAppTheme();
   const { width } = useWindowDimensions();
-  const qrRef = useRef<View>(null);
-  const qrCodeOnlyRef = useRef<View>(null);
+  const qrRef = useRef<any>(null);
+  const qrCodeOnlyRef = useRef<any>(null);
 
   const qrSize = width > 768 ? 220 : Math.min(width * 0.5, 180);
   const canShare = seasonEnabled && userRole === "admin";

@@ -152,7 +152,7 @@ const DashboardMealSection = memo(
     const { theme } = useAppTheme();
     const { shareQr } = useUI();
     const { subscriptions, foodMenu } = useCoreDatabase();
-    const mealRef = useRef<View>(null);
+    const mealRef = useRef<any>(null);
 
     const mealLabel = getMealLabel(type);
     const isCurrent = isMealCurrent(day, type, config);
@@ -629,7 +629,7 @@ export function DashboardScreen() {
   const styles = useStyles();
   const { s } = useScaling();
   const { theme, themeType } = useAppTheme();
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<any>(null);
   const sectionRefs = useRef<Record<string, number>>({});
 
   const sortedActiveDays = useMemo(() => {

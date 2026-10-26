@@ -38,8 +38,8 @@ export function ViewMenuScreen() {
   const styles = useStyles();
   const { theme, themeType } = useAppTheme();
 
-  const scrollRef = useRef<ScrollView>(null);
-  const menuRef = useRef<View>(null);
+  const scrollRef = useRef<any>(null);
+  const menuRef = useRef<any>(null);
   const layouts = useRef<Record<string, number>>({});
 
   const handleShareMenu = async () => {

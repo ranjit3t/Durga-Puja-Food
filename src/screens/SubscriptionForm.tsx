@@ -513,7 +513,7 @@ export function SubscriptionForm() {
     } },
   ]) : undefined;
 
-  const dayScrollRef = useRef<ScrollView>(null);
+  const dayScrollRef = useRef<any>(null);
   const dayOffsets = useRef<Record<string, number>>({});
 
   useEffect(() => {

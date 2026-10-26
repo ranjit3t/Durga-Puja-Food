@@ -45,7 +45,7 @@ export function MenuEditorScreen() {
   const { showAlert } = useUI();
   const { navigate, goBack, targetDay, setTargetDay, setTargetMeal } = useAppNavigation();
 
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<any>(null);
   const layouts = useRef<Record<string, number>>({});
 
   const styles = useStyles();

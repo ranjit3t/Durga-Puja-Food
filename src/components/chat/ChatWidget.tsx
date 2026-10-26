@@ -83,7 +83,7 @@ export function ChatWidget() {
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [sizeXY, setSizeXY] = useState({ width: 310, height: 440 });
   const [hasMoved, setHasMoved] = useState(false);
-  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollViewRef = useRef<any>(null);
 
   const handleMinimize = () => {
     pan.setValue({ x: 0, y: 0 });

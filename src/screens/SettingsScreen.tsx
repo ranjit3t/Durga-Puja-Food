@@ -986,7 +986,7 @@ export function SettingsScreen() {
 
   return (
     <View style={[styles.root, { backgroundColor: theme.colors.background }]}>
-      <StatusBar barStyle={themeType === AppThemeMode.DARK ? "light-content" : "dark-content"} backgroundColor={theme.colors.surface} />
+      <StatusBar {...({ barStyle: themeType === AppThemeMode.DARK ? "light-content" : "dark-content", backgroundColor: theme.colors.surface } as any)} />
 
       {/* Header */}
       <View style={styles.header}>

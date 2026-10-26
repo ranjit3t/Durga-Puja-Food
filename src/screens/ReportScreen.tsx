@@ -59,7 +59,7 @@ export function ReportScreen() {
   const { s } = useScaling();
   const { theme, themeType } = useAppTheme();
 
-  const dayScrollRef = useRef<ScrollView>(null);
+  const dayScrollRef = useRef<any>(null);
   const dayOffsets = useRef<Record<string, number>>({});
 
   React.useEffect(() => {
@@ -148,7 +148,7 @@ export function ReportScreen() {
   }, [activeDays, dayConfig, reportType, selectedDayId, selectedMealType]);
 
   const [isCapturing, setIsCapturing] = React.useState(false);
-  const reportRef = useRef<View>(null);
+  const reportRef = useRef<any>(null);
 
   const isParcelEnabledGlobally = useMemo(() => {
     return dayConfig.some((d) => d.enabled && (d.breakfast.parcel || d.lunch.parcel || d.dinner.parcel));
@@ -246,7 +246,7 @@ export function ReportScreen() {
 
   return (
     <View style={[styles.root, { backgroundColor: theme.colors.background }]}>
-      <StatusBar barStyle={themeType === AppThemeMode.DARK ? "light-content" : "dark-content"} backgroundColor={theme.colors.surface} />
+      <StatusBar {...({ barStyle: themeType === AppThemeMode.DARK ? "light-content" : "dark-content", backgroundColor: theme.colors.surface } as any)} />
 
       {/* Top Header */}
       <View style={styles.header}>
