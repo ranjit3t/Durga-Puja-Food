@@ -3,6 +3,8 @@ import { fileURLToPath } from "node:url";
 
 const storyMocks = fileURLToPath(new URL("./storyMocks.ts", import.meta.url));
 const nativeMocks = fileURLToPath(new URL("./nativeMocks.tsx", import.meta.url));
+const reactNativeShim = fileURLToPath(new URL("./reactNativeShim.ts", import.meta.url));
+const expoModulesCoreShim = fileURLToPath(new URL("./expoModulesCoreShim.ts", import.meta.url));
 const contextNames = [
   "AuthContext",
   "ChatContext",
@@ -36,13 +38,23 @@ const config: StorybookConfig = {
           { find: "expo-audio", replacement: nativeMocks },
           { find: "expo-sharing", replacement: nativeMocks },
           { find: "expo-print", replacement: nativeMocks },
+          { find: /^expo-font(?:\/.*)?$/, replacement: nativeMocks },
           { find: "react-native-view-shot", replacement: nativeMocks },
           { find: "@react-native-ml-kit/text-recognition", replacement: nativeMocks },
+          { find: "@react-native/assets-registry/registry", replacement: nativeMocks },
+          { find: "@react-native/assets-registry", replacement: nativeMocks },
+          { find: /^react-native$/, replacement: reactNativeShim },
+          { find: "expo-modules-core", replacement: expoModulesCoreShim },
+          { find: /react-native-svg\/lib\/module\/fabric\/.*$/, replacement: nativeMocks },
           ...contextNames.map((name) => ({
             find: new RegExp(`^(?:\\.\\./)+context/${name}(?:\\.tsx?)?$`),
             replacement: storyMocks,
           })),
         ],
+      },
+      optimizeDeps: {
+        ...(viteConfig.optimizeDeps ?? {}),
+        exclude: [...(viteConfig.optimizeDeps?.exclude ?? []), "react-native-svg"],
       },
     };
   },

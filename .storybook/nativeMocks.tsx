@@ -60,4 +60,22 @@ export function createAudioPlayer() {
 }
 
 export const TextRecognition = { recognize: async () => [] };
+export const getAssetByID = () => ({ uri: '' });
+export class EventEmitter {}
+export class NativeModule {}
+export class SharedObject {}
+export class SharedRef {}
+export const TurboModuleRegistry = {
+  get: () => null,
+  getEnforcing: () => null,
+};
+export const Font = {
+  isLoaded: () => true,
+  isLoading: () => false,
+  loadAsync: () => Promise.resolve(),
+};
+export function isLoaded() { return true; }
+export function loadAsync() { return Promise.resolve(); }
+export function isLoading() { return false; }
+
 export default TextRecognition;
