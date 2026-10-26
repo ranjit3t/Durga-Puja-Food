@@ -35,7 +35,7 @@ export const QuickCheckoutItemCard: React.FC<QuickCheckoutItemCardProps> = ({
   return (
     <View style={{
       flex: 1,
-      minWidth: 130,
+      minWidth: 95,
       backgroundColor: theme.colors.surfaceDark,
       borderRadius: 12,
       padding: 10,
@@ -47,7 +47,8 @@ export const QuickCheckoutItemCard: React.FC<QuickCheckoutItemCardProps> = ({
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
         <Text
           numberOfLines={1}
-          style={{ fontSize: 13, fontWeight: '800', color: theme.colors.textPrimary, flex: 1 }}
+          adjustsFontSizeToFit={true}
+          style={{ fontSize: 11, fontWeight: '800', color: theme.colors.textPrimary, flex: 1 }}
         >
           {label}
         </Text>

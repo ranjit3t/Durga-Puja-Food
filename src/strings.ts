@@ -297,6 +297,7 @@ export const UI_TEXT = {
   parcelCharges: "Parcel Charges",
   dineIn: "Dine-In",
   optedDineIn: "Opted Dine-In",
+  quickOptDineIn: "Opt Dine-In",
   parcel: "Parcel",
   showingMatches: "Matching Passes",
   ofTotal: "of",

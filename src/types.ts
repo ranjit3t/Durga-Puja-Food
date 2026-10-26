@@ -93,7 +93,7 @@ export interface CategoryInfo {
   remDineInCount: number;
 }
 
-export type CategoryInputs = Record<string, { parcel: number; dineIn: number }>;
+export type CategoryInputs = Record<string, { parcel: number; dineIn: number, optDineIn: number }>;
 
 export type Day = string;
 export type Screen = AppScreen;
