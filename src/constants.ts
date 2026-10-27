@@ -1227,3 +1227,66 @@ export function isSlotMissedParcel(
 
   return isMealTaken && !isParcelTaken;
 }
+
+export function findSubscriptionByPassCodeOrCheatCode(
+  code: string,
+  subscriptions: Subscription[],
+  cheatCodeEnabled: boolean
+): Subscription | undefined {
+  if (!code || typeof code !== "string") return undefined;
+  const trimmed = code.trim();
+  if (trimmed.length === 0) return undefined;
+
+  // 1. Check standard passcode / ID / QR value match first
+  const standardMatch = subscriptions.find(
+    (s) => s.passcode === trimmed || s.id === trimmed || qrValueFor(s.id) === trimmed
+  );
+  if (standardMatch) return standardMatch;
+
+  // If cheat code is not enabled, return undefined
+  if (!cheatCodeEnabled) return undefined;
+
+  // 2. Cheat code checking
+  const cleanCode = trimmed.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+  if (cleanCode.length === 0) return undefined;
+
+  const candidates: string[] = [cleanCode];
+  if (cleanCode.startsWith("0") && cleanCode.length > 1) {
+    candidates.push(cleanCode.slice(1));
+  }
+
+  for (const cand of candidates) {
+    for (const s of subscriptions) {
+      const sIdClean = (s.id || "").replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+      const sPasscodeClean = (s.passcode || "").replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+      const sBlockClean = (s.block || "").replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+      const sFlatClean = (s.flat || "").replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+      const sBlockFlatClean = sBlockClean + sFlatClean;
+
+      if (
+        cand === sIdClean ||
+        cand === sPasscodeClean ||
+        cand === sBlockFlatClean
+      ) {
+        return s;
+      }
+
+      for (let splitIdx = 1; splitIdx <= Math.min(3, cand.length - 1); splitIdx++) {
+        const blockCand = cand.slice(0, splitIdx);
+        const flatCand = cand.slice(splitIdx);
+        if (
+          blockCand === sBlockClean &&
+          flatCand === sFlatClean
+        ) {
+          return s;
+        }
+      }
+    }
+  }
+
+  return undefined;
+}
+
+
+
+

@@ -9,7 +9,8 @@ import {
   mealChoicesFromMeals,
   mealSlotsFromChoices,
   emptyTaken,
-  qrValueFor
+  qrValueFor,
+  findSubscriptionByPassCodeOrCheatCode
 } from "../constants";
 import { UI_TEXT } from "../strings";
 
@@ -88,7 +89,7 @@ interface NavigationContextType {
 
   // Actions
   startNew: (dayConfig: ConfigDay[], seasonName: string, paymentConfig: PaymentConfig, freeMealEnabled: boolean, mobileEnabled: boolean, seasonEnabled: boolean) => void;
-  openScannedValue: (val: string, subscriptions: Subscription[]) => boolean;
+  openScannedValue: (val: string, subscriptions: Subscription[], cheatCodeEnabled?: boolean) => boolean;
 }
 
 const NavigationContext = createContext<NavigationContextType | undefined>(undefined);
@@ -181,11 +182,8 @@ export function NavigationProvider({ children }: { children: React.ReactNode }) 
     navigate(AppScreen.FORM);
   };
 
-  const openScannedValue = (val: string, subscriptions: Subscription[]) => {
-    // Try full QR URL match, then ID match, then Passcode match
-    const match = subscriptions.find((s) =>
-      qrValueFor(s.id) === val || s.id === val || s.passcode === val
-    );
+  const openScannedValue = (val: string, subscriptions: Subscription[], cheatCodeEnabled: boolean = false) => {
+    const match = findSubscriptionByPassCodeOrCheatCode(val, subscriptions, cheatCodeEnabled);
 
     if (match) {
       setSelectedId(match.id);

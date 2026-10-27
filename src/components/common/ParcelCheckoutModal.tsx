@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
-import { View, Text, Pressable, Platform, Modal, ScrollView, useWindowDimensions, Vibration } from "react-native";
+import { View, Text, Pressable, Platform, Modal, ScrollView, useWindowDimensions, Vibration, Animated } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAppTheme } from "../../theme";
 import { UI_TEXT } from "../../strings";
@@ -8,7 +8,7 @@ import { useDatabase } from "../../context/DatabaseContext";
 import { useUI } from "../../context/UIContext";
 import { useAppNavigation } from "../../context/NavigationContext";
 import { useChat } from "../../context/ChatContext";
-import { Subscription, MealType, DietaryOption, DietType, TakenState, CheckoutSource, AppScreen, ActivityModule, ActivityAction } from "../../types";
+import { Subscription, MealType, DietaryOption, DietType, TakenState, CheckoutSource, AppScreen, ActivityModule, ActivityAction, AppThemeMode } from "../../types";
 import { isParcelEnabled, isKidsParcelEnabled, isGuestsParcelEnabled, isMealCurrent, isMealDone, formatTakenTime, getValidSlotChoice, getMealVarieties, getVarietyForChoice, getDietTypeForChoice, isMealEnabled } from "../../constants";
 
 async function playCheckoutSound() {
@@ -262,14 +262,121 @@ export function ParcelCheckoutModal({
     };
   }, [activeSubscription, currentMealInfo, kidsEnabled, guestsEnabled, dayConfig, theme]);
 
+  // Real-time partial checkout & dine-in opted status computation for instant alert banners
+  const partialInfo = useMemo(() => {
+    if (!activeSubscription || !currentMealInfo) return null;
+    const { dayId, mealType } = currentMealInfo;
+    const slots = activeSubscription.mealSlots?.[dayId] || [];
+    const taken = activeSubscription.takenByPerson?.[dayId] || [];
+    const peopleCount = activeSubscription.peopleCount || 0;
+    const kidsCount = kidsEnabled ? (activeSubscription.kidsCount || 0) : 0;
+    const guestsCount = guestsEnabled ? (activeSubscription.guestsCount || 0) : 0;
+    const headcount = peopleCount + kidsCount + guestsCount;
+
+    let registered = 0;
+    let served = 0;
+
+    for (let i = 0; i < headcount; i++) {
+      const isKid = kidsEnabled && i >= peopleCount && i < peopleCount + kidsCount;
+      const isGuest = guestsEnabled && i >= peopleCount + kidsCount;
+      if (isKid && !kidsEnabled) continue;
+      if (isGuest && !guestsEnabled) continue;
+
+      const slot = slots[i];
+      const takenRecord = taken[i];
+      const choice = getValidSlotChoice(dayId, mealType, slot?.[mealType], dayConfig);
+      if (choice === DietaryOption.NONE) continue;
+
+      registered += 1;
+      const isDineInTaken = !!(takenRecord && takenRecord[mealType as keyof TakenState]);
+      const isParcelTaken = !!(takenRecord && takenRecord[`${mealType}Parcel` as keyof TakenState]);
+
+      if (isDineInTaken || isParcelTaken) {
+        served += 1;
+      }
+    }
+
+    const remaining = registered - served;
+    const isPartial = served > 0 && remaining > 0;
+
+    return {
+      registered,
+      served,
+      remaining,
+      isPartial
+    };
+  }, [activeSubscription, currentMealInfo, kidsEnabled, guestsEnabled, dayConfig]);
+
+  const parcelInfo = useMemo(() => {
+    if (!parcelCheckoutDetails) return null;
+    const { totalParcelRemaining, totalParcelAlreadyServed } = parcelCheckoutDetails;
+    return {
+      parcelRemaining: totalParcelRemaining,
+      hasParcelRemaining: totalParcelRemaining > 0 && totalParcelAlreadyServed > 0
+    };
+  }, [parcelCheckoutDetails]);
+
+  // Animated opacity value for blinking alert banners
+  const opacityAnim = useRef(new Animated.Value(1)).current;
+  const showPartialAlert = !!(partialInfo && partialInfo.isPartial);
+  const showParcelAlert = !!(parcelInfo && parcelInfo.hasParcelRemaining);
+  const isBlinkingAlertActive = showPartialAlert || showParcelAlert;
+
+  useEffect(() => {
+    if (visible && isBlinkingAlertActive) {
+      const animation = Animated.loop(
+        Animated.sequence([
+          Animated.timing(opacityAnim, {
+            toValue: 0.25,
+            duration: 650,
+            useNativeDriver: Platform.OS !== "web",
+          }),
+          Animated.timing(opacityAnim, {
+            toValue: 1,
+            duration: 650,
+            useNativeDriver: Platform.OS !== "web",
+          }),
+        ])
+      );
+      animation.start();
+      return () => animation.stop();
+    } else {
+      opacityAnim.setValue(1);
+    }
+  }, [visible, isBlinkingAlertActive, opacityAnim]);
+
+  const activePassIdRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (visible && activeSubscription && parcelCheckoutDetails) {
-      const initial: Record<string, number> = {};
-      Object.keys(parcelCheckoutDetails.categories).forEach((catKey) => {
-        const cat = parcelCheckoutDetails.categories[catKey];
-        initial[catKey] = 0;
-      });
-      setParcelInputs(initial);
+      const passId = activeSubscription.id;
+      if (activePassIdRef.current !== passId) {
+        const initial: Record<string, number> = {};
+        Object.keys(parcelCheckoutDetails.categories).forEach((catKey) => {
+          initial[catKey] = 0;
+        });
+        setParcelInputs(initial);
+        setSuccessData(null);
+        activePassIdRef.current = passId;
+      } else {
+        // Real-time remote data change while modal is open: clamp entered inputs to updated remaining maximums!
+        setParcelInputs((prevInputs) => {
+          let updated = false;
+          const nextInputs: Record<string, number> = { ...prevInputs };
+          Object.keys(parcelCheckoutDetails.categories).forEach((catKey) => {
+            const cat = parcelCheckoutDetails.categories[catKey];
+            const maxRem = cat ? cat.remParcelCount : 0;
+            const currentEntered = nextInputs[catKey] ?? 0;
+            if (currentEntered > maxRem) {
+              nextInputs[catKey] = maxRem;
+              updated = true;
+            }
+          });
+          return updated ? nextInputs : prevInputs;
+        });
+      }
+    } else if (!visible) {
+      activePassIdRef.current = null;
       setSuccessData(null);
     }
   }, [visible, activeSubscription, parcelCheckoutDetails]);
@@ -303,7 +410,7 @@ export function ParcelCheckoutModal({
   const handleParcelCountChange = (catKey: string, delta: number) => {
     if (!parcelCheckoutDetails) return;
     const cat = parcelCheckoutDetails.categories[catKey];
-    const currentVal = parcelInputs[catKey] ?? cat.remParcelCount;
+    const currentVal = parcelInputs[catKey] ?? 0;
     const newVal = Math.max(0, Math.min(cat.remParcelCount, currentVal + delta));
     setParcelInputs(prev => ({ ...prev, [catKey]: newVal }));
   };
@@ -338,7 +445,7 @@ export function ParcelCheckoutModal({
         if (checkedOutForCategory >= countToCheckOut) break;
         const currentTaken = dayTaken[idx] || {};
         const isParcelCollected = !!currentTaken[parcelKey as keyof TakenState];
-        const isDineInTaken = !!currentTaken[mealType as keyof TakenState];
+        const isDineInTaken = !!currentTaken[mealKey as keyof TakenState];
         if (!isParcelCollected && !isDineInTaken) {
           dayTaken[idx] = {
             ...currentTaken,
@@ -506,8 +613,87 @@ export function ParcelCheckoutModal({
                   </Text>
                 </View>
 
-                {parcelCheckoutDetails && Object.values(parcelCheckoutDetails.categories).map((cat) => {
-                  const currentVal = parcelInputs[cat.categoryKey] ?? cat.remParcelCount;
+                {/* Animated Blinking Partial Pickup & Parcel Remaining Alert Banners */}
+                {showParcelAlert && showPartialAlert ? (
+                  <Animated.View
+                    style={{
+                      opacity: opacityAnim,
+                      backgroundColor: theme.colors.warningLight,
+                      borderColor: theme.colors.warning,
+                      borderWidth: 1.5,
+                      borderRadius: 12,
+                      paddingVertical: 8,
+                      paddingHorizontal: 10,
+                      gap: 4,
+                    }}
+                  >
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                      <Ionicons name="warning-outline" size={18} color={theme.colors.warning} />
+                      <Text style={{ fontSize: 12, fontWeight: "900", color: theme.themeType === AppThemeMode.DARK ? theme.colors.warning : theme.colors.textPrimary }}>
+                        {UI_TEXT.importantReminders}
+                      </Text>
+                    </View>
+                    <View style={{ gap: 2, paddingLeft: 22 }}>
+                      <Text style={{ fontSize: 11, fontWeight: "700", color: theme.themeType === AppThemeMode.DARK ? theme.colors.secondary : theme.colors.textPrimary, lineHeight: 15 }}>
+                        • {UI_TEXT.parcelPickupAlert.replace("{count}", String(parcelInfo!.parcelRemaining))}
+                      </Text>
+                      <Text style={{ fontSize: 11, fontWeight: "700", color: theme.themeType === AppThemeMode.DARK ? theme.colors.warning : theme.colors.textPrimary, lineHeight: 15 }}>
+                        • {UI_TEXT.partialCheckoutAlert
+                          .replace("{served}", String(partialInfo!.served))
+                          .replace("{total}", String(partialInfo!.registered))
+                          .replace("{remaining}", String(partialInfo!.remaining))}
+                      </Text>
+                    </View>
+                  </Animated.View>
+                ) : showParcelAlert ? (
+                  <Animated.View
+                    style={{
+                      opacity: opacityAnim,
+                      backgroundColor: theme.colors.warningLight,
+                      borderColor: theme.colors.secondary,
+                      borderWidth: 1.5,
+                      borderRadius: 12,
+                      paddingVertical: 8,
+                      paddingHorizontal: 10,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 8,
+                    }}
+                  >
+                    <Ionicons name="cube-outline" size={18} color={theme.colors.secondary} />
+                    <Text style={{ flex: 1, fontSize: 11, fontWeight: "800", color: theme.themeType === AppThemeMode.DARK ? theme.colors.secondary : theme.colors.textPrimary, lineHeight: 15 }}>
+                      {UI_TEXT.parcelPickupAlert.replace("{count}", String(parcelInfo!.parcelRemaining))}
+                    </Text>
+                  </Animated.View>
+                ) : showPartialAlert ? (
+                  <Animated.View
+                    style={{
+                      opacity: opacityAnim,
+                      backgroundColor: theme.colors.warningLight,
+                      borderColor: theme.colors.warning,
+                      borderWidth: 1.5,
+                      borderRadius: 12,
+                      paddingVertical: 8,
+                      paddingHorizontal: 10,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 8,
+                    }}
+                  >
+                    <Ionicons name="warning-outline" size={18} color={theme.colors.warning} />
+                    <Text style={{ flex: 1, fontSize: 11, fontWeight: "800", color: theme.themeType === AppThemeMode.DARK ? theme.colors.warning : theme.colors.textPrimary, lineHeight: 15 }}>
+                      {UI_TEXT.partialCheckoutAlert
+                        .replace("{served}", String(partialInfo!.served))
+                        .replace("{total}", String(partialInfo!.registered))
+                        .replace("{remaining}", String(partialInfo!.remaining))}
+                    </Text>
+                  </Animated.View>
+                ) : null}
+
+                {parcelCheckoutDetails && Object.values(parcelCheckoutDetails.categories)
+                  .filter((cat) => cat.remParcelCount > 0)
+                  .map((cat) => {
+                  const currentVal = parcelInputs[cat.categoryKey] ?? 0;
                   return (
                     <View key={cat.categoryKey} style={{ backgroundColor: theme.colors.surfaceDark + "40", padding: 14, borderRadius: 14, borderWidth: 1, borderColor: theme.colors.border, gap: 10 }}>
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>

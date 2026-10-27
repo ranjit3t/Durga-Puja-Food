@@ -145,7 +145,7 @@ describe("ParcelCheckoutModal combinations and permutations", () => {
 
     renderParcelCheckout(dineInServedSub);
 
-    expect(screen.getByText(/1\s*\/\s*1\s*Served/i)).toBeTruthy();
+    expect(screen.getAllByText(/0\s*\/\s*1\s*Served/i)[0]).toBeTruthy();
     expect(screen.getByText(/Adult - Non-Veg/i)).toBeTruthy();
   });
 
@@ -176,5 +176,24 @@ describe("ParcelCheckoutModal combinations and permutations", () => {
     expect(screen.getByText(/Adult - Non-Veg/i)).toBeTruthy();
     expect(screen.queryByText(/Kid/i)).toBeFalsy();
     expect(screen.queryByText(/Guest/i)).toBeFalsy();
+  });
+
+  it("displays partial pickup alert when meals or parcels are already partially collected", () => {
+    const partialSub = {
+      ...subscription,
+      id: "partial-pickup-pass",
+      takenByPerson: {
+        Shashthi: [
+          { breakfast: false, lunch: true, dinner: false, lunchParcel: false },
+          { breakfast: false, lunch: false, dinner: false, lunchParcel: false },
+          { breakfast: false, lunch: false, dinner: false, lunchParcel: false },
+          { breakfast: false, lunch: false, dinner: false, lunchParcel: false },
+        ],
+      },
+    };
+
+    renderParcelCheckout(partialSub);
+
+    expect(screen.getByText(/Partial Pickup Alert/i)).toBeTruthy();
   });
 });

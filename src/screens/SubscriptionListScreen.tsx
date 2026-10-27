@@ -238,7 +238,6 @@ const SubscriptionCard = React.memo(({
                 }
               }}
               accessible={true}
-              accessibilityRole="button"
               accessibilityLabel={`${UI_TEXT.quickCheckout} (${missedCount})`}
               style={({ pressed }) => [
                 {
@@ -265,7 +264,6 @@ const SubscriptionCard = React.memo(({
               }
             }}
             accessible={true}
-            accessibilityRole="button"
             accessibilityLabel={UI_TEXT.parcelCheckout}
             style={({ pressed }) => [
               {
@@ -294,7 +292,6 @@ const SubscriptionCard = React.memo(({
               }
             }}
             accessible={true}
-            accessibilityRole="button"
             accessibilityLabel={`${UI_TEXT.quickCheckout} (${missedCount})`}
             style={({ pressed }) => [
               {
@@ -352,7 +349,6 @@ const SubscriptionCard = React.memo(({
                 if (onSelectBlock) onSelectBlock(item.block);
               }}
               accessible={true}
-              accessibilityRole="button"
               accessibilityLabel={`${UI_TEXT.block} ${item.block}`}
               accessibilityHint="Taps to show only passes belonging to this block"
               style={({ pressed }) => [
@@ -620,7 +616,6 @@ const SubscriptionCard = React.memo(({
                   Linking.openURL(`https://wa.me/${whatsappCountryCode || UI_TEXT.defaultCountryCode}${item.mobile}`);
                 }}
                 accessible={true}
-                accessibilityRole="button"
                 accessibilityLabel="WhatsApp"
                 style={({ pressed }) => [
                   { padding: s(6), borderRadius: s(20), backgroundColor: theme.colors.successLight },
@@ -642,7 +637,6 @@ const SubscriptionCard = React.memo(({
                   Linking.openURL(`tel:${item.mobile}`);
                 }}
                 accessible={true}
-                accessibilityRole="button"
                 accessibilityLabel="Call"
                 style={({ pressed }) => [
                   { padding: s(6), borderRadius: s(20), backgroundColor: theme.colors.surfaceDark },
@@ -658,7 +652,6 @@ const SubscriptionCard = React.memo(({
         <Pressable
           onPress={() => onSelect(item)}
           accessible={true}
-          accessibilityRole="button"
           accessibilityLabel={`${UI_TEXT.viewPassHint || "View Pass"} ${getPassDisplayLabel(item)}`}
           style={({ pressed }) => [
             { flexDirection: 'row', alignItems: 'center', gap: s(4), paddingHorizontal: s(10), paddingVertical: s(6), borderRadius: s(16), backgroundColor: colorScheme.accentLight },

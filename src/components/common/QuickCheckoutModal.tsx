@@ -360,6 +360,34 @@ export function QuickCheckoutModal({
         setInputs(initInputs);
         setSuccessData(null);
         activePassIdRef.current = passId;
+      } else {
+        // Real-time remote data change while modal is open: clamp entered inputs to updated remaining maximums!
+        setInputs((prevInputs) => {
+          let updated = false;
+          const nextInputs: CategoryInputs = { ...prevInputs };
+          Object.keys(quickCheckoutDetails.categories).forEach((catKey) => {
+            const cat = quickCheckoutDetails.categories[catKey];
+            const prevCatInputs = nextInputs[catKey] || { parcel: 0, dineIn: 0, optDineIn: 0 };
+
+            const clampedParcel = Math.min(prevCatInputs.parcel, cat.remParcelCount);
+            const clampedDineIn = Math.min(prevCatInputs.dineIn, cat.remDineInCount);
+            const clampedOptDineIn = Math.min(prevCatInputs.optDineIn, cat.remDineInCount);
+
+            if (
+              clampedParcel !== prevCatInputs.parcel ||
+              clampedDineIn !== prevCatInputs.dineIn ||
+              clampedOptDineIn !== prevCatInputs.optDineIn
+            ) {
+              nextInputs[catKey] = {
+                parcel: clampedParcel,
+                dineIn: clampedDineIn,
+                optDineIn: clampedOptDineIn,
+              };
+              updated = true;
+            }
+          });
+          return updated ? nextInputs : prevInputs;
+        });
       }
 
       // Update partial checkout state dynamically on real-time data changes

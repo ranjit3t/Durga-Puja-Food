@@ -228,7 +228,7 @@ export function SettingsScreen() {
   const {
     dayConfig: config, seasonName, seasonEnabled, paymentConfig: payment, freeMealEnabled, mobileEnabled, foodPriceEnabled,
     whatsappCountryCode, updateConfig, kidsEnabled, guestsEnabled, vendorKidsMealChargingEnabled, subscriptions, foodMenu, quickCheckoutAutoCloseMs, soundEnabled,
-    vendorName, vendorAddress, vendorSettledCost, nonAdminCheckoutEnabled
+    vendorName, vendorAddress, vendorSettledCost, nonAdminCheckoutEnabled, cheatCodeEnabled
   } = useCoreDatabase();
   const { addActivityLog } = useActivityLogs();
   const { showAlert } = useUI();
@@ -255,6 +255,7 @@ export function SettingsScreen() {
   const [localQuickCheckoutAutoCloseMs, setLocalQuickCheckoutAutoCloseMs] = useState<number>(3000);
   const [localSoundEnabled, setLocalSoundEnabled] = useState<boolean>(true);
   const [localNonAdminCheckoutEnabled, setLocalNonAdminCheckoutEnabled] = useState<boolean>(true);
+  const [localCheatCodeEnabled, setLocalCheatCodeEnabled] = useState<boolean>(false);
   const [localVendorName, setLocalVendorName] = useState("");
   const [localVendorAddress, setLocalVendorAddress] = useState("");
   const [localVendorSettledCost, setLocalVendorSettledCost] = useState("");
@@ -276,6 +277,7 @@ export function SettingsScreen() {
     quickCheckoutAutoCloseMs: number;
     soundEnabled: boolean;
     nonAdminCheckoutEnabled: boolean;
+    cheatCodeEnabled: boolean;
     vendorName: string;
     vendorAddress: string;
     vendorSettledCost: string;
@@ -447,6 +449,7 @@ export function SettingsScreen() {
         quickCheckoutAutoCloseMs: quickCheckoutAutoCloseMs ?? 3000,
         soundEnabled: soundEnabled !== false,
         nonAdminCheckoutEnabled: nonAdminCheckoutEnabled !== false,
+        cheatCodeEnabled: cheatCodeEnabled || false,
         vendorName: vendorName || "",
         vendorAddress: vendorAddress || "",
         vendorSettledCost: vendorSettledCost || "",
@@ -467,13 +470,14 @@ export function SettingsScreen() {
         setLocalQuickCheckoutAutoCloseMs(currentContextBaseline.quickCheckoutAutoCloseMs);
         setLocalSoundEnabled(currentContextBaseline.soundEnabled);
         setLocalNonAdminCheckoutEnabled(currentContextBaseline.nonAdminCheckoutEnabled);
+        setLocalCheatCodeEnabled(currentContextBaseline.cheatCodeEnabled);
         setLocalVendorName(currentContextBaseline.vendorName);
         setLocalVendorAddress(currentContextBaseline.vendorAddress);
         setLocalVendorSettledCost(currentContextBaseline.vendorSettledCost);
       }
       setSavedBaseline(currentContextBaseline);
     }
-  }, [config, seasonName, seasonEnabled, payment, freeMealEnabled, mobileEnabled, foodPriceEnabled, kidsEnabled, guestsEnabled, vendorKidsMealChargingEnabled, whatsappCountryCode, quickCheckoutAutoCloseMs, soundEnabled, nonAdminCheckoutEnabled, vendorName, vendorAddress, vendorSettledCost]);
+  }, [config, seasonName, seasonEnabled, payment, freeMealEnabled, mobileEnabled, foodPriceEnabled, kidsEnabled, guestsEnabled, vendorKidsMealChargingEnabled, whatsappCountryCode, quickCheckoutAutoCloseMs, soundEnabled, nonAdminCheckoutEnabled, cheatCodeEnabled, vendorName, vendorAddress, vendorSettledCost]);
 
   const updateDay = (id: string, next: Partial<ConfigDay>) => {
     setLocalConfig((current) =>
@@ -822,6 +826,7 @@ export function SettingsScreen() {
     if (localQuickCheckoutAutoCloseMs !== quickCheckoutAutoCloseMs) changes.push(`Splash Timeout: ${quickCheckoutAutoCloseMs ?? 3000}ms -> ${localQuickCheckoutAutoCloseMs}ms`);
     if (localSoundEnabled !== soundEnabled) changes.push(`Sound: ${soundEnabled ? 'ON' : 'OFF'} -> ${localSoundEnabled ? 'ON' : 'OFF'}`);
     if (localNonAdminCheckoutEnabled !== nonAdminCheckoutEnabled) changes.push(`Non-Admin Quick Checkout: ${nonAdminCheckoutEnabled ? 'ON' : 'OFF'} -> ${localNonAdminCheckoutEnabled ? 'ON' : 'OFF'}`);
+    if (localCheatCodeEnabled !== cheatCodeEnabled) changes.push(`Cheat Code Pass Codes: ${cheatCodeEnabled ? 'ON' : 'OFF'} -> ${localCheatCodeEnabled ? 'ON' : 'OFF'}`);
     if (localVendorName !== vendorName) changes.push(`Vendor Name: ${vendorName || 'None'} -> ${localVendorName}`);
     if (localVendorAddress !== vendorAddress) changes.push(`Vendor Address: ${vendorAddress || 'None'} -> ${localVendorAddress}`);
     if (areAllMealsDone && localVendorSettledCost !== vendorSettledCost) changes.push(`Vendor Settled Cost: ${vendorSettledCost || 'None'} -> ${localVendorSettledCost}`);
@@ -896,6 +901,7 @@ export function SettingsScreen() {
         quickCheckoutAutoCloseMs: localQuickCheckoutAutoCloseMs,
         soundEnabled: localSoundEnabled,
         nonAdminCheckoutEnabled: localNonAdminCheckoutEnabled,
+        cheatCodeEnabled: localCheatCodeEnabled,
         vendorName: localVendorName,
         vendorAddress: localVendorAddress,
         vendorSettledCost: areAllMealsDone ? localVendorSettledCost : vendorSettledCost,
@@ -916,6 +922,7 @@ export function SettingsScreen() {
         quickCheckoutAutoCloseMs: localQuickCheckoutAutoCloseMs,
         soundEnabled: localSoundEnabled,
         nonAdminCheckoutEnabled: localNonAdminCheckoutEnabled,
+        cheatCodeEnabled: localCheatCodeEnabled,
         vendorName: localVendorName,
         vendorAddress: localVendorAddress,
         vendorSettledCost: areAllMealsDone ? localVendorSettledCost : vendorSettledCost,
@@ -958,6 +965,7 @@ export function SettingsScreen() {
       localQuickCheckoutAutoCloseMs !== savedBaseline.quickCheckoutAutoCloseMs ||
       localSoundEnabled !== savedBaseline.soundEnabled ||
       localNonAdminCheckoutEnabled !== savedBaseline.nonAdminCheckoutEnabled ||
+      localCheatCodeEnabled !== savedBaseline.cheatCodeEnabled ||
       localVendorName !== savedBaseline.vendorName ||
       localVendorAddress !== savedBaseline.vendorAddress ||
       (areAllMealsDone && localVendorSettledCost !== savedBaseline.vendorSettledCost)
@@ -978,6 +986,7 @@ export function SettingsScreen() {
     localQuickCheckoutAutoCloseMs,
     localSoundEnabled,
     localNonAdminCheckoutEnabled,
+    localCheatCodeEnabled,
     localVendorName,
     localVendorAddress,
     localVendorSettledCost,
@@ -1154,6 +1163,24 @@ export function SettingsScreen() {
                 accessibilityState={{ checked: localNonAdminCheckoutEnabled }}
                 value={localNonAdminCheckoutEnabled}
                 onValueChange={setLocalNonAdminCheckoutEnabled}
+                trackColor={{ true: theme.colors.primary }}
+                style={{ flexShrink: 0 }}
+              />
+           </View>
+           <View style={{ height: 1, backgroundColor: theme.colors.border, marginVertical: 20 }} />
+           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <View style={{ flex: 1, marginRight: 10 }}>
+                 <Text style={{ fontSize: 16, fontWeight: '800', color: theme.colors.textPrimary }}>{UI_TEXT.cheatCodeEnabledLabel}</Text>
+                 <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600' }}>{UI_TEXT.cheatCodeEnabledHelper}</Text>
+              </View>
+              <Switch
+                accessible={true}
+                accessibilityRole="switch"
+                accessibilityLabel={UI_TEXT.cheatCodeEnabledLabel}
+                accessibilityHint={UI_TEXT.cheatCodeEnabledHelper}
+                accessibilityState={{ checked: localCheatCodeEnabled }}
+                value={localCheatCodeEnabled}
+                onValueChange={setLocalCheatCodeEnabled}
                 trackColor={{ true: theme.colors.primary }}
                 style={{ flexShrink: 0 }}
               />

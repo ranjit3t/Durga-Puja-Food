@@ -12,7 +12,7 @@ import { useAppNavigation } from "../context/NavigationContext";
 import { useCoreDatabase, useActivityLogs } from "../context/DatabaseContext";
 import { useUI } from "../context/UIContext";
 import { AppScreen, AppThemeMode, ActivityModule, ActivityAction, Subscription, MealType, DietaryOption, CheckoutSource } from "../types";
-import { getActiveDays, isMealCurrent, isMealEnabled, getDayLabel, getMealLabel, qrValueFor, isParcelEnabled } from "../constants";
+import { getActiveDays, isMealCurrent, isMealEnabled, getDayLabel, getMealLabel, qrValueFor, isParcelEnabled, findSubscriptionByPassCodeOrCheatCode } from "../constants";
 
 // Memoized Camera View to prevent UI/WebSocket re-renders from dropping camera FPS
 const MemoizedCamera = memo(({ onScan }: { onScan: (data: string) => void }) => {
@@ -34,7 +34,7 @@ export function ScannerScreen() {
   const [permission, requestPermission] = useCameraPermissions();
 
   const { openScannedValue, goBack, navigate, isQuickCheckout, isParcelCheckout } = useAppNavigation();
-  const { subscriptions, dayConfig, kidsEnabled, guestsEnabled } = useCoreDatabase();
+  const { subscriptions, dayConfig, kidsEnabled, guestsEnabled, cheatCodeEnabled } = useCoreDatabase();
   const { addActivityLog } = useActivityLogs();
   const { showAlert } = useUI();
 
@@ -90,8 +90,8 @@ export function ScannerScreen() {
     if (isScanning.current) return;
     isScanning.current = true;
 
-    if (!isQuickCheckout) {
-      const found = openScannedValue(dataOrCode, subscriptions);
+    if (!isQuickCheckout && !isParcelCheckout) {
+      const found = openScannedValue(dataOrCode, subscriptions, cheatCodeEnabled);
       if (found) {
         addActivityLog({
           module: ActivityModule.SCANNER,
@@ -127,9 +127,7 @@ export function ScannerScreen() {
     }
 
     // Quick Checkout Mode Validation
-    const match = subscriptions.find((s) =>
-      qrValueFor(s.id) === dataOrCode || s.id === dataOrCode || s.passcode === dataOrCode
-    );
+    const match = findSubscriptionByPassCodeOrCheatCode(dataOrCode, subscriptions, cheatCodeEnabled);
 
     if (!match) {
       addActivityLog({
@@ -170,7 +168,7 @@ export function ScannerScreen() {
     }
 
     if (!currentMeal) {
-      openScannedValue(dataOrCode, subscriptions);
+      openScannedValue(dataOrCode, subscriptions, cheatCodeEnabled);
       return;
     }
 
@@ -356,9 +354,12 @@ export function ScannerScreen() {
   };
 
   const handlePassCode = (code: string) => {
-    setPassCode(code);
-    if (code.length === 4) {
-      processCodeOrData(code, true);
+    const filtered = cheatCodeEnabled
+      ? code.replace(/[^a-zA-Z0-9]/g, "").slice(0, 4)
+      : code.replace(/[^0-9]/g, "").slice(0, 4);
+    setPassCode(filtered);
+    if (filtered.length === 4) {
+      processCodeOrData(filtered, true);
     }
   };
 
@@ -430,10 +431,12 @@ export function ScannerScreen() {
               onChangeText={handlePassCode}
               placeholder="XXXX"
               placeholderTextColor={theme.colors.white + "88"}
-              keyboardType="number-pad"
+              keyboardType={cheatCodeEnabled ? "default" : "number-pad"}
+              autoCapitalize="characters"
               maxLength={4}
               accessible={true}
               accessibilityLabel={UI_TEXT.passCodeEntryHint}
+              accessibilityHint={cheatCodeEnabled ? UI_TEXT.cheatCodeEnabledHelper : UI_TEXT.passCodeEntryHint}
               style={{
                 backgroundColor: theme.colors.shadow + "AA",
                 color: theme.colors.white,

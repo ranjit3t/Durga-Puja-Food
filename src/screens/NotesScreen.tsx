@@ -191,7 +191,6 @@ const NoteItem = memo(({
            <Pressable
              onPress={(e) => { e.stopPropagation(); onDelete(item); }}
              accessible={true}
-             accessibilityRole="button"
              accessibilityLabel={UI_TEXT.deleteNote}
              style={({ pressed }) => [{ padding: s(4) }, pressed && { opacity: 0.6 }]}
            >
@@ -222,7 +221,6 @@ const NoteItem = memo(({
              <Pressable
                onPress={(e) => { e.stopPropagation(); onShare(item); }}
                accessible={true}
-               accessibilityRole="button"
                accessibilityLabel={UI_TEXT.shareNote}
                style={({ pressed }) => [{ padding: s(4) }, pressed && { opacity: 0.6 }]}
              >
@@ -234,7 +232,6 @@ const NoteItem = memo(({
              <Pressable
                onPress={(e) => { e.stopPropagation(); onEdit(item); }}
                accessible={true}
-               accessibilityRole="button"
                accessibilityLabel={UI_TEXT.editNote}
                style={({ pressed }) => [{ padding: s(4) }, pressed && { opacity: 0.6 }]}
              >

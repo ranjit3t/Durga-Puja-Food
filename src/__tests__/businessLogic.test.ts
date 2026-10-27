@@ -264,3 +264,27 @@ describe("remainder distribution and detailed payment report calculation", () =>
     }
   });
 });
+
+import { findSubscriptionByPassCodeOrCheatCode } from "../constants";
+
+describe("cheat code pass lookup", () => {
+  const mockSubs: any[] = [
+    { id: "14-3S", block: "14", flat: "3S", passcode: "9999" },
+    { id: "6-2E", block: "6", flat: "2E", passcode: "8888" },
+  ];
+
+  it("finds pass by cheat code when enabled", () => {
+    expect(findSubscriptionByPassCodeOrCheatCode("143s", mockSubs, true)?.id).toBe("14-3S");
+    expect(findSubscriptionByPassCodeOrCheatCode("143S", mockSubs, true)?.id).toBe("14-3S");
+    expect(findSubscriptionByPassCodeOrCheatCode("062e", mockSubs, true)?.id).toBe("6-2E");
+    expect(findSubscriptionByPassCodeOrCheatCode("062E", mockSubs, true)?.id).toBe("6-2E");
+  });
+
+  it("does not find pass by cheat code when disabled", () => {
+    expect(findSubscriptionByPassCodeOrCheatCode("143s", mockSubs, false)).toBeUndefined();
+  });
+
+  it("finds pass by standard passcode when numeric", () => {
+    expect(findSubscriptionByPassCodeOrCheatCode("9999", mockSubs, false)?.id).toBe("14-3S");
+  });
+});

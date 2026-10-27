@@ -887,13 +887,13 @@ export function DetailsScreen() {
 
                 const getTakenParts = () => {
                    if (!taken) return [];
-                   const res: Array<{ label: string; parcel: boolean; time?: string; color: string }> = [];
+                   const res: Array<{ label: string; parcel: boolean; time?: string; user?: string; color: string }> = [];
                    const personSlots = subscription.mealSlots[day]?.[personIndex];
 
                    const meals = [
-                     { key: MealType.BREAKFAST, abbr: UI_TEXT.breakfastAbbr, parcelKey: 'breakfastParcel' as const, timeKey: 'breakfastTime' as const },
-                     { key: MealType.LUNCH, abbr: UI_TEXT.lunchAbbr, parcelKey: 'lunchParcel' as const, timeKey: 'lunchTime' as const },
-                     { key: MealType.DINNER, abbr: UI_TEXT.dinnerAbbr, parcelKey: 'dinnerParcel' as const, timeKey: 'dinnerTime' as const },
+                     { key: MealType.BREAKFAST, abbr: UI_TEXT.breakfastAbbr, parcelKey: 'breakfastParcel' as const, timeKey: 'breakfastTime' as const, userKey: 'breakfastUser' as const, parcelUserKey: 'breakfastParcelUser' as const },
+                     { key: MealType.LUNCH, abbr: UI_TEXT.lunchAbbr, parcelKey: 'lunchParcel' as const, timeKey: 'lunchTime' as const, userKey: 'lunchUser' as const, parcelUserKey: 'lunchParcelUser' as const },
+                     { key: MealType.DINNER, abbr: UI_TEXT.dinnerAbbr, parcelKey: 'dinnerParcel' as const, timeKey: 'dinnerTime' as const, userKey: 'dinnerUser' as const, parcelUserKey: 'dinnerParcelUser' as const },
                    ];
 
                    meals.forEach((m) => {
@@ -904,7 +904,17 @@ export function DetailsScreen() {
                        const dietType = getDietTypeForChoice(choice, getMealVarieties(mConf, dayConf?.vegOnly));
                        const color = dietType === DietType.VEG ? theme.colors.veg : (dietType === DietType.NON_VEG ? theme.colors.nonVeg : theme.cardColors[0].accent);
 
-                       res.push({ label: m.abbr, parcel: toBool(taken[m.parcelKey]), time: taken[m.timeKey], color });
+                       const isParcel = toBool(taken[m.parcelKey]);
+                       const rawUser = isParcel && taken[m.parcelUserKey] ? taken[m.parcelUserKey] : taken[m.userKey];
+                       const operatorUser = rawUser ? String(rawUser).trim() : undefined;
+
+                       res.push({
+                         label: m.abbr,
+                         parcel: isParcel,
+                         time: taken[m.timeKey],
+                         user: operatorUser,
+                         color,
+                       });
                      }
                    });
 
@@ -937,7 +947,13 @@ export function DetailsScreen() {
                     <Text style={[styles.personDayText, isAnyTaken && { color: theme.cardColors[0].accent }]}>{getDayAbbr(day, dayConfig)}</Text>
                     <View style={{ flexDirection: "row", gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'center', flex: 1, minWidth: 0 }}>
                        {takenParts.map((p, i) => (
-                          <View key={i} style={{ alignItems: 'center', gap: 2, paddingVertical: 2 }}>
+                          <View
+                            key={i}
+                            accessible={true}
+                            accessibilityRole="text"
+                            accessibilityLabel={`Meal ${p.label} served ${p.time ? "at " + p.time : ""} ${p.user ? "by " + p.user : ""}`}
+                            style={{ alignItems: 'center', gap: 2, paddingVertical: 2 }}
+                          >
                              <View style={{ position: 'relative' }}>
                                 <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: p.color, alignItems: "center", justifyContent: "center" }}>
                                    <Text style={{ color: theme.colors.white, fontSize: 10, fontWeight: "900" }}>{p.label}</Text>
@@ -948,17 +964,26 @@ export function DetailsScreen() {
                                    </View>
                                 )}
                              </View>
-                             {p.time ? (
+                             {p.time || p.user ? (
                                 <View style={{
                                   backgroundColor: theme.colors.surfaceDark,
-                                  paddingHorizontal: 4,
-                                  paddingVertical: 1,
+                                  paddingHorizontal: 5,
+                                  paddingVertical: 2,
                                   borderRadius: 4,
-                                  marginTop: 1
+                                  marginTop: 1,
+                                  alignItems: 'center',
+                                  maxWidth: 110,
                                 }}>
-                                  <Text style={{ fontSize: 9, fontWeight: "800", color: theme.colors.textSecondary }}>
-                                     {p.time}
-                                  </Text>
+                                  {p.time ? (
+                                    <Text style={{ fontSize: 9, fontWeight: "800", color: theme.colors.textSecondary, textAlign: 'center' }}>
+                                       {p.time}
+                                    </Text>
+                                  ) : null}
+                                  {p.user ? (
+                                    <Text style={{ fontSize: 8, fontWeight: "700", color: theme.colors.textMuted, textAlign: 'center' }} numberOfLines={1}>
+                                       {UI_TEXT.byPrefix} {p.user}
+                                    </Text>
+                                  ) : null}
                                 </View>
                              ) : null}
                           </View>

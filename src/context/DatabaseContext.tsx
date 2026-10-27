@@ -74,6 +74,7 @@ export interface CoreDatabaseContextType {
   vendorAddress: string;
   vendorSettledCost: string;
   nonAdminCheckoutEnabled: boolean;
+  cheatCodeEnabled: boolean;
   remoteAppVersion: string | null;
   androidAppLocation?: string;
   iosAppLocation?: string;
@@ -157,6 +158,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
   const [quickCheckoutAutoCloseMs, setQuickCheckoutAutoCloseMs] = useState<number>(3000);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
   const [nonAdminCheckoutEnabled, setNonAdminCheckoutEnabled] = useState(true);
+  const [cheatCodeEnabled, setCheatCodeEnabled] = useState(false);
   const [vendorName, setVendorName] = useState("");
   const [vendorAddress, setVendorAddress] = useState("");
   const [vendorSettledCost, setVendorSettledCost] = useState("");
@@ -290,6 +292,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       setQuickCheckoutAutoCloseMs(config.quickCheckoutAutoCloseMs ?? 3000);
       setSoundEnabled(config.soundEnabled !== false);
       setNonAdminCheckoutEnabled(config.nonAdminCheckoutEnabled !== false);
+      setCheatCodeEnabled(config.cheatCodeEnabled || false);
       setVendorName(config.vendorName || "");
       setVendorAddress(config.vendorAddress || "");
       setVendorSettledCost(config.vendorSettledCost || "");
@@ -344,6 +347,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       setQuickCheckoutAutoCloseMs(config.quickCheckoutAutoCloseMs ?? 3000);
       setSoundEnabled(config.soundEnabled !== false);
       setNonAdminCheckoutEnabled(config.nonAdminCheckoutEnabled !== false);
+      setCheatCodeEnabled(config.cheatCodeEnabled || false);
       setVendorName(config.vendorName || "");
       setVendorAddress(config.vendorAddress || "");
       setVendorSettledCost(config.vendorSettledCost || "");
@@ -531,6 +535,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       setQuickCheckoutAutoCloseMs(config.quickCheckoutAutoCloseMs ?? 3000);
       setSoundEnabled(config.soundEnabled !== false);
       setNonAdminCheckoutEnabled(config.nonAdminCheckoutEnabled !== false);
+      setCheatCodeEnabled(config.cheatCodeEnabled || false);
       setVendorName(config.vendorName || "");
       setVendorAddress(config.vendorAddress || "");
       setVendorSettledCost(config.vendorSettledCost || "");
@@ -653,6 +658,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       if (config.quickCheckoutAutoCloseMs !== undefined) setQuickCheckoutAutoCloseMs(config.quickCheckoutAutoCloseMs);
       if (config.soundEnabled !== undefined) setSoundEnabled(config.soundEnabled);
       if (config.nonAdminCheckoutEnabled !== undefined) setNonAdminCheckoutEnabled(config.nonAdminCheckoutEnabled);
+      if (config.cheatCodeEnabled !== undefined) setCheatCodeEnabled(config.cheatCodeEnabled);
       if (config.vendorName !== undefined) setVendorName(config.vendorName);
       if (config.vendorAddress !== undefined) setVendorAddress(config.vendorAddress);
       if (config.vendorSettledCost !== undefined) setVendorSettledCost(config.vendorSettledCost);
@@ -1487,7 +1493,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
     loading, firebaseError, refreshAllData,
     subscriptions, foodMenu, dayConfig, seasonName, seasonEnabled, paymentConfig,
     freeMealEnabled, mobileEnabled, foodPriceEnabled,
-    kidsEnabled, guestsEnabled, vendorKidsMealChargingEnabled, whatsappCountryCode, quickCheckoutAutoCloseMs, soundEnabled, nonAdminCheckoutEnabled, vendorName, vendorAddress, vendorSettledCost, remoteAppVersion, androidAppLocation, iosAppLocation, kitchenMetrics,
+    kidsEnabled, guestsEnabled, vendorKidsMealChargingEnabled, whatsappCountryCode, quickCheckoutAutoCloseMs, soundEnabled, nonAdminCheckoutEnabled, cheatCodeEnabled, vendorName, vendorAddress, vendorSettledCost, remoteAppVersion, androidAppLocation, iosAppLocation, kitchenMetrics,
     dashboardData, collections, totalPeople,
     upsertSubscription, deleteSubscription, updateConfig, updateMenu,
     updateFreeMealCount, updateMealMenu, updateSubscriptionStatus,
@@ -1497,7 +1503,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
     loading, firebaseError, refreshAllData,
     subscriptions, foodMenu, dayConfig, seasonName, seasonEnabled, paymentConfig,
     freeMealEnabled, mobileEnabled, foodPriceEnabled,
-    kidsEnabled, guestsEnabled, vendorKidsMealChargingEnabled, whatsappCountryCode, quickCheckoutAutoCloseMs, soundEnabled, nonAdminCheckoutEnabled, vendorName, vendorAddress, vendorSettledCost, remoteAppVersion, androidAppLocation, iosAppLocation, kitchenMetrics,
+    kidsEnabled, guestsEnabled, vendorKidsMealChargingEnabled, whatsappCountryCode, quickCheckoutAutoCloseMs, soundEnabled, nonAdminCheckoutEnabled, cheatCodeEnabled, vendorName, vendorAddress, vendorSettledCost, remoteAppVersion, androidAppLocation, iosAppLocation, kitchenMetrics,
     dashboardData, collections, totalPeople,
     upsertSubscription, deleteSubscription, updateConfig, updateMenu,
     updateFreeMealCount, updateMealMenu, updateSubscriptionStatus,

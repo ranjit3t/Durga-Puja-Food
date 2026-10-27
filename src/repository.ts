@@ -596,7 +596,7 @@ export function createFirebaseRepository(): SubscriptionRepository {
     },
     async getConfig() {
       const services = await ensureFirebaseAuth();
-      if (!services) return { seasonName: "", days: [], payment: { enabled: true, options: { upi: true, cash: true, bankTransfer: true } }, freeMealEnabled: true, mobileEnabled: true, foodPriceEnabled: false, seasonEnabled: true, kidsEnabled: false, vendorKidsMealChargingEnabled: true };
+      if (!services) return { seasonName: "", days: [], payment: { enabled: true, options: { upi: true, cash: true, bankTransfer: true } }, freeMealEnabled: true, mobileEnabled: true, foodPriceEnabled: false, seasonEnabled: true, kidsEnabled: false, vendorKidsMealChargingEnabled: true, cheatCodeEnabled: false };
       const snapshot = await get(ref(services.db, configPath));
       const val = snapshot.val();
 
@@ -604,7 +604,7 @@ export function createFirebaseRepository(): SubscriptionRepository {
 
       if (snapshot.exists() && val) {
         if (Array.isArray(val)) {
-          return { seasonName: "", days: normalizeDayConfig(val), payment: defaultPayment, freeMealEnabled: true, mobileEnabled: true, foodPriceEnabled: false, seasonEnabled: true, kidsEnabled: false };
+          return { seasonName: "", days: normalizeDayConfig(val), payment: defaultPayment, freeMealEnabled: true, mobileEnabled: true, foodPriceEnabled: false, seasonEnabled: true, kidsEnabled: false, cheatCodeEnabled: false };
         }
 
         const days = Array.isArray(val.days)
@@ -634,9 +634,10 @@ export function createFirebaseRepository(): SubscriptionRepository {
           vendorAddress: val.vendorAddress || "",
           vendorSettledCost: val.vendorSettledCost || "",
           nonAdminCheckoutEnabled: val.nonAdminCheckoutEnabled !== false,
+          cheatCodeEnabled: val.cheatCodeEnabled === true,
         };
       }
-      return { seasonName: "", days: [], payment: defaultPayment, freeMealEnabled: true, mobileEnabled: true, foodPriceEnabled: false, seasonEnabled: true, kidsEnabled: false, vendorKidsMealChargingEnabled: true, soundEnabled: true };
+      return { seasonName: "", days: [], payment: defaultPayment, freeMealEnabled: true, mobileEnabled: true, foodPriceEnabled: false, seasonEnabled: true, kidsEnabled: false, vendorKidsMealChargingEnabled: true, soundEnabled: true, cheatCodeEnabled: false };
     },
     async updateConfig(config) {
       const services = await ensureFirebaseAuth();
@@ -1000,6 +1001,7 @@ export function createFirebaseRepository(): SubscriptionRepository {
               quickCheckoutAutoCloseMs: val.quickCheckoutAutoCloseMs ?? 3000,
               soundEnabled: val.soundEnabled !== undefined ? Boolean(val.soundEnabled) : true,
               nonAdminCheckoutEnabled: val.nonAdminCheckoutEnabled !== false,
+              cheatCodeEnabled: val.cheatCodeEnabled === true,
               vendorName: val.vendorName || "",
               vendorAddress: val.vendorAddress || "",
               vendorSettledCost: val.vendorSettledCost || "",

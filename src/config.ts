@@ -10,6 +10,7 @@ export const DEFAULT_APP_CONFIG: AppConfig = {
   seasonName: "ETERNIA FESTIVAL",
   quickCheckoutAutoCloseMs: 3000,
   soundEnabled: true,
+  cheatCodeEnabled: false,
   days: [
     {
       id: "Shashthi",

@@ -238,6 +238,31 @@ export function SubscriptionForm() {
   const [selectedDay, setSelectedDay] = useState<Day>(currentDayId || activeDays[0]);
   const [isManualAmount, setIsManualAmount] = useState(lockIdentity);
 
+  const liveRecord = useMemo(() => {
+    if (!value?.id) return null;
+    return subscriptions.find(s => s.id === value.id);
+  }, [subscriptions, value?.id]);
+
+  useEffect(() => {
+    if (liveRecord && lockIdentity) {
+      setForm(prev => {
+        const remoteTaken = liveRecord.takenByPerson || {};
+        const remoteSlots = liveRecord.mealSlots || {};
+        if (
+          JSON.stringify(remoteTaken) === JSON.stringify(prev.takenByPerson) &&
+          JSON.stringify(remoteSlots) === JSON.stringify(prev.mealSlots)
+        ) {
+          return prev;
+        }
+        return {
+          ...prev,
+          mealSlots: remoteSlots,
+          takenByPerson: remoteTaken,
+        };
+      });
+    }
+  }, [liveRecord, lockIdentity]);
+
   const totalPeopleCount = form.peopleCount + (kidsEnabled ? (form.kidsCount || 0) : 0) + (guestsEnabled ? (form.guestsCount || 0) : 0);
 
   const perPersonApplicablePackages = useMemo(() => {

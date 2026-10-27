@@ -215,6 +215,7 @@ export type AppConfig = {
   vendorAddress?: string;
   vendorSettledCost?: string;
   nonAdminCheckoutEnabled?: boolean;
+  cheatCodeEnabled?: boolean;
 };
 
 export enum ActivityModule {

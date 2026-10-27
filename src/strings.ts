@@ -777,6 +777,8 @@ export const UI_TEXT = {
   parcelSupportLabel: "Enable Parcel Service",
   parcelAlertLabel: "Parcel Verification Banner",
   parcelAlertActive: "One or more members have opted for parcel service for the current meal. Please verify parcel packaging.",
+  cheatCodeEnabledLabel: "Cheat Code Pass Codes",
+  cheatCodeEnabledHelper: "Allow 4-letter alphanumeric cheat codes as pass codes in quick checkout and parcel checkout modals.",
   markDoneLabel: "Mark Meal Completed",
   markDoneHelper: "Closes service for this meal slot",
   currentMealLabel: "Active Current Meal",
