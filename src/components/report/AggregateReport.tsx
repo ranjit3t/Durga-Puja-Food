@@ -16,6 +16,7 @@ import {
   isParcelEnabled,
   formatTimestamp,
   isDietaryEnabled,
+  isMealSlotAbsent,
 } from "../../constants";
 import {
   calculatePassMealBreakdown,
@@ -389,6 +390,8 @@ export function AggregateReport({
           if (selectedService === UI_TEXT.parcel && !item.isParcelOpted) return;
         }
 
+        if (item.isAbsent) return;
+
         matchingPortions++;
         const isTaken = item.isParcelOpted ? item.isParcelTaken : item.isMealTaken;
         if (isTaken) servedPortions++;
@@ -750,23 +753,38 @@ export function AggregateReport({
             const colorScheme = theme.cardColors[index % theme.cardColors.length];
             const isSpecificDayMealSelected = selectedDay !== UI_TEXT.allDays && selectedMeal !== UI_TEXT.allMeals;
 
-            const isMissed = isSpecificDayMealSelected && item.servedPortions === 0;
-            const isComplete = isSpecificDayMealSelected && item.servedPortions >= item.matchingPortions && item.matchingPortions > 0;
-            const isPartial = isSpecificDayMealSelected && item.servedPortions > 0 && item.servedPortions < item.matchingPortions;
+            const passMealsForBadge = calculatePassMealBreakdown(item, foodMenu, dayConfig, kidsEnabled, guestsEnabled, pkgList);
+            const matchingPassMeals = passMealsForBadge.filter(m =>
+              (selectedDay === UI_TEXT.allDays || m.dayId === selectedDay) &&
+              (selectedMeal === UI_TEXT.allMeals || m.mealType === selectedMeal)
+            );
+            const hasAnySubscribed = matchingPassMeals.length > 0;
+            const hasAnyNonAbsent = matchingPassMeals.some(m => !m.isAbsent);
+            const isAbsent = isSpecificDayMealSelected && hasAnySubscribed && !hasAnyNonAbsent;
 
-            const badgeColor = isMissed
+            const isMissed = isSpecificDayMealSelected && !isAbsent && item.servedPortions === 0;
+            const isComplete = isSpecificDayMealSelected && !isAbsent && item.servedPortions >= item.matchingPortions && item.matchingPortions > 0;
+            const isPartial = isSpecificDayMealSelected && !isAbsent && item.servedPortions > 0 && item.servedPortions < item.matchingPortions;
+
+            const badgeColor = isAbsent
+              ? "#f97316"
+              : isMissed
               ? theme.colors.error
               : isComplete
               ? theme.colors.success
               : theme.colors.warning || theme.colors.primary;
 
-            const badgeBg = isMissed
+            const badgeBg = isAbsent
+              ? "#ffedd5"
+              : isMissed
               ? theme.colors.errorLight
               : isComplete
               ? theme.colors.successLight
               : theme.colors.warningLight || theme.colors.primary + "20";
 
-            const badgeText = isMissed
+            const badgeText = isAbsent
+              ? UI_TEXT.absent
+              : isMissed
               ? UI_TEXT.missedCheckoutBadgeLabel
               : isComplete
               ? UI_TEXT.completedCheckoutBadgeLabel
@@ -779,7 +797,7 @@ export function AggregateReport({
               const totalPeople = aCount + kCount + gCount;
               const takenList = item.takenByPerson?.[selectedDay] || [];
               const slotsList = item.mealSlots?.[selectedDay] || [];
-              const list: { label: string; isTaken: boolean; actualServiceType?: string; timeDisplay: string; userName?: string }[] = [];
+              const list: { label: string; isTaken: boolean; isAbsent?: boolean; actualServiceType?: string; timeDisplay: string; userName?: string }[] = [];
 
               for (let i = 0; i < totalPeople; i++) {
                 const sSlot = (slotsList[i] || {}) as any;
@@ -803,24 +821,33 @@ export function AggregateReport({
                 const label = `${category} ${memberNum}`;
 
                 const tState = (takenList[i] || {}) as TakenState;
+                const isAbsent = isMealSlotAbsent(tState, selectedMeal as MealType);
                 const isParcelAllowed = sSlot ? !!sSlot[`${selectedMeal}Parcel`] : false;
-                const isParcelTaken = !!tState[`${selectedMeal}Parcel` as keyof TakenState];
-                const isDineInTaken = !!tState[selectedMeal as MealType];
+                const isParcelTaken = !isAbsent && !!tState[`${selectedMeal}Parcel` as keyof TakenState];
+                const isDineInTaken = !isAbsent && !!tState[selectedMeal as MealType];
                 const isTaken = isDineInTaken || isParcelTaken;
-                const rawTime = tState[`${selectedMeal}Time` as keyof TakenState] || tState[`${selectedMeal}ParcelTime` as keyof TakenState];
-                const rawUser = isParcelTaken
+                const rawTime = isAbsent
+                  ? tState[`${selectedMeal}AbsentTime` as keyof TakenState]
+                  : (tState[`${selectedMeal}Time` as keyof TakenState] || tState[`${selectedMeal}ParcelTime` as keyof TakenState]);
+                const rawUser = isAbsent
+                  ? tState[`${selectedMeal}AbsentUser` as keyof TakenState]
+                  : isParcelTaken
                   ? (tState[`${selectedMeal}ParcelUser` as keyof TakenState] || tState[`${selectedMeal}User` as keyof TakenState])
                   : (tState[`${selectedMeal}User` as keyof TakenState] || tState[`${selectedMeal}ParcelUser` as keyof TakenState]);
                 const userStr = rawUser && typeof rawUser === "string" && !/^\d{10,}$/.test(rawUser.trim()) ? rawUser.trim() : undefined;
 
-                const actualServiceType = isParcelTaken
+                const actualServiceType = isAbsent
+                  ? UI_TEXT.absent
+                  : isParcelTaken
                   ? UI_TEXT.parcel
                   : isDineInTaken
                   ? (isParcelAllowed ? UI_TEXT.optedDineIn : UI_TEXT.dineIn)
                   : undefined;
 
                 let timeDisplay = "-";
-                if (isTaken) {
+                if (isAbsent) {
+                  timeDisplay = rawTime ? (typeof rawTime === "number" ? formatTimestamp(rawTime) : String(rawTime)) : UI_TEXT.absent;
+                } else if (isTaken) {
                   if (rawTime) {
                     timeDisplay = typeof rawTime === "number" ? formatTimestamp(rawTime) : String(rawTime);
                   } else {
@@ -828,7 +855,7 @@ export function AggregateReport({
                   }
                 }
 
-                list.push({ label, isTaken, actualServiceType, timeDisplay, userName: userStr });
+                list.push({ label, isTaken, isAbsent, actualServiceType, timeDisplay, userName: userStr });
               }
               return list;
             })() : [];
@@ -900,33 +927,33 @@ export function AggregateReport({
                       <View key={mIdx} style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 2 }}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flex: 1, flexWrap: "wrap" }}>
                           <Ionicons
-                            name={mem.isTaken ? "checkmark-circle" : "ellipse-outline"}
+                            name={mem.isAbsent ? "person-remove" : mem.isTaken ? "checkmark-circle" : "ellipse-outline"}
                             size={14}
-                            color={mem.isTaken ? theme.colors.success : theme.colors.textMuted}
+                            color={mem.isAbsent ? "#f97316" : mem.isTaken ? theme.colors.success : theme.colors.textMuted}
                           />
                           <Text style={{ fontSize: 12, fontWeight: "800", color: theme.colors.textPrimary }}>
                             {mem.label}
                           </Text>
                           {mem.actualServiceType && (
                             <View style={{
-                              backgroundColor: theme.colors.primary + "18",
+                              backgroundColor: mem.isAbsent ? "#ffedd5" : theme.colors.primary + "18",
                               paddingHorizontal: 6,
                               paddingVertical: 1,
                               borderRadius: 4,
                               borderWidth: 0.8,
-                              borderColor: theme.colors.primary + "40"
+                              borderColor: mem.isAbsent ? "#f97316" : theme.colors.primary + "40"
                             }}>
-                              <Text style={{ fontSize: 10, fontWeight: "800", color: theme.colors.primary }}>
+                              <Text style={{ fontSize: 10, fontWeight: "800", color: mem.isAbsent ? "#c2410c" : theme.colors.primary }}>
                                 {mem.actualServiceType}
                               </Text>
                             </View>
                           )}
                         </View>
                         <View style={{ alignItems: "flex-end" }}>
-                          <Text style={{ fontSize: 12, fontWeight: "700", color: mem.isTaken ? colorScheme.accent : theme.colors.textMuted }}>
+                          <Text style={{ fontSize: 12, fontWeight: "700", color: mem.isAbsent ? "#c2410c" : mem.isTaken ? colorScheme.accent : theme.colors.textMuted }}>
                             {mem.timeDisplay}
                           </Text>
-                          {mem.isTaken && mem.userName ? (
+                          {(mem.isTaken || mem.isAbsent) && mem.userName ? (
                             <Text style={{ fontSize: 10, fontWeight: "600", color: theme.colors.textSecondary, marginTop: 1 }}>
                               {UI_TEXT.byPrefix} {mem.userName}
                             </Text>

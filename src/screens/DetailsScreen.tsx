@@ -33,6 +33,7 @@ import {
   getMealLabel,
   generateUniquePasscode,
   isSpecialOnlySubscribed,
+  isMealSlotAbsent,
   getMealVarieties,
   getDietTypeForChoice,
   formatTimestamp,
@@ -123,15 +124,20 @@ export function DetailsScreen() {
     const taken = subscription.takenByPerson?.[dayId] || [];
 
     for (let i = 0; i < headcount; i++) {
-      const isSubscribed = slots[i]?.[mealKey] && slots[i][mealKey] !== DietaryOption.NONE;
-      const isFoodTaken = !!taken[i]?.[mealKey];
-      if (isSubscribed && !isFoodTaken) {
+      const slot = slots[i];
+      const takenRecord = taken[i];
+      if (isMealSlotAbsent(takenRecord, mealType)) continue;
+
+      const isSubscribed = slot?.[mealKey] && slot[mealKey] !== DietaryOption.NONE;
+      const isFoodTaken = !!takenRecord?.[mealKey];
+      const isParcelTaken = !!takenRecord?.[`${mealKey}Parcel` as keyof TakenState];
+      if (isSubscribed && !isFoodTaken && !isParcelTaken) {
         return true;
       }
     }
 
     return false;
-  }, [currentMealInfo, subscription, kidsEnabled]);
+  }, [currentMealInfo, subscription, kidsEnabled, guestsEnabled]);
 
   const parcelCheckoutInfo = React.useMemo(() => {
     if (!currentMealInfo || !subscription) return { hasParcelSubscribed: false, remParcels: 0 };
@@ -143,8 +149,8 @@ export function DetailsScreen() {
     const taken = subscription.takenByPerson?.[dayId] || [];
 
     const parcelSupported = isParcelEnabled(dayId, mealType, dayConfig);
-    const kidParcelOpt = isKidsParcelEnabled(dayId, mealType, dayConfig);
-    const guestParcelOpt = isGuestsParcelEnabled(dayId, mealType, dayConfig);
+    const kidParcelOpt = isKidsParcelEnabled(dayId, mealType, dayConfig, kidsEnabled);
+    const guestParcelOpt = isGuestsParcelEnabled(dayId, mealType, dayConfig, guestsEnabled);
 
     let planned = 0;
     let served = 0;
@@ -154,6 +160,8 @@ export function DetailsScreen() {
       const isGuest = guestsEnabled && i >= subscription.peopleCount + (subscription.kidsCount || 0);
       const slot = slots[i];
       const takenRecord = taken[i];
+
+      if (isMealSlotAbsent(takenRecord, mealType)) continue;
 
       const choice = getValidSlotChoice(dayId, mealType, slot?.[mealKey], dayConfig);
       if (choice === DietaryOption.NONE) continue;

@@ -11,6 +11,7 @@ export interface AbsentPassRecord {
   memberRole: string;
   memberIndex: number;
   mealType: string;
+  varietyName?: string;
   hasParcel?: boolean;
   absentTime?: string;
   absentUser?: string;
@@ -181,11 +182,11 @@ export const MealWiseAbsentReport: React.FC<MealWiseAbsentReportProps> = ({
                       <View
                         key={pIdx}
                         style={[styles.passItem, { backgroundColor: theme.colors.background, borderColor: theme.colors.border }]}
-                        accessibilityLabel={`Pass ${passLabel}, Member ${p.memberRole}, Absent for ${meal.mealLabel}`}
+                        accessibilityLabel={`Pass ${passLabel}, Member ${p.memberRole} ${p.varietyName ? "(" + p.varietyName + ")" : ""}, Absent for ${meal.mealLabel}`}
                       >
                         <View style={{ flex: 1 }}>
                           <Text style={[styles.passLabelText, { color: theme.colors.textPrimary }]}>
-                            {UI_TEXT.pass} {passLabel} • {p.memberRole}
+                            {UI_TEXT.pass} {passLabel} • {p.memberRole} {p.varietyName ? `(${p.varietyName})` : ""}
                           </Text>
                           {p.absentTime && (
                             <Text style={[styles.stampText, { color: theme.colors.textSecondary }]}>

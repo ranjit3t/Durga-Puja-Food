@@ -406,33 +406,33 @@ export function CheckoutReport({
                     <View key={mIdx} style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 2 }}>
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flex: 1, flexWrap: "wrap" }}>
                         <Ionicons
-                          name={mem.isTaken ? "checkmark-circle" : "ellipse-outline"}
+                          name={mem.isAbsent ? "person-remove" : mem.isTaken ? "checkmark-circle" : "ellipse-outline"}
                           size={14}
-                          color={mem.isTaken ? theme.colors.success : theme.colors.textMuted}
+                          color={mem.isAbsent ? "#f97316" : mem.isTaken ? theme.colors.success : theme.colors.textMuted}
                         />
                         <Text style={{ fontSize: 12, fontWeight: "800", color: theme.colors.textPrimary }}>
                           {mem.label}
                         </Text>
                         {mem.actualServiceType ? (
                           <View style={{
-                            backgroundColor: theme.colors.primary + "18",
+                            backgroundColor: mem.isAbsent ? "#ffedd5" : theme.colors.primary + "18",
                             paddingHorizontal: 6,
                             paddingVertical: 1,
                             borderRadius: 4,
                             borderWidth: 0.8,
-                            borderColor: theme.colors.primary + "40"
+                            borderColor: mem.isAbsent ? "#f97316" : theme.colors.primary + "40"
                           }}>
-                            <Text style={{ fontSize: 10, fontWeight: "800", color: theme.colors.primary }}>
+                            <Text style={{ fontSize: 10, fontWeight: "800", color: mem.isAbsent ? "#c2410c" : theme.colors.primary }}>
                               {mem.actualServiceType}
                             </Text>
                           </View>
                         ) : null}
                       </View>
                       <View style={{ alignItems: "flex-end" }}>
-                        <Text style={{ fontSize: 12, fontWeight: "700", color: mem.isTaken ? colorScheme.accent : theme.colors.textMuted }}>
-                          {mem.timeDisplay ? formatTime(mem.timeDisplay) : formatTime(mem.numericTime)}
+                        <Text style={{ fontSize: 12, fontWeight: "700", color: mem.isAbsent ? "#c2410c" : mem.isTaken ? colorScheme.accent : theme.colors.textMuted }}>
+                          {mem.isAbsent ? mem.timeDisplay : (mem.timeDisplay ? formatTime(mem.timeDisplay) : formatTime(mem.numericTime))}
                         </Text>
-                        {mem.isTaken && mem.userName ? (
+                        {(mem.isTaken || mem.isAbsent) && mem.userName ? (
                           <Text style={{ fontSize: 10, fontWeight: "600", color: theme.colors.textSecondary, marginTop: 1 }}>
                             {UI_TEXT.byPrefix} {mem.userName}
                           </Text>

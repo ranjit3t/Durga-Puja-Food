@@ -149,7 +149,7 @@ const SubscriptionCard = React.memo(({
 
     const slots = item.mealSlots?.[dayId] || [];
     const takenList = item.takenByPerson?.[dayId] || [];
-    const list: { label: string; isTaken: boolean; actualServiceType?: string; timeDisplay: string; userName?: string }[] = [];
+    const list: { label: string; isTaken: boolean; isAbsent?: boolean; actualServiceType?: string; timeDisplay: string; userName?: string }[] = [];
 
     for (let idx = 0; idx < totalPeople; idx++) {
       const s = slots[idx];
@@ -168,24 +168,33 @@ const SubscriptionCard = React.memo(({
       const label = `${category} ${memberNum}`;
 
       const tState = (takenList[idx] || {}) as TakenState;
+      const isAbsent = isMealSlotAbsent(tState, mType);
       const isParcelAllowed = !!(s as any)[`${mType}Parcel`];
-      const isParcelTaken = !!tState[`${mType}Parcel` as keyof TakenState];
-      const isDineInTaken = !!tState[mType];
+      const isParcelTaken = !isAbsent && !!tState[`${mType}Parcel` as keyof TakenState];
+      const isDineInTaken = !isAbsent && !!tState[mType];
       const isTaken = isDineInTaken || isParcelTaken;
-      const rawTime = tState[`${mType}Time` as keyof TakenState] || tState[`${mType}ParcelTime` as keyof TakenState];
-      const rawUser = isParcelTaken
+      const rawTime = isAbsent
+        ? tState[`${mType}AbsentTime` as keyof TakenState]
+        : (tState[`${mType}Time` as keyof TakenState] || tState[`${mType}ParcelTime` as keyof TakenState]);
+      const rawUser = isAbsent
+        ? tState[`${mType}AbsentUser` as keyof TakenState]
+        : isParcelTaken
         ? (tState[`${mType}ParcelUser` as keyof TakenState] || tState[`${mType}User` as keyof TakenState])
         : (tState[`${mType}User` as keyof TakenState] || tState[`${mType}ParcelUser` as keyof TakenState]);
       const userStr = rawUser && typeof rawUser === "string" && !/^\d{10,}$/.test(rawUser.trim()) ? rawUser.trim() : undefined;
 
-      const actualServiceType = isParcelTaken
+      const actualServiceType = isAbsent
+        ? UI_TEXT.absent
+        : isParcelTaken
         ? UI_TEXT.parcel
         : isDineInTaken
         ? (isParcelAllowed ? UI_TEXT.optedDineIn : UI_TEXT.dineIn)
         : undefined;
 
       let timeDisplay = "-";
-      if (isTaken) {
+      if (isAbsent) {
+        timeDisplay = rawTime ? (typeof rawTime === "number" ? formatTimestamp(rawTime) : String(rawTime)) : UI_TEXT.absent;
+      } else if (isTaken) {
         if (rawTime) {
           timeDisplay = typeof rawTime === "number" ? formatTimestamp(rawTime) : String(rawTime);
         } else {
@@ -196,6 +205,7 @@ const SubscriptionCard = React.memo(({
       list.push({
         label,
         isTaken,
+        isAbsent,
         actualServiceType,
         timeDisplay,
         userName: userStr,
@@ -257,31 +267,33 @@ const SubscriptionCard = React.memo(({
                <Text style={{ color: theme.colors.white, fontSize: s(12), fontWeight: '900' }}>{missedCount}</Text>
             </Pressable>
           ) : null}
-          <Pressable
-            onPress={(e) => {
-              e.stopPropagation();
-              if (onOpenParcelCheckout) {
-                onOpenParcelCheckout(item);
-              }
-            }}
-            accessible={true}
-            accessibilityLabel={UI_TEXT.parcelCheckout}
-            style={({ pressed }) => [
-              {
-                width: s(32),
-                height: s(32),
-                borderRadius: s(16),
-                backgroundColor: theme.colors.primary,
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderWidth: 2,
-                borderColor: theme.colors.white,
-              },
-              pressed && { opacity: 0.8, transform: [{ scale: 1.1 }] }
-            ]}
-          >
-             <Ionicons name="cube" size={s(15)} color={theme.colors.white} />
-          </Pressable>
+          {hasCurrentMeal && canQuickCheckout && parcelCheckoutInfo?.hasParcelSubscribed && parcelCheckoutInfo?.remParcels > 0 ? (
+            <Pressable
+              onPress={(e) => {
+                e.stopPropagation();
+                if (onOpenParcelCheckout) {
+                  onOpenParcelCheckout(item);
+                }
+              }}
+              accessible={true}
+              accessibilityLabel={UI_TEXT.parcelCheckout}
+              style={({ pressed }) => [
+                {
+                  width: s(32),
+                  height: s(32),
+                  borderRadius: s(16),
+                  backgroundColor: theme.colors.primary,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderWidth: 2,
+                  borderColor: theme.colors.white,
+                },
+                pressed && { opacity: 0.8, transform: [{ scale: 1.1 }] }
+              ]}
+            >
+               <Ionicons name="cube" size={s(15)} color={theme.colors.white} />
+            </Pressable>
+          ) : null}
         </View>
       ) : (missedCount ? (
         canQuickCheckout ? (
@@ -529,33 +541,33 @@ const SubscriptionCard = React.memo(({
                 <View key={mIdx} style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: s(2) }}>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: s(6), flex: 1, flexWrap: "wrap" }}>
                     <Ionicons
-                      name={mem.isTaken ? "checkmark-circle" : "ellipse-outline"}
+                      name={mem.isAbsent ? "person-remove" : mem.isTaken ? "checkmark-circle" : "ellipse-outline"}
                       size={s(14)}
-                      color={mem.isTaken ? theme.colors.success : theme.colors.textMuted}
+                      color={mem.isAbsent ? "#f97316" : mem.isTaken ? theme.colors.success : theme.colors.textMuted}
                     />
                     <Text style={{ fontSize: s(12), fontWeight: "800", color: theme.colors.textPrimary }}>
                       {mem.label}
                     </Text>
                     {mem.actualServiceType && (
                       <View style={{
-                        backgroundColor: theme.colors.primary + "18",
+                        backgroundColor: mem.isAbsent ? "#ffedd5" : theme.colors.primary + "18",
                         paddingHorizontal: s(6),
                         paddingVertical: s(1),
                         borderRadius: s(4),
                         borderWidth: 0.8,
-                        borderColor: theme.colors.primary + "40"
+                        borderColor: mem.isAbsent ? "#f97316" : theme.colors.primary + "40"
                       }}>
-                        <Text style={{ fontSize: s(10), fontWeight: "800", color: theme.colors.primary }}>
+                        <Text style={{ fontSize: s(10), fontWeight: "800", color: mem.isAbsent ? "#c2410c" : theme.colors.primary }}>
                           {mem.actualServiceType}
                         </Text>
                       </View>
                     )}
                   </View>
                   <View style={{ alignItems: "flex-end" }}>
-                    <Text style={{ fontSize: s(12), fontWeight: "700", color: mem.isTaken ? colorScheme.accent : theme.colors.textMuted }}>
+                    <Text style={{ fontSize: s(12), fontWeight: "700", color: mem.isAbsent ? "#c2410c" : mem.isTaken ? colorScheme.accent : theme.colors.textMuted }}>
                       {mem.timeDisplay}
                     </Text>
-                    {mem.isTaken && mem.userName ? (
+                    {(mem.isTaken || mem.isAbsent) && mem.userName ? (
                       <Text style={{ fontSize: s(9), fontWeight: "600", color: theme.colors.textSecondary, marginTop: 1 }}>
                         {UI_TEXT.byPrefix} {mem.userName}
                       </Text>
@@ -903,9 +915,11 @@ export function SubscriptionListScreen() {
         const choice = getValidSlotChoice(dayId, mType, sSlot[mType], dayConfig);
         if (choice === DietaryOption.NONE) continue;
 
+        const personTaken = takenList[idx] as TakenState | undefined;
+        if (isMealSlotAbsent(personTaken, mType)) continue;
+
         totalSubscribed++;
 
-        const personTaken = takenList[idx] as TakenState | undefined;
         const parcelKey = `${mType}Parcel` as keyof TakenState;
         const isTaken = toBool(personTaken?.[mType]) || toBool(personTaken?.[parcelKey]);
 
@@ -950,9 +964,11 @@ export function SubscriptionListScreen() {
         const choice = getValidSlotChoice(dayId, mType, sSlot[mType], dayConfig);
         if (choice === DietaryOption.NONE) continue;
 
+        const personTaken = takenList[idx] as TakenState | undefined;
+        if (isMealSlotAbsent(personTaken, mType)) continue;
+
         totalSubscribed++;
 
-        const personTaken = takenList[idx] as TakenState | undefined;
         const parcelKey = `${mType}Parcel` as keyof TakenState;
         const isTaken = toBool(personTaken?.[mType]) || toBool(personTaken?.[parcelKey]);
 
@@ -982,8 +998,11 @@ export function SubscriptionListScreen() {
       const takenList = sub.takenByPerson?.[currentMealInfo.dayId] || [];
 
       slots.forEach((s, idx) => {
+        const taken = takenList[idx];
+        if (isMealSlotAbsent(taken, currentMealInfo.type)) return;
+
         const hasChoice = getDietTypeForChoice(s[currentMealInfo.type]) !== undefined;
-        const isTaken = !!takenList[idx]?.[currentMealInfo.type] || !!takenList[idx]?.[`${currentMealInfo.type}Parcel` as keyof TakenState];
+        const isTaken = !!taken?.[currentMealInfo.type] || !!taken?.[`${currentMealInfo.type}Parcel` as keyof TakenState];
 
         if (hasChoice) {
           totalSubscribed++;
@@ -1027,9 +1046,11 @@ export function SubscriptionListScreen() {
         const choice = getValidSlotChoice(dayId, mType, sSlot[mType], dayConfig);
         if (choice === DietaryOption.NONE) continue;
 
+        const personTaken = takenList[idx] as TakenState | undefined;
+        if (isMealSlotAbsent(personTaken, mType)) continue;
+
         totalSubscribed++;
 
-        const personTaken = takenList[idx] as TakenState | undefined;
         const parcelKey = `${mType}Parcel` as keyof TakenState;
         const isTaken = toBool(personTaken?.[mType]) || toBool(personTaken?.[parcelKey]);
 
@@ -1072,10 +1093,14 @@ export function SubscriptionListScreen() {
       const totalHeadcount = adultCount + kCount + gCount;
 
       const slots = sub.mealSlots?.[dayId] || [];
+      const takenList = sub.takenByPerson?.[dayId] || [];
 
       for (let idx = 0; idx < totalHeadcount; idx++) {
         const sSlot = slots[idx];
         if (!sSlot) continue;
+
+        const taken = takenList[idx];
+        if (isMealSlotAbsent(taken, mType)) continue;
 
         const choice = getValidSlotChoice(dayId, mType, sSlot[mType], dayConfig);
         if (choice === DietaryOption.NONE) continue;
@@ -1130,6 +1155,9 @@ export function SubscriptionListScreen() {
         const sSlot = slots[idx];
         if (!sSlot) continue;
 
+        const tState = (taken[idx] || {}) as TakenState;
+        if (isMealSlotAbsent(tState, mType)) continue;
+
         const choice = getValidSlotChoice(dayId, mType, sSlot[mType], dayConfig);
         if (choice === DietaryOption.NONE) continue;
 
@@ -1144,7 +1172,6 @@ export function SubscriptionListScreen() {
         );
 
         if (isParcelAllowed) {
-          const tState = (taken[idx] || {}) as TakenState;
           const isParcelCollected = !!tState[`${mType}Parcel` as keyof TakenState];
           const isDineInTaken = !!tState[mType];
           const isTaken = isParcelCollected || isDineInTaken;
@@ -1183,10 +1210,14 @@ export function SubscriptionListScreen() {
       if (kCount <= 0) return null;
 
       const slots = sub.mealSlots?.[dayId] || [];
+      const takenList = sub.takenByPerson?.[dayId] || [];
 
       for (let idx = adultCount; idx < adultCount + kCount; idx++) {
         const sSlot = slots[idx];
         if (!sSlot) continue;
+
+        const taken = takenList[idx];
+        if (isMealSlotAbsent(taken, mType)) continue;
 
         const choice = getValidSlotChoice(dayId, mType, sSlot[mType], dayConfig);
         if (choice !== DietaryOption.NONE) {
@@ -1223,10 +1254,14 @@ export function SubscriptionListScreen() {
       if (gCount <= 0) return null;
 
       const slots = sub.mealSlots?.[dayId] || [];
+      const takenList = sub.takenByPerson?.[dayId] || [];
 
       for (let idx = adultCount + kCount; idx < adultCount + kCount + gCount; idx++) {
         const sSlot = slots[idx];
         if (!sSlot) continue;
+
+        const taken = takenList[idx];
+        if (isMealSlotAbsent(taken, mType)) continue;
 
         const choice = getValidSlotChoice(dayId, mType, sSlot[mType], dayConfig);
         if (choice !== DietaryOption.NONE) {
@@ -1500,6 +1535,16 @@ export function SubscriptionListScreen() {
       if (isAdmin && activeFilters.includes(FilterMode.AMOUNT_DISCREPANCY)) {
         filtered = filtered.filter(sub => hasAmountDiscrepancy(sub, foodMenu, dayConfig, !!kidsEnabled, !!guestsEnabled, foodPackages));
       }
+
+      if (activeFilters.includes(FilterMode.ABSENT)) {
+        const absentIds = absentData.list.map(m => m.id);
+        filtered = filtered.filter(sub => absentIds.includes(sub.id));
+      }
+
+      if (activeFilters.includes(FilterMode.CURRENT_MEAL_ABSENT) && currentMealInfo) {
+        const currentAbsentIds = currentMealAbsentData.list.map(m => m.id);
+        filtered = filtered.filter(sub => currentAbsentIds.includes(sub.id));
+      }
     }
 
     if (selectedBlock) {
@@ -1566,9 +1611,12 @@ export function SubscriptionListScreen() {
     });
 
     return sorted.map(item => {
-      const hasCurrentMeal = !!currentMealInfo && (item.mealSlots?.[currentMealInfo.dayId] || []).some(personSlots =>
-        getDietTypeForChoice(personSlots[currentMealInfo.type]) !== undefined
-      );
+      const hasCurrentMeal = !!currentMealInfo && (item.mealSlots?.[currentMealInfo.dayId] || []).some((personSlots, pIdx) => {
+        const choice = getValidSlotChoice(currentMealInfo.dayId, currentMealInfo.type, personSlots[currentMealInfo.type], dayConfig);
+        if (choice === DietaryOption.NONE) return false;
+        const taken = item.takenByPerson?.[currentMealInfo.dayId]?.[pIdx];
+        return !isMealSlotAbsent(taken, currentMealInfo.type);
+      });
       const hasParcel = Object.keys(item.mealSlots || {}).some(dayId => {
         const daySlots = item.mealSlots[dayId] || [];
         const adultCount = item.peopleCount || 0;
@@ -1630,17 +1678,19 @@ export function SubscriptionListScreen() {
           const slot = slots[i];
           const takenRecord = taken[i];
 
+          if (isMealSlotAbsent(takenRecord, mealType)) continue;
+
           const choice = getValidSlotChoice(dayId, mealType, slot?.[mealKey], dayConfig);
           if (choice === DietaryOption.NONE) continue;
 
           const isParcelAllowed = parcelSupported && (isGuest ? guestParcelOpt : (isKid ? kidParcelOpt : true));
-          const isParcelOpted = isParcelAllowed && !!(slot && (slot as any)[parcelKey]);
+          const isParcelOpted = isParcelAllowed && toBool(slot?.[parcelKey as keyof MealSlot]);
 
           if (!isParcelOpted) continue;
 
           planned += 1;
-          const isParcelCollected = !!(takenRecord && takenRecord[parcelKey as keyof TakenState]);
-          const isDineInTaken = !!(takenRecord && takenRecord[mealKey as keyof TakenState]);
+          const isParcelCollected = toBool(takenRecord?.[parcelKey as keyof TakenState]);
+          const isDineInTaken = toBool(takenRecord?.[mealKey as keyof TakenState]);
           if (isParcelCollected || isDineInTaken) {
             served += 1;
           }

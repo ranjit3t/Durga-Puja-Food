@@ -27,6 +27,8 @@ import {
   getDayLabel,
   getMealLabel,
   isMealSlotAbsent,
+  getVarietyForChoice,
+  formatTimestamp,
 } from "../constants";
 import { getAmountDiscrepancyData, calculatePersonMealAndParcelCost, calculateDetailedPaymentReportData, resolvePrice, resolveGuestPrice } from "../utils/paymentUtils";
 
@@ -1031,29 +1033,14 @@ export function useReportData(
               const diet = getDietTypeForChoice(choice, varieties);
               if (!diet || choice === DietaryOption.NONE || !isDietaryEnabled(dayId, mType, diet, dayConfig)) continue;
 
-              totalSlots++;
               const tState = taken[idx] || {};
-              const isParcelAllowed = !!(s as any)[`${mType}Parcel`];
-              const isParcelTaken = !!tState[`${mType}Parcel` as keyof TakenState];
-              const isDineInTaken = !!tState[mType];
-              const rawTime = tState[`${mType}Time` as keyof TakenState] || tState[`${mType}ParcelTime` as keyof TakenState];
-              const rawUser = isParcelTaken
-                ? (tState[`${mType}ParcelUser` as keyof TakenState] || tState[`${mType}User` as keyof TakenState])
-                : (tState[`${mType}User` as keyof TakenState] || tState[`${mType}ParcelUser` as keyof TakenState]);
-              const userStr = rawUser && typeof rawUser === "string" && !/^\d{10,}$/.test(rawUser.trim()) ? rawUser.trim() : undefined;
+              const isAbsent = isMealSlotAbsent(tState as TakenState, mType);
 
-              const isTakenRaw = isDineInTaken || isParcelTaken;
-              const userMatch = !selectedCheckoutUser || (userStr && userStr.toLowerCase().trim() === selectedCheckoutUser.toLowerCase().trim());
-              const isTaken = Boolean(isTakenRaw && userMatch);
-
-              const actualServiceType = isParcelTaken
-                ? UI_TEXT.parcel
-                : isDineInTaken
-                ? (isParcelAllowed ? UI_TEXT.optedDineIn : UI_TEXT.dineIn)
-                : undefined;
-
-              let numericTime: number | null = null;
+              let actualServiceType: string | undefined;
               let timeDisplay = "-";
+              let numericTime: number | null = null;
+              let isTaken = false;
+              let userStr: string | undefined;
 
               const isKid = kidsEnabled && idx >= adultCount && idx < adultCount + kCount;
               const isGuest = guestsEnabled && idx >= adultCount + kCount;
@@ -1061,31 +1048,60 @@ export function useReportData(
               const memberNum = isGuest ? idx - adultCount - kCount + 1 : isKid ? idx - adultCount + 1 : idx + 1;
               const label = `${getDayLabel(dayId, dayConfig)} ${getMealLabel(mType)} • ${category} ${memberNum}`;
 
-              if (isTaken) {
-                totalTakenSlots++;
-                if (isParcelTaken) parcelsCheckedOut++;
-                else dineInCheckedOut++;
-                if (isGuest) guestsCheckedOut++;
-                else if (isKid) kidsCheckedOut++;
-                else adultsCheckedOut++;
+              if (isAbsent) {
+                actualServiceType = UI_TEXT.absent;
+                const rawAbsTime = tState[`${mType}AbsentTime` as keyof TakenState];
+                const rawAbsUser = tState[`${mType}AbsentUser` as keyof TakenState];
+                timeDisplay = rawAbsTime ? (typeof rawAbsTime === "number" ? formatTimestamp(rawAbsTime) : String(rawAbsTime)) : UI_TEXT.absent;
+                userStr = rawAbsUser && typeof rawAbsUser === "string" && !/^\d{10,}$/.test(rawAbsUser.trim()) ? rawAbsUser.trim() : undefined;
+              } else {
+                totalSlots++;
+                const isParcelAllowed = !!(s as any)[`${mType}Parcel`];
+                const isParcelTaken = !!tState[`${mType}Parcel` as keyof TakenState];
+                const isDineInTaken = !!tState[mType];
+                const rawTime = tState[`${mType}Time` as keyof TakenState] || tState[`${mType}ParcelTime` as keyof TakenState];
+                const rawUser = isParcelTaken
+                  ? (tState[`${mType}ParcelUser` as keyof TakenState] || tState[`${mType}User` as keyof TakenState])
+                  : (tState[`${mType}User` as keyof TakenState] || tState[`${mType}ParcelUser` as keyof TakenState]);
+                userStr = rawUser && typeof rawUser === "string" && !/^\d{10,}$/.test(rawUser.trim()) ? rawUser.trim() : undefined;
 
-                const finalUser = userStr || "admin";
-                userCheckoutCounts[finalUser] = (userCheckoutCounts[finalUser] || 0) + 1;
+                const isTakenRaw = isDineInTaken || isParcelTaken;
+                const userMatch = !selectedCheckoutUser || (userStr && userStr.toLowerCase().trim() === selectedCheckoutUser.toLowerCase().trim());
+                isTaken = Boolean(isTakenRaw && userMatch);
 
-                if (rawTime && typeof rawTime !== "boolean") {
-                  timeDisplay = String(rawTime);
-                  numericTime = parseRawTime(rawTime);
-                  if (numericTime !== null) {
-                    if (earliestTime === null || numericTime < earliestTime) earliestTime = numericTime;
-                    if (latestTime === null || numericTime > latestTime) latestTime = numericTime;
+                actualServiceType = isParcelTaken
+                  ? UI_TEXT.parcel
+                  : isDineInTaken
+                  ? (isParcelAllowed ? UI_TEXT.optedDineIn : UI_TEXT.dineIn)
+                  : undefined;
+
+                if (isTaken) {
+                  totalTakenSlots++;
+                  if (isParcelTaken) parcelsCheckedOut++;
+                  else dineInCheckedOut++;
+                  if (isGuest) guestsCheckedOut++;
+                  else if (isKid) kidsCheckedOut++;
+                  else adultsCheckedOut++;
+
+                  const finalUser = userStr || "admin";
+                  userCheckoutCounts[finalUser] = (userCheckoutCounts[finalUser] || 0) + 1;
+
+                  if (rawTime && typeof rawTime !== "boolean") {
+                    timeDisplay = String(rawTime);
+                    numericTime = parseRawTime(rawTime);
+                    if (numericTime !== null) {
+                      if (earliestTime === null || numericTime < earliestTime) earliestTime = numericTime;
+                      if (latestTime === null || numericTime > latestTime) latestTime = numericTime;
+                    }
                   }
                 }
               }
 
-              if (!selectedCheckoutUser || isTaken) {
+              if (!selectedCheckoutUser || isTaken || isAbsent) {
                 passCheckouts.push({
                   label,
                   isTaken,
+                  isAbsent,
                   actualServiceType,
                   timeDisplay,
                   numericTime,
@@ -1166,7 +1182,7 @@ export function useReportData(
 
       let subscribedCount = 0;
       let takenCount = 0;
-      const memberCheckouts: { label: string; isTaken: boolean; actualServiceType?: string; timeDisplay: string; numericTime?: number | null; userName?: string }[] = [];
+      const memberCheckouts: { label: string; isTaken: boolean; isAbsent?: boolean; actualServiceType?: string; timeDisplay: string; numericTime?: number | null; userName?: string }[] = [];
 
       for (let idx = 0; idx < totalPeople; idx++) {
         const s = slots[idx];
@@ -1175,66 +1191,79 @@ export function useReportData(
         const diet = getDietTypeForChoice(choice, varieties);
         if (!diet || choice === DietaryOption.NONE || !isDietaryEnabled(selectedDayId, selectedMealType, diet, dayConfig)) continue;
 
-        subscribedCount++;
         const tState = taken[idx] || {};
-        const isParcelAllowed = !!(s as any)[`${selectedMealType}Parcel`];
-        const isParcelTaken = !!tState[`${selectedMealType}Parcel` as keyof TakenState];
-        const isDineInTaken = !!tState[selectedMealType];
-        const rawTime = tState[`${selectedMealType}Time` as keyof TakenState] || tState[`${selectedMealType}ParcelTime` as keyof TakenState];
-        const rawUser = isParcelTaken
-          ? (tState[`${selectedMealType}ParcelUser` as keyof TakenState] || tState[`${selectedMealType}User` as keyof TakenState])
-          : (tState[`${selectedMealType}User` as keyof TakenState] || tState[`${selectedMealType}ParcelUser` as keyof TakenState]);
-        const userStr = rawUser && typeof rawUser === "string" && !/^\d{10,}$/.test(rawUser.trim()) ? rawUser.trim() : undefined;
+        const isAbsent = isMealSlotAbsent(tState as TakenState, selectedMealType);
 
-        const isTakenRaw = isDineInTaken || isParcelTaken;
-        const userMatch = !selectedCheckoutUser || (userStr && userStr.toLowerCase().trim() === selectedCheckoutUser.toLowerCase().trim());
-        const isTaken = Boolean(isTakenRaw && userMatch);
-
-        const actualServiceType = isParcelTaken
-          ? UI_TEXT.parcel
-          : isDineInTaken
-          ? (isParcelAllowed ? UI_TEXT.optedDineIn : UI_TEXT.dineIn)
-          : undefined;
-
-        let numericTime: number | null = null;
+        let actualServiceType: string | undefined;
         let timeDisplay = "-";
+        let numericTime: number | null = null;
+        let isTaken = false;
+        let userStr: string | undefined;
 
         const isKid = kidsEnabled && idx >= adultCount && idx < adultCount + kCount;
         const isGuest = guestsEnabled && idx >= adultCount + kCount;
-
-        if (isTaken) {
-          takenCount++;
-          if (isGuest) guestsCheckedOut++;
-          else if (isKid) kidsCheckedOut++;
-          else adultsCheckedOut++;
-
-          if (isParcelTaken) {
-            parcelsCheckedOut++;
-          } else {
-            dineInCheckedOut++;
-          }
-
-          if (rawTime) {
-            timeDisplay = String(rawTime);
-            numericTime = parseRawTime(rawTime);
-          } else {
-            timeDisplay = "Checked In";
-          }
-
-          if (numericTime !== null) {
-            if (earliestTime === null || numericTime < earliestTime) earliestTime = numericTime;
-            if (latestTime === null || numericTime > latestTime) latestTime = numericTime;
-          }
-        }
-
         const category = isGuest ? UI_TEXT.guest : isKid ? UI_TEXT.kid : UI_TEXT.adult;
         const memberNum = isGuest ? idx - adultCount - kCount + 1 : isKid ? idx - adultCount + 1 : idx + 1;
         const label = `${category} ${memberNum}`;
 
-        if (!selectedCheckoutUser || isTaken) {
+        if (isAbsent) {
+          actualServiceType = UI_TEXT.absent;
+          const rawAbsTime = tState[`${selectedMealType}AbsentTime` as keyof TakenState];
+          const rawAbsUser = tState[`${selectedMealType}AbsentUser` as keyof TakenState];
+          timeDisplay = rawAbsTime ? (typeof rawAbsTime === "number" ? formatTimestamp(rawAbsTime) : String(rawAbsTime)) : UI_TEXT.absent;
+          userStr = rawAbsUser && typeof rawAbsUser === "string" && !/^\d{10,}$/.test(rawAbsUser.trim()) ? rawAbsUser.trim() : undefined;
+        } else {
+          subscribedCount++;
+          const isParcelAllowed = !!(s as any)[`${selectedMealType}Parcel`];
+          const isParcelTaken = !!tState[`${selectedMealType}Parcel` as keyof TakenState];
+          const isDineInTaken = !!tState[selectedMealType];
+          const rawTime = tState[`${selectedMealType}Time` as keyof TakenState] || tState[`${selectedMealType}ParcelTime` as keyof TakenState];
+          const rawUser = isParcelTaken
+            ? (tState[`${selectedMealType}ParcelUser` as keyof TakenState] || tState[`${selectedMealType}User` as keyof TakenState])
+            : (tState[`${selectedMealType}User` as keyof TakenState] || tState[`${selectedMealType}ParcelUser` as keyof TakenState]);
+          userStr = rawUser && typeof rawUser === "string" && !/^\d{10,}$/.test(rawUser.trim()) ? rawUser.trim() : undefined;
+
+          const isTakenRaw = isDineInTaken || isParcelTaken;
+          const userMatch = !selectedCheckoutUser || (userStr && userStr.toLowerCase().trim() === selectedCheckoutUser.toLowerCase().trim());
+          isTaken = Boolean(isTakenRaw && userMatch);
+
+          actualServiceType = isParcelTaken
+            ? UI_TEXT.parcel
+            : isDineInTaken
+            ? (isParcelAllowed ? UI_TEXT.optedDineIn : UI_TEXT.dineIn)
+            : undefined;
+
+          if (isTaken) {
+            takenCount++;
+            if (isGuest) guestsCheckedOut++;
+            else if (isKid) kidsCheckedOut++;
+            else adultsCheckedOut++;
+
+            if (isParcelTaken) {
+              parcelsCheckedOut++;
+            } else {
+              dineInCheckedOut++;
+            }
+
+            if (rawTime) {
+              timeDisplay = String(rawTime);
+              numericTime = parseRawTime(rawTime);
+            } else {
+              timeDisplay = "Checked In";
+            }
+
+            if (numericTime !== null) {
+              if (earliestTime === null || numericTime < earliestTime) earliestTime = numericTime;
+              if (latestTime === null || numericTime > latestTime) latestTime = numericTime;
+            }
+          }
+        }
+
+        if (!selectedCheckoutUser || isTaken || isAbsent) {
           memberCheckouts.push({
             label,
             isTaken,
+            isAbsent,
             actualServiceType,
             timeDisplay,
             numericTime,
@@ -1352,6 +1381,12 @@ export function useReportData(
             }
 
             const memberRole = isGuest ? `Guest ${idx - adultCount - kCount + 1}` : isKid ? `Kid ${idx - adultCount + 1}` : `Adult ${idx + 1}`;
+            const dayConf = (dayConfig || []).find(d => d.id === dayId);
+            const mConf = dayConf ? dayConf[mType] : undefined;
+            const varieties = getMealVarieties(mConf);
+            const variety = getVarietyForChoice(choice, varieties);
+            const varietyName = variety?.name || (choice === DietaryOption.NON_VEG ? UI_TEXT.nonVeg : UI_TEXT.veg);
+
             const absentTime = tState[`${mType}AbsentTime` as keyof TakenState] || undefined;
             const absentUser = tState[`${mType}AbsentUser` as keyof TakenState] || undefined;
 
@@ -1362,6 +1397,7 @@ export function useReportData(
               memberRole,
               memberIndex: idx,
               mealType: mType,
+              varietyName,
               hasParcel: isParcelAllowed,
               absentTime,
               absentUser,

@@ -48,6 +48,7 @@ import {
   isSpecialOnlySubscribed,
   formatTimestamp,
   isSlotMissedParcel,
+  isMealSlotAbsent,
 } from "../constants";
 import {
   MealChoice,
@@ -358,6 +359,7 @@ export function SubscriptionForm() {
          const hasPendingParcel = personSlots.some((slot: MealSlot, pIdx: number) => {
             const t = takenDays[pIdx];
             if (!t) return false;
+            if (isMealSlotAbsent(t, type)) return false;
             const optedParcel = !!slot[`${type}Parcel` as keyof MealSlot];
             const takenParcel = !!t[`${type}Parcel` as keyof TakenState];
             const takenFood = !!t[type];
