@@ -165,7 +165,6 @@ export function ContactsScreen() {
                   handleWhatsAppChat(item);
                 }}
                 accessible={true}
-                accessibilityRole="button"
                 accessibilityLabel={UI_TEXT.shareWhatsApp}
                 style={({ pressed }) => [
                   { width: s(44), height: s(44), borderRadius: s(12), backgroundColor: theme.colors.whatsapp + "15", alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: theme.colors.whatsapp + "40" },
@@ -180,7 +179,6 @@ export function ContactsScreen() {
                   handleSMS(item);
                 }}
                 accessible={true}
-                accessibilityRole="button"
                 accessibilityLabel={UI_TEXT.logSms.replace("{id}", item.id)}
                 style={({ pressed }) => [
                   { width: s(44), height: s(44), borderRadius: s(12), backgroundColor: theme.colors.success + "15", alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: theme.colors.success + "40" },
@@ -195,7 +193,6 @@ export function ContactsScreen() {
                   handlePhoneCall(item);
                 }}
                 accessible={true}
-                accessibilityRole="button"
                 accessibilityLabel={UI_TEXT.logCall.replace("{id}", item.id)}
                 style={({ pressed }) => [
                   { width: s(44), height: s(44), borderRadius: s(12), backgroundColor: theme.colors.primary + "15", alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: theme.colors.primary + "40" },

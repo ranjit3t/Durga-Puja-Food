@@ -2,7 +2,7 @@
  * Application Settings Screen for Admins.
  * Allows managing the festival day configuration, enabling/disabling meals, dietary choices, and parcels.
  */
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useRef, useLayoutEffect } from "react";
 import {
   View,
   Text,
@@ -238,6 +238,8 @@ export function SettingsScreen() {
   const { s } = useScaling();
   const { theme, themeType } = useAppTheme();
 
+  const lastServerConfigRef = useRef<any>(null);
+
   const [localConfig, setLocalConfig] = useState<ConfigDay[]>([]);
   const [localSeasonName, setLocalSeasonName] = useState("");
   const [localSeasonEnabled, setLocalSeasonEnabled] = useState(true);
@@ -432,7 +434,7 @@ export function SettingsScreen() {
   }, [localConfig]);
 
   // Sync saved baseline & local state when database config is loaded
-  React.useLayoutEffect(() => {
+  useLayoutEffect(() => {
     if (config) {
       const currentContextBaseline = {
         config: Array.isArray(config) ? JSON.parse(JSON.stringify(config)) : [],
@@ -455,7 +457,9 @@ export function SettingsScreen() {
         vendorSettledCost: vendorSettledCost || "",
       };
 
-      if (!savedBaseline) {
+      const serverChanged = JSON.stringify(currentContextBaseline) !== JSON.stringify(lastServerConfigRef.current);
+
+      if (!savedBaseline || (!hasChanged && serverChanged)) {
         setLocalConfig(JSON.parse(JSON.stringify(currentContextBaseline.config)));
         setLocalSeasonName(currentContextBaseline.seasonName);
         setLocalSeasonEnabled(currentContextBaseline.seasonEnabled);
@@ -474,10 +478,14 @@ export function SettingsScreen() {
         setLocalVendorName(currentContextBaseline.vendorName);
         setLocalVendorAddress(currentContextBaseline.vendorAddress);
         setLocalVendorSettledCost(currentContextBaseline.vendorSettledCost);
+        setSavedBaseline(currentContextBaseline);
+        lastServerConfigRef.current = currentContextBaseline;
+      } else if (!savedBaseline) {
+        setSavedBaseline(currentContextBaseline);
+        lastServerConfigRef.current = currentContextBaseline;
       }
-      setSavedBaseline(currentContextBaseline);
     }
-  }, [config, seasonName, seasonEnabled, payment, freeMealEnabled, mobileEnabled, foodPriceEnabled, kidsEnabled, guestsEnabled, vendorKidsMealChargingEnabled, whatsappCountryCode, quickCheckoutAutoCloseMs, soundEnabled, nonAdminCheckoutEnabled, cheatCodeEnabled, vendorName, vendorAddress, vendorSettledCost]);
+  }, [config, seasonName, seasonEnabled, payment, freeMealEnabled, mobileEnabled, foodPriceEnabled, kidsEnabled, guestsEnabled, vendorKidsMealChargingEnabled, whatsappCountryCode, quickCheckoutAutoCloseMs, soundEnabled, nonAdminCheckoutEnabled, cheatCodeEnabled, vendorName, vendorAddress, vendorSettledCost, savedBaseline]);
 
   const updateDay = (id: string, next: Partial<ConfigDay>) => {
     setLocalConfig((current) =>
