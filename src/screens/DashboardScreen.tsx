@@ -33,6 +33,8 @@ import {
   getVarietyForChoice,
   getDietTypeForChoice,
   isSpecialMeal,
+  getAbsentCountsForSub,
+  getActiveDays,
 } from "../constants";
 import { MealMenu, UserRole, ConfigDay, MealType, DietType, AppScreen, AppThemeMode, DietaryOption, DietaryVariety, Subscription, FoodMenu, toBool, TakenState } from "../types";
 import { BackButton } from "../components/common/BackButton";
@@ -621,7 +623,7 @@ export function DashboardScreen() {
   const { userRole, handleLogout } = useAuth();
   const {
     foodMenu, dayConfig, seasonName, freeMealEnabled, seasonEnabled,
-    dashboardData, kidsEnabled, guestsEnabled
+    dashboardData, kidsEnabled, guestsEnabled, subscriptions
   } = useCoreDatabase();
 
   const { navigate, goBack } = useAppNavigation();
@@ -649,7 +651,28 @@ export function DashboardScreen() {
   }, [dayConfig]);
 
   const summaryTotals = useMemo(() => {
-    return dashboardData.reduce((acc, day) => {
+    let absentAdults = 0;
+    let absentKids = 0;
+    let absentGuests = 0;
+    let absentParcels = 0;
+    let absentTotal = 0;
+
+    const activeDaysList = getActiveDays(dayConfig);
+    subscriptions.forEach((sub) => {
+      activeDaysList.forEach((dayId) => {
+        for (const mType of [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER]) {
+          if (!isMealEnabled(dayId, mType, dayConfig)) continue;
+          const counts = getAbsentCountsForSub(sub, dayId, mType, dayConfig, kidsEnabled, guestsEnabled);
+          absentAdults += counts.adults;
+          absentKids += counts.kids;
+          absentGuests += counts.guests;
+          absentParcels += counts.totalParcels;
+          absentTotal += counts.totalMeals;
+        }
+      });
+    });
+
+    const totals = dashboardData.reduce((acc, day) => {
       // Member totals (Adults + Kids)
       const mealTotal = (day.breakfast || 0) + (day.lunch || 0) + (day.dinner || 0);
       const mealTaken = (day.breakfastTaken || 0) + (day.lunchTaken || 0) + (day.dinnerTaken || 0);
@@ -701,7 +724,9 @@ export function DashboardScreen() {
 
       return acc;
     }, { total: 0, veg: 0, nonVeg: 0, adultTaken: 0, kidsVeg: 0, kidsNonVeg: 0, kidsTotal: 0, kidsTaken: 0, guestsVeg: 0, guestsNonVeg: 0, guestsTotal: 0, guestsTaken: 0, taken: 0, freeMealTotal: 0, freeMealVeg: 0, freeMealNonVeg: 0, freeMealTaken: 0, parcel: 0, parcelTaken: 0, parcelVeg: 0, parcelNonVeg: 0, parcelVegTaken: 0, parcelNonVegTaken: 0 });
-  }, [dashboardData, freeMealEnabled]);
+
+    return { ...totals, absentAdults, absentKids, absentGuests, absentParcels, absentTotal };
+  }, [dashboardData, subscriptions, dayConfig, kidsEnabled, guestsEnabled, freeMealEnabled]);
 
   const isParcelEnabledGlobally = useMemo(() => {
     return dayConfig.some(d => d.enabled && (
@@ -725,6 +750,16 @@ export function DashboardScreen() {
           let guestsVeg = 0, guestsNonVeg = 0, guestsTotal = 0, guestsTaken = 0;
           let freeMealTotal = 0, freeMealTaken = 0, freeMealVeg = 0, freeMealNonVeg = 0, adultsTaken = 0;
           let parcel = 0, parcelTaken = 0, parcelVeg = 0, parcelNonVeg = 0, parcelVegTaken = 0, parcelNonVegTaken = 0;
+          let absentAdults = 0, absentKids = 0, absentGuests = 0, absentParcels = 0, absentTotal = 0;
+
+          subscriptions.forEach((sub) => {
+            const counts = getAbsentCountsForSub(sub, d.id, mType, dayConfig, kidsEnabled, guestsEnabled);
+            absentAdults += counts.adults;
+            absentKids += counts.kids;
+            absentGuests += counts.guests;
+            absentParcels += counts.totalParcels;
+            absentTotal += counts.totalMeals;
+          });
 
           if (mType === MealType.BREAKFAST) {
             total = item.breakfast || 0;
@@ -832,7 +867,12 @@ export function DashboardScreen() {
             freeMealTotal,
             freeMealTaken,
             isVegEnabled: isVeg,
-            isNonVegEnabled: isNonVeg
+            isNonVegEnabled: isNonVeg,
+            absentAdults,
+            absentKids,
+            absentGuests,
+            absentParcels,
+            absentTotal
           };
         }
       }
@@ -997,6 +1037,18 @@ export function DashboardScreen() {
                       </Text>
                     </View>
                   )}
+
+                  {summaryTotals.absentTotal > 0 && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(6) }}>
+                      <Text style={{ fontSize: s(11), fontWeight: '800', color: theme.colors.white, opacity: 0.9 }}>{UI_TEXT.absent}:</Text>
+                      <Text style={{ fontSize: s(11), fontWeight: '900', color: theme.colors.white, opacity: 0.9 }}>
+                        {summaryTotals.absentTotal}
+                      </Text>
+                      <Text style={{ fontSize: s(10), fontWeight: '700', color: theme.colors.white, opacity: 0.8 }}>
+                        ({UI_TEXT.adults}: {summaryTotals.absentAdults}{kidsEnabled ? `, ${UI_TEXT.kids}: ${summaryTotals.absentKids}` : ""}{guestsEnabled ? `, ${UI_TEXT.guests}: ${summaryTotals.absentGuests}` : ""}{summaryTotals.absentParcels > 0 ? `, ${UI_TEXT.parcels}: ${summaryTotals.absentParcels}` : ""})
+                      </Text>
+                    </View>
+                  )}
                 </View>
               </View>
             <View style={{ alignItems: 'flex-end', justifyContent: 'center' }}>
@@ -1152,6 +1204,18 @@ export function DashboardScreen() {
                                `(${currentMealSummary.parcelVeg}${UI_TEXT.vegAbbrLabel}${UI_TEXT.pipe}${currentMealSummary.parcelNonVeg}${UI_TEXT.nonVegAbbrLabel})${UI_TEXT.space}`
                             )}
                             ({UI_TEXT.taken}{UI_TEXT.colon}{UI_TEXT.space}{currentMealSummary.parcelTaken})
+                         </Text>
+                      </View>
+                    )}
+
+                    {currentMealSummary.absentTotal > 0 && (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(6) }}>
+                         <Text style={{ fontSize: s(12), fontWeight: '800', color: theme.colors.white, opacity: 0.9 }}>{UI_TEXT.absent}:</Text>
+                         <Text style={{ fontSize: s(12), fontWeight: '900', color: theme.colors.white, opacity: 0.9 }}>
+                            {currentMealSummary.absentTotal}
+                         </Text>
+                         <Text style={{ fontSize: s(10), fontWeight: '700', color: theme.colors.white, opacity: 0.7 }}>
+                            ({UI_TEXT.adults}: {currentMealSummary.absentAdults}{kidsEnabled ? `, ${UI_TEXT.kids}: ${currentMealSummary.absentKids}` : ""}{guestsEnabled ? `, ${UI_TEXT.guests}: ${currentMealSummary.absentGuests}` : ""}{currentMealSummary.absentParcels > 0 ? `, ${UI_TEXT.parcels}: ${currentMealSummary.absentParcels}` : ""})
                          </Text>
                       </View>
                     )}
