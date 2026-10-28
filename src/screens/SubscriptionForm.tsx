@@ -1065,6 +1065,60 @@ export function SubscriptionForm() {
     });
   };
 
+  /**
+   * Toggles whether a specific meal is marked absent for the person.
+   */
+  const setAbsentChoice = (mealSlot: MealType | string, absent: boolean) => {
+    const mealKey = mealSlot;
+    const parcelKey = `${mealKey}Parcel`;
+    const absentKey = `${mealKey}Absent`;
+    const absentTimeKey = `${mealKey}AbsentTime`;
+    const absentUserKey = `${mealKey}AbsentUser`;
+    const timeKey = `${mealKey}Time`;
+    const userKey = `${mealKey}User`;
+    const parcelTimeKey = `${parcelKey}Time`;
+    const parcelUserKey = `${parcelKey}User`;
+
+    const currentTaken = getEnsureTaken(selectedDay);
+    const item = currentTaken[selectedPerson];
+    const isMealTaken = toBool(item?.[mealKey as keyof TakenState]);
+    const isParcelTaken = toBool(item?.[parcelKey as keyof TakenState]);
+
+    // Rule: If meal or parcel is taken, cannot mark absent!
+    if (absent && (isMealTaken || isParcelTaken)) {
+      return;
+    }
+
+    const nowTime = formatTakenTime(new Date());
+    const currentUser = userAccountName || userName || String(userRole || "Operator");
+
+    set("takenByPerson", {
+      ...form.takenByPerson,
+      [selectedDay]: currentTaken.map((tItem, index) => {
+        if (index === selectedPerson) {
+          const updated: any = {
+            ...tItem,
+            [absentKey]: absent,
+            [absentTimeKey]: absent ? nowTime : undefined,
+            [absentUserKey]: absent ? currentUser : undefined,
+          };
+
+          if (absent) {
+            updated[mealKey] = false;
+            updated[parcelKey] = false;
+            updated[timeKey] = undefined;
+            updated[userKey] = undefined;
+            updated[parcelTimeKey] = undefined;
+            updated[parcelUserKey] = undefined;
+          }
+
+          return updated;
+        }
+        return tItem;
+      })
+    });
+  };
+
   const maxPaymentsAllowed = paymentConfig.maxPayments || 10;
 
   const addPayment = () => {
@@ -1847,8 +1901,7 @@ export function SubscriptionForm() {
                     return isMealEnabled(selectedDay, slot, dayConfig) && choice !== DietaryOption.NONE;
                   })
                   .map((slot) => {
-                    const choice =
-                      form.mealSlots[selectedDay]?.[selectedPerson]?.[slot];
+                    const choice = form.mealSlots[selectedDay]?.[selectedPerson]?.[slot];
                     if (!choice || choice === DietaryOption.NONE) return null;
 
                     const dayConf = (dayConfig || []).find((d) => d.id === selectedDay);
@@ -1858,15 +1911,15 @@ export function SubscriptionForm() {
                     if (!dietKey || !isDietaryEnabled(selectedDay, slot, dietKey, dayConfig))
                       return null;
 
-                    const isTaken =
-                      !!form.takenByPerson[selectedDay]?.[selectedPerson]?.[slot];
+                    const isTaken = !!form.takenByPerson[selectedDay]?.[selectedPerson]?.[slot];
+                    const isAbsent = !!form.takenByPerson[selectedDay]?.[selectedPerson]?.[`${slot}Absent` as keyof TakenState];
                     const variety = varieties.find(v => v.id === choice) || varieties.find(v => v.type === dietKey);
                     const slotColorStyle = variety?.color ? { backgroundColor: variety.color, borderColor: variety.color } : (dietKey === DietType.NON_VEG ? styles.nonVegChoice : styles.vegChoice);
 
                     const label = getMealLabel(slot);
                     const isDone = isMealDone(selectedDay, slot, dayConfig);
                     const isFuture = isMealInFuture(selectedDay, slot, dayConfig);
-                    const isDisabled = isDone || isFuture;
+                    const isDisabled = isDone || isFuture || isAbsent;
 
                     return (
                       <Pressable
@@ -1879,6 +1932,8 @@ export function SubscriptionForm() {
                           { paddingVertical: 12, paddingHorizontal: 4 }
                         ]}
                         disabled={isDisabled}
+                        accessibilityLabel={`${label} ${isTaken ? UI_TEXT.taken : isAbsent ? UI_TEXT.absent : UI_TEXT.foodNotTakenLabel}`}
+                        accessibilityRole="button"
                       >
                         <Text
                           style={[
@@ -1887,11 +1942,71 @@ export function SubscriptionForm() {
                             { fontSize: 12 }
                           ]}
                         >
-                          {label}
+                          {isAbsent ? `${label} (${UI_TEXT.absent})` : label}
                         </Text>
                       </Pressable>
                     );
                   })}
+              </View>
+
+              {/* SECTION 3.5: Absent Status */}
+              <View style={{ marginTop: 20 }}>
+                <View style={{ marginBottom: 6 }}>
+                  <Text style={[styles.currentChoice, { marginTop: 0, fontSize: 16, marginBottom: 4 }]}>{UI_TEXT.absentStatus}</Text>
+                  <Text style={[styles.subText, { fontSize: 11, color: theme.colors.textSecondary }]}>{UI_TEXT.absentHelpText}</Text>
+                </View>
+                <View style={styles.choiceRow}>
+                  {[MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER]
+                    .filter((slot) => {
+                      const choice = form.mealSlots[selectedDay]?.[selectedPerson]?.[slot];
+                      return isMealEnabled(selectedDay, slot, dayConfig) && choice !== DietaryOption.NONE;
+                    })
+                    .map((slot) => {
+                      const choice = form.mealSlots[selectedDay]?.[selectedPerson]?.[slot];
+                      if (!choice || choice === DietaryOption.NONE) return null;
+
+                      const isTaken = !!form.takenByPerson[selectedDay]?.[selectedPerson]?.[slot];
+                      const parcelTakenKey = `${slot}Parcel`;
+                      const isParcelTaken = !!form.takenByPerson[selectedDay]?.[selectedPerson]?.[parcelTakenKey as keyof TakenState];
+                      const isAbsent = !!form.takenByPerson[selectedDay]?.[selectedPerson]?.[`${slot}Absent` as keyof TakenState];
+
+                      const label = getMealLabel(slot);
+                      const isDone = isMealDone(selectedDay, slot, dayConfig);
+                      const isFuture = isMealInFuture(selectedDay, slot, dayConfig);
+                      // Rule: If meal or parcel is taken, cannot mark absent (must unmark taken first)
+                      const isTakenActive = isTaken || isParcelTaken;
+                      const isDisabled = isDone || isFuture || isTakenActive;
+
+                      return (
+                        <Pressable
+                          key={`absent-${slot}`}
+                          onPress={() => canEdit && !isDisabled && setAbsentChoice(slot, !isAbsent)}
+                          style={[
+                            styles.choice,
+                            isAbsent
+                              ? { backgroundColor: "#f97316", borderColor: "#f97316" }
+                              : styles.noneChoice,
+                            isDisabled && { opacity: 0.4 },
+                            { paddingVertical: 12, paddingHorizontal: 4 }
+                          ]}
+                          disabled={isDisabled}
+                          accessibilityLabel={`${label} ${UI_TEXT.absentStatus}: ${isAbsent ? UI_TEXT.markedAbsent : UI_TEXT.markAbsent}`}
+                          accessibilityRole="button"
+                          accessibilityHint={isTakenActive ? "Cannot mark absent while meal or parcel is taken" : undefined}
+                        >
+                          <Text
+                            style={[
+                              styles.choiceText,
+                              isAbsent && styles.choiceTextOn,
+                              { fontSize: 11 }
+                            ]}
+                          >
+                            {isAbsent ? `${label}: ${UI_TEXT.absent}` : `${label}: ${UI_TEXT.markAbsent}`}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                </View>
               </View>
 
               {/* SECTION 4: Parcel Collection */}
@@ -1908,7 +2023,8 @@ export function SubscriptionForm() {
                     const choice = form.mealSlots[selectedDay]?.[selectedPerson]?.[slot];
                     const isParcelRegistered = !!form.mealSlots[selectedDay]?.[selectedPerson]?.[`${slot}Parcel` as keyof MealSlot];
                     const isFoodTaken = !!form.takenByPerson[selectedDay]?.[selectedPerson]?.[slot];
-                    return checkParcelActive(slot) && choice !== DietaryOption.NONE && isParcelRegistered && isFoodTaken;
+                    const isAbsent = !!form.takenByPerson[selectedDay]?.[selectedPerson]?.[`${slot}Absent` as keyof TakenState];
+                    return checkParcelActive(slot) && choice !== DietaryOption.NONE && isParcelRegistered && isFoodTaken && !isAbsent;
                   }
                 );
 
@@ -1924,7 +2040,8 @@ export function SubscriptionForm() {
                         .filter((slot) => {
                            const isParcelRegistered = !!form.mealSlots[selectedDay]?.[selectedPerson]?.[`${slot}Parcel` as keyof MealSlot];
                            const isFoodTaken = !!form.takenByPerson[selectedDay]?.[selectedPerson]?.[slot];
-                           return checkParcelActive(slot) && isParcelRegistered && isFoodTaken;
+                           const isAbsent = !!form.takenByPerson[selectedDay]?.[selectedPerson]?.[`${slot}Absent` as keyof TakenState];
+                           return checkParcelActive(slot) && isParcelRegistered && isFoodTaken && !isAbsent;
                         })
                         .map((slot) => {
                           const choice = form.mealSlots[selectedDay]?.[selectedPerson]?.[slot];

@@ -9,7 +9,7 @@ import { useUI } from "../../context/UIContext";
 import { useAppNavigation } from "../../context/NavigationContext";
 import { useChat } from "../../context/ChatContext";
 import { Subscription, MealType, DietaryOption, DietType, normalizeChoice, toBool, ActivityModule, ActivityAction, AppThemeMode, AppScreen, TakenState, CheckoutSource, MealSlot, SectionType, CategoryInfo, CategoryInputs } from "../../types";
-import { isParcelEnabled, isKidsParcelEnabled, isDineInFallbackParcelEnabled, isMealCurrent, isMealDone, getMealLabel, formatTakenTime, isVegOnlyDay, isDietaryEnabled, isMealEnabled, getValidSlotChoice, isParcelValidForSlot, getMealVarieties, getVarietyForChoice, getDietTypeForChoice, isSpecialMeal, isGuestsParcelEnabled } from "../../constants";
+import { isParcelEnabled, isKidsParcelEnabled, isDineInFallbackParcelEnabled, isMealCurrent, isMealDone, getMealLabel, formatTakenTime, isVegOnlyDay, isDietaryEnabled, isMealEnabled, getValidSlotChoice, isParcelValidForSlot, getMealVarieties, getVarietyForChoice, getDietTypeForChoice, isSpecialMeal, isGuestsParcelEnabled, isMealSlotAbsent } from "../../constants";
 import { QuickCheckoutHeader } from "../../features/checkout/components/QuickCheckoutHeader";
 import { QuickCheckoutItemCard } from "../../features/checkout/components/QuickCheckoutItemCard";
 
@@ -239,6 +239,8 @@ export function QuickCheckoutModal({
       const isGuest = guestsEnabled && i >= peopleCount + kidsCount;
       const slot = slots[i];
       const takenRecord = taken[i];
+
+      if (isMealSlotAbsent(takenRecord, mealType)) continue;
 
       const choice = getValidSlotChoice(dayId, mealType, slot?.[mealKey], dayConfig);
       if (choice === DietaryOption.NONE) continue;
@@ -757,6 +759,7 @@ export function QuickCheckoutModal({
 
       const isSlotInCat = (i: number) => {
         if (!isMealEnabled(dayId, mealType, dayConfig)) return false;
+        if (isMealSlotAbsent(updatedSub.takenByPerson?.[dayId]?.[i], mealType)) return false;
         const kCount = kidsEnabled ? (activeSubscription.kidsCount || 0) : 0;
         const isKidSlot = kidsEnabled && i >= peopleCount && i < peopleCount + kCount;
         const isGuestSlot = guestsEnabled && i >= peopleCount + kCount;
@@ -1674,10 +1677,21 @@ export function QuickCheckoutModal({
                                 {sub.label}
                               </Text>
                             </View>
-                            <Text style={{ fontSize: 11, fontWeight: "700", color: theme.colors.textSecondary }}>
-                              ({UI_TEXT.pending}: {dineRem} {dineRem === 1 ? UI_TEXT.plateSingular.toLowerCase() : UI_TEXT.plates.toLowerCase()}
-                              {quickCheckoutDetails.parcelSupported && cat.remParcelCount > 0 ? `, ${cat.remParcelCount} ${cat.remParcelCount === 1 ? UI_TEXT.parcelSingular.toLowerCase() : UI_TEXT.parcels.toLowerCase()}` : ""})
-                            </Text>
+                            {(() => {
+                              const parts: string[] = [];
+                              if (dineRem > 0) {
+                                parts.push(dineRem === 1 ? `1 ${UI_TEXT.dineInSingular.toLowerCase()}` : `${dineRem} ${UI_TEXT.dineInPlural.toLowerCase()}`);
+                              }
+                              if (quickCheckoutDetails.parcelSupported && cat.remParcelCount > 0) {
+                                parts.push(cat.remParcelCount === 1 ? `1 ${UI_TEXT.parcelSingular.toLowerCase()}` : `${cat.remParcelCount} ${UI_TEXT.parcels.toLowerCase()}`);
+                              }
+                              if (parts.length === 0) return null;
+                              return (
+                                <Text style={{ fontSize: 11, fontWeight: "700", color: theme.colors.textSecondary }}>
+                                  ({UI_TEXT.pending}: {parts.join(", ")})
+                                </Text>
+                              );
+                            })()}
                           </View>
 
                           <View style={{ flexDirection: "row", gap: 8, marginTop: 4, width: "100%", alignItems: "center", flexWrap: "wrap" }}>

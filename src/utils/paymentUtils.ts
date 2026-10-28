@@ -13,8 +13,9 @@ import {
   AppliedPackageInfo,
   PackageMealItem,
   FoodMenu,
+  TakenState,
 } from "../domain";
-import { isParcelEnabled, isKidsParcelEnabled, isDietaryEnabled, isMealEnabled, getMealVarieties, getDietTypeForChoice, getVarietyForChoice, isGuestsParcelEnabled, getMealFreeMealCounts } from "../constants";
+import { isParcelEnabled, isKidsParcelEnabled, isDietaryEnabled, isMealEnabled, getMealVarieties, getDietTypeForChoice, getVarietyForChoice, isGuestsParcelEnabled, getMealFreeMealCounts, isMealSlotAbsent } from "../constants";
 
 export interface DiscrepancyItem {
   id: string;
@@ -873,6 +874,7 @@ export interface PassMealItem {
   isParcelOpted?: boolean;
   isParcelAllowed?: boolean;
   isParcelTaken?: boolean;
+  isAbsent?: boolean;
 }
 
 export function calculatePassMealBreakdown(
@@ -952,8 +954,9 @@ export function calculatePassMealBreakdown(
 
         const slotTotalPrice = mFoodPrice + mParcelPrice;
         const tState = taken[i] || {};
-        const isParcelTaken = !!tState[`${mType}Parcel` as keyof typeof tState];
-        const isMealTaken = !!tState[mType as keyof typeof tState] || isParcelTaken;
+        const isAbsent = isMealSlotAbsent(tState as TakenState, mType);
+        const isParcelTaken = !isAbsent && !!tState[`${mType}Parcel` as keyof typeof tState];
+        const isMealTaken = !isAbsent && (!!tState[mType as keyof typeof tState] || isParcelTaken);
 
         passMeals.push({
           dayId,
@@ -970,8 +973,9 @@ export function calculatePassMealBreakdown(
           netPayment: slotTotalPrice,
           isMealTaken,
           isParcelOpted,
-          isParcelAllowed,
+          isParcelAllowed: !isAbsent && isParcelAllowed,
           isParcelTaken,
+          isAbsent,
         });
       });
     });

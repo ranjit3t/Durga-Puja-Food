@@ -887,7 +887,7 @@ export function DetailsScreen() {
 
                 const getTakenParts = () => {
                    if (!taken) return [];
-                   const res: Array<{ label: string; parcel: boolean; time?: string; user?: string; color: string }> = [];
+                   const res: Array<{ label: string; parcel: boolean; time?: string; user?: string; color: string; isAbsent?: boolean }> = [];
                    const personSlots = subscription.mealSlots[day]?.[personIndex];
 
                    const meals = [
@@ -897,7 +897,17 @@ export function DetailsScreen() {
                    ];
 
                    meals.forEach((m) => {
-                     if (toBool(taken[m.key])) {
+                     const isAbsent = toBool(taken[`${m.key}Absent` as keyof TakenState]);
+                     if (isAbsent) {
+                       res.push({
+                         label: m.abbr,
+                         parcel: false,
+                         isAbsent: true,
+                         time: taken[`${m.key}AbsentTime` as keyof TakenState] as string,
+                         user: taken[`${m.key}AbsentUser` as keyof TakenState] as string,
+                         color: "#f97316",
+                       });
+                     } else if (toBool(taken[m.key])) {
                        const choice = personSlots ? getValidSlotChoice(day, m.key, personSlots[m.key], dayConfig) : DietaryOption.NONE;
                        const dayConf = dayConfig.find(d => d.id === day);
                        const mConf = dayConf ? dayConf[m.key] : undefined;
@@ -911,6 +921,7 @@ export function DetailsScreen() {
                        res.push({
                          label: m.abbr,
                          parcel: isParcel,
+                         isAbsent: false,
                          time: taken[m.timeKey],
                          user: operatorUser,
                          color,
@@ -951,13 +962,18 @@ export function DetailsScreen() {
                             key={i}
                             accessible={true}
                             accessibilityRole="text"
-                            accessibilityLabel={`Meal ${p.label} served ${p.time ? "at " + p.time : ""} ${p.user ? "by " + p.user : ""}`}
+                            accessibilityLabel={p.isAbsent ? `Meal ${p.label} marked absent ${p.time ? "at " + p.time : ""} ${p.user ? "by " + p.user : ""}` : `Meal ${p.label} served ${p.time ? "at " + p.time : ""} ${p.user ? "by " + p.user : ""}`}
                             style={{ alignItems: 'center', gap: 2, paddingVertical: 2 }}
                           >
                              <View style={{ position: 'relative' }}>
                                 <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: p.color, alignItems: "center", justifyContent: "center" }}>
                                    <Text style={{ color: theme.colors.white, fontSize: 10, fontWeight: "900" }}>{p.label}</Text>
                                 </View>
+                                {p.isAbsent && (
+                                   <View style={{ position: 'absolute', top: -6, right: -6, width: 12, height: 12, borderRadius: 6, backgroundColor: "#c2410c", alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: theme.colors.white, zIndex: 1, elevation: 2 }}>
+                                      <Text style={{ color: theme.colors.white, fontSize: 7, fontWeight: "900" }}>A</Text>
+                                   </View>
+                                )}
                                 {p.parcel && (
                                    <View style={{ position: 'absolute', top: -6, right: -6, width: 12, height: 12, borderRadius: 6, backgroundColor: p.color, alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: theme.colors.white, zIndex: 1, elevation: 2 }}>
                                       <Text style={{ color: theme.colors.white, fontSize: 7, fontWeight: "900" }}>{UI_TEXT.parcelAbbr}</Text>

@@ -26,6 +26,7 @@ import {
   isSlotMissedParcel,
   getDayLabel,
   getMealLabel,
+  isMealSlotAbsent,
 } from "../constants";
 import { getAmountDiscrepancyData, calculatePersonMealAndParcelCost, calculateDetailedPaymentReportData, resolvePrice, resolveGuestPrice } from "../utils/paymentUtils";
 
@@ -297,14 +298,21 @@ export function useReportData(
               if (!diet || !isDietaryEnabled(dayId, mType, diet, dayConfig)) return;
 
               const tState = taken[idx] || {};
-              const isTaken = !!tState[mType];
+              const isAbsent = isMealSlotAbsent(tState, mType);
               const isParcelOpted = toBool(s[`${mType}Parcel` as keyof typeof s]);
               const isParcelAllowed = isParcelOpted && (isGuest
                 ? isGuestsParcelEnabled(dayId, mType, dayConfig, guestsEnabled)
                 : isKid
                 ? isKidsParcelEnabled(dayId, mType, dayConfig, kidsEnabled)
                 : isParcelEnabled(dayId, mType, dayConfig));
-              const isParcelTaken = !!tState[`${mType}Parcel` as keyof TakenState];
+
+              if (isAbsent) {
+                if (isGuest) stats.guestsVegTaken = stats.guestsVegTaken; // noop, count absent separately if needed
+                return; // Absent meals/parcels are excluded from planned & served counts
+              }
+
+              const isTaken = !!tState[mType];
+              const isParcelTaken = !isAbsent && !!tState[`${mType}Parcel` as keyof TakenState];
 
               if (diet === DietType.VEG) {
                 if (isGuest) {
@@ -1284,6 +1292,114 @@ export function useReportData(
     );
   }, [subscriptions]);
 
+  const absentReportData = useMemo(() => {
+    let totalAbsentMeals = 0;
+    let totalAbsentParcels = 0;
+    let absentAdults = 0;
+    let absentKids = 0;
+    let absentGuests = 0;
+
+    const dayBreakdowns = sortedActiveDays.map((dayId) => {
+      const dayLabel = getDayLabel(dayId, dayConfig);
+      const meals: any[] = [];
+
+      [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].forEach((mType) => {
+        if (!isMealEnabled(dayId, mType, dayConfig)) return;
+
+        const mLabel = getMealLabel(mType);
+        let mAdults = 0;
+        let mKids = 0;
+        let mGuests = 0;
+        let mMeals = 0;
+        let mParcels = 0;
+        const passes: any[] = [];
+
+        subscriptions.forEach((sub) => {
+          const slots = sub.mealSlots[dayId] || [];
+          const takenList = sub.takenByPerson[dayId] || [];
+          const adultCount = sub.peopleCount || 0;
+          const kCount = kidsEnabled ? (sub.kidsCount || 0) : 0;
+          const gCount = guestsEnabled ? (sub.guestsCount || 0) : 0;
+
+          slots.forEach((s: any, idx: number) => {
+            if (!s) return;
+            const choice = s[mType];
+            if (!choice || choice === DietaryOption.NONE) return;
+
+            const tState = takenList[idx] || {};
+            if (!isMealSlotAbsent(tState, mType)) return;
+
+            const isKid = kidsEnabled && idx >= adultCount && idx < adultCount + kCount;
+            const isGuest = guestsEnabled && idx >= adultCount + kCount;
+
+            if (isGuest) { mGuests++; absentGuests++; }
+            else if (isKid) { mKids++; absentKids++; }
+            else { mAdults++; absentAdults++; }
+
+            mMeals++;
+            totalAbsentMeals++;
+
+            const isParcelOpted = toBool(s[`${mType}Parcel` as keyof typeof s]);
+            const isParcelAllowed = isParcelOpted && (isGuest
+              ? isGuestsParcelEnabled(dayId, mType, dayConfig, guestsEnabled)
+              : isKid
+              ? isKidsParcelEnabled(dayId, mType, dayConfig, kidsEnabled)
+              : isParcelEnabled(dayId, mType, dayConfig));
+
+            if (isParcelAllowed) {
+              mParcels++;
+              totalAbsentParcels++;
+            }
+
+            const memberRole = isGuest ? `Guest ${idx - adultCount - kCount + 1}` : isKid ? `Kid ${idx - adultCount + 1}` : `Adult ${idx + 1}`;
+            const absentTime = tState[`${mType}AbsentTime` as keyof TakenState] || undefined;
+            const absentUser = tState[`${mType}AbsentUser` as keyof TakenState] || undefined;
+
+            passes.push({
+              passId: sub.id,
+              block: sub.block,
+              flat: sub.flat,
+              memberRole,
+              memberIndex: idx,
+              mealType: mType,
+              hasParcel: isParcelAllowed,
+              absentTime,
+              absentUser,
+            });
+          });
+        });
+
+        if (mMeals > 0) {
+          meals.push({
+            mealType: mType,
+            mealLabel: mLabel,
+            mAdults,
+            mKids,
+            mGuests,
+            mMeals,
+            mParcels,
+            passes,
+          });
+        }
+      });
+
+      return {
+        dayId,
+        dayLabel,
+        meals,
+      };
+    }).filter(d => d.meals.length > 0);
+
+    return {
+      totalAbsentMeals,
+      totalAbsentParcels,
+      absentAdults,
+      absentKids,
+      absentGuests,
+      dayBreakdowns,
+    };
+  }, [sortedActiveDays, subscriptions, dayConfig, kidsEnabled, guestsEnabled]);
+
   return {
     activeDays,
     dayWiseData,
@@ -1296,5 +1412,6 @@ export function useReportData(
     getMissedParcelData,
     getCheckoutReportData,
     packagePassesData,
+    absentReportData,
   };
 }

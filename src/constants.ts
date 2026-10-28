@@ -888,6 +888,9 @@ export const emptyTaken = (count: number, config: ConfigDay[]) =>
         breakfastParcel: false,
         lunchParcel: false,
         dinnerParcel: false,
+        breakfastAbsent: false,
+        lunchAbsent: false,
+        dinnerAbsent: false,
       })),
     ])
   ) as Subscription["takenByPerson"];
@@ -1133,6 +1136,9 @@ export const resizeTaken = (
         breakfastParcel: false,
         lunchParcel: false,
         dinnerParcel: false,
+        breakfastAbsent: false,
+        lunchAbsent: false,
+        dinnerAbsent: false,
       };
 
       const newAdults = Array.from({ length: newAdultCount }, (_, i) => oldAdults[i] ?? { ...emptyTakenState });
@@ -1142,6 +1148,88 @@ export const resizeTaken = (
       return [day, [...newAdults, ...newKids, ...newGuests]];
     })
   ) as Subscription["takenByPerson"];
+
+/**
+ * Checks if a specific meal slot for a person is marked absent.
+ */
+export const isMealSlotAbsent = (
+  takenState?: TakenState,
+  mealType?: MealType
+): boolean => {
+  if (!takenState || !mealType) return false;
+  return toBool((takenState as any)[`${mealType}Absent`]);
+};
+
+/**
+ * Calculates absent meal & parcel headcount breakdown (Adults, Kids, Guests) for a pass.
+ */
+export const getAbsentCountsForSub = (
+  sub: {
+    peopleCount: number;
+    kidsCount?: number;
+    guestsCount?: number;
+    mealSlots?: Record<string, MealSlot[]>;
+    takenByPerson?: Record<string, TakenState[]>;
+  },
+  dayId: string,
+  mealType: MealType,
+  config: ConfigDay[],
+  kidsEnabled: boolean = false,
+  guestsEnabled: boolean = false
+) => {
+  let adults = 0;
+  let kids = 0;
+  let guests = 0;
+  let totalMeals = 0;
+  let totalParcels = 0;
+
+  if (!sub || !sub.mealSlots || !sub.takenByPerson) {
+    return { adults, kids, guests, totalMeals, totalParcels };
+  }
+
+  const adultCount = sub.peopleCount || 0;
+  const kCount = kidsEnabled ? (sub.kidsCount || 0) : 0;
+  const gCount = guestsEnabled ? (sub.guestsCount || 0) : 0;
+
+  const slots = sub.mealSlots[dayId] || [];
+  const takenList = sub.takenByPerson[dayId] || [];
+
+  slots.forEach((slot, index) => {
+    const rawChoice = slot?.[mealType];
+    const validChoice = getValidSlotChoice(dayId, mealType, rawChoice, config);
+    if (validChoice === DietaryOption.NONE) return;
+
+    const taken = takenList[index];
+    const isAbsent = isMealSlotAbsent(taken, mealType);
+    if (!isAbsent) return;
+
+    const isKid = kidsEnabled && index >= adultCount && index < adultCount + kCount;
+    const isGuest = guestsEnabled && index >= adultCount + kCount && index < adultCount + kCount + gCount;
+
+    if (isGuest) guests++;
+    else if (isKid) kids++;
+    else adults++;
+
+    totalMeals++;
+
+    const hasParcelOpted = isParcelValidForSlot(
+      dayId,
+      mealType,
+      rawChoice,
+      slot?.[`${mealType}Parcel` as keyof MealSlot],
+      config,
+      isKid,
+      kidsEnabled,
+      isGuest,
+      guestsEnabled
+    );
+    if (hasParcelOpted) {
+      totalParcels++;
+    }
+  });
+
+  return { adults, kids, guests, totalMeals, totalParcels };
+};
 
 /**
  * Ensures meal counts do not exceed people count.

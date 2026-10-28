@@ -208,6 +208,16 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
 - **Type Safety**: Fully typed with strict TypeScript contracts (`npx tsc --noEmit` verified with 0 errors).
 - **Dashboard & Detailed View UX Polish**: Automatically omits redundant "Subscribed" text in planned mode and group name repetitions ("Adults", "Kids", "Free Meals") under section headers in the detailed dashboard metric grid.
 
+### Y. Meal Absent Marking & Financial Invariance Engine (`domain.ts`, `constants.ts`, `repository.ts`, `DatabaseContext.tsx`, `SubscriptionForm.tsx`, `DetailsScreen.tsx`, `MealMetricGrid.tsx`, `VendorMealWiseReport.tsx`, `MealWiseAbsentReport.tsx`, `ReportScreen.tsx`, `SubscriptionListScreen.tsx`)
+- **Financial Invariance Architecture**: Marking a member absent updates only the `takenByPerson` matrix (`breakfastAbsent`, `lunchAbsent`, `dinnerAbsent`), while preserving `mealSlots` (subscribed choices). This guarantees 100% financial invariance—pass totals (`totalAmount`) and payment discrepancies remain completely unchanged.
+- **Cascading Parcel Rule**: Marking a meal absent automatically marks parcel for that meal absent as well ("meal absent means parcel absent too").
+- **Non-Servable Guardrail**: Absent meals and parcels are non-servable and excluded from Quick Checkout, Parcel Checkout, QR Scanner, and Pass Details.
+- **Non-Taken Constraint**: Members can be marked absent strictly when the meal is NOT taken (`!isTaken && !isParcelTaken`). Once taken, a meal cannot be marked absent unless un-marked taken first.
+- **Exclusion Invariant across Analytics & Vendor Pricing**: Absent meals/parcels are excluded from planned totals, served counts, and vendor pricing calculations.
+- **Dashboard & Directory Sub-Categorization**: The Analytics Dashboard displays absent metrics broken down by Adults, Kids, and Guests. Directory filters support `FilterMode.ABSENT` and `FilterMode.CURRENT_MEAL_ABSENT`.
+- **Dedicated Meal-Wise Absent Report (`MealWiseAbsentReport.tsx`)**: Renders summary cards (Total Absent Meals, Total Absent Parcels, Adults/Kids/Guests Absent) and detailed pass-wise breakdown lists per meal slot with timestamp and operator signatures.
+- **Real-Time WebSocket Sync**: Real-time Firebase listeners push absent status changes to all connected devices in sub-100ms.
+
 ---
 
 ### U. Special Meal (Complementary Meal) Feature Architecture (`domain.ts`, `constants.ts`, `SettingsScreen.tsx`, `MealDisplay.tsx`, `MealMenuEditor.tsx`, `SubscriptionForm.tsx`, `SubscriptionListScreen.tsx`, `DashboardScreen.tsx`, `FreeMealManagementScreen.tsx`, `MealMetricGrid.tsx`, `MealBarChart.tsx`, `QuickCheckoutModal.tsx`, `QuickFreeMealModal.tsx`, `strings.ts`, `theme/`)

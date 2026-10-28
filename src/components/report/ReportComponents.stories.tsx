@@ -14,6 +14,7 @@ import { MealWisePaymentReport } from "./MealWisePaymentReport";
 import { DayWisePaymentReport } from "./DayWisePaymentReport";
 import { AggregateReport } from "./AggregateReport";
 import { CheckoutReport } from "./CheckoutReport";
+import { MealWiseAbsentReport } from "./MealWiseAbsentReport";
 import { MealType, DietaryOption, PaymentMode } from "../../domain";
 import { STORY_FIXTURES } from "../../../.storybook/storyMocks";
 
@@ -483,4 +484,39 @@ export const PendingReportStory = {
     onSelectFlat={noop}
     kidsEnabled={false}
   />,
+};
+
+export const MealWiseAbsentReportStory = {
+  name: "MealWiseAbsentReport",
+  render: () => {
+    const mockAbsentData = {
+      totalAbsentMeals: 3,
+      totalAbsentParcels: 1,
+      absentAdults: 2,
+      absentKids: 1,
+      absentGuests: 0,
+      dayBreakdowns: [
+        {
+          dayId: "Shashthi",
+          dayLabel: "Shashthi",
+          meals: [
+            {
+              mealType: MealType.LUNCH,
+              mealLabel: "Lunch",
+              mAdults: 1,
+              mKids: 1,
+              mGuests: 0,
+              mMeals: 2,
+              mParcels: 1,
+              passes: [
+                { passId: "A-101", flat: "101", block: "A", memberRole: "Adult 1", memberIndex: 0, mealType: MealType.LUNCH, hasParcel: true, absentTime: "12 Oct, 1:00 PM", absentUser: "Admin" },
+                { passId: "B-202", flat: "202", block: "B", memberRole: "Kid 1", memberIndex: 1, mealType: MealType.LUNCH, hasParcel: false, absentTime: "12 Oct, 1:15 PM", absentUser: "Admin" },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    return <MealWiseAbsentReport data={mockAbsentData} kidsEnabled={true} guestsEnabled={true} />;
+  },
 };

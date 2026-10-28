@@ -324,18 +324,27 @@ export function normalizeRecord(
             breakfastParcel: toBool(t?.breakfastParcel),
             lunchParcel: toBool(t?.lunchParcel),
             dinnerParcel: toBool(t?.dinnerParcel),
+            breakfastAbsent: toBool(t?.breakfastAbsent),
+            lunchAbsent: toBool(t?.lunchAbsent),
+            dinnerAbsent: toBool(t?.dinnerAbsent),
             breakfastTime: t?.breakfastTime ? String(t.breakfastTime) : undefined,
             lunchTime: t?.lunchTime ? String(t.lunchTime) : undefined,
             dinnerTime: t?.dinnerTime ? String(t.dinnerTime) : undefined,
             breakfastParcelTime: t?.breakfastParcelTime ? String(t.breakfastParcelTime) : undefined,
             lunchParcelTime: t?.lunchParcelTime ? String(t.lunchParcelTime) : undefined,
             dinnerParcelTime: t?.dinnerParcelTime ? String(t.dinnerParcelTime) : undefined,
+            breakfastAbsentTime: t?.breakfastAbsentTime ? String(t.breakfastAbsentTime) : undefined,
+            lunchAbsentTime: t?.lunchAbsentTime ? String(t.lunchAbsentTime) : undefined,
+            dinnerAbsentTime: t?.dinnerAbsentTime ? String(t.dinnerAbsentTime) : undefined,
             breakfastUser: t?.breakfastUser ? String(t.breakfastUser) : undefined,
             lunchUser: t?.lunchUser ? String(t.lunchUser) : undefined,
             dinnerUser: t?.dinnerUser ? String(t.dinnerUser) : undefined,
             breakfastParcelUser: t?.breakfastParcelUser ? String(t.breakfastParcelUser) : undefined,
             lunchParcelUser: t?.lunchParcelUser ? String(t.lunchParcelUser) : undefined,
             dinnerParcelUser: t?.dinnerParcelUser ? String(t.dinnerParcelUser) : undefined,
+            breakfastAbsentUser: t?.breakfastAbsentUser ? String(t.breakfastAbsentUser) : undefined,
+            lunchAbsentUser: t?.lunchAbsentUser ? String(t.lunchAbsentUser) : undefined,
+            dinnerAbsentUser: t?.dinnerAbsentUser ? String(t.dinnerAbsentUser) : undefined,
           }))
         : Array.from({ length: totalPeople }, () => {
             const isTaken = Boolean(legacyTaken[day]);
@@ -346,6 +355,9 @@ export function normalizeRecord(
               breakfastParcel: false,
               lunchParcel: false,
               dinnerParcel: false,
+              breakfastAbsent: false,
+              lunchAbsent: false,
+              dinnerAbsent: false,
             };
           });
     return result;

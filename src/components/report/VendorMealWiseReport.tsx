@@ -121,6 +121,8 @@ export function VendorMealWiseReport({
         const mealSlotItems = passMeals.filter((m: any) => m.dayId === dayId && m.mealType === mKey);
 
         mealSlotItems.forEach((m: any) => {
+          if (m.isAbsent) return; // Absent meal/food won't be counted in vendor pricing
+
           const matchedVar = varieties.find(v => v.id === m.choice) || getVarietyForChoice(m.choice, varieties);
           const isVeg = matchedVar ? matchedVar.type === DietType.VEG : (m.choice === DietType.VEG || m.choice.toLowerCase().includes("veg"));
           const varietyName = matchedVar?.name || (isVeg ? UI_TEXT.veg : UI_TEXT.nonVeg);

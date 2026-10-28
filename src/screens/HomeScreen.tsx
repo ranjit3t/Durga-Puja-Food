@@ -9,7 +9,7 @@ import { useCoreDatabase } from "../context/DatabaseContext";
 import { useUI } from "../context/UIContext";
 import { useAppNavigation } from "../context/NavigationContext";
 import { AppScreen, UserRole, MealType, AppThemeMode, DietaryOption, DietType, toBool } from "../types";
-import { getActiveDays, isSeasonDone, isMealCurrent, getDayLabel, isMealEnabled, isDietaryEnabled, getMealLabel, getDietTypeForChoice, getMealVarieties, getMealFreeMealCounts, isVersionBehind, isSpecialMeal, isParcelEnabled } from "../constants";
+import { getActiveDays, isSeasonDone, isMealCurrent, getDayLabel, isMealEnabled, isDietaryEnabled, getMealLabel, getDietTypeForChoice, getMealVarieties, getMealFreeMealCounts, isVersionBehind, isSpecialMeal, isParcelEnabled, isMealSlotAbsent } from "../constants";
 import { calculatePaidAmount, calculateSubscriptionAmount, calculatePassTotalWithPackages } from "../utils/paymentUtils";
 import { ActionLabel } from "../components/common/ActionLabel";
 import { LogoutButton } from "../components/common/LogoutButton";
@@ -83,9 +83,12 @@ export function HomeScreen() {
       activeDays.forEach(dayId => {
         const dayConf = (dayConfig || []).find(d => d.id === dayId);
         const slots = sub.mealSlots[dayId] || [];
-        slots.forEach((slot) => {
+        const takenList = sub.takenByPerson?.[dayId] || [];
+        slots.forEach((slot, pIdx) => {
+          const taken = takenList[pIdx];
           [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].forEach(mType => {
             if (!isMealEnabled(dayId, mType, dayConfig)) return;
+            if (isMealSlotAbsent(taken, mType)) return;
 
             const mConf = dayConf ? dayConf[mType] : undefined;
             const choice = slot[mType];
@@ -139,9 +142,12 @@ export function HomeScreen() {
     subscriptions.forEach((sub) => {
       activeDays.forEach(dayId => {
         const slots = sub.mealSlots[dayId] || [];
-        slots.forEach((slot) => {
+        const takenList = sub.takenByPerson?.[dayId] || [];
+        slots.forEach((slot, pIdx) => {
+          const taken = takenList[pIdx];
           [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].forEach(mType => {
             if (!isMealEnabled(dayId, mType, dayConfig)) return;
+            if (isMealSlotAbsent(taken, mType)) return;
             const isParcel = toBool(slot[`${mType}Parcel` as keyof typeof slot]);
             if (isParcel && isParcelEnabled(dayId, mType, dayConfig)) {
               parcels++;

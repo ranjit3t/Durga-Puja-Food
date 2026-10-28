@@ -24,6 +24,7 @@ import { MembersReport } from "../components/report/MembersReport";
 import { PackagePassesReport } from "../components/report/PackagePassesReport";
 import { AggregateReport } from "../components/report/AggregateReport";
 import { CheckoutReport } from "../components/report/CheckoutReport";
+import { MealWiseAbsentReport } from "../components/report/MealWiseAbsentReport";
 
 // Custom Hook
 import { useReportData } from "../hooks/useReportData";
@@ -48,7 +49,7 @@ export function ReportScreen() {
   } = useAppNavigation();
 
   const {
-    activeDays, dayWiseData, mealWiseData, flatWiseData, paymentData, getNotTakenData, getMembersMealData, getMissedParcelData, getCheckoutReportData, packagePassesData
+    activeDays, dayWiseData, mealWiseData, flatWiseData, paymentData, getNotTakenData, getMembersMealData, getMissedParcelData, getCheckoutReportData, packagePassesData, absentReportData
   } = useReportData(subscriptions, foodMenu, dayConfig, freeMealEnabled, paymentConfig, !!kidsEnabled, !!guestsEnabled, reportType, foodPackages);
 
   const [selectedPersonCategory, setSelectedPersonCategory] = React.useState<"all" | "adult" | "kids" | "guests">("all");
@@ -189,6 +190,7 @@ export function ReportScreen() {
       case ReportType.PAYMENT: return UI_TEXT.paymentReport;
       case ReportType.PACKAGE: return UI_TEXT.packageReport;
       case ReportType.AGGREGATE: return UI_TEXT.aggregateReport;
+      case ReportType.ABSENT: return UI_TEXT.absentReport;
       default: return UI_TEXT.reportTitle;
     }
   };
@@ -320,6 +322,7 @@ export function ReportScreen() {
             { id: ReportType.PAYMENT, label: UI_TEXT.payment, icon: "card-outline" },
             { id: ReportType.PACKAGE, label: UI_TEXT.packageReport, icon: "pricetag-outline" },
             { id: ReportType.AGGREGATE, label: UI_TEXT.aggregateTab, icon: "options-outline" },
+            { id: ReportType.ABSENT, label: UI_TEXT.absent, icon: "person-remove-outline" },
           ].filter(tab =>
             (tab.id !== ReportType.PAYMENT || paymentConfig.enabled) &&
             (tab.id !== ReportType.PARCEL || isParcelEnabledGlobally)
@@ -627,6 +630,14 @@ export function ReportScreen() {
               paymentConfig={paymentConfig}
               foodPackages={foodPackages}
               onSelectFlat={onSelectFlat}
+            />
+          )}
+
+          {reportType === ReportType.ABSENT && (
+            <MealWiseAbsentReport
+              data={absentReportData}
+              kidsEnabled={!!kidsEnabled}
+              guestsEnabled={!!guestsEnabled}
             />
           )}
         </View>

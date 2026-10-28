@@ -9,7 +9,7 @@ import { useUI } from "../../context/UIContext";
 import { useAppNavigation } from "../../context/NavigationContext";
 import { useChat } from "../../context/ChatContext";
 import { Subscription, MealType, DietaryOption, DietType, TakenState, CheckoutSource, AppScreen, ActivityModule, ActivityAction, AppThemeMode } from "../../types";
-import { isParcelEnabled, isKidsParcelEnabled, isGuestsParcelEnabled, isMealCurrent, isMealDone, formatTakenTime, getValidSlotChoice, getMealVarieties, getVarietyForChoice, getDietTypeForChoice, isMealEnabled } from "../../constants";
+import { isParcelEnabled, isKidsParcelEnabled, isGuestsParcelEnabled, isMealCurrent, isMealDone, formatTakenTime, getValidSlotChoice, getMealVarieties, getVarietyForChoice, getDietTypeForChoice, isMealEnabled, isMealSlotAbsent } from "../../constants";
 
 async function playCheckoutSound() {
   try {
@@ -203,6 +203,8 @@ export function ParcelCheckoutModal({
 
       const slot = slots[i];
       const takenRecord = taken[i];
+
+      if (isMealSlotAbsent(takenRecord, mealType)) continue;
 
       const choice = getValidSlotChoice(dayId, mealType, slot?.[mealKey], dayConfig);
       if (choice === DietaryOption.NONE) continue;
@@ -444,6 +446,7 @@ export function ParcelCheckoutModal({
       for (const idx of cat.indices) {
         if (checkedOutForCategory >= countToCheckOut) break;
         const currentTaken = dayTaken[idx] || {};
+        if (isMealSlotAbsent(currentTaken, mealType)) continue;
         const isParcelCollected = !!currentTaken[parcelKey as keyof TakenState];
         const isDineInTaken = !!currentTaken[mealKey as keyof TakenState];
         if (!isParcelCollected && !isDineInTaken) {

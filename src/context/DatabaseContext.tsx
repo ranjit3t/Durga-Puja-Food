@@ -28,6 +28,7 @@ import {
   FreeMealCheckoutSource,
   FoodPackage,
   CatererTransaction,
+  toBool,
 } from "../types";
 import { useAuth } from "./AuthContext";
 
@@ -45,7 +46,8 @@ import {
   getDietTypeForChoice,
   getMealVarieties,
   getMealFreeMealCounts,
-  isGuestsParcelEnabled
+  isGuestsParcelEnabled,
+  isMealSlotAbsent
 } from "../constants";
 
 export interface CoreDatabaseContextType {
@@ -93,6 +95,7 @@ export interface CoreDatabaseContextType {
   updateFreeMealCount: (dayId: string, mealKey: MealType, field: string, value: number) => Promise<void>;
   updateMealMenu: (dayId: string, mealKey: MealType, menu: MealMenu) => Promise<void>;
   updateSubscriptionStatus: (flatId: string, dayId: string, personIndex: number, slot: string, taken: boolean) => Promise<void>;
+  updateMealAbsent: (flatId: string, dayId: string, personIndex: number, mealSlot: MealType | string, absent: boolean) => Promise<void>;
   checkInPassAtomic: (flatId: string, updatesMap: Record<string, boolean>, metricsIncrements?: Record<string, number>) => Promise<void>;
   getByPasscode: (passcode: string) => Promise<Subscription | undefined>;
   getAuthConfig: () => Promise<any>;
@@ -996,6 +999,89 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
      }
   }, [addActivityLog, subscriptions]);
 
+  const updateMealAbsent = useCallback(async (flatId: string, dayId: string, personIndex: number, mealSlot: MealType | string, absent: boolean) => {
+    try {
+      const mealKey = mealSlot;
+      const parcelKey = `${mealKey}Parcel`;
+      const absentKey = `${mealKey}Absent`;
+      const absentTimeKey = `${mealKey}AbsentTime`;
+      const absentUserKey = `${mealKey}AbsentUser`;
+      const timeKey = `${mealKey}Time`;
+      const userKey = `${mealKey}User`;
+      const parcelTimeKey = `${parcelKey}Time`;
+      const parcelUserKey = `${parcelKey}User`;
+
+      const targetSub = subscriptions.find(s => s.id === flatId);
+      const personTaken = targetSub?.takenByPerson?.[dayId]?.[personIndex];
+      const isMealTaken = toBool(personTaken?.[mealKey as keyof TakenState]);
+      const isParcelTaken = toBool(personTaken?.[parcelKey as keyof TakenState]);
+
+      // Constraint: If meal/parcel is taken, cannot mark absent (must un-mark taken first)
+      if (absent && (isMealTaken || isParcelTaken)) {
+        return;
+      }
+
+      const nowTime = formatTakenTime(new Date());
+      const currentUser = userAccountName || userName || String(userRole || "Operator");
+
+      const stampTime = absent ? nowTime : undefined;
+      const stampUser = absent ? currentUser : undefined;
+
+      await repository.updateSubscriptionStatus(flatId, dayId, personIndex, absentKey, absent, stampTime, stampUser);
+      if (absent) {
+        await repository.updateSubscriptionStatus(flatId, dayId, personIndex, mealKey, false);
+        await repository.updateSubscriptionStatus(flatId, dayId, personIndex, parcelKey, false);
+      }
+
+      setSubscriptions(prev => prev.map(s => {
+        if (s.id === flatId) {
+          const updated = { ...s };
+          const dayList = [...(updated.takenByPerson[dayId] || [])];
+          if (dayList[personIndex]) {
+            const currentObj: any = { ...dayList[personIndex] };
+            currentObj[absentKey] = absent;
+            currentObj[absentTimeKey] = stampTime;
+            currentObj[absentUserKey] = stampUser;
+
+            if (absent) {
+              currentObj[mealKey] = false;
+              currentObj[parcelKey] = false;
+              currentObj[timeKey] = undefined;
+              currentObj[userKey] = undefined;
+              currentObj[parcelTimeKey] = undefined;
+              currentObj[parcelUserKey] = undefined;
+            }
+
+            dayList[personIndex] = currentObj;
+            updated.takenByPerson = { ...updated.takenByPerson, [dayId]: dayList };
+          }
+          return updated;
+        }
+        return s;
+      }));
+
+      addActivityLog({
+        module: ActivityModule.SUBSCRIPTION,
+        action: ActivityAction.UPDATE,
+        targetId: flatId,
+        description: (UI_TEXT.logUpdateAbsentStatus || "{flatId}: Marked {meal} for {person} as {status}")
+          .replace("{flatId}", flatId)
+          .replace("{meal}", getMealLabel(mealKey as MealType))
+          .replace("{person}", `Member ${personIndex + 1}`)
+          .replace("{status}", absent ? UI_TEXT.absent : "Present")
+      });
+    } catch (err: any) {
+      addActivityLog({
+        module: ActivityModule.SUBSCRIPTION,
+        action: ActivityAction.ERROR,
+        targetId: flatId,
+        description: UI_TEXT.logError.replace("{module}", ActivityModule.SUBSCRIPTION).replace("{message}", err.message || String(err)),
+        stack: err.stack
+      });
+      throw err;
+    }
+  }, [addActivityLog, subscriptions, userAccountName, userName, userRole]);
+
   const checkInPassAtomic = useCallback(async (flatId: string, updatesMap: Record<string, boolean>, metricsIncrements?: Record<string, number>) => {
     try {
       await repository.checkInPassAtomic(flatId, updatesMap, metricsIncrements);
@@ -1288,7 +1374,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
           const isGuest = guestsEnabled && index >= item.peopleCount + kCount;
 
           // Breakfast
-          if (isMealEnabled(day, MealType.BREAKFAST, dayConfig) && slots?.[MealType.BREAKFAST] && slots[MealType.BREAKFAST] !== DietaryOption.NONE) {
+          if (isMealEnabled(day, MealType.BREAKFAST, dayConfig) && slots?.[MealType.BREAKFAST] && slots[MealType.BREAKFAST] !== DietaryOption.NONE && !isMealSlotAbsent(taken, MealType.BREAKFAST)) {
             const bVarieties = dayConf ? getMealVarieties(dayConf.breakfast) : [];
             const diet = getDietTypeForChoice(slots[MealType.BREAKFAST], bVarieties);
             if (diet && isDietaryEnabled(day, MealType.BREAKFAST, diet, dayConfig)) {
@@ -1345,7 +1431,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
           }
 
           // Lunch
-          if (isMealEnabled(day, MealType.LUNCH, dayConfig) && slots?.[MealType.LUNCH] && slots[MealType.LUNCH] !== DietaryOption.NONE) {
+          if (isMealEnabled(day, MealType.LUNCH, dayConfig) && slots?.[MealType.LUNCH] && slots[MealType.LUNCH] !== DietaryOption.NONE && !isMealSlotAbsent(taken, MealType.LUNCH)) {
             const lVarieties = dayConf ? getMealVarieties(dayConf.lunch) : [];
             const diet = getDietTypeForChoice(slots[MealType.LUNCH], lVarieties);
             if (diet && isDietaryEnabled(day, MealType.LUNCH, diet, dayConfig)) {
@@ -1402,7 +1488,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
           }
 
           // Dinner
-          if (isMealEnabled(day, MealType.DINNER, dayConfig) && slots?.[MealType.DINNER] && slots[MealType.DINNER] !== DietaryOption.NONE) {
+          if (isMealEnabled(day, MealType.DINNER, dayConfig) && slots?.[MealType.DINNER] && slots[MealType.DINNER] !== DietaryOption.NONE && !isMealSlotAbsent(taken, MealType.DINNER)) {
             const dVarieties = dayConf ? getMealVarieties(dayConf.dinner) : [];
             const diet = getDietTypeForChoice(slots[MealType.DINNER], dVarieties);
             if (diet && isDietaryEnabled(day, MealType.DINNER, diet, dayConfig)) {
@@ -1496,7 +1582,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
     kidsEnabled, guestsEnabled, vendorKidsMealChargingEnabled, whatsappCountryCode, quickCheckoutAutoCloseMs, soundEnabled, nonAdminCheckoutEnabled, cheatCodeEnabled, vendorName, vendorAddress, vendorSettledCost, remoteAppVersion, androidAppLocation, iosAppLocation, kitchenMetrics,
     dashboardData, collections, totalPeople,
     upsertSubscription, deleteSubscription, updateConfig, updateMenu,
-    updateFreeMealCount, updateMealMenu, updateSubscriptionStatus,
+    updateFreeMealCount, updateMealMenu, updateSubscriptionStatus, updateMealAbsent,
     checkInPassAtomic, getByPasscode,
     getAuthConfig, updateFreeMealCountDebounced
   }), [
@@ -1506,7 +1592,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
     kidsEnabled, guestsEnabled, vendorKidsMealChargingEnabled, whatsappCountryCode, quickCheckoutAutoCloseMs, soundEnabled, nonAdminCheckoutEnabled, cheatCodeEnabled, vendorName, vendorAddress, vendorSettledCost, remoteAppVersion, androidAppLocation, iosAppLocation, kitchenMetrics,
     dashboardData, collections, totalPeople,
     upsertSubscription, deleteSubscription, updateConfig, updateMenu,
-    updateFreeMealCount, updateMealMenu, updateSubscriptionStatus,
+    updateFreeMealCount, updateMealMenu, updateSubscriptionStatus, updateMealAbsent,
     checkInPassAtomic, getByPasscode,
     getAuthConfig, updateFreeMealCountDebounced
   ]);

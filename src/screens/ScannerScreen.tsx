@@ -12,7 +12,7 @@ import { useAppNavigation } from "../context/NavigationContext";
 import { useCoreDatabase, useActivityLogs } from "../context/DatabaseContext";
 import { useUI } from "../context/UIContext";
 import { AppScreen, AppThemeMode, ActivityModule, ActivityAction, Subscription, MealType, DietaryOption, CheckoutSource } from "../types";
-import { getActiveDays, isMealCurrent, isMealEnabled, getDayLabel, getMealLabel, qrValueFor, isParcelEnabled, findSubscriptionByPassCodeOrCheatCode } from "../constants";
+import { getActiveDays, isMealCurrent, isMealEnabled, getDayLabel, getMealLabel, qrValueFor, isParcelEnabled, findSubscriptionByPassCodeOrCheatCode, isMealSlotAbsent } from "../constants";
 
 // Memoized Camera View to prevent UI/WebSocket re-renders from dropping camera FPS
 const MemoizedCamera = memo(({ onScan }: { onScan: (data: string) => void }) => {
@@ -198,6 +198,8 @@ export function ScannerScreen() {
     const kCount = kidsEnabled ? (match.kidsCount || 0) : 0;
 
     for (let i = 0; i < headcount; i++) {
+      if (isMealSlotAbsent(taken[i], mealType)) continue;
+
       const isKid = kidsEnabled && i >= peopleCount && i < peopleCount + kCount;
       const isGuest = guestsEnabled && i >= peopleCount + kCount;
       const isSubscribed = slots[i]?.[mealKey] && slots[i][mealKey] !== DietaryOption.NONE;

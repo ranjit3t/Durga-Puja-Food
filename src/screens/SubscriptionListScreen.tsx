@@ -42,6 +42,7 @@ import {
   formatTimestamp,
   isGuestsParcelEnabled,
   getValidSlotChoice,
+  isMealSlotAbsent,
 } from "../constants";
 import {
   AppScreen,
@@ -1245,6 +1246,76 @@ export function SubscriptionListScreen() {
 
   const hasAnyCurrentMealGuests = currentMealGuestsData.count > 0;
 
+  const absentData = useMemo(() => {
+    const list: { id: string; count: number }[] = [];
+    const map: Record<string, number> = {};
+
+    subscriptions.forEach(sub => {
+      let totalAbsent = 0;
+      if (sub.takenByPerson) {
+        Object.entries(sub.takenByPerson).forEach(([dayId, dayList]) => {
+          if (!Array.isArray(dayList)) return;
+          const slots = sub.mealSlots?.[dayId] || [];
+          dayList.forEach((taken, pIdx) => {
+            const slot = slots[pIdx];
+            if (!slot) return;
+            [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].forEach(m => {
+              const choice = getValidSlotChoice(dayId, m, slot[m], dayConfig);
+              if (choice !== DietaryOption.NONE && isMealSlotAbsent(taken, m)) {
+                totalAbsent++;
+              }
+            });
+          });
+        });
+      }
+
+      if (totalAbsent > 0) {
+        map[sub.id] = totalAbsent;
+        list.push({ id: sub.id, count: totalAbsent });
+      }
+    });
+
+    return { count: list.length, list, map };
+  }, [subscriptions, dayConfig]);
+
+  const hasAnyAbsent = absentData.count > 0;
+
+  const currentMealAbsentData = useMemo(() => {
+    if (!currentMealInfo) {
+      return { count: 0, list: [], map: {} as Record<string, number> };
+    }
+
+    const dayId = currentMealInfo.dayId;
+    const mType = currentMealInfo.type;
+
+    const map: Record<string, number> = {};
+    const list = subscriptions.map(sub => {
+      let currentAbsentCount = 0;
+      const slots = sub.mealSlots?.[dayId] || [];
+      const takenList = sub.takenByPerson?.[dayId] || [];
+
+      slots.forEach((slot, pIdx) => {
+        const choice = getValidSlotChoice(dayId, mType, slot[mType], dayConfig);
+        if (choice !== DietaryOption.NONE) {
+          const taken = takenList[pIdx];
+          if (isMealSlotAbsent(taken, mType)) {
+            currentAbsentCount++;
+          }
+        }
+      });
+
+      if (currentAbsentCount > 0) {
+        map[sub.id] = currentAbsentCount;
+        return { id: sub.id, count: currentAbsentCount };
+      }
+      return null;
+    }).filter(Boolean) as { id: string; count: number }[];
+
+    return { count: list.length, list, map };
+  }, [subscriptions, currentMealInfo, dayConfig]);
+
+  const hasAnyCurrentMealAbsent = currentMealAbsentData.count > 0;
+
   // Auto-deselect filters when their selection count drops to 0 (e.g., after quick checkout clears the last missed pass)
   useEffect(() => {
     setActiveFilters(prev => {
@@ -1294,13 +1365,19 @@ export function SubscriptionListScreen() {
       if (next.includes(FilterMode.AMOUNT_DISCREPANCY) && !hasAnyDiscrepancy) {
         next = next.filter(m => m !== FilterMode.AMOUNT_DISCREPANCY);
       }
+      if (next.includes(FilterMode.ABSENT) && !hasAnyAbsent) {
+        next = next.filter(m => m !== FilterMode.ABSENT);
+      }
+      if (next.includes(FilterMode.CURRENT_MEAL_ABSENT) && (!currentMealInfo || !hasAnyCurrentMealAbsent)) {
+        next = next.filter(m => m !== FilterMode.CURRENT_MEAL_ABSENT);
+      }
 
       if (next.length === 0) {
         return [FilterMode.ALL];
       }
       return next.length === prev.length ? prev : next;
     });
-  }, [currentMealInfo, hasAnyMissed, hasAnyPartialCheckout, hasAnyCompletedCheckout, hasAnySubscribed, kidsEnabled, hasAnyKids, hasAnyCurrentMealKids, guestsEnabled, hasAnyCurrentMealGuests, hasAnyParcel, isCurrentMealParcelEnabled, hasAnyCurrentMealParcel, hasAnyCurrentMealParcelPending, hasAnyVegOnly, hasAnySpecialOnly, hasAnyPackage, hasAnyDiscrepancy]);
+  }, [currentMealInfo, hasAnyMissed, hasAnyPartialCheckout, hasAnyCompletedCheckout, hasAnySubscribed, kidsEnabled, hasAnyKids, hasAnyCurrentMealKids, guestsEnabled, hasAnyCurrentMealGuests, hasAnyParcel, isCurrentMealParcelEnabled, hasAnyCurrentMealParcel, hasAnyCurrentMealParcelPending, hasAnyVegOnly, hasAnySpecialOnly, hasAnyPackage, hasAnyDiscrepancy, hasAnyAbsent, hasAnyCurrentMealAbsent]);
 
   const visibleSubscriptions = useMemo(() => {
     let filtered = subscriptions;
@@ -2445,6 +2522,82 @@ export function SubscriptionListScreen() {
                   color: activeFilters.includes(FilterMode.AMOUNT_DISCREPANCY) ? theme.colors.error : theme.colors.textSecondary
                 }}>
                   {UI_TEXT.filterAmountDiscrepancy} ({passesWithDiscrepancyCount})
+                </Text>
+              </Pressable>
+            )}
+
+            {hasAnyAbsent && (
+              <Pressable
+                onPress={() => toggleFilter(FilterMode.ABSENT)}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityState={{ selected: activeFilters.includes(FilterMode.ABSENT) }}
+                accessibilityLabel={`${UI_TEXT.filterAbsentLabel} (${absentData.count})`}
+                style={({ pressed }) => [
+                  {
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: s(4),
+                    paddingHorizontal: s(8),
+                    paddingVertical: s(4),
+                    borderRadius: s(12),
+                    borderWidth: 1,
+                    borderColor: activeFilters.includes(FilterMode.ABSENT) ? "#f97316" : theme.colors.border,
+                    backgroundColor: activeFilters.includes(FilterMode.ABSENT) ? "#ffedd5" : theme.colors.surface,
+                    marginBottom: s(4)
+                  },
+                  pressed && { opacity: 0.7 }
+                ]}
+              >
+                <Ionicons
+                  name={activeFilters.includes(FilterMode.ABSENT) ? "person-remove" : "person-remove-outline"}
+                  size={s(13)}
+                  color={activeFilters.includes(FilterMode.ABSENT) ? "#c2410c" : theme.colors.textSecondary}
+                />
+                <Text style={{
+                  fontSize: s(11),
+                  fontWeight: "700",
+                  color: activeFilters.includes(FilterMode.ABSENT) ? "#c2410c" : theme.colors.textSecondary
+                }}>
+                  {UI_TEXT.filterAbsentLabel} ({absentData.count})
+                </Text>
+              </Pressable>
+            )}
+
+            {currentMealInfo && hasAnyCurrentMealAbsent && (
+              <Pressable
+                onPress={() => toggleFilter(FilterMode.CURRENT_MEAL_ABSENT)}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityState={{ selected: activeFilters.includes(FilterMode.CURRENT_MEAL_ABSENT) }}
+                accessibilityLabel={`${UI_TEXT.currentMealAbsentFilterLabel} (${currentMealAbsentData.count})`}
+                style={({ pressed }) => [
+                  {
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: s(4),
+                    paddingHorizontal: s(8),
+                    paddingVertical: s(4),
+                    borderRadius: s(12),
+                    borderWidth: 1,
+                    borderColor: activeFilters.includes(FilterMode.CURRENT_MEAL_ABSENT) ? "#ea580c" : theme.colors.border,
+                    backgroundColor: activeFilters.includes(FilterMode.CURRENT_MEAL_ABSENT) ? "#fff7ed" : theme.colors.surface,
+                    marginBottom: s(4)
+                  },
+                  pressed && { opacity: 0.7 }
+                ]}
+              >
+                <Ionicons
+                  name={activeFilters.includes(FilterMode.CURRENT_MEAL_ABSENT) ? "person-remove" : "person-remove-outline"}
+                  size={s(13)}
+                  color={activeFilters.includes(FilterMode.CURRENT_MEAL_ABSENT) ? "#ea580c" : theme.colors.textSecondary}
+                />
+                <Text style={{
+                  fontSize: s(11),
+                  fontWeight: "700",
+                  color: activeFilters.includes(FilterMode.CURRENT_MEAL_ABSENT) ? "#ea580c" : theme.colors.textSecondary
+                }}>
+                  {UI_TEXT.currentMealAbsentFilterLabel} ({currentMealAbsentData.count})
                 </Text>
               </Pressable>
             )}

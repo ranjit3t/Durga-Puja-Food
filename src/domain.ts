@@ -282,6 +282,7 @@ export enum ReportType {
   PACKAGE = "package",
   AGGREGATE = "aggregate",
   CHECKOUT = "checkout",
+  ABSENT = "absent",
 }
 
 export enum UserRole {
@@ -316,18 +317,27 @@ export type TakenState = Record<MealType, boolean> & {
   breakfastParcel?: boolean;
   lunchParcel?: boolean;
   dinnerParcel?: boolean;
+  breakfastAbsent?: boolean;
+  lunchAbsent?: boolean;
+  dinnerAbsent?: boolean;
   breakfastTime?: string;
   lunchTime?: string;
   dinnerTime?: string;
   breakfastParcelTime?: string;
   lunchParcelTime?: string;
   dinnerParcelTime?: string;
+  breakfastAbsentTime?: string;
+  lunchAbsentTime?: string;
+  dinnerAbsentTime?: string;
   breakfastUser?: string;
   lunchUser?: string;
   dinnerUser?: string;
   breakfastParcelUser?: string;
   lunchParcelUser?: string;
   dinnerParcelUser?: string;
+  breakfastAbsentUser?: string;
+  lunchAbsentUser?: string;
+  dinnerAbsentUser?: string;
 };
 
 export type MealMenu = {

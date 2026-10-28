@@ -66,6 +66,8 @@ export enum FilterMode {
   SPECIAL_ONLY = "specialOnly",
   PACKAGE = "package",
   AMOUNT_DISCREPANCY = "amountDiscrepancy",
+  ABSENT = "absent",
+  CURRENT_MEAL_ABSENT = "currentMealAbsent",
 }
 
 export enum SectionType {

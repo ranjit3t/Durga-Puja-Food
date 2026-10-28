@@ -6,7 +6,7 @@ import { UI_TEXT } from "../../strings";
 import { Metric } from "../common/Metric";
 import { MealType, DietaryOption, DietaryVariety, DietType, TakenState, toBool } from "../../domain";
 import { useCoreDatabase } from "../../context/DatabaseContext";
-import { getMealVarieties, isSpecialMeal, isMealEnabled, isParcelEnabled, isKidsParcelEnabled, isGuestsParcelEnabled, getDietTypeForChoice, getMealFreeMealCounts, isDietaryEnabled, isSlotMissedParcel } from "../../constants";
+import { getMealVarieties, isSpecialMeal, isMealEnabled, isParcelEnabled, isKidsParcelEnabled, isGuestsParcelEnabled, getDietTypeForChoice, getMealFreeMealCounts, isDietaryEnabled, isSlotMissedParcel, getAbsentCountsForSub } from "../../constants";
 import { Ionicons } from "@expo/vector-icons";
 
 export interface MealMetricProps {
@@ -152,6 +152,25 @@ export function MealMetricGrid(props: MealMetricProps) {
 
   const isSpecial = isSpecialMeal(day, type, dayConfig);
 
+  const absentStats = React.useMemo(() => {
+    let adults = 0;
+    let kids = 0;
+    let guests = 0;
+    let totalMeals = 0;
+    let totalParcels = 0;
+
+    subscriptions.forEach((sub) => {
+      const counts = getAbsentCountsForSub(sub, day, type, dayConfig, kidsEnabled, guestsEnabled);
+      adults += counts.adults;
+      kids += counts.kids;
+      guests += counts.guests;
+      totalMeals += counts.totalMeals;
+      totalParcels += counts.totalParcels;
+    });
+
+    return { adults, kids, guests, totalMeals, totalParcels };
+  }, [subscriptions, day, type, dayConfig, kidsEnabled, guestsEnabled]);
+
   return (
     <View style={{ gap: 10 }}>
       {isSpecial && (
@@ -180,6 +199,24 @@ export function MealMetricGrid(props: MealMetricProps) {
           />
         )}
       </View>
+
+      {/* ABSENT SUMMARY BREAKDOWN */}
+      {absentStats.totalMeals > 0 && (
+        <View style={{ backgroundColor: "#ffedd5", padding: 10, borderRadius: 10, borderWidth: 1, borderColor: "#fdba74" }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }}>
+            <Ionicons name="person-remove-outline" size={16} color="#c2410c" />
+            <Text style={{ fontSize: 13, fontWeight: "800", color: "#c2410c" }}>
+              {UI_TEXT.absentCount}: {absentStats.totalMeals} {UI_TEXT.members}
+            </Text>
+          </View>
+          <Text style={{ fontSize: 12, color: "#9a3412" }}>
+            {UI_TEXT.adults}: {absentStats.adults}
+            {kidsEnabled ? ` | ${UI_TEXT.kids}: ${absentStats.kids}` : ""}
+            {guestsEnabled ? ` | ${UI_TEXT.guests}: ${absentStats.guests}` : ""}
+            {absentStats.totalParcels > 0 ? ` | ${UI_TEXT.parcels}: ${absentStats.totalParcels}` : ""}
+          </Text>
+        </View>
+      )}
 
       {showSubCategorization ? (
         <View style={{ gap: 10 }}>

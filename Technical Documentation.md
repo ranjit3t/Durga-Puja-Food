@@ -200,6 +200,15 @@ The application follows a **Serverless Layered Architecture** built on the **Exp
   - **`src/hooks/useReportData.ts`**: Re-uses `isSlotMissedParcel` in `getMissedParcelData` for generating missed parcel report data.
   - **`src/screens/SubscriptionForm.tsx`**: Re-uses `isSlotMissedParcel` in `checkParcelInconsistency` for validating parcel collection warnings.
   - **`src/components/dashboard/MealMetricGrid.tsx`**: Re-uses `isSlotMissedParcel` in `parcelOptedDineInStats` to display Opted Dine In counts in the Takeaway Parcels grid section.
+- **Meal Absent Marking Feature & Technical Compliance**:
+  - **Data Schema (`TakenState`)**: Extended `TakenState` interface in `domain.ts` with `breakfastAbsent`, `lunchAbsent`, `dinnerAbsent`, and corresponding timestamp (`${meal}AbsentTime`) and user (`${meal}AbsentUser`) strings.
+  - **Financial Invariance Principle**: Subscription amounts (`calculateSubscriptionAmount`) and payment discrepancy calculations (`getDiscrepancyDetail`) rely strictly on `mealSlots` choices. Marking absent updates `takenByPerson` matrix without mutating `mealSlots`, maintaining exact financial identity.
+  - **Cascading Rule & Non-Servable Enforcement**: Marking a meal absent automatically sets parcel status for that meal absent as well ("meal absent means parcel absent too"). Absent slots are filtered out in `QuickCheckoutModal`, `ParcelCheckoutModal`, `ScannerScreen`, and `SubscriptionForm`, rendering them completely non-servable.
+  - **Non-Taken Constraint**: Enforces constraint that members can be marked absent strictly when the meal/parcel is NOT taken (`!isTaken && !isParcelTaken`).
+  - **Dashboard Sub-Categorization & Report Engine**: Extended `useReportData.ts` and `MealMetricGrid.tsx` to compute and display absent counts broken down by Adults, Kids, and Guests. Implemented `MealWiseAbsentReport.tsx` for comprehensive meal-wise absent tracking.
+  - **Vendor Pricing Exclusion**: In `VendorMealWiseReport.tsx`, `calculatePassMealBreakdown` flags absent items (`isAbsent: true`) which are skipped during vendor price aggregation.
+  - **Directory Filters**: Added `FilterMode.ABSENT` ("Absent Passes") and `FilterMode.CURRENT_MEAL_ABSENT` ("Current Meal Absent") filters to `SubscriptionListScreen.tsx`.
+  - **Real-time Sync & Testing**: Pushes changes via Firebase WebSocket listeners in sub-100ms. Fully covered by Jest test suite in `absentMeals.test.ts`.
 - **Opted Dine In Dashboard Field**:
   - Labeled dynamically as `Opted Dine In` (`UI_TEXT.optedDineIn`).
   - Rendered **strictly when count > 0** (`optedDineIn > 0`), providing accurate inventory tracking for non-used takeaway parcel boxes.
