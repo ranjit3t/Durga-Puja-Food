@@ -168,7 +168,7 @@ const DashboardMealSection = memo(
       setViewMode(isFuture ? "planned" : "grid");
     }, [isFuture]);
 
-    const [maxContentHeight, setMaxContentHeight] = React.useState<number>(s(200));
+    const [maxContentHeight, setMaxContentHeight] = React.useState<number>(0);
     const vegItems = menu?.veg || [];
     const nonVegItems = menu?.nonVeg || [];
 
@@ -458,13 +458,13 @@ const DashboardMealSection = memo(
           {/* Aggregated Demand Metrics / Chart */}
           <View
             style={{
-              minHeight: maxContentHeight,
-              justifyContent: 'flex-end',
+              minHeight: maxContentHeight > 0 ? maxContentHeight : undefined,
+              justifyContent: 'flex-start',
               paddingBottom: viewMode === "chart" ? s(10) : 0,
             }}
             onLayout={(e) => {
               const h = Math.round(e.nativeEvent.layout.height);
-              if (h > 0 && h > maxContentHeight) {
+              if (h > 0 && (viewMode === "grid" || h > maxContentHeight)) {
                 setMaxContentHeight(h);
               }
             }}

@@ -13,7 +13,7 @@ import {
 import { useStyles } from "../styles";
 import { useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
-import { AppThemeMode } from "../types";
+import { AppThemeMode, UserRole } from "../types";
 import {
   getDayLabel,
   isMealEnabled,
@@ -37,7 +37,8 @@ import { useAppNavigation } from "../context/NavigationContext";
 import { useUI } from "../context/UIContext";
 
 export function MenuEditorScreen() {
-  const { handleLogout } = useAuth();
+  const { userRole, handleLogout } = useAuth();
+  const isAdmin = userRole === UserRole.ADMIN;
   const {
     foodMenu: menu, dayConfig: config, seasonEnabled, foodPriceEnabled, updateMenu, updateMealMenu, kidsEnabled, guestsEnabled, freeMealEnabled
   } = useCoreDatabase();
@@ -52,17 +53,37 @@ export function MenuEditorScreen() {
   const { theme, themeType } = useAppTheme();
   const [localMenu, setLocalMenu] = useState(menu);
   const [saving, setSaving] = useState(false);
-  const canEdit = seasonEnabled;
+  const canEdit = isAdmin || seasonEnabled;
+
+  const prevMenuRef = useRef(menu);
+
+  useEffect(() => {
+    if (menu && JSON.stringify(prevMenuRef.current) !== JSON.stringify(menu)) {
+      setLocalMenu((currentLocal) => {
+        const prevRemote = prevMenuRef.current || {};
+        const updated = JSON.parse(JSON.stringify(menu || {}));
+
+        // Preserve local edits if user is actively editing a specific meal slot
+        Object.keys(currentLocal || {}).forEach((day) => {
+          Object.keys(currentLocal[day] || {}).forEach((m) => {
+            const mKey = m as MealType;
+            const wasEditedLocally = JSON.stringify(currentLocal[day]?.[mKey]) !== JSON.stringify(prevRemote[day]?.[mKey]);
+            if (wasEditedLocally) {
+              if (!updated[day]) updated[day] = {};
+              updated[day][mKey] = currentLocal[day][mKey];
+            }
+          });
+        });
+
+        return updated;
+      });
+      prevMenuRef.current = menu;
+    }
+  }, [menu]);
 
   const hasAnyChanges = useMemo(() => {
     return JSON.stringify(menu) !== JSON.stringify(localMenu);
   }, [menu, localMenu]);
-
-  useEffect(() => {
-    if (menu && !hasAnyChanges) {
-      setLocalMenu(menu);
-    }
-  }, [menu, hasAnyChanges]);
 
   const onSave = updateMenu;
 
@@ -275,6 +296,7 @@ export function MenuEditorScreen() {
                 .filter((mKey) => isMealEnabled(day, mKey, config))
                 .map((mKey) => {
                   const isDone = isMealDone(day, mKey, config);
+                  const isMealDisabled = (!isAdmin && (isDone || !seasonEnabled)) || saving;
                   return (
                     <MealMenuEditor
                       key={mKey}
@@ -286,7 +308,8 @@ export function MenuEditorScreen() {
                       onChange={(next) => updateMeal(day, mKey, next)}
                       onSave={() => handleIndividualSave(day, mKey)}
                       isDirty={isMealDirty(day, mKey)}
-                      disabled={!canEdit || isDone || saving}
+                      disabled={isMealDisabled}
+                      isAdmin={isAdmin}
                       foodPriceEnabled={foodPriceEnabled}
                       kidsEnabled={!!kidsEnabled}
                       guestsEnabled={!!guestsEnabled}

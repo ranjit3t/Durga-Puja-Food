@@ -1977,24 +1977,24 @@ export function SubscriptionForm() {
                       const isFuture = isMealInFuture(selectedDay, slot, dayConfig);
                       // Rule: If meal or parcel is taken, cannot mark absent (must unmark taken first)
                       const isTakenActive = isTaken || isParcelTaken;
-                      const isDisabled = isDone || isFuture || isTakenActive;
+                      const isDisabled = !isAdmin || isDone || isFuture || isTakenActive;
 
                       return (
                         <Pressable
                           key={`absent-${slot}`}
-                          onPress={() => canEdit && !isDisabled && setAbsentChoice(slot, !isAbsent)}
+                          onPress={() => isAdmin && canEdit && !isDisabled && setAbsentChoice(slot, !isAbsent)}
                           style={[
                             styles.choice,
                             isAbsent
                               ? { backgroundColor: "#f97316", borderColor: "#f97316" }
                               : styles.noneChoice,
-                            isDisabled && { opacity: 0.4 },
+                            (!isAdmin || isDisabled) && { opacity: 0.4 },
                             { paddingVertical: 12, paddingHorizontal: 4 }
                           ]}
-                          disabled={isDisabled}
+                          disabled={!isAdmin || isDisabled}
                           accessibilityLabel={`${label} ${UI_TEXT.absentStatus}: ${isAbsent ? UI_TEXT.markedAbsent : UI_TEXT.markAbsent}`}
                           accessibilityRole="button"
-                          accessibilityHint={isTakenActive ? "Cannot mark absent while meal or parcel is taken" : undefined}
+                          accessibilityHint={!isAdmin ? "Admin access required to modify absent status" : isTakenActive ? "Cannot mark absent while meal or parcel is taken" : undefined}
                         >
                           <Text
                             style={[

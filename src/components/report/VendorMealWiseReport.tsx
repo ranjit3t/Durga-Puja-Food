@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text } from "react-native";
+import { View, Text, Pressable, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useStyles } from "../../styles";
 import { useAppTheme } from "../../theme";
@@ -385,6 +385,193 @@ export function VendorMealWiseReport({
   const seasonActualLabel = seasonActualDiff > 0 ? UI_TEXT.totalActualDeficiency : UI_TEXT.totalActualExcess;
   const seasonActualVal = Math.abs(seasonActualDiff);
 
+  const handleExportCsv = async () => {
+    try {
+      const rows: string[] = [];
+      rows.push(`"${UI_TEXT.vendorReportTitle}"`);
+      rows.push(`"${UI_TEXT.generatedDate}","${new Date().toLocaleDateString()}"`);
+      rows.push("");
+
+      // Season Summary
+      rows.push(`"${UI_TEXT.seasonSummaryHeading}"`);
+      rows.push(`"${UI_TEXT.metric}","${UI_TEXT.amountInr}","${UI_TEXT.details}"`);
+      rows.push(`"${UI_TEXT.totalSubscriptionAmount}",${seasonTotalSubscription.toFixed(2)},"${UI_TEXT.totalPaidByMembers}"`);
+      rows.push(`"${UI_TEXT.totalExpectedVendorCost}",${seasonTotalExpectedVendor.toFixed(2)},"${UI_TEXT.vendorCostExpectedDesc}"`);
+      rows.push(`"${UI_TEXT.totalActualVendorCost}",${seasonTotalActualVendor.toFixed(2)},"${UI_TEXT.vendorCostActualDesc}"`);
+      rows.push(`"${seasonExpectedLabel}",${seasonExpectedVal.toFixed(2)},"${UI_TEXT.expectedVsSubVariance}"`);
+      rows.push(`"${seasonActualLabel}",${seasonActualVal.toFixed(2)},"${UI_TEXT.actualVsSubVariance}"`);
+      rows.push("");
+
+      // Season Subcategory Breakdown
+      rows.push(`"${UI_TEXT.seasonSubcategoryBreakdownHeading}"`);
+      rows.push(`"${UI_TEXT.category}","${UI_TEXT.serviceType}","${UI_TEXT.expectedVendorCostInr}","${UI_TEXT.actualVendorCostInr}"`);
+      if (seasonTotalDineExp > 0 || seasonTotalDineAct > 0) {
+        rows.push(`"${memberLabel} / General","${UI_TEXT.dineInService}",${seasonAdultDineExp.toFixed(2)},${seasonAdultDineAct.toFixed(2)}`);
+      }
+      if (seasonTotalParcelExp > 0 || seasonTotalParcelAct > 0) {
+        rows.push(`"${memberLabel} / General","${UI_TEXT.parcelServiceLabel}",${seasonAdultParcelExp.toFixed(2)},${seasonAdultParcelAct.toFixed(2)}`);
+      }
+      if (kidsEnabled && (seasonKidsDineExp > 0 || seasonKidsDineAct > 0)) {
+        rows.push(`"${UI_TEXT.kids}","${UI_TEXT.dineInService}",${seasonKidsDineExp.toFixed(2)},${seasonKidsDineAct.toFixed(2)}`);
+      }
+      if (kidsEnabled && (seasonKidsParcelExp > 0 || seasonKidsParcelAct > 0)) {
+        rows.push(`"${UI_TEXT.kids}","${UI_TEXT.parcelServiceLabel}",${seasonKidsParcelExp.toFixed(2)},${seasonKidsParcelAct.toFixed(2)}`);
+      }
+      if (guestsEnabled && (seasonGuestsDineExp > 0 || seasonGuestsDineAct > 0)) {
+        rows.push(`"${UI_TEXT.guests}","${UI_TEXT.dineInService}",${seasonGuestsDineExp.toFixed(2)},${seasonGuestsDineAct.toFixed(2)}`);
+      }
+      if (guestsEnabled && (seasonGuestsParcelExp > 0 || seasonGuestsParcelAct > 0)) {
+        rows.push(`"${UI_TEXT.guests}","${UI_TEXT.parcelServiceLabel}",${seasonGuestsParcelExp.toFixed(2)},${seasonGuestsParcelAct.toFixed(2)}`);
+      }
+      if (freeMealEnabled && (seasonFreeDineExp > 0 || seasonFreeDineAct > 0 || seasonFreeParcelAct > 0)) {
+        rows.push(`"${UI_TEXT.freeMeals}","${UI_TEXT.dineInService}",${seasonFreeDineExp.toFixed(2)},${seasonFreeDineAct.toFixed(2)}`);
+        if (seasonFreeParcelAct > 0) {
+          rows.push(`"${UI_TEXT.freeMeals}","${UI_TEXT.parcelServiceLabel}","0.00",${seasonFreeParcelAct.toFixed(2)}`);
+        }
+      }
+      rows.push("");
+
+      // Menu & Vendor Pricing Details
+      rows.push(`"${UI_TEXT.menuVendorPricingDetailsHeading}"`);
+      rows.push(`"${UI_TEXT.day}","${UI_TEXT.meal}","${UI_TEXT.varietyOrItem}","${UI_TEXT.adultPriceCol}","${UI_TEXT.kidsPriceCol}","${UI_TEXT.guestPriceCol}","${UI_TEXT.vendorMealPriceInr}","${UI_TEXT.vendorParcelPriceInr}"`);
+
+      const fmtNum = (n: number | undefined | null) => (n && Number(n) > 0 ? Number(n).toFixed(2) : "");
+      const fmtCell = (val: number | undefined | null, isCurrency: boolean = false) =>
+        (val !== undefined && val !== null && !isNaN(val) && val !== 0 ? (isCurrency ? `"${val.toFixed(2)}"` : `"${val}"`) : '""');
+
+      activeDays.forEach(dayId => {
+        const dMenu = foodMenu[dayId];
+        const dayLabel = getDayLabel(dayId, dayConfig);
+        const dayConf = dayConfig.find(d => d.id === dayId);
+
+        [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].forEach(mKey => {
+          const mealEnabled = isMealEnabled(dayId, mKey, dayConfig);
+          const mealLabel = getMealLabel(mKey);
+
+          if (!mealEnabled) {
+            return;
+          }
+
+          const gm = dMenu?.[mKey];
+          if (!gm) {
+            return;
+          }
+
+          const mConf = dayConf ? dayConf[mKey] : undefined;
+          const vEnabled = isDietaryEnabled(dayId, mKey, DietType.VEG, dayConfig);
+          const nvEnabled = isDietaryEnabled(dayId, mKey, DietType.NON_VEG, dayConfig);
+          const varieties = getMealVarieties(mConf, dayConf?.vegOnly);
+          const defVeg = Number(gm.vegPrice ?? mConf?.vegPrice ?? 0);
+          const defNv = Number(gm.nonVegPrice ?? mConf?.nonVegPrice ?? 0);
+          const defVegVendor = Number(gm.vendorVegPrice ?? defVeg);
+          const defNvVendor = Number(gm.vendorNonVegPrice ?? defNv);
+          const defVegParcelVendor = Number(gm.vendorVegParcelPrice ?? Number(gm.vegParcelPrice ?? mConf?.vegParcelPrice ?? 0));
+          const defNvParcelVendor = Number(gm.vendorNonVegParcelPrice ?? Number(gm.nonVegParcelPrice ?? mConf?.nonVegParcelPrice ?? 0));
+
+          if (gm.varieties && Object.keys(gm.varieties).length > 0) {
+            Object.entries(gm.varieties).forEach(([vKey, vData]: [string, any]) => {
+              const matchedVar = varieties.find((v: any) => v.id === vKey) || getVarietyForChoice(vKey, varieties);
+              const displayName = matchedVar?.name || vData?.name || vKey;
+              const adPrice = Number(vData?.adultPrice || vData?.vendorPrice || (matchedVar?.type === DietType.VEG ? defVeg : defNv));
+              const kPrice = Number(vData?.kidsPrice || vData?.kidsVegPrice || vData?.kidsNonVegPrice || 0);
+              const gPrice = Number(vData?.guestPrice || vData?.guestsVegPrice || vData?.guestsNonVegPrice || 0);
+              const vPrice = Number(vData?.vendorPrice || vData?.adultPrice || defVegVendor);
+              const vParcelPrice = Number(vData?.vendorParcelPrice || vData?.parcelPrice || defVegParcelVendor);
+              rows.push(`"${dayLabel}","${mealLabel}","${displayName}",${fmtNum(adPrice)},${fmtNum(kPrice)},${fmtNum(gPrice)},${fmtNum(vPrice)},${fmtNum(vParcelPrice)}`);
+            });
+          } else {
+            const kidsVeg = Number(gm?.kidsVegPrice || 0);
+            const guestsVeg = Number(gm?.guestsVegPrice || 0);
+            const kidsNv = Number(gm?.kidsNonVegPrice || 0);
+            const guestsNv = Number(gm?.guestsNonVegPrice || 0);
+
+            if (vEnabled) {
+              rows.push(`"${dayLabel}","${mealLabel}","${UI_TEXT.veg}",${fmtNum(defVeg)},${fmtNum(kidsVeg)},${fmtNum(guestsVeg)},${fmtNum(defVegVendor)},${fmtNum(defVegParcelVendor)}`);
+            }
+
+            if (nvEnabled) {
+              rows.push(`"${dayLabel}","${mealLabel}","${UI_TEXT.nonVeg}",${fmtNum(defNv)},${fmtNum(kidsNv)},${fmtNum(guestsNv)},${fmtNum(defNvVendor)},${fmtNum(defNvParcelVendor)}`);
+            }
+          }
+        });
+      });
+      rows.push("");
+
+      // Detailed Calculation Breakup (Expected vs Actual Side-by-Side)
+      rows.push(`"${UI_TEXT.detailedCalculationBreakupHeading}"`);
+      rows.push(`"${UI_TEXT.day}","${UI_TEXT.meal}","${UI_TEXT.categoryOrSubcategory}","${UI_TEXT.typeCol}","${UI_TEXT.plannedCountCol}","${UI_TEXT.servedCountCol}","${UI_TEXT.subscriptionAmountInr}","${UI_TEXT.expectedVendorCostInr}","${UI_TEXT.actualVendorCostInr}","${UI_TEXT.varianceSubActual}"`);
+
+      activeDays.forEach((dayId) => {
+        const dayLabel = getDayLabel(dayId, dayConfig);
+        const dayRep = dayReports.find((d: any) => d?.dayId === dayId);
+
+        [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].forEach((mKey) => {
+          const mealEnabled = isMealEnabled(dayId, mKey, dayConfig);
+          const mealLabel = getMealLabel(mKey);
+
+          if (!mealEnabled) {
+            return;
+          }
+
+          const mRep = dayRep?.mealReports?.find((m: any) => m?.mKey === mKey);
+          if (!mRep || !mRep.categories || mRep.categories.length === 0) {
+            return;
+          }
+
+          mRep.categories.forEach((cat: any) => {
+            const isParcel = cat.name.includes(UI_TEXT.parcel);
+            const serviceType = isParcel ? UI_TEXT.parcelType : UI_TEXT.dineInType;
+            const catNameClean = cat.name.replace(/"/g, '""');
+            const variance = cat.catSub - cat.catActVendor;
+            rows.push(`"${dayLabel}","${mealLabel}","  - ${catNameClean}","${serviceType}",${fmtCell(cat.planned)},${fmtCell(cat.served)},${fmtCell(cat.catSub, true)},${fmtCell(cat.catExpVendor, true)},${fmtCell(cat.catActVendor, true)},${fmtCell(variance, true)}`);
+          });
+
+          const mealVariance = mRep.mealSubTotal - mRep.mealActualVendorTotal;
+          rows.push(`"${dayLabel}","${mealLabel}","${UI_TEXT.mealTotalLabel}","${UI_TEXT.allType}",,,${fmtCell(mRep.mealSubTotal, true)},${fmtCell(mRep.mealExpectedVendorTotal, true)},${fmtCell(mRep.mealActualVendorTotal, true)},${fmtCell(mealVariance, true)}`);
+        });
+
+        if (dayRep) {
+          const dayVariance = dayRep.daySubTotal - dayRep.dayActualVendorTotal;
+          rows.push(`"${dayLabel}","${UI_TEXT.dayTotalLabel}","","${UI_TEXT.allType}",,,${fmtCell(dayRep.daySubTotal, true)},${fmtCell(dayRep.dayExpectedVendorTotal, true)},${fmtCell(dayRep.dayActualVendorTotal, true)},${fmtCell(dayVariance, true)}`);
+        }
+      });
+
+      const seasonVariance = seasonTotalSubscription - seasonTotalActualVendor;
+      rows.push(`"${UI_TEXT.grandTotalLabel}","","","${UI_TEXT.allType}",,,${fmtCell(seasonTotalSubscription, true)},${fmtCell(seasonTotalExpectedVendor, true)},${fmtCell(seasonTotalActualVendor, true)},${fmtCell(seasonVariance, true)}`);
+
+      const csvContent = rows.join("\n");
+      const fileName = `vendor_meal_wise_report_${new Date().toISOString().slice(0, 10)}.csv`;
+
+      if (Platform.OS === "web") {
+        const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.setAttribute("download", fileName);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } else {
+        const { FileSystem, Sharing } = await import("expo-file-system" as any).catch(() => ({}) as any);
+        if (FileSystem && FileSystem.documentDirectory) {
+          const fileUri = `${FileSystem.documentDirectory}${fileName}`;
+          await FileSystem.writeAsStringAsync(fileUri, csvContent, { encoding: FileSystem.EncodingType.UTF8 });
+          if (Sharing && (await Sharing.isAvailableAsync())) {
+            await Sharing.shareAsync(fileUri, { mimeType: "text/csv", dialogTitle: UI_TEXT.exportVendorCsv });
+          }
+        } else {
+          const { Share } = await import("react-native");
+          await Share.share({
+            message: csvContent,
+            title: fileName,
+          });
+        }
+      }
+    } catch (err) {
+      console.error("Failed to export vendor report CSV", err);
+    }
+  };
+
   return (
     <View style={{ gap: 16 }}>
       {/* Top Season Summary Card */}
@@ -394,11 +581,38 @@ export function VendorMealWiseReport({
         accessibilityRole="summary"
         accessibilityLabel={seasonSummaryA11yLabel}
       >
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
-          <Ionicons name="receipt-outline" size={20} color={theme.colors.white} />
-          <Text style={{ color: theme.colors.white, fontWeight: "900", fontSize: 18, flex: 1, flexWrap: "wrap" }} numberOfLines={2}>
-            {UI_TEXT.vendorPriceSeasonSummary}
-          </Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap", justifyContent: "space-between" }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1, minWidth: 160 }}>
+            <Ionicons name="receipt-outline" size={20} color={theme.colors.white} />
+            <Text style={{ color: theme.colors.white, fontWeight: "900", fontSize: 18, flex: 1, flexWrap: "wrap" }} numberOfLines={2}>
+              {UI_TEXT.vendorPriceSeasonSummary}
+            </Text>
+          </View>
+          <Pressable
+            onPress={handleExportCsv}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={UI_TEXT.exportVendorCsv}
+            style={({ pressed }) => [
+              {
+                backgroundColor: theme.colors.surface + "33",
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+                borderRadius: 8,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 6,
+                borderWidth: 1,
+                borderColor: theme.colors.white + "60",
+              },
+              pressed && { opacity: 0.8 }
+            ]}
+          >
+            <Ionicons name="download-outline" size={16} color={theme.colors.white} />
+            <Text style={{ color: theme.colors.white, fontWeight: "800", fontSize: 12 }}>
+              {UI_TEXT.exportVendorCsv}
+            </Text>
+          </Pressable>
         </View>
 
         <View style={{ gap: 12, borderTopWidth: 1, borderTopColor: theme.colors.white + "40", paddingTop: 12 }}>
@@ -750,11 +964,12 @@ export function VendorMealWiseReport({
                           {Object.entries(gm.varieties).map(([vKey, vData]: [string, any]) => {
                             const matchedVar = varieties.find((v: any) => v.id === vKey) || getVarietyForChoice(vKey, varieties);
                             const displayName = matchedVar?.name || vData?.name || vKey;
-                            const vPrice = vData?.vendorPrice || vData?.adultPrice || "-";
-                            const vParcelPrice = vData?.vendorParcelPrice || vData?.parcelPrice || "-";
+                            const isVegVar = matchedVar ? matchedVar.type === DietType.VEG : (vKey.toLowerCase().includes("veg") || displayName.toLowerCase().includes("veg"));
+                            const vPrice = vData?.vendorPrice || vData?.adultPrice || (isVegVar ? defAdultVegVendor : defAdultNvVendor) || "-";
+                            const vParcelPrice = vData?.vendorParcelPrice || vData?.parcelPrice || (isVegVar ? defAdultVegParcelVendor : defAdultNvParcelVendor) || "-";
                             return (
                               <Text key={vKey} style={{ fontSize: 10, fontWeight: "700", color: theme.colors.textPrimary }}>
-                                • {displayName}: {UI_TEXT.rs}{vPrice} ({UI_TEXT.parcelAbbr}: {UI_TEXT.rs}{vParcelPrice})
+                                • {displayName}: {UI_TEXT.rs}{vPrice} {vParcelPrice && vParcelPrice !== "-" ? `(${UI_TEXT.parcelAbbr}: ${UI_TEXT.rs}${vParcelPrice})` : ""}
                               </Text>
                             );
                           })}
@@ -763,12 +978,12 @@ export function VendorMealWiseReport({
                         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
                           {vEnabled && (
                             <Text style={{ fontSize: 11, fontWeight: "700", color: theme.colors.veg }}>
-                              • {UI_TEXT.veg}: {UI_TEXT.rs}{defAdultVegVendor} ({UI_TEXT.parcelAbbr}: {UI_TEXT.rs}{defAdultVegParcelVendor})
+                              • {UI_TEXT.veg}: {UI_TEXT.rs}{defAdultVegVendor} {defAdultVegParcelVendor > 0 ? `(${UI_TEXT.parcelAbbr}: ${UI_TEXT.rs}${defAdultVegParcelVendor})` : ""}
                             </Text>
                           )}
                           {nvEnabled && (
                             <Text style={{ fontSize: 11, fontWeight: "700", color: theme.colors.nonVeg }}>
-                              • {UI_TEXT.nonVeg}: {UI_TEXT.rs}{defAdultNvVendor} ({UI_TEXT.parcelAbbr}: {UI_TEXT.rs}{defAdultNvParcelVendor})
+                              • {UI_TEXT.nonVeg}: {UI_TEXT.rs}{defAdultNvVendor} {defAdultNvParcelVendor > 0 ? `(${UI_TEXT.parcelAbbr}: ${UI_TEXT.rs}${defAdultNvParcelVendor})` : ""}
                             </Text>
                           )}
                         </View>

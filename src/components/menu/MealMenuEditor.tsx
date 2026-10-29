@@ -21,6 +21,7 @@ export function MealMenuEditor({
   kidsEnabled,
   guestsEnabled,
   freeMealEnabled,
+  isAdmin = false,
 }: {
   title: string;
   mealKey: MealType;
@@ -35,10 +36,13 @@ export function MealMenuEditor({
   kidsEnabled: boolean;
   guestsEnabled?: boolean;
   freeMealEnabled?: boolean;
+  isAdmin?: boolean;
 }) {
   const styles = useStyles();
   const { theme } = useAppTheme();
   const isCurrent = isMealCurrent(dayId, mealKey, config);
+  const priceEditable = isAdmin || !disabled;
+  const itemsEditable = isAdmin || !disabled;
 
   const dayConf = config.find((d) => d.id === dayId);
   const mConf = dayConf ? dayConf[mealKey] : null;
@@ -66,6 +70,8 @@ export function MealMenuEditor({
 
   const getVarietyPrice = (v: DietaryVariety, field: 'adultPrice' | 'kidsPrice' | 'guestPrice' | 'parcelPrice' | 'kidsParcelPrice' | 'guestParcelPrice' | 'vendorPrice' | 'vendorParcelPrice'): string => {
     if (v.id === "veg_default") {
+      const varVal = value?.varieties?.["veg_default"]?.[field as keyof VarietyMenu];
+      if (typeof varVal === 'string' && varVal.length > 0) return varVal;
       if (field === "adultPrice") return value?.vegPrice ?? "";
       if (field === "kidsPrice") return value?.kidsVegPrice ?? "";
       if (field === "guestPrice") return value?.guestsVegPrice ?? "";
@@ -76,6 +82,8 @@ export function MealMenuEditor({
       if (field === "vendorParcelPrice") return value?.vendorVegParcelPrice ?? "";
     }
     if (v.id === "nonVeg_default") {
+      const varVal = value?.varieties?.["nonVeg_default"]?.[field as keyof VarietyMenu];
+      if (typeof varVal === 'string' && varVal.length > 0) return varVal;
       if (field === "adultPrice") return value?.nonVegPrice ?? "";
       if (field === "kidsPrice") return value?.kidsNonVegPrice ?? "";
       if (field === "guestPrice") return value?.guestsNonVegPrice ?? "";
@@ -232,6 +240,14 @@ export function MealMenuEditor({
 
             {/* Pricing Section per Sub-Category */}
             <View style={{ gap: 8 }}>
+              {disabled && isAdmin && (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: theme.colors.primary + "18", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, marginBottom: 4 }}>
+                  <Ionicons name="information-circle-outline" size={14} color={theme.colors.primary} />
+                  <Text style={{ fontSize: 11, fontWeight: "700", color: theme.colors.primary }}>
+                    {UI_TEXT.reconciliationPricesEditable}
+                  </Text>
+                </View>
+              )}
               <View style={[styles.row, { flexWrap: "wrap", gap: 8 }]}>
                 {foodPriceEnabled && (
                   <View style={{ flex: 1, minWidth: 100 }}>
@@ -254,7 +270,7 @@ export function MealMenuEditor({
                       onChangeText={(val) => updateVarietyField(v, "adultPrice", val.replace(/[^0-9]/g, ""))}
                       keyboardType="numeric"
                       placeholder={UI_TEXT.zero}
-                      editable={!disabled}
+                      editable={priceEditable}
                     />
                   </View>
                 )}
@@ -280,7 +296,7 @@ export function MealMenuEditor({
                       onChangeText={(val) => updateVarietyField(v, "kidsPrice", val.replace(/[^0-9]/g, ""))}
                       keyboardType="numeric"
                       placeholder={UI_TEXT.zero}
-                      editable={!disabled}
+                      editable={priceEditable}
                     />
                   </View>
                 )}
@@ -306,7 +322,7 @@ export function MealMenuEditor({
                       onChangeText={(val) => updateVarietyField(v, "guestPrice", val.replace(/[^0-9]/g, ""))}
                       keyboardType="numeric"
                       placeholder={UI_TEXT.zero}
-                      editable={!disabled}
+                      editable={priceEditable}
                     />
                   </View>
                 )}
@@ -331,7 +347,7 @@ export function MealMenuEditor({
                     onChangeText={(val) => updateVarietyField(v, "vendorPrice" as any, val.replace(/[^0-9]/g, ""))}
                     keyboardType="numeric"
                     placeholder={UI_TEXT.zero}
-                    editable={!disabled}
+                    editable={priceEditable}
                   />
                 </View>
               </View>
@@ -359,7 +375,7 @@ export function MealMenuEditor({
                         onChangeText={(val) => updateVarietyField(v, "parcelPrice", val.replace(/[^0-9]/g, ""))}
                         keyboardType="numeric"
                         placeholder={UI_TEXT.zero}
-                        editable={!disabled}
+                        editable={priceEditable}
                       />
                     </View>
                   )}
@@ -384,7 +400,7 @@ export function MealMenuEditor({
                       onChangeText={(val) => updateVarietyField(v, "vendorParcelPrice" as any, val.replace(/[^0-9]/g, ""))}
                       keyboardType="numeric"
                       placeholder={UI_TEXT.zero}
-                      editable={!disabled}
+                      editable={priceEditable}
                     />
                   </View>
 
@@ -409,7 +425,7 @@ export function MealMenuEditor({
                           onChangeText={(val) => updateVarietyField(v, "kidsParcelPrice", val.replace(/[^0-9]/g, ""))}
                           keyboardType="numeric"
                           placeholder={UI_TEXT.zero}
-                          editable={!disabled}
+                          editable={priceEditable}
                         />
                       </View>
                     )}
@@ -435,7 +451,7 @@ export function MealMenuEditor({
                           onChangeText={(val) => updateVarietyField(v, "guestParcelPrice", val.replace(/[^0-9]/g, ""))}
                           keyboardType="numeric"
                           placeholder={UI_TEXT.zero}
-                          editable={!disabled}
+                          editable={priceEditable}
                         />
                       </View>
                     )}
@@ -451,17 +467,18 @@ export function MealMenuEditor({
                 onChangeText={(txt) => setNewItemText((prev) => ({ ...prev, [v.id]: txt }))}
                 placeholder={`Add item to ${v.name}...`}
                 placeholderTextColor={theme.colors.textMuted}
-                editable={!disabled}
+                editable={itemsEditable}
               />
               <Pressable
-                onPress={() => !disabled && addItemForVariety(v)}
-                disabled={disabled}
+                onPress={() => itemsEditable && addItemForVariety(v)}
+                disabled={!itemsEditable}
                 accessible={true}
                 accessibilityRole="button"
                 accessibilityLabel={`${UI_TEXT.add} ${v.name}`}
                 style={[
                   styles.addSmall,
                   { backgroundColor: vColor, borderWidth: 0 },
+                  !itemsEditable && { opacity: 0.5 },
                 ]}
               >
                 <Ionicons name="add" size={20} color={theme.colors.white} />
@@ -475,8 +492,8 @@ export function MealMenuEditor({
                   <View style={[styles.dot, { backgroundColor: vColor }]} />
                   <Text style={styles.itemBadgeText}>{item}</Text>
                   <Pressable
-                    onPress={() => !disabled && removeItemForVariety(v, i)}
-                    disabled={disabled}
+                    onPress={() => itemsEditable && removeItemForVariety(v, i)}
+                    disabled={!itemsEditable}
                     accessible={true}
                     accessibilityRole="button"
                     accessibilityLabel={UI_TEXT.removeMenuItem.replace("{item}", item)}
@@ -498,11 +515,11 @@ export function MealMenuEditor({
       {onSave && (
         <Pressable
           onPress={onSave}
-          disabled={!isDirty || disabled}
+          disabled={!isDirty || (!priceEditable && !itemsEditable)}
           style={({ pressed }) => [
             styles.primary,
             { height: 40, marginTop: 12 },
-            !isDirty && { backgroundColor: theme.colors.surfaceDark, opacity: 0.5 },
+            (!isDirty || (!priceEditable && !itemsEditable)) && { backgroundColor: theme.colors.surfaceDark, opacity: 0.5 },
             pressed && { opacity: 0.7 },
           ]}
         >

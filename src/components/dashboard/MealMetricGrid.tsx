@@ -604,6 +604,15 @@ export function MealMetricGrid(props: MealMetricProps) {
           </View>
         </View>
       )}
+
+      {/* Legend Footnote for Takeaway Parcel Headcount Inclusion */}
+      {showParcels && parcel > 0 && (
+        <View style={{ marginTop: 8, paddingTop: 6, borderTopWidth: 1, borderTopColor: theme.colors.border + "88" }}>
+          <Text style={{ fontSize: 10, fontWeight: "800", color: theme.colors.textSecondary, fontStyle: "italic", lineHeight: 14 }}>
+            {UI_TEXT.parcelIncludedLegendNote}
+          </Text>
+        </View>
+      )}
     </View>
   );
 }

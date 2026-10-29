@@ -69,6 +69,8 @@ export function MealDisplay({
 
   const getVarietyPrice = (v: DietaryVariety, field: 'adultPrice' | 'kidsPrice' | 'guestPrice' | 'parcelPrice' | 'kidsParcelPrice' | 'guestParcelPrice' | 'vendorPrice' | 'vendorParcelPrice'): string => {
     if (v.id === "veg_default") {
+      const varVal = menu?.varieties?.["veg_default"]?.[field as keyof VarietyMenu];
+      if (typeof varVal === 'string' && varVal.length > 0) return varVal;
       if (field === "adultPrice") return menu?.vegPrice || mConf?.vegPrice || "";
       if (field === "kidsPrice") return menu?.kidsVegPrice || (mConf as any)?.kidsVegPrice || "";
       if (field === "guestPrice") return menu?.guestsVegPrice || (mConf as any)?.guestsVegPrice || "";
@@ -79,12 +81,14 @@ export function MealDisplay({
       if (field === "vendorParcelPrice") return menu?.vendorVegParcelPrice || "";
     }
     if (v.id === "nonVeg_default") {
+      const varVal = menu?.varieties?.["nonVeg_default"]?.[field as keyof VarietyMenu];
+      if (typeof varVal === 'string' && varVal.length > 0) return varVal;
       if (field === "adultPrice") return menu?.nonVegPrice || mConf?.nonVegPrice || "";
       if (field === "kidsPrice") return menu?.kidsNonVegPrice || (mConf as any)?.kidsNonVegPrice || "";
       if (field === "guestPrice") return menu?.guestsNonVegPrice || (mConf as any)?.guestsNonVegPrice || "";
       if (field === "parcelPrice") return menu?.nonVegParcelPrice || mConf?.nonVegParcelPrice || "";
-      if (field === "kidsParcelPrice") return menu?.kidsVegParcelPrice || (mConf as any)?.kidsVegParcelPrice || "";
-      if (field === "guestParcelPrice") return menu?.guestsVegParcelPrice || (mConf as any)?.guestsVegParcelPrice || "";
+      if (field === "kidsParcelPrice") return menu?.kidsNonVegParcelPrice || (mConf as any)?.kidsNonVegParcelPrice || "";
+      if (field === "guestParcelPrice") return menu?.guestsNonVegParcelPrice || (mConf as any)?.guestsNonVegParcelPrice || "";
       if (field === "vendorPrice") return menu?.vendorNonVegPrice || "";
       if (field === "vendorParcelPrice") return menu?.vendorNonVegParcelPrice || "";
     }
