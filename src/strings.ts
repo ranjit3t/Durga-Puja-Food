@@ -1167,4 +1167,5 @@ export const UI_TEXT = {
   adultPriceCol: "Adult Price (INR)",
   reconciliationPricesEditable: "Prices editable for post-meal reconciliation",
   parcelIncludedLegendNote: "* Note: Meals for takeaway parcels are already included in the total headcounts for different categories. Parcel counts are shown separately to segregate parcel demand and container packaging costs.",
+  copiedToClipboard: "Copied operational summary to clipboard!",
 };

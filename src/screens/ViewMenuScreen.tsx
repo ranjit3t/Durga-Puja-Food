@@ -32,7 +32,7 @@ export function ViewMenuScreen() {
     foodMenu, dayConfig, seasonName, seasonEnabled, foodPriceEnabled, paymentConfig, kidsEnabled, guestsEnabled, freeMealEnabled
   } = useCoreDatabase();
   const { addActivityLog } = useActivityLogs();
-  const { shareQr } = useUI();
+  const { shareQr, showAlert } = useUI();
   const { navigate, goBack, targetDay, setTargetDay, setTargetMeal } = useAppNavigation();
 
   const styles = useStyles();
@@ -46,10 +46,11 @@ export function ViewMenuScreen() {
     if (menuRef.current) {
       try {
         const { captureRef } = await import("react-native-view-shot");
+        const resultType = Platform.OS === "web" ? "data-uri" : "tmpfile";
         const uri = await captureRef(menuRef, {
           format: "png",
           quality: 1,
-          result: "tmpfile",
+          result: resultType as any,
         });
 
         const message = `${seasonName || UI_TEXT.headerTitle} - ${UI_TEXT.foodMenu}\n${UI_TEXT.day}: ${new Date().toLocaleDateString()}`;

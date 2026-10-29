@@ -224,10 +224,11 @@ export function ReportScreen() {
         const width = node?.scrollWidth || node?.clientWidth || undefined;
         const height = node?.scrollHeight || node?.clientHeight || undefined;
 
+        const resultType = Platform.OS === "web" ? "data-uri" : "tmpfile";
         const uri = await captureRef(reportRef, {
           format: "png",
           quality: 1,
-          result: "tmpfile",
+          result: resultType as any,
           ...(width ? { width } : {}),
           ...(height ? { height } : {}),
         });

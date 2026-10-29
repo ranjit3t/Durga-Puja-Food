@@ -152,7 +152,7 @@ const DashboardMealSection = memo(
     const styles = useStyles();
     const { s, v } = useScaling();
     const { theme } = useAppTheme();
-    const { shareQr } = useUI();
+    const { shareQr, showAlert } = useUI();
     const { subscriptions, foodMenu } = useCoreDatabase();
     const mealRef = useRef<any>(null);
 
@@ -190,10 +190,11 @@ const DashboardMealSection = memo(
     const handleShare = async () => {
       if (mealRef.current) {
         try {
+          const resultType = Platform.OS === "web" ? "data-uri" : "tmpfile";
           const uri = await captureRef(mealRef, {
             format: "png",
             quality: 1,
-            result: "tmpfile",
+            result: resultType as any,
           });
           const message = `${seasonName || UI_TEXT.headerTitle}\n${getDayLabel(day, config)} ${mealLabel} ${UI_TEXT.operationalSummary}\n${UI_TEXT.total}${UI_TEXT.colon}${UI_TEXT.space}${total}${UI_TEXT.space}${UI_TEXT.pipe}${UI_TEXT.space}${UI_TEXT.taken}${UI_TEXT.colon}${UI_TEXT.space}${totalMealTaken}`;
           const dayName = getDayLabel(day, config).replace(/[^a-zA-Z0-9]/g, "_");
