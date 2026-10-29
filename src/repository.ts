@@ -245,15 +245,34 @@ export function normalizeRecord(
   const paymentMode = (value.paymentMode as any) || PaymentMode.UPI;
 
   // 2. Payments Normalization (Multiple Payments Support)
-  let payments = (value.payments as PaymentEntry[] | undefined) || [];
+  const rawPayments = value.payments;
+  let payments: PaymentEntry[] = [];
+  if (Array.isArray(rawPayments)) {
+    payments = rawPayments;
+  } else if (rawPayments && typeof rawPayments === "object") {
+    payments = Object.values(rawPayments);
+  }
+
+  const defaultPaymentTime = Number(value.createdAt) || Number(value.timestamp) || Date.now();
+
   if (payments.length === 0 && storedAmount && storedAmount !== "0") {
     payments = [
       {
         amount: String(storedAmount),
         mode: paymentMode,
         transactionId: transactionId,
+        paymentTime: defaultPaymentTime,
       },
     ];
+  } else {
+    payments = payments.map((p: any) => ({
+      ...p,
+      amount: p.amount !== undefined ? String(p.amount) : "0",
+      mode: p.mode || paymentMode,
+      paymentTime: p.paymentTime && !isNaN(Number(p.paymentTime)) && Number(p.paymentTime) > 0
+        ? Number(p.paymentTime)
+        : defaultPaymentTime,
+    }));
   }
 
   // 3. Legacy Day/Type Detection

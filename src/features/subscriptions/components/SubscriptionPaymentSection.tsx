@@ -1,10 +1,10 @@
-import React from "react";
-import { View, Text, TextInput, Pressable } from "react-native";
+import React, { useState } from "react";
+import { View, Text, TextInput, Pressable, Modal, Alert, KeyboardAvoidingView, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { UI_TEXT } from "../../../strings";
 import { PaymentEntry, PaymentMode, AppliedPackageInfo } from "../../../domain";
 import { Dropdown } from "../../../components/common/Dropdown";
-import { formatCurrencyAmount } from "../../../utils/paymentUtils";
+import { formatCurrencyAmount, formatPaymentDateTime } from "../../../utils/paymentUtils";
 
 interface SubscriptionPaymentSectionProps {
   payments: PaymentEntry[];
@@ -61,6 +61,54 @@ export const SubscriptionPaymentSection: React.FC<SubscriptionPaymentSectionProp
   discrepancyDetail,
   maxPayments = 10,
 }) => {
+  // Payment Date/Time Editor Modal State
+  const [editingTimeIdx, setEditingTimeIdx] = useState<number | null>(null);
+  const [dateStr, setDateStr] = useState<string>("");
+  const [timeStr, setTimeStr] = useState<string>("");
+
+  const openTimeModal = (idx: number, currentTs?: number) => {
+    const tsToUse = currentTs && !isNaN(currentTs) && currentTs > 0 ? currentTs : Date.now();
+    const d = new Date(tsToUse);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    const hh = String(d.getHours()).padStart(2, "0");
+    const min = String(d.getMinutes()).padStart(2, "0");
+
+    setDateStr(`${yyyy}-${mm}-${dd}`);
+    setTimeStr(`${hh}:${min}`);
+    setEditingTimeIdx(idx);
+  };
+
+  const saveCustomTime = () => {
+    if (editingTimeIdx === null) return;
+
+    const trimmedDate = dateStr.trim();
+    const trimmedTime = timeStr.trim();
+
+    if (!trimmedDate || !trimmedTime) {
+      Alert.alert(UI_TEXT.error, UI_TEXT.invalidPaymentTimeMsg);
+      return;
+    }
+
+    const combined = `${trimmedDate}T${trimmedTime}:00`;
+    const parsed = new Date(combined);
+
+    if (isNaN(parsed.getTime())) {
+      Alert.alert(UI_TEXT.error, UI_TEXT.invalidPaymentTimeMsg);
+      return;
+    }
+
+    updatePayment(editingTimeIdx, { paymentTime: parsed.getTime() });
+    setEditingTimeIdx(null);
+  };
+
+  const setTimeToNow = () => {
+    if (editingTimeIdx === null) return;
+    updatePayment(editingTimeIdx, { paymentTime: Date.now() });
+    setEditingTimeIdx(null);
+  };
+
   return (
     <View
       accessible={true}
@@ -239,7 +287,7 @@ export const SubscriptionPaymentSection: React.FC<SubscriptionPaymentSectionProp
 
       {payments.map((p, idx) => (
         <View key={idx} style={{ marginBottom: idx === payments.length - 1 ? 0 : 24, borderTopWidth: idx === 0 ? 0 : 1, borderTopColor: theme.colors.border, paddingTop: idx === 0 ? 0 : 20 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
             <Text style={{ fontSize: 12, fontWeight: '800', color: theme.colors.textSecondary }}>{UI_TEXT.paymentNumber}{idx + 1}</Text>
             {idx > 0 && isAdmin && canEdit && (
               <Pressable
@@ -250,6 +298,48 @@ export const SubscriptionPaymentSection: React.FC<SubscriptionPaymentSectionProp
                 accessibilityHint="Removes this payment entry"
               >
                 <Ionicons name="trash-outline" size={18} color={theme.colors.error} />
+              </Pressable>
+            )}
+          </View>
+
+          {/* Payment Date & Time Section */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, backgroundColor: theme.colors.surface, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: theme.colors.border }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+              <Ionicons name="time-outline" size={15} color={theme.colors.primary} />
+              <View>
+                <Text style={{ fontSize: 10, fontWeight: '800', color: theme.colors.textMuted, textTransform: 'uppercase' }}>
+                  {UI_TEXT.paymentTimeLabel}
+                </Text>
+                <Text style={{ fontSize: 12, fontWeight: '800', color: p.paymentTime ? theme.colors.textPrimary : theme.colors.primary }}>
+                  {p.paymentTime ? formatPaymentDateTime(p.paymentTime) : UI_TEXT.paymentTimeAutoCaptured}
+                </Text>
+              </View>
+            </View>
+
+            {isAdmin && canEdit && (
+              <Pressable
+                onPress={() => openTimeModal(idx, p.paymentTime)}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={`${UI_TEXT.editPaymentTime} ${UI_TEXT.paymentNumber}${idx + 1}`}
+                accessibilityHint="Click to modify payment date and time"
+                style={({ pressed }) => [
+                  {
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 4,
+                    backgroundColor: theme.colors.primary + '18',
+                    paddingHorizontal: 8,
+                    paddingVertical: 5,
+                    borderRadius: 6,
+                  },
+                  pressed && { opacity: 0.7 },
+                ]}
+              >
+                <Ionicons name="calendar-outline" size={13} color={theme.colors.primary} />
+                <Text style={{ fontSize: 11, fontWeight: '800', color: theme.colors.primary }}>
+                  {UI_TEXT.editPaymentTime}
+                </Text>
               </Pressable>
             )}
           </View>
@@ -359,6 +449,184 @@ export const SubscriptionPaymentSection: React.FC<SubscriptionPaymentSectionProp
           <Text style={styles.secondaryText}>{UI_TEXT.addAnotherPayment}</Text>
         </Pressable>
       )}
+
+      {/* Edit Payment Time Modal */}
+      <Modal
+        visible={editingTimeIdx !== null}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setEditingTimeIdx(null)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.6)",
+            justifyContent: "center",
+            padding: 20,
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: theme.colors.surface,
+              borderColor: theme.colors.border,
+              borderWidth: 1,
+              borderRadius: 16,
+              padding: 20,
+              gap: 16,
+            }}
+          >
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <Ionicons name="calendar-outline" size={20} color={theme.colors.primary} />
+                <Text style={{ fontSize: 16, fontWeight: "900", color: theme.colors.textPrimary }}>
+                  {UI_TEXT.editPaymentTimeTitle}
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => setEditingTimeIdx(null)}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={UI_TEXT.closeParen || "Close"}
+              >
+                <Ionicons name="close-outline" size={24} color={theme.colors.textMuted} />
+              </Pressable>
+            </View>
+
+            <Text style={{ fontSize: 12, color: theme.colors.textSecondary, lineHeight: 16 }}>
+              {UI_TEXT.editPaymentTimeHelp}
+            </Text>
+
+            {/* Set To Current Time Quick Action */}
+            <Pressable
+              onPress={setTimeToNow}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={UI_TEXT.setCurrentTime}
+              style={({ pressed }) => [
+                {
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                  backgroundColor: theme.colors.primary + "18",
+                  paddingVertical: 10,
+                  paddingHorizontal: 12,
+                  borderRadius: 10,
+                  borderWidth: 1,
+                  borderColor: theme.colors.primary + "40",
+                },
+                pressed && { opacity: 0.8 },
+              ]}
+            >
+              <Ionicons name="time-outline" size={16} color={theme.colors.primary} />
+              <Text style={{ fontSize: 13, fontWeight: "800", color: theme.colors.primary }}>
+                {UI_TEXT.setCurrentTime}
+              </Text>
+            </Pressable>
+
+            <View style={{ height: 1, backgroundColor: theme.colors.border }} />
+
+            {/* Custom Date & Time Inputs */}
+            <View style={{ gap: 12 }}>
+              <View>
+                <Text style={{ fontSize: 12, fontWeight: "800", color: theme.colors.textSecondary, marginBottom: 6 }}>
+                  {UI_TEXT.paymentDateLabel}
+                </Text>
+                <TextInput
+                  value={dateStr}
+                  onChangeText={setDateStr}
+                  placeholder="YYYY-MM-DD"
+                  placeholderTextColor={theme.colors.textMuted}
+                  keyboardType="numbers-and-punctuation"
+                  style={{
+                    backgroundColor: theme.colors.surfaceDark,
+                    color: theme.colors.textPrimary,
+                    borderColor: theme.colors.border,
+                    borderWidth: 1,
+                    borderRadius: 10,
+                    paddingHorizontal: 12,
+                    paddingVertical: 10,
+                    fontSize: 14,
+                    fontWeight: "600",
+                  }}
+                />
+              </View>
+
+              <View>
+                <Text style={{ fontSize: 12, fontWeight: "800", color: theme.colors.textSecondary, marginBottom: 6 }}>
+                  {UI_TEXT.paymentTimeHoursLabel}
+                </Text>
+                <TextInput
+                  value={timeStr}
+                  onChangeText={setTimeStr}
+                  placeholder="HH:MM (e.g. 14:30)"
+                  placeholderTextColor={theme.colors.textMuted}
+                  keyboardType="numbers-and-punctuation"
+                  style={{
+                    backgroundColor: theme.colors.surfaceDark,
+                    color: theme.colors.textPrimary,
+                    borderColor: theme.colors.border,
+                    borderWidth: 1,
+                    borderRadius: 10,
+                    paddingHorizontal: 12,
+                    paddingVertical: 10,
+                    fontSize: 14,
+                    fontWeight: "600",
+                  }}
+                />
+              </View>
+            </View>
+
+            {/* Modal Actions */}
+            <View style={{ flexDirection: "row", gap: 10, marginTop: 8 }}>
+              <Pressable
+                onPress={() => setEditingTimeIdx(null)}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={UI_TEXT.cancel || "Cancel"}
+                style={({ pressed }) => [
+                  {
+                    flex: 1,
+                    paddingVertical: 12,
+                    borderRadius: 10,
+                    alignItems: "center",
+                    backgroundColor: theme.colors.surfaceDark,
+                    borderWidth: 1,
+                    borderColor: theme.colors.border,
+                  },
+                  pressed && { opacity: 0.8 },
+                ]}
+              >
+                <Text style={{ color: theme.colors.textPrimary, fontWeight: "800", fontSize: 13 }}>
+                  {UI_TEXT.cancel || "Cancel"}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                onPress={saveCustomTime}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={UI_TEXT.savePaymentTime}
+                style={({ pressed }) => [
+                  {
+                    flex: 1,
+                    paddingVertical: 12,
+                    borderRadius: 10,
+                    alignItems: "center",
+                    backgroundColor: theme.colors.primary,
+                  },
+                  pressed && { opacity: 0.8 },
+                ]}
+              >
+                <Text style={{ color: theme.colors.white, fontWeight: "800", fontSize: 13 }}>
+                  {UI_TEXT.savePaymentTime}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 };

@@ -405,6 +405,7 @@ export type PaymentEntry = {
   transactionId?: string;
   receivedBy?: string;
   isAutoExcess?: boolean;
+  paymentTime?: number;
 };
 
 export type PackageApplicability = "adult" | "kids" | "member" | "guests";

@@ -49,6 +49,7 @@ import {
   formatTimestamp,
   isSlotMissedParcel,
   isMealSlotAbsent,
+  isSeasonDone,
 } from "../constants";
 import {
   MealChoice,
@@ -134,8 +135,12 @@ export function SubscriptionForm() {
   const { s } = useScaling();
   const { theme, themeType } = useAppTheme();
   const isAdmin = userRole === UserRole.ADMIN;
-  const canEdit = seasonEnabled;
+  const canEdit = isAdmin || seasonEnabled;
   const activeDays = getActiveDays(dayConfig);
+  const isSeasonCompleted = isSeasonDone(dayConfig) || !seasonEnabled;
+  const hasAnyCurrentMeal = activeDays.some(day =>
+    [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].some(m => isMealCurrent(day, m, dayConfig))
+  );
 
   const lockIdentity = Boolean(value.flat);
   const sortedActiveDays = activeDays;
@@ -552,7 +557,7 @@ export function SubscriptionForm() {
     return () => clearTimeout(timer);
   }, [selectedDay, s]);
 
-  // Payment State (supporting up to 3 payments)
+  // Payment State (supporting up to maxPayments payments)
   const [payments, setPayments] = useState<PaymentEntry[]>(() => {
     if (form.payments && form.payments.length > 0) {
       return form.payments.map((p) => ({
@@ -560,13 +565,15 @@ export function SubscriptionForm() {
         amount: (p.amount !== undefined && p.amount !== null && String(p.amount).trim() !== "")
           ? String(p.amount)
           : UI_TEXT.zero,
+        paymentTime: p.paymentTime ? Number(p.paymentTime) : undefined,
       }));
     }
     const rawAmt = form.amount !== undefined && form.amount !== null ? String(form.amount).trim() : "";
     const fallback = [{
       amount: rawAmt !== "" ? rawAmt : UI_TEXT.zero,
       mode: form.paymentMode || enabledMethods[0],
-      transactionId: form.transactionId
+      transactionId: form.transactionId,
+      paymentTime: (form.createdAt || form.timestamp) ? Number(form.createdAt || form.timestamp) : undefined,
     }];
     return fallback;
   });
@@ -666,6 +673,7 @@ export function SubscriptionForm() {
         amount: (p.amount !== undefined && p.amount !== null && String(p.amount).trim() !== "")
           ? String(p.amount)
           : UI_TEXT.zero,
+        paymentTime: p.paymentTime ? Number(p.paymentTime) : undefined,
       }));
     } else {
       const rawAmt = value?.amount !== undefined && value?.amount !== null ? String(value.amount).trim() : "";
@@ -673,6 +681,7 @@ export function SubscriptionForm() {
         amount: rawAmt !== "" ? rawAmt : UI_TEXT.zero,
         mode: value?.paymentMode || enabledMethods[0],
         transactionId: value?.transactionId,
+        paymentTime: (value?.createdAt || value?.timestamp) ? Number(value.createdAt || value.timestamp) : undefined,
       }];
     }
     const count = initialList.length;
@@ -1306,19 +1315,26 @@ export function SubscriptionForm() {
       return;
     }
 
-    // Sanitize payment amounts (fill empty/invalid amounts with "0")
+    const now = Date.now();
+
+    // Sanitize payment amounts (fill empty/invalid amounts with "0") and capture save timestamp for new payments
     const sanitizedPayments = payments.map((p) => {
       const amtStr = p.amount !== undefined && p.amount !== null ? String(p.amount).trim() : "";
       const validNum = parseFloat(amtStr);
+      // Retain previously captured or explicitly edited paymentTime, or capture current save time for new payment
+      const existingTime = p.paymentTime && !isNaN(Number(p.paymentTime)) && Number(p.paymentTime) > 0
+        ? Number(p.paymentTime)
+        : now;
+
       return {
         ...p,
         amount: !isNaN(validNum) ? String(validNum) : UI_TEXT.zero,
+        paymentTime: existingTime,
       };
     });
 
     const currentTotalAmount = sanitizedPayments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
 
-    const now = Date.now();
     let createdTs = Number(value?.createdAt) || Number(value?.timestamp) || now;
     let updatedTs = now;
     if (createdTs > updatedTs) createdTs = updatedTs;
@@ -1709,8 +1725,9 @@ export function SubscriptionForm() {
                 const isDone = isMealDone(selectedDay, slot, dayConfig);
                 const isCurrent = isMealCurrent(selectedDay, slot, dayConfig);
                 const isFuture = isMealInFuture(selectedDay, slot, dayConfig);
-                const isPast = !!currentDayId && !isCurrent && !isFuture;
-                const isLocked = isDone || (!lockIdentity && isPast);
+                const isPast = !isCurrent && !isFuture;
+                const forceLock = !isSeasonCompleted && (isDone || isPast);
+                const isLocked = forceLock || ((isDone || (!lockIdentity && isPast)) && !isAdmin);
                 const isSpecial = isSpecialMeal(selectedDay, slot, dayConfig);
 
                 const dayConf = (dayConfig || []).find((d) => d.id === selectedDay);
@@ -1836,8 +1853,9 @@ export function SubscriptionForm() {
                     const isDone = isMealDone(selectedDay, slot, dayConfig);
                     const isCurrent = isMealCurrent(selectedDay, slot, dayConfig);
                     const isFuture = isMealInFuture(selectedDay, slot, dayConfig);
-                    const isPast = !!currentDayId && !isCurrent && !isFuture;
-                    const isLocked = isDone || (!lockIdentity && isPast);
+                    const isPast = !isCurrent && !isFuture;
+                    const forceLock = !isSeasonCompleted && (isDone || isPast);
+                    const isLocked = forceLock || ((isDone || (!lockIdentity && isPast)) && !isAdmin);
                     const isSpecial = isSpecialMeal(selectedDay, slot, dayConfig);
 
                     const dayConf = (dayConfig || []).find((d) => d.id === selectedDay);
@@ -1920,8 +1938,11 @@ export function SubscriptionForm() {
 
                     const label = getMealLabel(slot);
                     const isDone = isMealDone(selectedDay, slot, dayConfig);
+                    const isCurrent = isMealCurrent(selectedDay, slot, dayConfig);
                     const isFuture = isMealInFuture(selectedDay, slot, dayConfig);
-                    const isDisabled = isDone || isFuture || isAbsent;
+                    const isPast = !isCurrent && !isFuture;
+                    const forceLock = !isSeasonCompleted && (isDone || isPast);
+                    const isDisabled = forceLock || ((isDone || isFuture || isAbsent) && !isAdmin);
 
                     return (
                       <Pressable
@@ -2059,8 +2080,11 @@ export function SubscriptionForm() {
 
                           const label = getMealLabel(slot);
                           const isDone = isMealDone(selectedDay, slot, dayConfig);
+                          const isCurrent = isMealCurrent(selectedDay, slot, dayConfig);
                           const isFuture = isMealInFuture(selectedDay, slot, dayConfig);
-                          const isDisabled = isDone || isFuture;
+                          const isPast = !isCurrent && !isFuture;
+                          const forceLock = !isSeasonCompleted && (isDone || isPast);
+                          const isDisabled = forceLock || ((isDone || isFuture) && !isAdmin);
 
                           return (
                             <Pressable

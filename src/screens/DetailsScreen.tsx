@@ -59,6 +59,7 @@ import {
   hasAmountDiscrepancy,
   calculatePassDiscrepancy,
   formatCurrencyAmount,
+  formatPaymentDateTime,
 } from "../utils/paymentUtils";
 
 export function DetailsScreen() {
@@ -81,8 +82,8 @@ export function DetailsScreen() {
   const { theme, themeType } = useAppTheme();
   const isAdmin = userRole === UserRole.ADMIN;
   const canQuickCheckout = isAdmin || nonAdminCheckoutEnabled !== false;
-  const canEdit = seasonEnabled && !isSeasonDone(dayConfig);
-  const canEditPass = canEdit && canQuickCheckout;
+  const canEdit = isAdmin || (seasonEnabled && !isSeasonDone(dayConfig));
+  const canEditPass = isAdmin || (canEdit && canQuickCheckout);
   const activeDays = getActiveDays(dayConfig);
 
   const [showQuickCheckoutModal, setShowQuickCheckoutModal] = React.useState(false);
@@ -554,26 +555,45 @@ export function DetailsScreen() {
             <View style={{ height: 1, backgroundColor: theme.cardColors[4].border, marginVertical: 16 }} />
 
               {subscription.payments && subscription.payments.length > 0 ? (
-              <View style={{ gap: 8 }}>
-                  {subscription.payments.map((p, idx) => (
-                    <View key={idx} style={[{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, idx > 0 && { marginTop: 12 }]}>
-                        <View style={{ flex: 1 }}>
-                          <Text style={{ fontSize: 13, fontWeight: '800', color: theme.colors.textPrimary }}>
-                            {getPaymentModeLabel(p.mode || PaymentMode.CASH)}
-                          </Text>
-                          {p.mode === PaymentMode.CASH && p.receivedBy ? (
-                            <Text style={{ fontSize: 11, color: theme.colors.primary, fontWeight: '700', marginTop: 2 }}>
-                              {UI_TEXT.receivedByLabel}{UI_TEXT.colon}{UI_TEXT.space}{p.receivedBy}
+              <View style={{ gap: 12 }}>
+                  {subscription.payments.map((p, idx) => {
+                    const timeToDisplay = p.paymentTime || subscription.updatedAt || subscription.createdAt;
+                    const formattedTime = formatPaymentDateTime(timeToDisplay);
+
+                    return (
+                      <View key={idx} style={[{ borderTopWidth: idx > 0 ? 1 : 0, borderTopColor: theme.cardColors[4].border, paddingTop: idx > 0 ? 10 : 0 }]}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <View style={{ flex: 1 }}>
+                            <Text style={{ fontSize: 13, fontWeight: '800', color: theme.colors.textPrimary }}>
+                              {getPaymentModeLabel(p.mode || PaymentMode.CASH)}
                             </Text>
-                          ) : (p.mode !== PaymentMode.CASH && p.transactionId) ? (
-                            <Text style={{ fontSize: 11, color: theme.colors.primary, fontWeight: '700', marginTop: 2 }}>
-                              {UI_TEXT.transactionIdLabel}{UI_TEXT.colon}{UI_TEXT.space}{p.transactionId}
-                            </Text>
-                          ) : null}
+                            {p.mode === PaymentMode.CASH && p.receivedBy ? (
+                              <Text style={{ fontSize: 11, color: theme.colors.primary, fontWeight: '700', marginTop: 2 }}>
+                                {UI_TEXT.receivedByLabel}{UI_TEXT.colon}{UI_TEXT.space}{p.receivedBy}
+                              </Text>
+                            ) : (p.mode !== PaymentMode.CASH && p.transactionId) ? (
+                              <Text style={{ fontSize: 11, color: theme.colors.primary, fontWeight: '700', marginTop: 2 }}>
+                                {UI_TEXT.transactionIdLabel}{UI_TEXT.colon}{UI_TEXT.space}{p.transactionId}
+                              </Text>
+                            ) : null}
+                          </View>
+                          <Text style={{ fontSize: 14, fontWeight: '900', color: theme.cardColors[4].accent }}>{UI_TEXT.rs}{UI_TEXT.space}{p.amount || UI_TEXT.zero}</Text>
                         </View>
-                        <Text style={{ fontSize: 14, fontWeight: '900', color: theme.cardColors[4].accent }}>{UI_TEXT.rs}{UI_TEXT.space}{p.amount || UI_TEXT.zero}</Text>
-                    </View>
-                  ))}
+
+                        {formattedTime ? (
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                            <Ionicons name="time-outline" size={12} color={theme.colors.textMuted} />
+                            <Text style={{ fontSize: 11, fontWeight: '600', color: theme.colors.textMuted }}>
+                              {UI_TEXT.paymentTimeLabel}{UI_TEXT.colon}{UI_TEXT.space}
+                              <Text style={{ color: theme.colors.textSecondary, fontWeight: '700' }}>
+                                {formattedTime}
+                              </Text>
+                            </Text>
+                          </View>
+                        ) : null}
+                      </View>
+                    );
+                  })}
               </View>
             ) : null}
 

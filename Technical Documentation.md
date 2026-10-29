@@ -448,6 +448,7 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
 - **`src/features/activity/`**: Houses decoupled audit log components (`ActivityLogItem`, `ActivityLogFilterBar`).
 - **`src/features/checkout/`**: Houses decoupled quick checkout components (`QuickCheckoutHeader`, `QuickCheckoutItemCard`).
 - **`src/features/subscriptions/`**: Houses decoupled pass registration and payment tracking sections (`SubscriptionBasicInfoSection`, `SubscriptionPaymentSection`).
+- **Payment Time Tracking & Audit Architecture**: Supports capturing exact payment timestamps (`paymentTime`) per payment entry. Automatically records save timestamps (`Date.now()`) for new split payments while retaining previously saved timestamps. Provides an interactive Date/Time Editor Modal in Edit Pass and detailed unclubbed payment event exports (`pass_payments_report.artifact.md`).
 
 ---
 

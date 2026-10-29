@@ -428,6 +428,12 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
 - **Inner Action Touchable Optimization**: Removed redundant `accessibilityRole="button"` attributes from inner action touchables (such as delete, share, edit buttons in Notes and WhatsApp, Call, View Pass, and block/quick checkout badges in Subscription List) hosted inside clickable card containers.
 - **Accessibility & Web Best Practice**: Retained `accessible={true}` and `accessibilityLabel` on all interactive touchables so screen readers receive proper accessibility announcements while DOM elements render cleanly as interactive `<div>` containers instead of invalid nested buttons.
 
+### AP. Payment Time Tracking Architecture & Unclubbed Audit Reports (`PaymentEntry`, `SubscriptionPaymentSection.tsx`, `DetailsScreen.tsx`, `pass_payments_report.artifact.md`)
+- **Granular Payment Entry Timestamps (`PaymentEntry`)**: The `PaymentEntry` domain model supports `paymentTime?: number`, capturing exact UNIX timestamp (ms) for each split payment entry.
+- **Auto-Capture & Edit Preservation**: When adding or editing a pass, newly entered payment entries automatically capture the save timestamp (`Date.now()`) as their `paymentTime`. Previously saved payment entries retain their captured timestamps unless explicitly edited.
+- **Interactive Date/Time Editor Modal**: In Edit Pass (`SubscriptionPaymentSection.tsx`), administrators can click **"Edit Date/Time"** on any payment entry to modify its date and time using custom inputs (`YYYY-MM-DD`, `HH:MM`) or the **"Set to Current Time"** shortcut.
+- **View Pass & Unclubbed Audit Integration (`DetailsScreen.tsx`)**: View Pass displays payment date and time underneath each payment entry. Full log data exports provide unclubbed, incremental payment audit reports (`pass_payments_report.artifact.md`) capturing every payment transaction timestamp without data loss.
+
 ## 6. Quality Assurance & UI Catalog
 
 ### Jest Test Boundary

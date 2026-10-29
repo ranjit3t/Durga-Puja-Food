@@ -52,6 +52,30 @@ export interface ApplicablePackageEvaluation {
 }
 
 /**
+ * Formats a payment timestamp (milliseconds) into a human readable Date & Time string.
+ * Example: "Oct 4, 2026, 10:15 AM"
+ */
+export function formatPaymentDateTime(ts?: number | string | null): string {
+  if (!ts) return "";
+  const numTs = typeof ts === "string" ? Number(ts) : ts;
+  if (!numTs || isNaN(numTs) || numTs <= 0) return "";
+  const date = new Date(numTs);
+  if (isNaN(date.getTime())) return "";
+
+  try {
+    return date.toLocaleString([], {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return date.toISOString().replace("T", " ").substring(0, 16);
+  }
+}
+
+/**
  * Resolves a price value strictly per headcount category:
  * - Kids strictly resolve from kidVal; if kidVal is omitted/invalid, price is 0 (no fallback to adult).
  * - Adults strictly resolve from adultVal, falling back to day config default (confVal).
