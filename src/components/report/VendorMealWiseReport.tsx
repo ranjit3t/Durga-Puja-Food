@@ -47,6 +47,7 @@ export function VendorMealWiseReport({
   foodPackages = [],
   vendorKidsMealChargingEnabled = true,
   freeMealEnabled = true,
+  isCapturing = false,
 }: {
   activeDays: string[];
   foodMenu: FoodMenu;
@@ -57,6 +58,7 @@ export function VendorMealWiseReport({
   foodPackages?: FoodPackage[] | Record<string, FoodPackage>;
   vendorKidsMealChargingEnabled?: boolean;
   freeMealEnabled?: boolean;
+  isCapturing?: boolean;
 }) {
   const styles = useStyles();
   const { theme } = useAppTheme();
@@ -588,31 +590,6 @@ export function VendorMealWiseReport({
               {UI_TEXT.vendorPriceSeasonSummary}
             </Text>
           </View>
-          <Pressable
-            onPress={handleExportCsv}
-            accessible={true}
-            accessibilityRole="button"
-            accessibilityLabel={UI_TEXT.exportVendorCsv}
-            style={({ pressed }) => [
-              {
-                backgroundColor: theme.colors.surface + "33",
-                paddingHorizontal: 12,
-                paddingVertical: 8,
-                borderRadius: 8,
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 6,
-                borderWidth: 1,
-                borderColor: theme.colors.white + "60",
-              },
-              pressed && { opacity: 0.8 }
-            ]}
-          >
-            <Ionicons name="download-outline" size={16} color={theme.colors.white} />
-            <Text style={{ color: theme.colors.white, fontWeight: "800", fontSize: 12 }}>
-              {UI_TEXT.exportVendorCsv}
-            </Text>
-          </Pressable>
         </View>
 
         <View style={{ gap: 12, borderTopWidth: 1, borderTopColor: theme.colors.white + "40", paddingTop: 12 }}>
@@ -1045,6 +1022,35 @@ export function VendorMealWiseReport({
           </View>
         );
       })}
+      {/* Export CSV Button at Extreme Bottom */}
+      {!isCapturing && (
+        <Pressable
+          onPress={handleExportCsv}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel={UI_TEXT.exportVendorCsv}
+          accessibilityHint="Exports vendor price and cost breakup report in CSV format"
+          style={({ pressed }) => [
+            {
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              backgroundColor: theme.colors.primary,
+              paddingVertical: 14,
+              paddingHorizontal: 20,
+              borderRadius: 12,
+              marginTop: 16,
+            },
+            pressed && { opacity: 0.8 },
+          ]}
+        >
+          <Ionicons name="download-outline" size={18} color={theme.colors.white} />
+          <Text style={{ color: theme.colors.white, fontWeight: "900", fontSize: 14 }}>
+            {UI_TEXT.exportVendorCsv}
+          </Text>
+        </Pressable>
+      )}
     </View>
   );
 }

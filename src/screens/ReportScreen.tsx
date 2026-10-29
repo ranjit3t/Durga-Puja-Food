@@ -550,6 +550,7 @@ export function ReportScreen() {
               foodPackages={foodPackages}
               vendorKidsMealChargingEnabled={vendorKidsMealChargingEnabled}
               freeMealEnabled={!!freeMealEnabled}
+              isCapturing={!!isCapturing}
             />
           )}
 
