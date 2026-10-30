@@ -255,7 +255,7 @@ export function normalizeRecord(
 
   const defaultPaymentTime = Number(value.createdAt) || Number(value.timestamp) || Date.now();
 
-  if (payments.length === 0 && storedAmount && storedAmount !== "0") {
+  if (payments.length === 0 && storedAmount && storedAmount !== "0" && parseFloat(String(storedAmount)) > 0) {
     payments = [
       {
         amount: String(storedAmount),
@@ -265,14 +265,17 @@ export function normalizeRecord(
       },
     ];
   } else {
-    payments = payments.map((p: any) => ({
-      ...p,
-      amount: p.amount !== undefined ? String(p.amount) : "0",
-      mode: p.mode || paymentMode,
-      paymentTime: p.paymentTime && !isNaN(Number(p.paymentTime)) && Number(p.paymentTime) > 0
-        ? Number(p.paymentTime)
-        : defaultPaymentTime,
-    }));
+    payments = payments.map((p: any) => {
+      const amtNum = parseFloat(String(p.amount ?? "0"));
+      return {
+        ...p,
+        amount: p.amount !== undefined ? String(p.amount) : "0",
+        mode: p.mode || paymentMode,
+        paymentTime: amtNum > 0 && p.paymentTime && !isNaN(Number(p.paymentTime)) && Number(p.paymentTime) > 0
+          ? Number(p.paymentTime)
+          : undefined,
+      };
+    });
   }
 
   // 3. Legacy Day/Type Detection

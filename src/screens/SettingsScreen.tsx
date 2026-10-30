@@ -1347,7 +1347,7 @@ export function SettingsScreen() {
                <Text style={styles.selectorLabel}>{UI_TEXT.vendorExpectedCostLabel}</Text>
                <View style={[styles.input, { backgroundColor: theme.colors.surfaceDark, justifyContent: 'center' }]}>
                  <Text style={{ fontSize: 15, fontWeight: '900', color: theme.colors.textPrimary }}>
-                   {UI_TEXT.rs} {formatCurrencyAmount(expectedTotal)}
+                   {formatCurrencyAmount(expectedTotal)}
                  </Text>
                </View>
              </View>
@@ -1357,7 +1357,7 @@ export function SettingsScreen() {
                <Text style={styles.selectorLabel}>{UI_TEXT.vendorActualCostLabel}</Text>
                <View style={[styles.input, { backgroundColor: theme.colors.surfaceDark, justifyContent: 'center' }]}>
                  <Text style={{ fontSize: 15, fontWeight: '900', color: theme.colors.primary }}>
-                   {UI_TEXT.rs} {formatCurrencyAmount(actualTotal)}
+                   {formatCurrencyAmount(actualTotal)}
                  </Text>
                </View>
              </View>
@@ -1378,7 +1378,7 @@ export function SettingsScreen() {
                  accessible={true}
                  accessibilityLabel={UI_TEXT.vendorSettledCostLabel}
                  accessibilityHint={UI_TEXT.vendorSettledCostPlaceholder}
-                 style={[styles.input, !areAllMealsDone && { backgroundColor: theme.colors.surfaceDark, opacity: 0.7 }]}
+                 style={[styles.input, { fontWeight: "900", fontSize: 16 }, !areAllMealsDone && { backgroundColor: theme.colors.surfaceDark, opacity: 0.7 }]}
                  value={localVendorSettledCost}
                  onChangeText={(txt) => {
                    const filtered = txt.replace(/[^0-9.]/g, "");

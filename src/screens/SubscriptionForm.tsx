@@ -1317,14 +1317,15 @@ export function SubscriptionForm() {
 
     const now = Date.now();
 
-    // Sanitize payment amounts (fill empty/invalid amounts with "0") and capture save timestamp for new payments
+    // Sanitize payment amounts (fill empty/invalid amounts with "0") and capture save timestamp for new non-zero payments
     const sanitizedPayments = payments.map((p) => {
       const amtStr = p.amount !== undefined && p.amount !== null ? String(p.amount).trim() : "";
       const validNum = parseFloat(amtStr);
-      // Retain previously captured or explicitly edited paymentTime, or capture current save time for new payment
-      const existingTime = p.paymentTime && !isNaN(Number(p.paymentTime)) && Number(p.paymentTime) > 0
-        ? Number(p.paymentTime)
-        : now;
+      const isZero = isNaN(validNum) || validNum <= 0;
+
+      const existingTime = !isZero
+        ? (p.paymentTime && !isNaN(Number(p.paymentTime)) && Number(p.paymentTime) > 0 ? Number(p.paymentTime) : now)
+        : undefined;
 
       return {
         ...p,

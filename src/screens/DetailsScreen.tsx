@@ -426,7 +426,7 @@ export function DetailsScreen() {
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 0, alignSelf: "flex-start" }}>
               {isAdmin && paymentConfig.enabled && (
                 <Text style={[styles.previewAmount, { color: theme.colors.white, fontSize: 22 }]}>
-                  {UI_TEXT.rs}{UI_TEXT.space}{subscription.amount || UI_TEXT.zero}
+                  {subscription.amount || UI_TEXT.zero}
                 </Text>
               )}
               {canQuickCheckout && hasUnservedFoodForCurrentMeal && (
@@ -484,7 +484,7 @@ export function DetailsScreen() {
             ) : (
                `${subscription.peopleCount + (subscription.kidsCount || 0) + (subscription.guestsCount || 0)}${subscription.peopleCount + (subscription.kidsCount || 0) + (subscription.guestsCount || 0) === 1 ? UI_TEXT.personSuffix : UI_TEXT.personsSuffix}`
             )}
-            {isAdmin && paymentConfig.enabled && `${UI_TEXT.pipe}${UI_TEXT.rs}${UI_TEXT.space}${subscription.amount || UI_TEXT.zero}`}
+            {isAdmin && paymentConfig.enabled && `${UI_TEXT.pipe}$${UI_TEXT.space}${subscription.amount || UI_TEXT.zero}`}
             {isAdmin && mobileEnabled && subscription.mobile && `${UI_TEXT.pipe}${subscription.mobile}`}
           </Text>
 
@@ -549,7 +549,7 @@ export function DetailsScreen() {
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
                 <Text style={[styles.sectionTitle, { marginBottom: 0, color: theme.cardColors[4].accent }]}>{UI_TEXT.subscriptionSummary}</Text>
                 <View style={[styles.pill, { backgroundColor: theme.cardColors[4].accentLight }]}>
-                    <Text style={[styles.pillText, { color: theme.cardColors[4].accent }]}>{UI_TEXT.rs} {subscription.amount || UI_TEXT.zero}</Text>
+                    <Text style={[styles.pillText, { color: theme.cardColors[4].accent }]}>{subscription.amount || UI_TEXT.zero}</Text>
                 </View>
             </View>
             <View style={{ height: 1, backgroundColor: theme.cardColors[4].border, marginVertical: 16 }} />
@@ -577,10 +577,10 @@ export function DetailsScreen() {
                               </Text>
                             ) : null}
                           </View>
-                          <Text style={{ fontSize: 14, fontWeight: '900', color: theme.cardColors[4].accent }}>{UI_TEXT.rs}{UI_TEXT.space}{p.amount || UI_TEXT.zero}</Text>
+                          <Text style={{ fontSize: 14, fontWeight: '900', color: theme.cardColors[4].accent }}>{p.amount || UI_TEXT.zero}</Text>
                         </View>
 
-                        {formattedTime ? (
+                        {parseFloat(p.amount || "0") > 0 && formattedTime ? (
                           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
                             <Ionicons name="time-outline" size={12} color={theme.colors.textMuted} />
                             <Text style={{ fontSize: 11, fontWeight: '600', color: theme.colors.textMuted }}>

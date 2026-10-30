@@ -107,7 +107,7 @@ export function PackagePassesReport({
                 {UI_TEXT.expectedCostWithoutPackage}
               </Text>
               <Text style={{ color: theme.colors.white, fontSize: 14, fontWeight: "800", flexShrink: 0 }} numberOfLines={1}>
-                {UI_TEXT.rs} {formatCurrencyAmount(summary.expectedCostWithoutPackage)}
+                {formatCurrencyAmount(summary.expectedCostWithoutPackage)}
               </Text>
             </View>
 
@@ -116,7 +116,7 @@ export function PackagePassesReport({
                 {UI_TEXT.costAfterPackage}
               </Text>
               <Text style={{ color: theme.colors.white, fontSize: 14, fontWeight: "800", flexShrink: 0 }} numberOfLines={1}>
-                {UI_TEXT.rs} {formatCurrencyAmount(summary.costAfterPackage)}
+                {formatCurrencyAmount(summary.costAfterPackage)}
               </Text>
             </View>
 
@@ -125,7 +125,7 @@ export function PackagePassesReport({
                 {UI_TEXT.totalSavings}
               </Text>
               <Text style={{ color: theme.colors.white, fontWeight: "900", fontSize: 20 }}>
-                {UI_TEXT.rs} {formatCurrencyAmount(summary.totalSavings)}
+                {formatCurrencyAmount(summary.totalSavings)}
               </Text>
             </View>
           </View>

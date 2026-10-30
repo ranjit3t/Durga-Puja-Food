@@ -302,47 +302,49 @@ export const SubscriptionPaymentSection: React.FC<SubscriptionPaymentSectionProp
             )}
           </View>
 
-          {/* Payment Date & Time Section */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, backgroundColor: theme.colors.surface, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: theme.colors.border }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
-              <Ionicons name="time-outline" size={15} color={theme.colors.primary} />
-              <View>
-                <Text style={{ fontSize: 10, fontWeight: '800', color: theme.colors.textMuted, textTransform: 'uppercase' }}>
-                  {UI_TEXT.paymentTimeLabel}
-                </Text>
-                <Text style={{ fontSize: 12, fontWeight: '800', color: p.paymentTime ? theme.colors.textPrimary : theme.colors.primary }}>
-                  {p.paymentTime ? formatPaymentDateTime(p.paymentTime) : UI_TEXT.paymentTimeAutoCaptured}
-                </Text>
+          {/* Payment Date & Time Section (Shown only if amount > 0) */}
+          {parseFloat(p.amount || "0") > 0 && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, backgroundColor: theme.colors.surface, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: theme.colors.border }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+                <Ionicons name="time-outline" size={15} color={theme.colors.primary} />
+                <View>
+                  <Text style={{ fontSize: 10, fontWeight: '800', color: theme.colors.textMuted, textTransform: 'uppercase' }}>
+                    {UI_TEXT.paymentTimeLabel}
+                  </Text>
+                  <Text style={{ fontSize: 12, fontWeight: '800', color: p.paymentTime ? theme.colors.textPrimary : theme.colors.primary }}>
+                    {p.paymentTime ? formatPaymentDateTime(p.paymentTime) : UI_TEXT.paymentTimeAutoCaptured}
+                  </Text>
+                </View>
               </View>
-            </View>
 
-            {isAdmin && canEdit && (
-              <Pressable
-                onPress={() => openTimeModal(idx, p.paymentTime)}
-                accessible={true}
-                accessibilityRole="button"
-                accessibilityLabel={`${UI_TEXT.editPaymentTime} ${UI_TEXT.paymentNumber}${idx + 1}`}
-                accessibilityHint="Click to modify payment date and time"
-                style={({ pressed }) => [
-                  {
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 4,
-                    backgroundColor: theme.colors.primary + '18',
-                    paddingHorizontal: 8,
-                    paddingVertical: 5,
-                    borderRadius: 6,
-                  },
-                  pressed && { opacity: 0.7 },
-                ]}
-              >
-                <Ionicons name="calendar-outline" size={13} color={theme.colors.primary} />
-                <Text style={{ fontSize: 11, fontWeight: '800', color: theme.colors.primary }}>
-                  {UI_TEXT.editPaymentTime}
-                </Text>
-              </Pressable>
-            )}
-          </View>
+              {isAdmin && canEdit && (
+                <Pressable
+                  onPress={() => openTimeModal(idx, p.paymentTime)}
+                  accessible={true}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${UI_TEXT.editPaymentTime} ${UI_TEXT.paymentNumber}${idx + 1}`}
+                  accessibilityHint="Click to modify payment date and time"
+                  style={({ pressed }) => [
+                    {
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 4,
+                      backgroundColor: theme.colors.primary + '18',
+                      paddingHorizontal: 8,
+                      paddingVertical: 5,
+                      borderRadius: 6,
+                    },
+                    pressed && { opacity: 0.7 },
+                  ]}
+                >
+                  <Ionicons name="calendar-outline" size={13} color={theme.colors.primary} />
+                  <Text style={{ fontSize: 11, fontWeight: '800', color: theme.colors.primary }}>
+                    {UI_TEXT.editPaymentTime}
+                  </Text>
+                </Pressable>
+              )}
+            </View>
+          )}
 
           <View style={styles.row}>
             <View style={styles.fieldHalf}>

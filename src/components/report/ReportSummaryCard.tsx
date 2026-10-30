@@ -217,7 +217,7 @@ export function ReportSummaryCard({ title, iconName, activeFilterChips, summary 
             {UI_TEXT.expectedAmount}
           </Text>
           <Text style={{ color: theme.colors.white, fontSize: 14, fontWeight: "800", flexShrink: 0 }} numberOfLines={1}>
-            {UI_TEXT.rs} {formatCurrencyAmount(summary.menuPrice)}
+            {formatCurrencyAmount(summary.menuPrice)}
           </Text>
         </View>
 
@@ -227,7 +227,7 @@ export function ReportSummaryCard({ title, iconName, activeFilterChips, summary 
               {UI_TEXT.parcelCharges}
             </Text>
             <Text style={{ color: theme.colors.white, fontSize: 14, fontWeight: "800", flexShrink: 0 }} numberOfLines={1}>
-              + {UI_TEXT.rs} {formatCurrencyAmount(summary.parcelPrice ?? 0)}
+              + {formatCurrencyAmount(summary.parcelPrice ?? 0)}
             </Text>
           </View>
         )}
@@ -238,7 +238,7 @@ export function ReportSummaryCard({ title, iconName, activeFilterChips, summary 
               {UI_TEXT.packageDiscountLabel}
             </Text>
             <Text style={{ color: theme.colors.white, fontSize: 14, fontWeight: "800", flexShrink: 0 }} numberOfLines={1}>
-              - {UI_TEXT.rs} {formatCurrencyAmount(summary.packageDiscount)}
+              - {formatCurrencyAmount(summary.packageDiscount)}
             </Text>
           </View>
         )}
@@ -249,7 +249,7 @@ export function ReportSummaryCard({ title, iconName, activeFilterChips, summary 
               {UI_TEXT.totalDeficiency}
             </Text>
             <Text style={{ color: theme.colors.white, fontSize: 14, fontWeight: "800", flexShrink: 0 }} numberOfLines={1}>
-              - {UI_TEXT.rs} {formatCurrencyAmount(summary.totalDeficiency ?? 0)}
+              - {formatCurrencyAmount(summary.totalDeficiency ?? 0)}
             </Text>
           </View>
         )}
@@ -260,7 +260,7 @@ export function ReportSummaryCard({ title, iconName, activeFilterChips, summary 
               {UI_TEXT.totalExcess}
             </Text>
             <Text style={{ color: theme.colors.white, fontSize: 14, fontWeight: "800", flexShrink: 0 }} numberOfLines={1}>
-              + {UI_TEXT.rs} {formatCurrencyAmount(summary.totalExcess ?? 0)}
+              + {formatCurrencyAmount(summary.totalExcess ?? 0)}
             </Text>
           </View>
         )}
@@ -271,7 +271,7 @@ export function ReportSummaryCard({ title, iconName, activeFilterChips, summary 
               {UI_TEXT.excessDeficientLabel}
             </Text>
             <Text style={{ color: theme.colors.white, fontSize: 14, fontWeight: "800", flexShrink: 0 }} numberOfLines={1}>
-              {summary.excessDeficient > 0 ? "+" : "-"} {UI_TEXT.rs}{" "}
+              {summary.excessDeficient > 0 ? "+" : "-"} {" "}
               {formatCurrencyAmount(Math.abs(summary.excessDeficient))}
             </Text>
           </View>
@@ -282,7 +282,7 @@ export function ReportSummaryCard({ title, iconName, activeFilterChips, summary 
             {UI_TEXT.paidAmount}
           </Text>
           <Text style={{ color: theme.colors.white, fontWeight: "900", fontSize: 20 }}>
-            {UI_TEXT.rs} {formatCurrencyAmount(summary.netPayment)}
+            {formatCurrencyAmount(summary.netPayment)}
           </Text>
         </View>
 
@@ -301,7 +301,7 @@ export function ReportSummaryCard({ title, iconName, activeFilterChips, summary 
                       • {getPaymentModeLabel(mode as PaymentMode)}
                     </Text>
                     <Text style={{ color: theme.colors.white, fontSize: 13, fontWeight: "800", flexShrink: 0 }}>
-                      {UI_TEXT.rs} {formatCurrencyAmount(amt)}
+                      {formatCurrencyAmount(amt)}
                     </Text>
                   </View>
                 ))}

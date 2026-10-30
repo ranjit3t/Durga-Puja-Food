@@ -22,7 +22,7 @@ export function HomeScreen() {
   const { theme, themeType } = useAppTheme();
   const { userRole, handleLogout, versionAlertShown, markVersionAlertShown } = useAuth();
   const {
-    subscriptions, dayConfig, seasonName, seasonEnabled, freeMealEnabled, totalPeople, firebaseError, paymentConfig, collections, kidsEnabled, guestsEnabled, foodMenu, remoteAppVersion, androidAppLocation, iosAppLocation, loading
+    subscriptions, dayConfig, seasonName, seasonEnabled, freeMealEnabled, totalPeople, firebaseError, paymentConfig, collections, kidsEnabled, guestsEnabled, foodMenu, remoteAppVersion, androidAppLocation, iosAppLocation, loading, vendorSettledCost
   } = useCoreDatabase();
   const { navigate, startNew, setIsQuickCheckout, setIsParcelCheckout, setIsQuickFreeMealMode } = useAppNavigation();
   const { showAlert, showGlobalError } = useUI();
@@ -562,7 +562,14 @@ export function HomeScreen() {
               {userRole === UserRole.ADMIN && paymentConfig?.enabled && (
                 <View style={{ flexDirection: "row", alignItems: "center", gap: s(8), flexWrap: 'nowrap' }}>
                   <Text style={[styles.summaryLabel, { opacity: 0.8, fontSize: labelFontSize }]}>{UI_TEXT.totalCollection}{UI_TEXT.colon}</Text>
-                  <Text style={[styles.summaryNumber, { fontSize: secondaryFontSize, marginTop: 0, lineHeight: secondaryFontSize + 2 }]}>{UI_TEXT.rs}{UI_TEXT.space}{collections.total.toLocaleString()}</Text>
+                  <Text style={[styles.summaryNumber, { fontSize: secondaryFontSize, marginTop: 0, lineHeight: secondaryFontSize + 2 }]}>{collections.total.toLocaleString()}</Text>
+                </View>
+              )}
+
+              {userRole === UserRole.ADMIN && vendorSettledCost !== undefined && vendorSettledCost !== null && String(vendorSettledCost).trim() !== "" && !isNaN(parseFloat(String(vendorSettledCost))) && (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: s(8), flexWrap: 'nowrap' }}>
+                  <Text style={[styles.summaryLabel, { opacity: 0.8, fontSize: labelFontSize }]}>{UI_TEXT.totalVendorPayment}{UI_TEXT.colon}</Text>
+                  <Text style={[styles.summaryNumber, { fontSize: secondaryFontSize, marginTop: 0, lineHeight: secondaryFontSize + 2 }]}>{parseFloat(String(vendorSettledCost)).toLocaleString()}</Text>
                 </View>
               )}
             </View>

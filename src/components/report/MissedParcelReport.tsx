@@ -101,7 +101,7 @@ export function MissedParcelReport({
                     • {UI_TEXT.savedParcelCostLabel}:
                   </Text>
                   <Text style={{ color: theme.colors.white, fontSize: 15, fontWeight: "900" }}>
-                    {UI_TEXT.rs} {totalSavedMoney.toFixed(0)}
+                    {totalSavedMoney.toFixed(0)}
                   </Text>
                 </View>
               )}

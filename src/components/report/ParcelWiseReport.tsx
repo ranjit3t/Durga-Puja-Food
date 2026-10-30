@@ -282,7 +282,7 @@ export function ParcelWiseReport({
                         • {UI_TEXT.savedParcelCostLabel}:
                       </Text>
                       <Text style={{ color: theme.colors.white, fontSize: 14, fontWeight: "900" }}>
-                        {UI_TEXT.rs} {missedParcelSummary.savedMoney.toFixed(0)}
+                        {missedParcelSummary.savedMoney.toFixed(0)}
                       </Text>
                     </View>
                   )}

@@ -88,7 +88,7 @@ export function DayWisePaymentReport({
                 ]}
               >
                 <Text style={[styles.pillText, { color: colorScheme.accent, fontSize: 13, fontWeight: "900" }]}>
-                  {UI_TEXT.rs} {formatCurrencyAmount(dayDetail.netPayment)}
+                  {formatCurrencyAmount(dayDetail.netPayment)}
                 </Text>
               </View>
             </View>
@@ -192,7 +192,7 @@ export function DayWisePaymentReport({
                     • {UI_TEXT.menuPriceLabel}
                   </Text>
                   <Text style={{ fontSize: 12, color: theme.colors.textPrimary, fontWeight: "700" }}>
-                    {UI_TEXT.rs} {formatCurrencyAmount(dayDetail.menuPrice)}
+                    {formatCurrencyAmount(dayDetail.menuPrice)}
                   </Text>
                 </View>
 
@@ -202,7 +202,7 @@ export function DayWisePaymentReport({
                       • {UI_TEXT.parcelCharges}
                     </Text>
                     <Text style={{ fontSize: 12, color: theme.colors.textPrimary, fontWeight: "700" }}>
-                      + {UI_TEXT.rs} {formatCurrencyAmount(dayDetail.parcelPrice)}
+                      + {formatCurrencyAmount(dayDetail.parcelPrice)}
                     </Text>
                   </View>
                 )}
@@ -213,7 +213,7 @@ export function DayWisePaymentReport({
                       • {UI_TEXT.packageDiscountLabel}
                     </Text>
                     <Text style={{ fontSize: 12, color: theme.colors.error, fontWeight: "700" }}>
-                      - {UI_TEXT.rs} {formatCurrencyAmount(dayDetail.packageDiscount)}
+                      - {formatCurrencyAmount(dayDetail.packageDiscount)}
                     </Text>
                   </View>
                 )}
@@ -230,7 +230,7 @@ export function DayWisePaymentReport({
                         fontWeight: "700",
                       }}
                     >
-                      {dayDetail.excessDeficient > 0 ? "+" : "-"} {UI_TEXT.rs}{" "}
+                      {dayDetail.excessDeficient > 0 ? "+" : "-"} {" "}
                       {formatCurrencyAmount(Math.abs(dayDetail.excessDeficient))}
                     </Text>
                   </View>
@@ -251,7 +251,7 @@ export function DayWisePaymentReport({
                     {UI_TEXT.netPaymentLabel}
                   </Text>
                   <Text style={{ fontSize: 15, color: colorScheme.accent, fontWeight: "900" }}>
-                    {UI_TEXT.rs} {formatCurrencyAmount(dayDetail.netPayment)}
+                    {formatCurrencyAmount(dayDetail.netPayment)}
                   </Text>
                 </View>
               </View>

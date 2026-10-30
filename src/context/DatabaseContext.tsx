@@ -1665,15 +1665,15 @@ export function useDatabase(): DatabaseContextType {
   const catererFinanceCtx = useContext(CatererFinanceContext);
   const logsCtx = useContext(ActivityLogsContext);
 
-  if (!core || !notesCtx || !foodPackagesCtx || !catererFinanceCtx || !logsCtx) {
+  if (!core) {
     throw new Error("useDatabase must be used within DatabaseProvider");
   }
 
   return useMemo(() => ({
     ...core,
-    ...notesCtx,
-    ...foodPackagesCtx,
-    ...catererFinanceCtx,
-    ...logsCtx,
+    ...(notesCtx || {}),
+    ...(foodPackagesCtx || {}),
+    ...(catererFinanceCtx || {}),
+    ...(logsCtx || {}),
   }), [core, notesCtx, foodPackagesCtx, catererFinanceCtx, logsCtx]);
 }

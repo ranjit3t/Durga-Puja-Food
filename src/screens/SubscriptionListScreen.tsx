@@ -589,7 +589,7 @@ const SubscriptionCard = React.memo(({
               <Text style={{ fontWeight: "700", color: theme.colors.textPrimary, fontSize: s(14) }}>{getPaymentModeLabel(item.payments && item.payments.length > 0 ? item.payments[0].mode : (item.paymentMode as PaymentMode || PaymentMode.CASH))}</Text>
             </View>
             <Text style={{ fontSize: s(18), fontWeight: "900", color: colorScheme.accent }}>
-              {UI_TEXT.rs}{UI_TEXT.space}{item.amount || (item.payments && item.payments.reduce((sum: number, p: any) => sum + (parseFloat(p.amount) || 0), 0)) || UI_TEXT.zero}
+              {item.amount || (item.payments && item.payments.reduce((sum: number, p: any) => sum + (parseFloat(p.amount) || 0), 0)) || UI_TEXT.zero}
             </Text>
           </View>
         </>
@@ -1833,11 +1833,11 @@ export function SubscriptionListScreen() {
             } else if (p.transactionId) {
               extra = ` (${UI_TEXT.txnIdPrefix}: ${p.transactionId})`;
             }
-            return `${UI_TEXT.paymentIndexPrefix} ${i + 1}: ${UI_TEXT.rs} ${p.amount || 0} ${UI_TEXT.viaLabel} ${modeLabel}${extra}`;
+            return `${UI_TEXT.paymentIndexPrefix} ${i + 1}: $${p.amount || 0} ${UI_TEXT.viaLabel} ${modeLabel}${extra}`;
           })
           .join(" | ");
       } else {
-        paymentDetailsStr = `${UI_TEXT.rs} ${totalAmt} ${UI_TEXT.viaLabel} ${paymentModeStr}${transactionIdStr ? ` (${transactionIdStr})` : ""}`;
+        paymentDetailsStr = `$${totalAmt} ${UI_TEXT.viaLabel} ${paymentModeStr}${transactionIdStr ? ` (${transactionIdStr})` : ""}`;
       }
 
       const row: string[] = [

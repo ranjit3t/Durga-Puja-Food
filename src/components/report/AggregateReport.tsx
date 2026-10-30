@@ -905,7 +905,7 @@ export function AggregateReport({
                       </View>
                     )}
                     <Text style={{ color: colorScheme.accent, fontSize: 18, fontWeight: "900" }}>
-                      {UI_TEXT.rs} {item.amount}
+                      {item.amount}
                     </Text>
                     <Text style={{ fontSize: 12, fontWeight: "800", color: theme.colors.primary, marginTop: 4 }}>
                       {item.servedPortions} / {item.matchingPortions} {UI_TEXT.plates} {UI_TEXT.servedLabel.toLowerCase()}

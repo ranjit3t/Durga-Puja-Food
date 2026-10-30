@@ -64,7 +64,7 @@ export function AmountDiscrepancyReport({
             const passLabel = `${item.block}${UI_TEXT.hyphen}${item.flat}`;
             const isUnderpaid = item.difference < 0;
             const statusText = isUnderpaid ? UI_TEXT.underpaidLabel : UI_TEXT.overpaidLabel;
-            const diffAmountText = `${UI_TEXT.rs}${UI_TEXT.space}${Math.abs(item.difference).toFixed(0)}`;
+            const diffAmountText = `$${UI_TEXT.space}${Math.abs(item.difference).toFixed(0)}`;
             const badgeColor = isUnderpaid ? theme.colors.error : theme.colors.success;
 
             return (
@@ -73,7 +73,7 @@ export function AmountDiscrepancyReport({
                 onPress={() => onSelectFlat(item.id)}
                 accessible={true}
                 accessibilityRole="button"
-                accessibilityLabel={`${UI_TEXT.pass}${UI_TEXT.space}${passLabel}${UI_TEXT.comma}${UI_TEXT.space}${UI_TEXT.expectedAmount}${UI_TEXT.colon}${UI_TEXT.space}${UI_TEXT.rs}${item.calculatedAmount.toFixed(0)}${UI_TEXT.comma}${UI_TEXT.space}${UI_TEXT.paidAmount}${UI_TEXT.colon}${UI_TEXT.space}${UI_TEXT.rs}${item.paidAmount.toFixed(0)}${UI_TEXT.comma}${UI_TEXT.space}${statusText}${UI_TEXT.colon}${UI_TEXT.space}${diffAmountText}`}
+                accessibilityLabel={`${UI_TEXT.pass}${UI_TEXT.space}${passLabel}${UI_TEXT.comma}${UI_TEXT.space}${UI_TEXT.expectedAmount}${UI_TEXT.colon}${UI_TEXT.space}$${item.calculatedAmount.toFixed(0)}${UI_TEXT.comma}${UI_TEXT.space}${UI_TEXT.paidAmount}${UI_TEXT.colon}${UI_TEXT.space}$${item.paidAmount.toFixed(0)}${UI_TEXT.comma}${UI_TEXT.space}${statusText}${UI_TEXT.colon}${UI_TEXT.space}${diffAmountText}`}
                 accessibilityHint={UI_TEXT.viewPassHint}
                 style={({ pressed }) => [
                   styles.dashboardCard,
@@ -135,7 +135,7 @@ export function AmountDiscrepancyReport({
                       {UI_TEXT.expectedAmount}
                     </Text>
                     <Text style={{ fontSize: 16, fontWeight: '900', color: theme.colors.textPrimary, marginTop: 2 }}>
-                      {UI_TEXT.rs}{UI_TEXT.space}{item.calculatedAmount.toFixed(0)}
+                      {item.calculatedAmount.toFixed(0)}
                     </Text>
                   </View>
 
@@ -144,7 +144,7 @@ export function AmountDiscrepancyReport({
                       {UI_TEXT.paidAmount}
                     </Text>
                     <Text style={{ fontSize: 16, fontWeight: '900', color: colorScheme.accent, marginTop: 2 }}>
-                      {UI_TEXT.rs}{UI_TEXT.space}{item.paidAmount.toFixed(0)}
+                      {item.paidAmount.toFixed(0)}
                     </Text>
                   </View>
                 </View>

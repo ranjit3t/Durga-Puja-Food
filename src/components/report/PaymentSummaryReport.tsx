@@ -230,8 +230,7 @@ export function PaymentSummaryReport({
                 {UI_TEXT.totalCollection}
               </Text>
               <Text style={{ fontSize: 28, fontWeight: "900", color: theme.cardColors[0].accent, marginTop: 4 }}>
-                {UI_TEXT.rs}
-                {UI_TEXT.space}
+                
                 {data.seasonTotalPayment?.netPayment?.toFixed(0) || "0"}
               </Text>
               <View style={{ flexDirection: "row", gap: 12, marginTop: 8 }}>
@@ -265,7 +264,7 @@ export function PaymentSummaryReport({
                     • {UI_TEXT.food} ({foodBreakdown.map(i => i.label).join(", ")})
                   </Text>
                   <Text style={{ fontSize: 13, fontWeight: "900", color: theme.cardColors[1].accent }}>
-                    {UI_TEXT.rs} {(data.totalFood || 0).toFixed(0)}
+                    {(data.totalFood || 0).toFixed(0)}
                   </Text>
                 </View>
                 <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
@@ -273,7 +272,7 @@ export function PaymentSummaryReport({
                     • {UI_TEXT.parcel} ({parcelBreakdown.map(i => i.label).join(", ")})
                   </Text>
                   <Text style={{ fontSize: 13, fontWeight: "900", color: theme.cardColors[1].accent }}>
-                    {UI_TEXT.rs} {(data.totalParcel || 0).toFixed(0)}
+                    {(data.totalParcel || 0).toFixed(0)}
                   </Text>
                 </View>
               </View>
@@ -301,8 +300,7 @@ export function PaymentSummaryReport({
                     {getPaymentModeLabel(item.mode)}
                   </Text>
                   <Text style={{ fontSize: 22, fontWeight: "900", color: cardTheme.accent, marginTop: 4 }}>
-                    {UI_TEXT.rs}
-                    {UI_TEXT.space}
+                    
                     {item.total.toFixed(0)}
                   </Text>
                   <Text style={{ fontSize: 11, fontWeight: "700", color: theme.colors.textSecondary, marginTop: 4 }}>
@@ -397,8 +395,7 @@ export function PaymentSummaryReport({
                           {UI_TEXT.total}
                         </Text>
                         <Text style={{ fontSize: 20, fontWeight: "900", color: colorScheme.accent, marginTop: 2 }}>
-                          {UI_TEXT.rs}
-                          {UI_TEXT.space}
+                          
                           {flat.total.toFixed(0)}
                         </Text>
                       </View>
@@ -442,7 +439,7 @@ export function PaymentSummaryReport({
                               </View>
 
                               <Text style={{ fontSize: 15, fontWeight: "900", color: colorScheme.accent, flexShrink: 0 }}>
-                                {UI_TEXT.rs} {parseFloat(p.amount || "0").toFixed(0)}
+                                {parseFloat(p.amount || "0").toFixed(0)}
                               </Text>
                             </View>
 

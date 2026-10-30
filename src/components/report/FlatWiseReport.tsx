@@ -115,7 +115,7 @@ export function FlatWiseReport({
                 {UI_TEXT.totalCollection}
               </Text>
               <Text style={{ color: theme.colors.white, fontSize: 16, fontWeight: "900" }}>
-                {UI_TEXT.rs}{UI_TEXT.space}{summaryTotals.totalAmount.toFixed(0)}
+                {summaryTotals.totalAmount.toFixed(0)}
               </Text>
             </View>
           </View>
@@ -132,7 +132,7 @@ export function FlatWiseReport({
                  <Text style={[styles.dashboardDay, { fontSize: 24, color: theme.colors.textPrimary }]}>{UI_TEXT.flatUpper} {item.flat}</Text>
               </View>
               <View style={{ alignItems: "flex-end" }}>
-                 <Text style={{ color: colorScheme.accent, fontSize: 20, fontWeight: "900" }}>{UI_TEXT.rs}{UI_TEXT.space}{item.amount}</Text>
+                 <Text style={{ color: colorScheme.accent, fontSize: 20, fontWeight: "900" }}>{item.amount}</Text>
                  <Text style={{ color: theme.colors.textSecondary, fontWeight: "600", fontSize: 12, marginTop: 4 }}>
                    {kidsEnabled || guestsEnabled ? (
                      (() => {

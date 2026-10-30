@@ -83,7 +83,7 @@ export function MealReportItemCard({ mealType, mealLabel, detail, colorScheme }:
           ]}
         >
           <Text style={[styles.pillText, { color: colorScheme.accent, fontSize: 13, fontWeight: "900" }]}>
-            {UI_TEXT.rs} {formatCurrencyAmount(detail.netPayment)}
+            {formatCurrencyAmount(detail.netPayment)}
           </Text>
         </View>
       </View>
@@ -94,7 +94,7 @@ export function MealReportItemCard({ mealType, mealLabel, detail, colorScheme }:
             • {UI_TEXT.menuPriceLabel}
           </Text>
           <Text style={{ fontSize: 12, color: theme.colors.textPrimary, fontWeight: "700", flexShrink: 0 }} numberOfLines={1}>
-            {UI_TEXT.rs} {formatCurrencyAmount(detail.menuPrice)}
+            {formatCurrencyAmount(detail.menuPrice)}
           </Text>
         </View>
 
@@ -104,7 +104,7 @@ export function MealReportItemCard({ mealType, mealLabel, detail, colorScheme }:
               • {UI_TEXT.parcelCharges}
             </Text>
             <Text style={{ fontSize: 12, color: theme.colors.textPrimary, fontWeight: "700", flexShrink: 0 }} numberOfLines={1}>
-              + {UI_TEXT.rs} {formatCurrencyAmount(detail.parcelPrice)}
+              + {formatCurrencyAmount(detail.parcelPrice)}
             </Text>
           </View>
         )}
@@ -115,7 +115,7 @@ export function MealReportItemCard({ mealType, mealLabel, detail, colorScheme }:
               • {UI_TEXT.packageDiscountLabel}
             </Text>
             <Text style={{ fontSize: 12, color: theme.colors.error, fontWeight: "700", flexShrink: 0 }} numberOfLines={1}>
-              - {UI_TEXT.rs} {formatCurrencyAmount(detail.packageDiscount)}
+              - {formatCurrencyAmount(detail.packageDiscount)}
             </Text>
           </View>
         )}
@@ -134,7 +134,7 @@ export function MealReportItemCard({ mealType, mealLabel, detail, colorScheme }:
               }}
               numberOfLines={1}
             >
-              {detail.excessDeficient > 0 ? "+" : "-"} {UI_TEXT.rs}{" "}
+              {detail.excessDeficient > 0 ? "+" : "-"} {" "}
               {formatCurrencyAmount(Math.abs(detail.excessDeficient))}
             </Text>
           </View>
