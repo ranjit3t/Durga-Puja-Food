@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useStyles } from "../styles";
 import { useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
-import { getDayLabel, isMealEnabled, isMealDone, getSortedMealKeys, isDietaryEnabled, isMealCurrent, getMealLabel, isMealInFuture, getMealVarieties, getMealFreeMealCounts, isSpecialMeal } from "../constants";
+import { getDayLabel, isMealEnabled, isMealDone, getSortedMealKeys, isDietaryEnabled, isMealCurrent, getMealLabel, isMealInFuture, getMealVarieties, getMealFreeMealCounts, isSpecialMeal, isSeasonDone } from "../constants";
 import { MealMenu, ConfigDay, MealType, DietType, AppThemeMode, ActivityModule, ActivityAction, AppScreen, UserRole, FreeMealCheckoutSource } from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
@@ -33,9 +33,10 @@ interface FreeMealCardProps {
     value: number
   ) => void;
   anyCurrentMealEnabled: boolean;
+  areAllMealsDone: boolean;
 }
 
-const FreeMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, isCaterer, onUpdate, anyCurrentMealEnabled }: FreeMealCardProps) => {
+const FreeMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, isCaterer, onUpdate, anyCurrentMealEnabled, areAllMealsDone }: FreeMealCardProps) => {
   const styles = useStyles();
   const { theme } = useAppTheme();
   const { width } = useWindowDimensions();
@@ -52,7 +53,7 @@ const FreeMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, isCat
   const mealLabel = getMealLabel(type);
   const icon = type === MealType.BREAKFAST ? "sunny-outline" : type === MealType.LUNCH ? "restaurant-outline" : "moon-outline";
 
-  const isMealEditableForAdmin = isAdmin && (!anyCurrentMealEnabled ? !isDone : (isCurrent || isFuture));
+  const isMealEditableForAdmin = isAdmin && (areAllMealsDone || (!anyCurrentMealEnabled ? true : (isCurrent || isFuture)));
 
   const getFreeMealCount = (vId: string, kind: "planned" | "dineIn" | "parcel"): number => {
     if (kind === "planned") {
@@ -100,7 +101,7 @@ const FreeMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, isCat
       { marginBottom: 20, borderWidth: 1, borderColor: theme.colors.border },
       isSpecial && { backgroundColor: theme.colors.specialMealBg, borderColor: theme.colors.specialMealBorder, borderWidth: 2, borderStyle: "dashed" },
       isCurrent && { borderColor: theme.colors.primary, borderWidth: 1.5, backgroundColor: theme.colors.primary + "08" },
-      isDone && { opacity: 0.6 }
+      isDone && !isMealEditableForAdmin && { opacity: 0.6 }
     ]}>
       <View style={[styles.mealDisplayHeader, { marginBottom: 16, justifyContent: "space-between" }]}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
@@ -168,7 +169,7 @@ const FreeMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, isCat
                 </View>
               </View>
 
-              {isDone || isCaterer ? (
+              {!isMealEditableForAdmin && (isDone || isCaterer) ? (
                 <View style={{ flexDirection: isUltraNarrow ? "column" : "row", gap: 10 }}>
                   <View style={{ flex: 1, backgroundColor: theme.colors.surfaceDark, padding: 10, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.border }}>
                     <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.textSecondary }}>{UI_TEXT.planned.toUpperCase()}</Text>
@@ -190,7 +191,7 @@ const FreeMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, isCat
                     value={pCount}
                     min={dineInCount + parcelCount}
                     onChange={(val) => onUpdate(dayId, type, plannedField, val)}
-                    disabled={isCaterer || disabled || !isMealEditableForAdmin}
+                    disabled={isCaterer || !isMealEditableForAdmin}
                   />
                   <CounterInput
                     label={UI_TEXT.dineIn}
@@ -198,7 +199,7 @@ const FreeMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, isCat
                     min={0}
                     max={Math.max(0, pCount - parcelCount)}
                     onChange={(val) => onUpdate(dayId, type, dineInField, val)}
-                    disabled={isCaterer || disabled || isDone || isFuture}
+                    disabled={isCaterer || !isMealEditableForAdmin}
                   />
                   <CounterInput
                     label={UI_TEXT.parcel}
@@ -206,7 +207,7 @@ const FreeMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, isCat
                     min={0}
                     max={Math.max(0, pCount - dineInCount)}
                     onChange={(val) => onUpdate(dayId, type, parcelField, val)}
-                    disabled={isCaterer || disabled || isDone || isFuture}
+                    disabled={isCaterer || !isMealEditableForAdmin}
                   />
                 </View>
               )}
@@ -334,6 +335,12 @@ export function FreeMealManagementScreen() {
   const anyCurrentMealEnabled = React.useMemo(() => {
     return dayConfig.some(d => d.enabled && [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].some(m => isMealCurrent(d.id, m, dayConfig)));
   }, [dayConfig]);
+
+  const anyFutureMealEnabled = React.useMemo(() => {
+    return dayConfig.some(d => d.enabled && [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].some(m => isMealInFuture(d.id, m, dayConfig)));
+  }, [dayConfig]);
+
+  const areAllMealsDone = isSeasonDone(dayConfig) || !seasonEnabled || (!anyCurrentMealEnabled && !anyFutureMealEnabled);
 
   const handleUpdate = React.useCallback((
     day: string,
@@ -563,6 +570,7 @@ export function FreeMealManagementScreen() {
                     isAdmin={isAdmin}
                     isCaterer={isCaterer}
                     anyCurrentMealEnabled={anyCurrentMealEnabled}
+                    areAllMealsDone={areAllMealsDone}
                   />
                 ))}
             </View>

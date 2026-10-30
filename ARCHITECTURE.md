@@ -434,6 +434,10 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
 - **Interactive Date/Time Editor Modal**: In Edit Pass (`SubscriptionPaymentSection.tsx`), administrators can click **"Edit Date/Time"** on any payment entry to modify its date and time using custom inputs (`YYYY-MM-DD`, `HH:MM`) or the **"Set to Current Time"** shortcut.
 - **View Pass & Unclubbed Audit Integration (`DetailsScreen.tsx`)**: View Pass displays payment date and time underneath each payment entry. Full log data exports provide unclubbed, incremental payment audit reports (`pass_payments_report.artifact.md`) capturing every payment transaction timestamp without data loss.
 
+### AQ. Free Meal Post-Season Reconciliation Editability (`FreeMealManagementScreen.tsx`, `constants.ts`)
+- **Active Season Rules**: During active festival operations, current and future meal slots remain editable for administrators (`isAdmin`), while past completed meals (`isDone`) are locked to protect operational integrity.
+- **Post-Season Reconciliation**: When all festival meals are completed or the season is ended (`isSeasonDone(config) || !seasonEnabled`), all free meal cards across all days and meals unlock for administrator edits (`isMealEditableForAdmin = true`), enabling post-season financial and operational reconciliation.
+
 ## 6. Quality Assurance & UI Catalog
 
 ### Jest Test Boundary
