@@ -930,6 +930,13 @@ export const UI_TEXT = {
   noteUnsharedMessage: "📌 Note \"{subject}\" is no longer shared with you by {sender}.",
   verifying: "Authenticating...",
   invalidCredentials: "Invalid username or password.",
+  accountDisabledError: "Account is disabled. Please contact system administrator.",
+  logAccountDisabled: "Authentication blocked for disabled user: {user}",
+  chatDisabledUserPlaceholder: "User account disabled. Further messaging unavailable.",
+  chatDeletedUserPlaceholder: "User account deleted. Further messaging unavailable.",
+  accountDisabledBadge: "Disabled",
+  userDeletedBadge: "User Deleted",
+  userDisabledNotice: "This user's account is disabled. You can view message history, but new messages cannot be sent.",
   authConfigError: "System Configuration Error: Authentication setup missing.",
   authServerError: "Unable to connect to authentication server.",
 

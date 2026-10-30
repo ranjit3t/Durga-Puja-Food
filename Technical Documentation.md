@@ -450,6 +450,12 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
 - **`src/features/subscriptions/`**: Houses decoupled pass registration and payment tracking sections (`SubscriptionBasicInfoSection`, `SubscriptionPaymentSection`).
 - **Payment Time Tracking & Audit Architecture**: Supports capturing exact payment timestamps (`paymentTime`) per payment entry. Automatically records save timestamps (`Date.now()`) for new split payments while retaining previously saved timestamps. Provides an interactive Date/Time Editor Modal in Edit Pass and detailed unclubbed payment event exports (`pass_payments_report.artifact.md`).
 
+21. **User Account Disable & Delete Status Enforcement & Chat Restrictions ([`LoginScreen.tsx`](src/screens/LoginScreen.tsx), [`ChatContext.tsx`](src/context/ChatContext.tsx), [`ChatWidget.tsx`](src/components/chat/ChatWidget.tsx))**:
+    - **Authentication Blocking**: Accounts with `disabled: true` or `deleted: true` in `auth_config` are strictly blocked from logging in, logging structured `ActivityAction.ERROR` activity audit trails and displaying localized system alerts (`UI_TEXT.accountDisabledError`).
+    - **New Chat Search Restriction**: Disabled and deleted user accounts without prior chat history are excluded from the available users list when initiating new conversations.
+    - **Historical Chat Read-Only Preservation**: Existing conversations with disabled or deleted users remain accessible in chat history to review past messages, tagged with prominent **"Disabled"** (`UI_TEXT.accountDisabledBadge`) or **"User Deleted"** (`UI_TEXT.userDeletedBadge`) status badges. Message input bars and typing signals are locked (`UI_TEXT.chatDisabledUserPlaceholder` / `UI_TEXT.chatDeletedUserPlaceholder`), preventing further outbound messaging.
+    - **WCAG 2.1 AA & Localization Compliance**: Fully accessible with screen reader hints (`accessibilityHint`), mobile-friendly viewports, and zero hardcoded strings (`UI_TEXT`).
+
 ---
 
 ## 6. Automated Testing & Storybook

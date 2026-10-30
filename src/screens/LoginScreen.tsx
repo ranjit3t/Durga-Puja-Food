@@ -51,6 +51,19 @@ export function LoginScreen() {
       );
 
       if (user) {
+        const isDeletedOrDisabled = user.deleted === true || user.deleted === "true" || user.deleted === 1 || user.deleted === "1" ||
+                                    user.disabled === true || user.disabled === "true" || user.disabled === 1 || user.disabled === "1";
+        if (isDeletedOrDisabled) {
+          setVerifying(false);
+          addActivityLog({
+            module: ActivityModule.AUTH,
+            action: ActivityAction.ERROR,
+            description: UI_TEXT.logAccountDisabled.replace("{user}", username)
+          }, username);
+          showAlert(UI_TEXT.error, UI_TEXT.accountDisabledError);
+          return;
+        }
+
         setVerifying(false);
         setLoading(true);
         const displayName = user.name || user.username;

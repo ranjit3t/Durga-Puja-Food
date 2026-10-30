@@ -319,11 +319,15 @@ export function ChatWidget() {
                     <View
                       style={[
                         styles.statusDot,
-                        { backgroundColor: activeRecipient.online ? theme.colors.success : theme.colors.textMuted },
+                        { backgroundColor: activeRecipient.deleted || activeRecipient.disabled ? (theme.colors.error || "#ef4444") : activeRecipient.online ? theme.colors.success : theme.colors.textMuted },
                       ]}
                     />
                     <Text style={styles.headerSubtitle} numberOfLines={1}>
-                      {isRecipientTyping
+                      {activeRecipient.deleted
+                        ? UI_TEXT.userDeletedBadge
+                        : activeRecipient.disabled
+                        ? UI_TEXT.accountDisabledBadge
+                        : isRecipientTyping
                         ? UI_TEXT.typing
                         : activeRecipient.online
                         ? UI_TEXT.online
@@ -412,11 +416,25 @@ export function ChatWidget() {
                           <Text style={[styles.userName, { color: theme.colors.textPrimary }]} numberOfLines={1}>
                             {user.displayName}
                           </Text>
-                          <View style={[styles.roleBadge, { backgroundColor: theme.colors.surfaceDark }]}>
-                            <Text style={[styles.roleBadgeText, { color: theme.colors.textSecondary }]}>
-                              {user.role}
-                            </Text>
-                          </View>
+                          {user.deleted ? (
+                            <View style={[styles.roleBadge, { backgroundColor: theme.colors.errorLight || "#fee2e2" }]}>
+                              <Text style={[styles.roleBadgeText, { color: theme.colors.error || "#ef4444", fontWeight: "900" }]}>
+                                {UI_TEXT.userDeletedBadge}
+                              </Text>
+                            </View>
+                          ) : user.disabled ? (
+                            <View style={[styles.roleBadge, { backgroundColor: theme.colors.errorLight || "#fee2e2" }]}>
+                              <Text style={[styles.roleBadgeText, { color: theme.colors.error || "#ef4444", fontWeight: "900" }]}>
+                                {UI_TEXT.accountDisabledBadge}
+                              </Text>
+                            </View>
+                          ) : (
+                            <View style={[styles.roleBadge, { backgroundColor: theme.colors.surfaceDark }]}>
+                              <Text style={[styles.roleBadgeText, { color: theme.colors.textSecondary }]}>
+                                {user.role}
+                              </Text>
+                            </View>
+                          )}
                         </View>
 
                         <Text style={[styles.lastMsgText, { color: user.unreadCount > 0 ? theme.colors.primary : theme.colors.textMuted }]} numberOfLines={1}>
@@ -535,45 +553,56 @@ export function ChatWidget() {
               </ScrollView>
 
               {/* Input Bar */}
-              <View style={[styles.inputBar, { backgroundColor: theme.colors.surface, borderTopColor: theme.colors.border }]}>
-                <TextInput
-                  style={[
-                    styles.messageInput,
-                    {
-                      backgroundColor: theme.colors.surfaceDark,
-                      color: theme.colors.textPrimary,
-                      borderColor: theme.colors.border,
-                      maxHeight: 80,
-                    },
-                  ]}
-                  placeholder={UI_TEXT.typeMessagePlaceholder}
-                  placeholderTextColor={theme.colors.textMuted}
-                  value={inputMessage}
-                  onChangeText={handleTextChange}
-                  onFocus={() => setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 150)}
-                  multiline={true}
-                  onSubmitEditing={handleSend}
-                />
+              {activeRecipient?.deleted || activeRecipient?.disabled ? (
+                <View style={[styles.inputBar, { backgroundColor: theme.colors.surfaceDark, borderTopColor: theme.colors.border, paddingVertical: 12, paddingHorizontal: 14 }]}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: theme.colors.errorLight || "#fee2e2", paddingHorizontal: 12, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.error || "#ef4444", flex: 1 }}>
+                    <Ionicons name="lock-closed-outline" size={18} color={theme.colors.error || "#ef4444"} />
+                    <Text style={{ fontSize: 11, fontWeight: "800", color: theme.colors.error || "#ef4444", flex: 1 }}>
+                      {activeRecipient?.deleted ? UI_TEXT.chatDeletedUserPlaceholder : UI_TEXT.chatDisabledUserPlaceholder}
+                    </Text>
+                  </View>
+                </View>
+              ) : (
+                <View style={[styles.inputBar, { backgroundColor: theme.colors.surface, borderTopColor: theme.colors.border }]}>
+                  <TextInput
+                    style={[
+                      styles.messageInput,
+                      {
+                        backgroundColor: theme.colors.surfaceDark,
+                        color: theme.colors.textPrimary,
+                        borderColor: theme.colors.border,
+                        maxHeight: 80,
+                      },
+                    ]}
+                    placeholder={UI_TEXT.typeMessagePlaceholder}
+                    placeholderTextColor={theme.colors.textMuted}
+                    value={inputMessage}
+                    onChangeText={handleTextChange}
+                    onFocus={() => setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 150)}
+                    multiline={true}
+                    onSubmitEditing={handleSend}
+                  />
 
-                <Pressable
-                  style={[
-                    styles.sendButton,
-                    { backgroundColor: theme.colors.primary },
-                    (!inputMessage.trim() || sending) && { opacity: 0.5 },
-                  ]}
-                  onPress={handleSend}
-                  disabled={!inputMessage.trim() || sending}
-                  accessible={true}
-                  accessibilityRole="button"
-                  accessibilityLabel={UI_TEXT.sendMessage}
-                >
-                  {sending ? (
-                    <ActivityIndicator size="small" color={theme.colors.white} />
-                  ) : (
-                    <Ionicons name="send" size={18} color={theme.colors.white} />
-                  )}
-                </Pressable>
-              </View>
+                  <Pressable
+                    style={[
+                      styles.sendButton,
+                      { backgroundColor: theme.colors.primary },
+                      (!inputMessage.trim() || sending) && { opacity: 0.5 },
+                    ]}
+                    onPress={handleSend}
+                    disabled={!inputMessage.trim() || sending}
+                    accessible={true}
+                    accessibilityRole="button"
+                    accessibilityLabel={UI_TEXT.sendMessage}
+                  >
+                    {sending ? (
+                      <ActivityIndicator size="small" color={theme.colors.white} />
+                    ) : (
+                      <Ionicons name="send" size={18} color={theme.colors.white} />
+                    )}
+                  </Pressable>
+                </View>
+              )}
             </View>
           )}
 

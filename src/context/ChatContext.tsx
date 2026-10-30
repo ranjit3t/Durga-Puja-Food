@@ -56,7 +56,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [activeRecipient, setActiveRecipient] = useState<ChatUser | null>(null);
 
   // System users & Presence
-  const [systemUsers, setSystemUsers] = useState<Array<{ username: string; name?: string; role?: string }>>([]);
+  const [systemUsers, setSystemUsers] = useState<Array<{ username: string; name?: string; role?: string; disabled?: boolean | string | number; deleted?: boolean | string | number }>>([]);
   const [presenceMap, setPresenceMap] = useState<Record<string, UserPresence>>({});
   const [unreadMap, setUnreadMap] = useState<Record<string, number>>({});
   const [lastMsgMap, setLastMsgMap] = useState<Record<string, ChatMessage>>({});
@@ -157,18 +157,28 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     if (!userAccountName) return [];
     const currentClean = userAccountName.toLowerCase();
 
+    const systemUsernames = new Set<string>();
+
     // Map system users from auth_config
     const usersMap = new Map<string, ChatUser>();
 
     systemUsers.forEach((u) => {
       const cleanU = u.username.toLowerCase();
+      systemUsernames.add(cleanU);
       if (cleanU === currentClean) return;
+
+      const isDisabled = u.disabled === true || u.disabled === "true" || u.disabled === 1 || u.disabled === "1";
+      const isDeleted = u.deleted === true || u.deleted === "true" || u.deleted === 1 || u.deleted === "1";
+      const isBlocked = isDisabled || isDeleted;
 
       const p = presenceMap[cleanU];
       const isOnline = p ? p.online : false;
       const lastSeen = p ? p.lastSeen : 0;
       const unread = unreadMap[cleanU] || 0;
       const lastMsg = lastMsgMap[cleanU];
+
+      // Exclude blocked (disabled/deleted) users from new chat initiation (show only if historical chat exists)
+      if (isBlocked && !lastMsg) return;
 
       usersMap.set(cleanU, {
         username: u.username,
@@ -177,24 +187,41 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         online: isOnline,
         lastSeen: lastSeen,
         unreadCount: unread,
+        disabled: isBlocked,
+        deleted: isDeleted,
         lastMessage: lastMsg,
       });
     });
 
-    // Also include any users in presenceMap who might not be in authConfig explicitly
-    Object.entries(presenceMap).forEach(([cleanU, p]) => {
+    // Handle historical chats for users no longer in auth_config (DELETED users)
+    const allKnownUsernames = new Set<string>([
+      ...Object.keys(presenceMap),
+      ...Object.keys(lastMsgMap),
+      ...Object.keys(unreadMap),
+    ]);
+
+    allKnownUsernames.forEach((cleanU) => {
       if (cleanU === currentClean || usersMap.has(cleanU)) return;
 
+      const p = presenceMap[cleanU];
       const unread = unreadMap[cleanU] || 0;
       const lastMsg = lastMsgMap[cleanU];
+      const isSystemUser = systemUsernames.has(cleanU);
+
+      // Rule: If user is not in auth_config (DELETED), ONLY show if historical chat exists!
+      if (!isSystemUser && !lastMsg) return;
+
+      const isDeleted = !isSystemUser;
 
       usersMap.set(cleanU, {
-        username: p.username || cleanU,
-        displayName: p.displayName || p.username || cleanU,
-        role: p.role || "User",
-        online: p.online,
-        lastSeen: p.lastSeen,
+        username: p?.username || cleanU,
+        displayName: p?.displayName || p?.username || cleanU,
+        role: p?.role || "User",
+        online: isDeleted ? false : (p ? p.online : false),
+        lastSeen: p ? p.lastSeen : 0,
         unreadCount: unread,
+        disabled: isDeleted ? true : false,
+        deleted: isDeleted,
         lastMessage: lastMsg,
       });
     });
@@ -288,7 +315,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const sendMessage = useCallback(
     async (text: string) => {
       const trimmed = text.trim();
-      if (!trimmed || !activeChatId || !userAccountName || !activeRecipient) return;
+      if (!trimmed || !activeChatId || !userAccountName || !activeRecipient || activeRecipient.disabled || activeRecipient.deleted) return;
 
       // Clear typing indicator immediately
       if (typingTimeoutRef.current) {
@@ -311,7 +338,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   // Send Typing Signal
   const sendTypingSignal = useCallback(
     (isTyping: boolean) => {
-      if (!activeChatId || !userAccountName) return;
+      if (!activeChatId || !userAccountName || activeRecipient?.disabled || activeRecipient?.deleted) return;
 
       if (isTyping) {
         repository.setTypingStatus(activeChatId, userAccountName, true).catch(() => {});

@@ -438,6 +438,11 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
 - **Active Season Rules**: During active festival operations, current and future meal slots remain editable for administrators (`isAdmin`), while past completed meals (`isDone`) are locked to protect operational integrity.
 - **Post-Season Reconciliation**: When all festival meals are completed or the season is ended (`isSeasonDone(config) || !seasonEnabled`), all free meal cards across all days and meals unlock for administrator edits (`isMealEditableForAdmin = true`), enabling post-season financial and operational reconciliation.
 
+### AR. User Account Disable Status & Peer-to-Peer Chat Restrictions (`LoginScreen.tsx`, `ChatContext.tsx`, `ChatWidget.tsx`, `domain.ts`)
+- **Login Enforcement (`LoginScreen.tsx`)**: Accounts with `disabled === true` in `auth_config` are immediately blocked from authenticating, logging structured `ActivityAction.ERROR` activity logs and displaying localized system alerts (`UI_TEXT.accountDisabledError`).
+- **New Chat Filtering (`ChatContext.tsx`)**: Disabled user accounts without pre-existing chat history are excluded from the available users list when initiating new conversations.
+- **Historical Chat Read-Only Preservation (`ChatWidget.tsx`)**: Existing conversations with disabled users remain viewable in chat history with a prominent "Disabled" badge pill (`UI_TEXT.accountDisabledBadge`), while message inputs and typing signals are locked (`UI_TEXT.chatDisabledUserPlaceholder`).
+
 ## 6. Quality Assurance & UI Catalog
 
 ### Jest Test Boundary

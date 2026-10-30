@@ -516,6 +516,8 @@ export type ChatUser = {
   online: boolean;
   lastSeen: number;
   unreadCount: number;
+  disabled?: boolean;
+  deleted?: boolean;
   lastMessage?: ChatMessage;
 };
 
