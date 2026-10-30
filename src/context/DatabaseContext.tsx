@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { Platform, AppState, AppStateStatus } from "react-native";
+import { Platform, AppState, AppStateStatus, Alert } from "react-native";
 import {
   createFirebaseRepository,
   firebaseRepositoryConfigured
@@ -49,6 +49,7 @@ import {
   isGuestsParcelEnabled,
   isMealSlotAbsent
 } from "../constants";
+import { useUI } from "./UIContext";
 
 export interface CoreDatabaseContextType {
   // Sync Status
@@ -136,7 +137,7 @@ const FoodPackagesContext = createContext<FoodPackagesContextType | undefined>(u
 const CatererFinanceContext = createContext<CatererFinanceContextType | undefined>(undefined);
 
 export function DatabaseProvider({ children }: { children: React.ReactNode }) {
-  const { userRole, userName, userAccountName } = useAuth();
+  const { userRole, userName, userAccountName, handleLogout } = useAuth();
 
   const [loading, setLoading] = useState(false);
   const [firebaseError, setFirebaseError] = useState("");
@@ -563,6 +564,20 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
+    const unsubAuthConfig = repository.onAuthConfigChange((cfg) => {
+      if (!isMounted) return;
+      if (cfg && Array.isArray(cfg.users) && userAccountName) {
+        const currentClean = userAccountName.toLowerCase();
+        const foundUser = cfg.users.find((u: any) => u.username && u.username.toLowerCase() === currentClean);
+        const isDisabled = foundUser ? (foundUser.disabled === true || foundUser.disabled === "true" || foundUser.disabled === 1 || foundUser.disabled === "1" || foundUser.deleted === true || foundUser.deleted === "true" || foundUser.deleted === 1 || foundUser.deleted === "1") : true;
+
+        if (isDisabled) {
+          handleLogout();
+          Alert.alert(UI_TEXT.error, UI_TEXT.accountDisabledError);
+        }
+      }
+    });
+
     return () => {
       isMounted = false;
       if (subBatchTimer) clearTimeout(subBatchTimer);
@@ -576,6 +591,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       unsubConfig();
       unsubMetrics();
       unsubAppVersion();
+      unsubAuthConfig();
     };
   }, [userRole, sortSubscriptions]);
 

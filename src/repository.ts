@@ -110,6 +110,7 @@ export interface SubscriptionRepository {
   onLogsDelta(onAdded: (log: ActivityLog) => void): () => void;
   onMenuChange(callback: (menu: FoodMenu) => void): () => void;
   onConfigChange(callback: (config: AppConfig) => void): () => void;
+  onAuthConfigChange(callback: (config: any) => void): () => void;
   onMetricsChange(callback: (metrics: KitchenMetrics | null) => void): () => void;
   onAppVersionChange(callback: (info: AppVersionInfo | null) => void): () => void;
 
@@ -1012,6 +1013,20 @@ export function createFirebaseRepository(): SubscriptionRepository {
           callback(snapshot.exists() ? cleanCircularFields(snapshot.val() as FoodMenu) : {});
         });
       }).catch(err => console.error("Menu listener error:", err));
+
+      return () => {
+        if (unsub) unsub();
+      };
+    },
+
+    onAuthConfigChange(callback: (config: any) => void) {
+      let unsub: (() => void) | null = null;
+      ensureFirebaseAuth().then((services) => {
+        if (!services?.db) return;
+        unsub = onValue(ref(services.db, authConfigPath), (snapshot) => {
+          callback(snapshot.exists() ? snapshot.val() : undefined);
+        });
+      }).catch(err => console.error("Auth config listener error:", err));
 
       return () => {
         if (unsub) unsub();

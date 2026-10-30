@@ -438,10 +438,12 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
 - **Active Season Rules**: During active festival operations, current and future meal slots remain editable for administrators (`isAdmin`), while past completed meals (`isDone`) are locked to protect operational integrity.
 - **Post-Season Reconciliation**: When all festival meals are completed or the season is ended (`isSeasonDone(config) || !seasonEnabled`), all free meal cards across all days and meals unlock for administrator edits (`isMealEditableForAdmin = true`), enabling post-season financial and operational reconciliation.
 
-### AR. User Account Disable Status & Peer-to-Peer Chat Restrictions (`LoginScreen.tsx`, `ChatContext.tsx`, `ChatWidget.tsx`, `domain.ts`)
-- **Login Enforcement (`LoginScreen.tsx`)**: Accounts with `disabled === true` in `auth_config` are immediately blocked from authenticating, logging structured `ActivityAction.ERROR` activity logs and displaying localized system alerts (`UI_TEXT.accountDisabledError`).
-- **New Chat Filtering (`ChatContext.tsx`)**: Disabled user accounts without pre-existing chat history are excluded from the available users list when initiating new conversations.
-- **Historical Chat Read-Only Preservation (`ChatWidget.tsx`)**: Existing conversations with disabled users remain viewable in chat history with a prominent "Disabled" badge pill (`UI_TEXT.accountDisabledBadge`), while message inputs and typing signals are locked (`UI_TEXT.chatDisabledUserPlaceholder`).
+### AR. User Account Disable/Delete Status Enforcement & Real-Time Sync (`LoginScreen.tsx`, `ChatContext.tsx`, `ChatWidget.tsx`, `DatabaseContext.tsx`, `domain.ts`)
+- **Login Enforcement (`LoginScreen.tsx`)**: Accounts with `disabled: true` or `deleted: true` in `auth_config` are immediately blocked from authenticating, logging structured `ActivityAction.ERROR` activity logs and displaying localized system alerts (`UI_TEXT.accountDisabledError`).
+- **Real-Time Forceful Logout (`DatabaseContext.tsx`)**: Active background listeners (`onAuthConfigChange`) detect real-time changes to `auth_config`; if the currently logged-in user's account is disabled or deleted, the app instantly and forcefully logs them out (`handleLogout()`) with a system alert.
+- **Instant Chat Real-Time Sync (`ChatContext.tsx`, `ChatWidget.tsx`)**: Active peer-to-peer chat windows instantly update in real time if a peer user is disabled or deleted, locking message inputs and displaying disabled/deleted warning banners without requiring page reloads.
+- **New Chat Filtering (`ChatContext.tsx`)**: Disabled or deleted user accounts without pre-existing chat history are excluded from the available users list when initiating new conversations.
+- **Historical Chat Read-Only Preservation (`ChatWidget.tsx`)**: Existing conversations with disabled or deleted users remain viewable in chat history with prominent status badges (`UI_TEXT.accountDisabledBadge` / `UI_TEXT.userDeletedBadge`), while message inputs are locked (`UI_TEXT.chatDisabledUserPlaceholder` / `UI_TEXT.chatDeletedUserPlaceholder`).
 
 ## 6. Quality Assurance & UI Catalog
 

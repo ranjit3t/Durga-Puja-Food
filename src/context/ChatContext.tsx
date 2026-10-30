@@ -105,6 +105,12 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (userRole) {
       refreshUsers();
+      const unsubAuth = repository.onAuthConfigChange((cfg) => {
+        if (cfg && Array.isArray(cfg.users)) {
+          setSystemUsers(cfg.users);
+        }
+      });
+      return () => unsubAuth();
     } else {
       setSystemUsers([]);
       setActiveRecipient(null);
@@ -236,7 +242,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     });
   }, [userAccountName, systemUsers, presenceMap, unreadMap, lastMsgMap]);
 
-  // Sync active recipient details dynamically (online status, last seen, unread)
+  // Sync active recipient details dynamically (online status, last seen, unread, disabled/deleted)
   useEffect(() => {
     if (!activeRecipient) return;
     const cleanU = activeRecipient.username.toLowerCase();
@@ -247,12 +253,17 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         if (
           prev.online !== liveUser.online ||
           prev.lastSeen !== liveUser.lastSeen ||
+          prev.unreadCount !== liveUser.unreadCount ||
+          prev.disabled !== liveUser.disabled ||
+          prev.deleted !== liveUser.deleted ||
           prev.displayName !== liveUser.displayName
         ) {
           return { ...prev, ...liveUser };
         }
         return prev;
       });
+    } else {
+      setActiveRecipient((prev) => prev ? { ...prev, disabled: true, deleted: true } : null);
     }
   }, [availableUsers, activeRecipient]);
 
