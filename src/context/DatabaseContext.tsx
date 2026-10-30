@@ -1671,9 +1671,18 @@ export function useDatabase(): DatabaseContextType {
 
   return useMemo(() => ({
     ...core,
-    ...(notesCtx || {}),
-    ...(foodPackagesCtx || {}),
-    ...(catererFinanceCtx || {}),
-    ...(logsCtx || {}),
+    notes: notesCtx?.notes || [],
+    upsertNote: notesCtx?.upsertNote || (async () => {}),
+    deleteNote: notesCtx?.deleteNote || (async () => {}),
+    foodPackages: foodPackagesCtx?.foodPackages || [],
+    upsertFoodPackage: foodPackagesCtx?.upsertFoodPackage || (async () => {}),
+    deleteFoodPackage: foodPackagesCtx?.deleteFoodPackage || (async () => {}),
+    catererTransactions: catererFinanceCtx?.catererTransactions || [],
+    upsertCatererTransaction: catererFinanceCtx?.upsertCatererTransaction || (async () => {}),
+    deleteCatererTransaction: catererFinanceCtx?.deleteCatererTransaction || (async () => {}),
+    activityLogs: logsCtx?.activityLogs || [],
+    addActivityLog: logsCtx?.addActivityLog || (() => {}),
+    getActivityLogs: logsCtx?.getActivityLogs || (async () => []),
+    fetchMoreLogs: logsCtx?.fetchMoreLogs || (async () => {}),
   }), [core, notesCtx, foodPackagesCtx, catererFinanceCtx, logsCtx]);
 }

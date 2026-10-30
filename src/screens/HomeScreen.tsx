@@ -8,8 +8,8 @@ import { useAuth } from "../context/AuthContext";
 import { useCoreDatabase } from "../context/DatabaseContext";
 import { useUI } from "../context/UIContext";
 import { useAppNavigation } from "../context/NavigationContext";
-import { AppScreen, UserRole, MealType, AppThemeMode, DietaryOption, DietType, toBool } from "../types";
-import { getActiveDays, isSeasonDone, isMealCurrent, getDayLabel, isMealEnabled, isDietaryEnabled, getMealLabel, getDietTypeForChoice, getMealVarieties, getMealFreeMealCounts, isVersionBehind, isSpecialMeal, isParcelEnabled, isMealSlotAbsent } from "../constants";
+import { AppScreen, UserRole, MealType, AppThemeMode, DietaryOption, DietType, toBool, TakenState } from "../types";
+import { getActiveDays, isSeasonDone, isMealCurrent, getDayLabel, isMealEnabled, isDietaryEnabled, getMealLabel, getDietTypeForChoice, getMealVarieties, getMealFreeMealCounts, isVersionBehind, isSpecialMeal, isParcelEnabled, isMealSlotAbsent, isGuestsParcelEnabled, isKidsParcelEnabled } from "../constants";
 import { calculatePaidAmount, calculateSubscriptionAmount, calculatePassTotalWithPackages } from "../utils/paymentUtils";
 import { ActionLabel } from "../components/common/ActionLabel";
 import { LogoutButton } from "../components/common/LogoutButton";
@@ -22,7 +22,7 @@ export function HomeScreen() {
   const { theme, themeType } = useAppTheme();
   const { userRole, handleLogout, versionAlertShown, markVersionAlertShown } = useAuth();
   const {
-    subscriptions, dayConfig, seasonName, seasonEnabled, freeMealEnabled, totalPeople, firebaseError, paymentConfig, collections, kidsEnabled, guestsEnabled, foodMenu, remoteAppVersion, androidAppLocation, iosAppLocation, loading, vendorSettledCost
+    subscriptions, dayConfig, seasonName, seasonEnabled, freeMealEnabled, totalPeople, firebaseError, paymentConfig, collections, kidsEnabled, guestsEnabled, foodMenu, remoteAppVersion, androidAppLocation, iosAppLocation, loading, vendorSettledCost, dashboardData
   } = useCoreDatabase();
   const { navigate, startNew, setIsQuickCheckout, setIsParcelCheckout, setIsQuickFreeMealMode } = useAppNavigation();
   const { showAlert, showGlobalError } = useUI();
@@ -51,12 +51,12 @@ export function HomeScreen() {
   }, [remoteAppVersion, androidAppLocation, iosAppLocation, loading, versionAlertShown, markVersionAlertShown, showAlert]);
 
   const isNarrow = width < 400;
-  const cardPadding = isNarrow ? 16 : s(20);
-  const cardMinHeight = isNarrow ? 100 : (isWeb ? s(120) : s(130));
-  const mainFontSize = isNarrow ? 22 : s(28);
-  const secondaryFontSize = isNarrow ? 18 : s(22);
-  const labelFontSize = isNarrow ? 10 : s(12);
-  const rowGap = isNarrow ? 8 : s(10);
+  const cardPadding = isWeb ? s(12) : (isNarrow ? 14 : s(16));
+  const cardMinHeight = undefined;
+  const mainFontSize = isNarrow ? 20 : (isWeb ? s(22) : s(24));
+  const secondaryFontSize = isNarrow ? 16 : (isWeb ? s(18) : s(20));
+  const labelFontSize = isNarrow ? 10 : (isWeb ? s(11) : s(11));
+  const rowGap = isWeb ? s(4) : (isNarrow ? 6 : s(6));
   const iconSize = s(18);
   const actionIconSizeLarge = s(150);
 
@@ -267,6 +267,57 @@ export function HomeScreen() {
     };
   }, [foodMenu, dayConfig]);
 
+  const freeMealServedSummary = React.useMemo(() => {
+    let seasonTotal = 0;
+    let vegTotal = 0;
+    let nonVegTotal = 0;
+    const mealPlates: Record<MealType, number> = {
+      [MealType.BREAKFAST]: 0,
+      [MealType.LUNCH]: 0,
+      [MealType.DINNER]: 0,
+    };
+    const detailedSegregations: string[] = [];
+    const activeDays = getActiveDays(dayConfig);
+
+    activeDays.forEach((dayId) => {
+      const dayMenu = foodMenu[dayId];
+      if (!dayMenu) return;
+
+      [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].forEach((mType) => {
+        if (!isMealEnabled(dayId, mType, dayConfig)) return;
+        const meal = dayMenu[mType];
+        if (meal) {
+          const vegFM = isDietaryEnabled(dayId, mType, DietType.VEG, dayConfig) ? (meal.freeMealVegTaken || 0) : 0;
+          const nonVegFM = isDietaryEnabled(dayId, mType, DietType.NON_VEG, dayConfig) ? (meal.freeMealNonVegTaken || 0) : 0;
+          const mFreeMeal = vegFM + nonVegFM;
+
+          if (mFreeMeal > 0) {
+            seasonTotal += mFreeMeal;
+            vegTotal += vegFM;
+            nonVegTotal += nonVegFM;
+            mealPlates[mType] += mFreeMeal;
+            detailedSegregations.push(
+              `${mFreeMeal}${UI_TEXT.space}${getDayLabel(dayId, dayConfig)}${UI_TEXT.space}${getMealLabel(mType)}`
+            );
+          }
+        }
+      });
+    });
+
+    const mealTypeSegregations = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER]
+      .filter((mType) => mealPlates[mType] > 0)
+      .map((mType) => `${mealPlates[mType]}${UI_TEXT.space}${getMealLabel(mType)}`);
+
+    return {
+      seasonTotal,
+      vegTotal,
+      nonVegTotal,
+      mealPlates,
+      mealTypeSegregations,
+      detailedSegregations,
+    };
+  }, [foodMenu, dayConfig]);
+
   const { paidPassesCount, unpaidPassesCount } = React.useMemo(() => {
     let paid = 0;
     subscriptions.forEach((sub) => {
@@ -388,6 +439,126 @@ export function HomeScreen() {
     return list;
   }, [dayConfig, specialMealSummaryCounts.mealPlatesMap]);
 
+  const specialMealServedSummaryCounts = React.useMemo(() => {
+    let adults = 0;
+    let kids = 0;
+    let guests = 0;
+    let vegPlates = 0;
+    let nonVegPlates = 0;
+    const mealPlatesMap: Record<string, number> = {};
+
+    const activeDays = getActiveDays(dayConfig);
+
+    subscriptions.forEach((sub) => {
+      const pCount = sub.peopleCount || 0;
+      const kCount = kidsEnabled ? (sub.kidsCount || 0) : 0;
+
+      activeDays.forEach((dayId) => {
+        const dayConf = (dayConfig || []).find((d) => d.id === dayId);
+        const slots = sub.mealSlots[dayId] || [];
+        const takenList = sub.takenByPerson?.[dayId] || [];
+
+        slots.forEach((slot, slotIdx) => {
+          const taken = takenList[slotIdx];
+          if (!taken) return;
+
+          const isKid = kidsEnabled && slotIdx >= pCount && slotIdx < pCount + kCount;
+          const isGuest = guestsEnabled && slotIdx >= pCount + kCount;
+
+          [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].forEach((mType) => {
+            if (!isMealEnabled(dayId, mType, dayConfig) || !isSpecialMeal(dayId, mType, dayConfig)) return;
+
+            const mealKey = mType as keyof TakenState;
+            const parcelKey = `${mType}Parcel` as keyof TakenState;
+            const isMealTaken = toBool(taken[mealKey]);
+            const isParcelTaken = toBool(taken[parcelKey]);
+
+            if (isMealTaken || isParcelTaken) {
+              const mConf = dayConf ? dayConf[mType] : undefined;
+              const choice = slot[mType];
+              const diet = getDietTypeForChoice(choice, getMealVarieties(mConf));
+
+              if (diet === DietType.VEG && isDietaryEnabled(dayId, mType, DietType.VEG, dayConfig)) {
+                vegPlates++;
+                if (isKid) kids++;
+                else if (isGuest) guests++;
+                else adults++;
+
+                const key = `${dayId}_${mType}`;
+                mealPlatesMap[key] = (mealPlatesMap[key] || 0) + 1;
+              } else if (diet === DietType.NON_VEG && isDietaryEnabled(dayId, mType, DietType.NON_VEG, dayConfig)) {
+                nonVegPlates++;
+                if (isKid) kids++;
+                else if (isGuest) guests++;
+                else adults++;
+
+                const key = `${dayId}_${mType}`;
+                mealPlatesMap[key] = (mealPlatesMap[key] || 0) + 1;
+              }
+            }
+          });
+        });
+      });
+    });
+
+    if (freeMealEnabled) {
+      Object.keys(foodMenu).forEach((dayId) => {
+        if (!activeDays.includes(dayId)) return;
+        const dayMenu = foodMenu[dayId];
+        const dayConf = dayConfig.find((d) => d.id === dayId);
+
+        [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].forEach((mType) => {
+          if (!isMealEnabled(dayId, mType, dayConfig) || !isSpecialMeal(dayId, mType, dayConfig)) return;
+          const meal = dayMenu[mType];
+          if (meal) {
+            const freeVegTaken = meal.freeMealVegTaken || 0;
+            const freeNvTaken = meal.freeMealNonVegTaken || 0;
+            const key = `${dayId}_${mType}`;
+
+            if (isDietaryEnabled(dayId, mType, DietType.VEG, dayConfig) && freeVegTaken > 0) {
+              vegPlates += freeVegTaken;
+              adults += freeVegTaken;
+              mealPlatesMap[key] = (mealPlatesMap[key] || 0) + freeVegTaken;
+            }
+            if (isDietaryEnabled(dayId, mType, DietType.NON_VEG, dayConfig) && freeNvTaken > 0) {
+              nonVegPlates += freeNvTaken;
+              adults += freeNvTaken;
+              mealPlatesMap[key] = (mealPlatesMap[key] || 0) + freeNvTaken;
+            }
+          }
+        });
+      });
+    }
+
+    return {
+      adults,
+      kids,
+      guests,
+      vegPlates,
+      nonVegPlates,
+      mealPlatesMap,
+      totalPlates: vegPlates + nonVegPlates,
+    };
+  }, [subscriptions, dayConfig, foodMenu, freeMealEnabled, kidsEnabled, guestsEnabled]);
+
+  const specialMealServedSegregations = React.useMemo(() => {
+    const list: string[] = [];
+    const activeDays = getActiveDays(dayConfig);
+
+    activeDays.forEach((dayId) => {
+      [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].forEach((mType) => {
+        if (!isMealEnabled(dayId, mType, dayConfig) || !isSpecialMeal(dayId, mType, dayConfig)) return;
+        const key = `${dayId}_${mType}`;
+        const count = specialMealServedSummaryCounts.mealPlatesMap[key] || 0;
+        if (count > 0) {
+          list.push(`${count}${UI_TEXT.space}${getDayLabel(dayId, dayConfig)}${UI_TEXT.space}${getMealLabel(mType)}`);
+        }
+      });
+    });
+
+    return list;
+  }, [dayConfig, specialMealServedSummaryCounts.mealPlatesMap]);
+
   const isSpecialMealConfigured = React.useMemo(() => {
     return dayConfig.some(
       (d) =>
@@ -397,6 +568,56 @@ export function HomeScreen() {
         )
     );
   }, [dayConfig]);
+
+  const servedSummaryCounts = React.useMemo(() => {
+    let adultsServed = 0;
+    let kidsServed = 0;
+    let guestsServed = 0;
+    let vegServed = 0;
+    let nonVegServed = 0;
+    let parcelServedTotal = 0;
+    let totalServed = 0;
+
+    (dashboardData || []).forEach((day: any) => {
+      const dayMealTaken = (day.breakfastTaken || 0) + (day.lunchTaken || 0) + (day.dinnerTaken || 0);
+      const dayFreeMealTaken = (day.breakfastFreeMealVegTaken || 0) + (day.breakfastFreeMealNonVegTaken || 0) +
+                               (day.lunchFreeMealVegTaken || 0) + (day.lunchFreeMealNonVegTaken || 0) +
+                               (day.dinnerFreeMealVegTaken || 0) + (day.dinnerFreeMealNonVegTaken || 0);
+
+      totalServed += (dayMealTaken + dayFreeMealTaken);
+
+      adultsServed += (day.breakfastFlatVegTaken || 0) + (day.breakfastFlatNonVegTaken || 0) +
+                      (day.lunchFlatVegTaken || 0) + (day.lunchFlatNonVegTaken || 0) +
+                      (day.dinnerFlatVegTaken || 0) + (day.dinnerFlatNonVegTaken || 0);
+
+      kidsServed += (day.breakfastKidsTaken || 0) + (day.lunchKidsTaken || 0) + (day.dinnerKidsTaken || 0);
+      guestsServed += (day.breakfastGuestsTaken || 0) + (day.lunchGuestsTaken || 0) + (day.dinnerGuestsTaken || 0);
+
+      vegServed += (day.breakfastFlatVegTaken || 0) + (day.lunchFlatVegTaken || 0) + (day.dinnerFlatVegTaken || 0) +
+                   (day.breakfastKidsVegTaken || 0) + (day.lunchKidsVegTaken || 0) + (day.dinnerKidsVegTaken || 0) +
+                   (day.breakfastGuestsVegTaken || 0) + (day.lunchGuestsVegTaken || 0) + (day.dinnerGuestsVegTaken || 0) +
+                   (day.breakfastFreeMealVegTaken || 0) + (day.lunchFreeMealVegTaken || 0) + (day.dinnerFreeMealVegTaken || 0);
+
+      nonVegServed += (day.breakfastFlatNonVegTaken || 0) + (day.lunchFlatNonVegTaken || 0) + (day.dinnerFlatNonVegTaken || 0) +
+                      (day.breakfastKidsNonVegTaken || 0) + (day.lunchKidsNonVegTaken || 0) + (day.dinnerKidsNonVegTaken || 0) +
+                      (day.breakfastGuestsNonVegTaken || 0) + (day.lunchGuestsNonVegTaken || 0) + (day.dinnerGuestsNonVegTaken || 0) +
+                      (day.breakfastFreeMealNonVegTaken || 0) + (day.lunchFreeMealNonVegTaken || 0) + (day.dinnerFreeMealNonVegTaken || 0);
+
+      parcelServedTotal += (day.breakfastParcelTaken || 0) + (day.lunchParcelTaken || 0) + (day.dinnerParcelTaken || 0);
+    });
+
+    return {
+      adultsServed,
+      kidsServed,
+      guestsServed,
+      vegServed,
+      nonVegServed,
+      totalServed,
+      parcelServedTotal,
+      dineInServedTotal: Math.max(0, totalServed - parcelServedTotal),
+      mealSegregations: [] as string[],
+    };
+  }, [dashboardData]);
 
   const currentMealInfo = React.useMemo(() => {
     const active = getActiveDays(dayConfig);
@@ -509,6 +730,40 @@ export function HomeScreen() {
                 )}
               </View>
 
+              {/* Total Plates Served */}
+              <View style={{ flexDirection: "row", alignItems: "center", gap: s(6), flexWrap: 'wrap' }}>
+                <Text style={[styles.summaryLabel, { opacity: 0.8, fontSize: labelFontSize }]}>{UI_TEXT.totalPlatesServed.toUpperCase()}:</Text>
+                <Text style={[styles.summaryNumber, { fontSize: secondaryFontSize, marginTop: 0, lineHeight: secondaryFontSize + 2 }]}>
+                  {servedSummaryCounts.totalServed}
+                </Text>
+                {(kidsEnabled || guestsEnabled) && (
+                  <Text style={{ fontSize: isNarrow ? 9 : s(11), color: theme.colors.white, opacity: 0.8, fontWeight: '700', flexShrink: 1 }} numberOfLines={2}>
+                    {UI_TEXT.openParen}
+                    {servedSummaryCounts.adultsServed}{UI_TEXT.space}{servedSummaryCounts.adultsServed === 1 ? UI_TEXT.adult : UI_TEXT.adults}
+                    {kidsEnabled && servedSummaryCounts.kidsServed > 0 ? `${UI_TEXT.comma}${UI_TEXT.space}${servedSummaryCounts.kidsServed}${UI_TEXT.space}${servedSummaryCounts.kidsServed === 1 ? UI_TEXT.kid : UI_TEXT.kids}` : ""}
+                    {guestsEnabled && servedSummaryCounts.guestsServed > 0 ? `${UI_TEXT.comma}${UI_TEXT.space}${servedSummaryCounts.guestsServed}${UI_TEXT.space}${servedSummaryCounts.guestsServed === 1 ? UI_TEXT.guest : UI_TEXT.guests}` : ""}
+                    {UI_TEXT.closeParen}
+                  </Text>
+                )}
+                {isVegEnabledGlobally && isNonVegEnabledGlobally && (
+                  <Text style={{ fontSize: labelFontSize, color: theme.colors.white, opacity: 0.8, fontWeight: '700', flexShrink: 1 }}>
+                    {UI_TEXT.openParen}
+                    {servedSummaryCounts.vegServed}{UI_TEXT.space}{UI_TEXT.vegLabel}
+                    {UI_TEXT.pipe}
+                    {servedSummaryCounts.nonVegServed}{UI_TEXT.space}{UI_TEXT.nonVegLabel}
+                    {UI_TEXT.closeParen}
+                  </Text>
+                )}
+                {servedSummaryCounts.parcelServedTotal >= 0 && (
+                  <Text style={{ fontSize: labelFontSize, color: theme.colors.white, opacity: 0.8, fontWeight: '700', flexShrink: 1 }}>
+                    {UI_TEXT.openParen}
+                    {servedSummaryCounts.dineInServedTotal} {UI_TEXT.dineIn}
+                    {servedSummaryCounts.parcelServedTotal > 0 ? ` ${UI_TEXT.pipe} ${servedSummaryCounts.parcelServedTotal} ${UI_TEXT.parcel}` : ""}
+                    {UI_TEXT.closeParen}
+                  </Text>
+                )}
+              </View>
+
               {isSpecialMealConfigured && specialMealSummaryCounts.totalPlates > 0 && (
                 <View style={{ flexDirection: "row", alignItems: "center", gap: s(6), flexWrap: 'wrap' }}>
                   <Text style={[styles.summaryLabel, { opacity: 0.8, fontSize: labelFontSize }]}>{UI_TEXT.specialMealDemand}:</Text>
@@ -534,6 +789,41 @@ export function HomeScreen() {
                 </View>
               )}
 
+              {/* Special Meal Served */}
+              {isSpecialMealConfigured && (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: s(6), flexWrap: 'wrap' }}>
+                  <Text style={[styles.summaryLabel, { opacity: 0.8, fontSize: labelFontSize }]}>{UI_TEXT.specialMealServed}:</Text>
+                  <Text style={[styles.summaryNumber, { fontSize: secondaryFontSize, marginTop: 0, lineHeight: secondaryFontSize + 2 }]}>
+                    {specialMealServedSummaryCounts.totalPlates}
+                  </Text>
+                  {(kidsEnabled || guestsEnabled) && specialMealServedSummaryCounts.totalPlates > 0 && (
+                    <Text style={{ fontSize: isNarrow ? 9 : s(11), color: theme.colors.white, opacity: 0.8, fontWeight: '700', flexShrink: 1 }} numberOfLines={2}>
+                      {UI_TEXT.openParen}
+                      {specialMealServedSummaryCounts.adults}{UI_TEXT.space}{specialMealServedSummaryCounts.adults === 1 ? UI_TEXT.adult : UI_TEXT.adults}
+                      {kidsEnabled && specialMealServedSummaryCounts.kids > 0 ? `${UI_TEXT.comma}${UI_TEXT.space}${specialMealServedSummaryCounts.kids}${UI_TEXT.space}${specialMealServedSummaryCounts.kids === 1 ? UI_TEXT.kid : UI_TEXT.kids}` : ""}
+                      {guestsEnabled && specialMealServedSummaryCounts.guests > 0 ? `${UI_TEXT.comma}${UI_TEXT.space}${specialMealServedSummaryCounts.guests}${UI_TEXT.space}${specialMealServedSummaryCounts.guests === 1 ? UI_TEXT.guest : UI_TEXT.guests}` : ""}
+                      {UI_TEXT.closeParen}
+                    </Text>
+                  )}
+                  {isVegEnabledGlobally && isNonVegEnabledGlobally && specialMealServedSummaryCounts.totalPlates > 0 && (
+                    <Text style={{ fontSize: labelFontSize, color: theme.colors.white, opacity: 0.8, fontWeight: '700', flexShrink: 1 }}>
+                      {UI_TEXT.openParen}
+                      {specialMealServedSummaryCounts.vegPlates}{UI_TEXT.space}{UI_TEXT.vegLabel}
+                      {UI_TEXT.pipe}
+                      {specialMealServedSummaryCounts.nonVegPlates}{UI_TEXT.space}{UI_TEXT.nonVegLabel}
+                      {UI_TEXT.closeParen}
+                    </Text>
+                  )}
+                  {specialMealServedSegregations.length > 0 && (
+                    <Text style={{ fontSize: labelFontSize, color: theme.colors.white, opacity: 0.8, fontWeight: '700', flexShrink: 1 }}>
+                      {UI_TEXT.openParen}
+                      {specialMealServedSegregations.join(UI_TEXT.pipe)}
+                      {UI_TEXT.closeParen}
+                    </Text>
+                  )}
+                </View>
+              )}
+
               {freeMealEnabled && freeMealSummary.seasonTotal > 0 && (
                 <View style={{ flexDirection: "row", alignItems: "center", gap: s(6), flexWrap: 'wrap' }}>
                   <Text style={[styles.summaryLabel, { opacity: 0.8, fontSize: labelFontSize }]}>{UI_TEXT.totalfreeMeals.toUpperCase()}:</Text>
@@ -553,6 +843,32 @@ export function HomeScreen() {
                     <Text style={{ fontSize: labelFontSize, color: theme.colors.white, opacity: 0.8, fontWeight: '700', flexShrink: 1 }}>
                       {UI_TEXT.openParen}
                       {freeMealSummary.mealTypeSegregations.join(UI_TEXT.pipe)}
+                      {UI_TEXT.closeParen}
+                    </Text>
+                  )}
+                </View>
+              )}
+
+              {/* Total Free Meal Served */}
+              {freeMealEnabled && (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: s(6), flexWrap: 'wrap' }}>
+                  <Text style={[styles.summaryLabel, { opacity: 0.8, fontSize: labelFontSize }]}>{UI_TEXT.totalfreeMealsServed.toUpperCase()}:</Text>
+                  <Text style={[styles.summaryNumber, { fontSize: secondaryFontSize, marginTop: 0, lineHeight: secondaryFontSize + 2 }]}>
+                    {freeMealServedSummary.seasonTotal}
+                  </Text>
+                  {isVegEnabledGlobally && isNonVegEnabledGlobally && freeMealServedSummary.seasonTotal > 0 && (
+                    <Text style={{ fontSize: labelFontSize, color: theme.colors.white, opacity: 0.8, fontWeight: '700', flexShrink: 1 }}>
+                      {UI_TEXT.openParen}
+                      {freeMealServedSummary.vegTotal}{UI_TEXT.space}{UI_TEXT.vegLabel}
+                      {UI_TEXT.pipe}
+                      {freeMealServedSummary.nonVegTotal}{UI_TEXT.space}{UI_TEXT.nonVegLabel}
+                      {UI_TEXT.closeParen}
+                    </Text>
+                  )}
+                  {freeMealServedSummary.mealTypeSegregations.length > 0 && (
+                    <Text style={{ fontSize: labelFontSize, color: theme.colors.white, opacity: 0.8, fontWeight: '700', flexShrink: 1 }}>
+                      {UI_TEXT.openParen}
+                      {freeMealServedSummary.mealTypeSegregations.join(UI_TEXT.pipe)}
                       {UI_TEXT.closeParen}
                     </Text>
                   )}

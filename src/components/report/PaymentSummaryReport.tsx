@@ -220,25 +220,24 @@ export function PaymentSummaryReport({
                 styles.card,
                 {
                   flex: 1,
-                  minWidth: 240,
-                  backgroundColor: theme.cardColors[0].bg,
-                  borderColor: theme.cardColors[0].border,
+                  minWidth: Platform.OS === "web" ? 240 : "100%",
+                  backgroundColor: theme.colors.primary,
+                  borderColor: theme.colors.primary,
                 },
               ]}
             >
-              <Text style={{ fontSize: 11, fontWeight: "800", color: theme.colors.textSecondary, textTransform: "uppercase" }}>
+              <Text style={{ fontSize: 11, fontWeight: "800", color: theme.colors.white, opacity: 0.85, textTransform: "uppercase" }}>
                 {UI_TEXT.totalCollection}
               </Text>
-              <Text style={{ fontSize: 28, fontWeight: "900", color: theme.cardColors[0].accent, marginTop: 4 }}>
-                
+              <Text style={{ fontSize: 28, fontWeight: "900", color: theme.colors.white, marginTop: 4 }} numberOfLines={1} adjustsFontSizeToFit={true}>
                 {data.seasonTotalPayment?.netPayment?.toFixed(0) || "0"}
               </Text>
-              <View style={{ flexDirection: "row", gap: 12, marginTop: 8 }}>
-                <Text style={{ fontSize: 11, fontWeight: "700", color: theme.colors.textSecondary }}>
-                  {UI_TEXT.paidPasses}: <Text style={{ color: theme.colors.textPrimary, fontWeight: "900" }}>{data.seasonTotalPayment?.paidPassesCount ?? 0}</Text>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12, marginTop: 8 }}>
+                <Text style={{ fontSize: 11, fontWeight: "700", color: theme.colors.white, opacity: 0.9 }}>
+                  {UI_TEXT.paidPasses}: <Text style={{ color: theme.colors.white, fontWeight: "900" }}>{data.seasonTotalPayment?.paidPassesCount ?? 0}</Text>
                 </Text>
-                <Text style={{ fontSize: 11, fontWeight: "700", color: theme.colors.textSecondary }}>
-                  {UI_TEXT.unpaidPasses}: <Text style={{ color: theme.colors.textPrimary, fontWeight: "900" }}>{data.seasonTotalPayment?.unpaidPassesCount ?? 0}</Text>
+                <Text style={{ fontSize: 11, fontWeight: "700", color: theme.colors.white, opacity: 0.9 }}>
+                  {UI_TEXT.unpaidPasses}: <Text style={{ color: theme.colors.white, fontWeight: "900" }}>{data.seasonTotalPayment?.unpaidPassesCount ?? 0}</Text>
                 </Text>
               </View>
             </View>
@@ -249,29 +248,29 @@ export function PaymentSummaryReport({
                 styles.card,
                 {
                   flex: 1,
-                  minWidth: 240,
-                  backgroundColor: theme.cardColors[1].bg,
-                  borderColor: theme.cardColors[1].border,
+                  minWidth: Platform.OS === "web" ? 240 : "100%",
+                  backgroundColor: theme.colors.primary,
+                  borderColor: theme.colors.primary,
                 },
               ]}
             >
-              <Text style={{ fontSize: 11, fontWeight: "800", color: theme.colors.textSecondary, textTransform: "uppercase", marginBottom: 8 }}>
+              <Text style={{ fontSize: 11, fontWeight: "800", color: theme.colors.white, opacity: 0.85, textTransform: "uppercase", marginBottom: 8 }}>
                 {UI_TEXT.paymentSummary} ({UI_TEXT.food} vs {UI_TEXT.parcel})
               </Text>
               <View style={{ gap: 6 }}>
-                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                  <Text style={{ fontSize: 12, fontWeight: "700", color: theme.colors.textPrimary }}>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                  <Text style={{ fontSize: 12, fontWeight: "700", color: theme.colors.white, flex: 1, minWidth: 140 }} numberOfLines={2}>
                     • {UI_TEXT.food} ({foodBreakdown.map(i => i.label).join(", ")})
                   </Text>
-                  <Text style={{ fontSize: 13, fontWeight: "900", color: theme.cardColors[1].accent }}>
+                  <Text style={{ fontSize: 13, fontWeight: "900", color: theme.colors.white, flexShrink: 0 }}>
                     {(data.totalFood || 0).toFixed(0)}
                   </Text>
                 </View>
-                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                  <Text style={{ fontSize: 12, fontWeight: "700", color: theme.colors.textPrimary }}>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                  <Text style={{ fontSize: 12, fontWeight: "700", color: theme.colors.white, flex: 1, minWidth: 140 }} numberOfLines={2}>
                     • {UI_TEXT.parcel} ({parcelBreakdown.map(i => i.label).join(", ")})
                   </Text>
-                  <Text style={{ fontSize: 13, fontWeight: "900", color: theme.cardColors[1].accent }}>
+                  <Text style={{ fontSize: 13, fontWeight: "900", color: theme.colors.white, flexShrink: 0 }}>
                     {(data.totalParcel || 0).toFixed(0)}
                   </Text>
                 </View>
@@ -281,8 +280,7 @@ export function PaymentSummaryReport({
 
           {/* Payment Mode Summary Cards */}
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
-            {(data.summary || []).map((item, idx) => {
-              const cardTheme = theme.cardColors[(idx + 2) % theme.cardColors.length];
+            {(data.summary || []).filter(item => (item.total || 0) > 0).map((item) => {
               return (
                 <View
                   key={item.mode}
@@ -290,20 +288,19 @@ export function PaymentSummaryReport({
                     styles.card,
                     {
                       flex: 1,
-                      minWidth: 160,
-                      backgroundColor: cardTheme.bg,
-                      borderColor: cardTheme.border,
+                      minWidth: 140,
+                      backgroundColor: theme.colors.primary,
+                      borderColor: theme.colors.primary,
                     },
                   ]}
                 >
-                  <Text style={{ fontSize: 11, fontWeight: "800", color: theme.colors.textSecondary, textTransform: "uppercase" }}>
+                  <Text style={{ fontSize: 11, fontWeight: "800", color: theme.colors.white, opacity: 0.85, textTransform: "uppercase" }} numberOfLines={1}>
                     {getPaymentModeLabel(item.mode)}
                   </Text>
-                  <Text style={{ fontSize: 22, fontWeight: "900", color: cardTheme.accent, marginTop: 4 }}>
-                    
+                  <Text style={{ fontSize: 22, fontWeight: "900", color: theme.colors.white, marginTop: 4 }} numberOfLines={1} adjustsFontSizeToFit={true}>
                     {item.total.toFixed(0)}
                   </Text>
-                  <Text style={{ fontSize: 11, fontWeight: "700", color: theme.colors.textSecondary, marginTop: 4 }}>
+                  <Text style={{ fontSize: 11, fontWeight: "700", color: theme.colors.white, opacity: 0.9, marginTop: 4 }} numberOfLines={2}>
                     {item.count} {item.count === 1 ? UI_TEXT.paymentTransaction : UI_TEXT.paymentTransactions} ({item.passesCount || 0} passes)
                   </Text>
                 </View>
@@ -395,7 +392,6 @@ export function PaymentSummaryReport({
                           {UI_TEXT.total}
                         </Text>
                         <Text style={{ fontSize: 20, fontWeight: "900", color: colorScheme.accent, marginTop: 2 }}>
-                          
                           {flat.total.toFixed(0)}
                         </Text>
                       </View>
@@ -528,8 +524,8 @@ export function PaymentSummaryReport({
       {/* Tab 4: Amount Discrepancy Report */}
       {activeTab === PaymentTab.DISCREPANCY && (
         <AmountDiscrepancyReport
-          discrepancies={data.discrepancies || []}
-          onSelectFlat={onSelectFlat}
+          data={data.discrepancies || []}
+          onSelectFlat={onSelectFlat || (() => {})}
         />
       )}
     </View>
