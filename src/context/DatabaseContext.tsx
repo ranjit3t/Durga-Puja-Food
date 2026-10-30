@@ -199,11 +199,18 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
   const upsertCatererTransaction = useCallback(async (tx: CatererTransaction) => {
     try {
       const isEdit = !!tx.id;
-      await repository.upsertCatererTransaction(tx);
+      const saved = await repository.upsertCatererTransaction(tx);
+      setCatererTransactions((prev) => {
+        if (prev.some((t) => t.id === saved.id)) {
+          return prev.map((t) => (t.id === saved.id ? saved : t)).sort((a, b) => b.date - a.date);
+        }
+        return [saved, ...prev].sort((a, b) => b.date - a.date);
+      });
       addActivityLog({
         module: ActivityModule.REPORT,
         action: isEdit ? ActivityAction.UPDATE : ActivityAction.CREATE,
-        description: `${isEdit ? "Updated" : "Added"} caterer transaction: ₹${tx.amount} (${tx.description})`,
+        targetId: saved.id || "Caterer Txn",
+        description: `${isEdit ? "Updated" : "Added"} caterer transaction: ₹${saved.amount} (${saved.description || saved.category})`,
       });
     } catch (err: any) {
       console.error("Upsert caterer transaction error:", err);

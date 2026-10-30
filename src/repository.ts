@@ -877,13 +877,17 @@ export function createFirebaseRepository(): SubscriptionRepository {
 
         unsubAdded = onChildAdded(nRef, (snapshot) => {
           if (snapshot.exists()) {
-            onAdded(snapshot.val() as Note);
+            const val = snapshot.val();
+            const note = (typeof val === "object" && val !== null) ? { ...val, id: val.id || snapshot.key } : val;
+            onAdded(note as Note);
           }
         });
 
         unsubChanged = onChildChanged(nRef, (snapshot) => {
           if (snapshot.exists()) {
-            onChanged(snapshot.val() as Note);
+            const val = snapshot.val();
+            const note = (typeof val === "object" && val !== null) ? { ...val, id: val.id || snapshot.key } : val;
+            onChanged(note as Note);
           }
         });
 
@@ -912,13 +916,17 @@ export function createFirebaseRepository(): SubscriptionRepository {
 
         unsubAdded = onChildAdded(pkgRef, (snapshot) => {
           if (snapshot.exists()) {
-            onAdded(snapshot.val() as FoodPackage);
+            const val = snapshot.val();
+            const pkg = (typeof val === "object" && val !== null) ? { ...val, id: val.id || snapshot.key } : val;
+            onAdded(pkg as FoodPackage);
           }
         });
 
         unsubChanged = onChildChanged(pkgRef, (snapshot) => {
           if (snapshot.exists()) {
-            onChanged(snapshot.val() as FoodPackage);
+            const val = snapshot.val();
+            const pkg = (typeof val === "object" && val !== null) ? { ...val, id: val.id || snapshot.key } : val;
+            onChanged(pkg as FoodPackage);
           }
         });
 
@@ -947,13 +955,17 @@ export function createFirebaseRepository(): SubscriptionRepository {
 
         unsubAdded = onChildAdded(cRef, (snapshot) => {
           if (snapshot.exists()) {
-            onAdded(snapshot.val() as CatererTransaction);
+            const val = snapshot.val();
+            const tx = (typeof val === "object" && val !== null) ? { ...val, id: val.id || snapshot.key } : val;
+            onAdded(tx as CatererTransaction);
           }
         });
 
         unsubChanged = onChildChanged(cRef, (snapshot) => {
           if (snapshot.exists()) {
-            onChanged(snapshot.val() as CatererTransaction);
+            const val = snapshot.val();
+            const tx = (typeof val === "object" && val !== null) ? { ...val, id: val.id || snapshot.key } : val;
+            onChanged(tx as CatererTransaction);
           }
         });
 
@@ -980,7 +992,9 @@ export function createFirebaseRepository(): SubscriptionRepository {
 
         unsubAdded = onChildAdded(logsQuery, (snapshot) => {
           if (snapshot.exists()) {
-            onAdded(snapshot.val() as ActivityLog);
+            const val = snapshot.val();
+            const log = (typeof val === "object" && val !== null) ? { ...val, id: val.id || snapshot.key } : val;
+            onAdded(log as ActivityLog);
           }
         });
       }).catch(err => console.error("Logs listener error:", err));
