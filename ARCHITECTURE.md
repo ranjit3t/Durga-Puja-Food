@@ -459,6 +459,12 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
 - **Active-Only Initial Chat List**: The opening chat popup list displays ONLY users with active, uncleared conversations (`lastMessage !== undefined` or unread messages). Users with no chat history or whose chat was cleared do not appear in the default list.
 - **Search-to-Resume Conversation**: Users can search for any system user in the chat search bar to initiate or resume conversations after clearing.
 
+### AU. Cross-Platform Encrypted Password Authentication & Profile Self-Service (`authUtils.ts`, `LoginScreen.tsx`, `UserManagementScreen.tsx`, `AccountModal.tsx`, `UserGreeting.tsx`, `DatabaseContext.tsx`)
+- **Cross-Platform SHA-256 Encryption (`authUtils.ts`)**: Pure JS synchronous SHA-256 implementation supporting Web and Mobile without native dependencies.
+- **Explicit Database Marker (`encrypted?: boolean`)**: User records in `auth_config` store an explicit `encrypted` boolean flag (defaulting legacy old users to `false` for backward-compatible plaintext matching, and newly created/updated users to `true`).
+- **Global User Profile & Password Self-Service (`AccountModal.tsx`, `UserGreeting.tsx`)**: Any authenticated user (Admin, Caterer, Vendor) can tap their personalized greeting badge to open the Account & Password modal to update their full name and change their password (with current password verification and confirmation matching).
+- **Real-Time Remote Update Enforcement (`DatabaseContext.tsx`)**: Real-time WebSocket listeners (`onAuthConfigChange`) monitor account profiles; if an administrator updates a logged-in user's password or name remotely, the app instantly and forcefully logs them out with a relogin notification.
+
 ## 6. Quality Assurance & UI Catalog
 
 ### Jest Test Boundary

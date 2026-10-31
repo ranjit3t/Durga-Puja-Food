@@ -138,6 +138,13 @@ const CatererFinanceContext = createContext<CatererFinanceContextType | undefine
 
 export function DatabaseProvider({ children }: { children: React.ReactNode }) {
   const { userRole, userName, userAccountName, handleLogout } = useAuth();
+  const lastKnownAuthRef = useRef<{ password?: string; name?: string } | null>(null);
+
+  useEffect(() => {
+    if (!userAccountName) {
+      lastKnownAuthRef.current = null;
+    }
+  }, [userAccountName]);
 
   const [loading, setLoading] = useState(false);
   const [firebaseError, setFirebaseError] = useState("");
@@ -569,11 +576,50 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       if (cfg && Array.isArray(cfg.users) && userAccountName) {
         const currentClean = userAccountName.toLowerCase();
         const foundUser = cfg.users.find((u: any) => u.username && u.username.toLowerCase() === currentClean);
-        const isDisabled = foundUser ? (foundUser.disabled === true || foundUser.disabled === "true" || foundUser.disabled === 1 || foundUser.disabled === "1" || foundUser.deleted === true || foundUser.deleted === "true" || foundUser.deleted === 1 || foundUser.deleted === "1") : true;
+
+        if (!foundUser) {
+          handleLogout();
+          Alert.alert(UI_TEXT.error, UI_TEXT.accountDisabledError);
+          return;
+        }
+
+        const isDisabled =
+          foundUser.disabled === true ||
+          foundUser.disabled === "true" ||
+          foundUser.disabled === 1 ||
+          foundUser.disabled === "1" ||
+          foundUser.deleted === true ||
+          foundUser.deleted === "true" ||
+          foundUser.deleted === 1 ||
+          foundUser.deleted === "1";
 
         if (isDisabled) {
           handleLogout();
           Alert.alert(UI_TEXT.error, UI_TEXT.accountDisabledError);
+          return;
+        }
+
+        if (!lastKnownAuthRef.current) {
+          lastKnownAuthRef.current = {
+            password: foundUser.password,
+            name: foundUser.name,
+          };
+          return;
+        }
+
+        const passwordChanged = foundUser.password && lastKnownAuthRef.current.password && foundUser.password !== lastKnownAuthRef.current.password;
+        const nameChanged = foundUser.name && lastKnownAuthRef.current.name && foundUser.name !== lastKnownAuthRef.current.name;
+
+        if (passwordChanged || nameChanged) {
+          lastKnownAuthRef.current = {
+            password: foundUser.password,
+            name: foundUser.name,
+          };
+          handleLogout();
+          Alert.alert(
+            UI_TEXT.notice,
+            UI_TEXT.passwordOrProfileUpdatedMsg
+          );
         }
       }
     });

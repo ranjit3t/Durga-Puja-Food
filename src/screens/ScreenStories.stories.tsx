@@ -17,6 +17,7 @@ import { SubscriptionForm } from "./SubscriptionForm";
 import { SubscriptionListScreen } from "./SubscriptionListScreen";
 import { ViewMenuScreen } from "./ViewMenuScreen";
 import { CatererIncomeExpenseScreen } from "./CatererIncomeExpenseScreen";
+import { UserManagementScreen } from "./UserManagementScreen";
 import { AppNavigator } from "../navigation/AppNavigator";
 import { STORY_FIXTURES, StoryMockProvider } from "../../.storybook/storyMocks";
 
@@ -99,4 +100,5 @@ export const SubscriptionListScreenEmptyStory = {
 };
 export const ViewMenuScreenStory = { name: "ViewMenuScreen", render: () => <ViewMenuScreen /> };
 export const CatererIncomeExpenseScreenStory = { name: "CatererIncomeExpenseScreen", render: () => <CatererIncomeExpenseScreen /> };
+export const UserManagementScreenStory = { name: "UserManagementScreen", render: () => <UserManagementScreen /> };
 export const AppNavigatorStory = { name: "AppNavigator", render: () => <AppNavigator /> };

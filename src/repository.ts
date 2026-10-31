@@ -712,7 +712,22 @@ export function createFirebaseRepository(): SubscriptionRepository {
       const services = await ensureFirebaseAuth();
       if (!services) return undefined;
       const snapshot = await get(ref(services.db, authConfigPath));
-      return snapshot.exists() ? snapshot.val() : undefined;
+      if (!snapshot.exists()) return undefined;
+      const data = snapshot.val();
+      if (data && Array.isArray(data.users)) {
+        let updated = false;
+        data.users = data.users.map((u: any) => {
+          if (u && typeof u === 'object' && u.encrypted === undefined) {
+            updated = true;
+            return { ...u, encrypted: false };
+          }
+          return u;
+        });
+        if (updated) {
+          await set(ref(services.db, authConfigPath), cleanUndefined(data));
+        }
+      }
+      return data;
     },
     async updateAuthConfig(config) {
       const services = await ensureFirebaseAuth();

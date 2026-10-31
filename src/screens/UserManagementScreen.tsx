@@ -12,7 +12,6 @@ import {
   Pressable,
   TextInput,
   Modal,
-  Platform,
   useWindowDimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -29,6 +28,7 @@ import { useDatabase, useActivityLogs } from "./../context/DatabaseContext";
 import { useAppNavigation } from "./../context/NavigationContext";
 import { useUI } from "./../context/UIContext";
 import { createFirebaseRepository } from "./../repository";
+import { encryptPassword } from "./../utils/authUtils";
 
 const repository = createFirebaseRepository();
 
@@ -184,10 +184,11 @@ export function UserManagementScreen() {
         const newUser = {
           username: trimmedUsername,
           name: trimmedName || trimmedUsername,
-          password: trimmedPassword,
+          password: encryptPassword(trimmedPassword),
           role: formRole,
           disabled: false,
           deleted: false,
+          encrypted: true,
         };
 
         currentUsers.push(newUser);
@@ -269,7 +270,8 @@ export function UserManagementScreen() {
 
       currentUsers[idx] = {
         ...currentUsers[idx],
-        password: trimmedNew,
+        password: encryptPassword(trimmedNew),
+        encrypted: true,
       };
 
       await repository.updateAuthConfig({ ...authConfig, users: currentUsers });

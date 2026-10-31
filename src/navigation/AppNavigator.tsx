@@ -33,6 +33,7 @@ import { ContactsScreen } from "../screens/ContactsScreen";
 import { FoodPackageScreen } from "../screens/FoodPackageScreen";
 import { CatererIncomeExpenseScreen } from "../screens/CatererIncomeExpenseScreen";
 import { UserManagementScreen } from "../screens/UserManagementScreen";
+import { AccountModal } from "../components/common/AccountModal";
 
 import { HomeScreen } from "../screens/HomeScreen";
 
@@ -136,6 +137,7 @@ export function AppNavigator() {
       <View style={styles.bgBlobWeb2} />
       <View style={styles.bgBlobWebTop} />
       {screenComponent}
+      <AccountModal />
     </View>
   );
 }

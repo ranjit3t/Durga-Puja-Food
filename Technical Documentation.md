@@ -464,6 +464,13 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
     - **Active Conversation Filtering**: The opening chat popup list displays ONLY users with active, uncleared conversations. Cleared chats and users with no history do not appear in the initial list. Users can search by name/role in the search bar to initiate or resume conversations.
     - **WCAG 2.1 AA & Localization Compliance**: Fully accessible with screen reader labels and hints (`accessibilityHint`), mobile-friendly touch targets, and zero hardcoded strings (`UI_TEXT`).
 
+23. **Cross-Platform Encrypted Password Authentication & Profile Self-Service ([`authUtils.ts`](src/utils/authUtils.ts), [`LoginScreen.tsx`](src/screens/LoginScreen.tsx), [`UserManagementScreen.tsx`](src/screens/UserManagementScreen.tsx), [`AccountModal.tsx`](src/components/common/AccountModal.tsx), [`UserGreeting.tsx`](src/components/common/UserGreeting.tsx), [`DatabaseContext.tsx`](src/context/DatabaseContext.tsx))**:
+    - **Cross-Platform SHA-256 Hashing**: Pure JavaScript synchronous SHA-256 implementation providing secure, cross-platform password encryption across both Web and Mobile runtimes.
+    - **Explicit Database `encrypted` Marker**: User records store an explicit `encrypted?: boolean` boolean flag (defaulting legacy old users to `false` for backward-compatible plaintext verification, and new/updated users to `true`).
+    - **Global Self-Service Account Modal**: Accessible to all authenticated roles (Admin, Caterer, Vendor) by tapping the pressable User Greeting badge in the header. Allows updating display names and changing passwords with current password verification and confirmation matching.
+    - **Real-Time Remote Profile Update & Force Logout**: Active WebSocket listeners (`onAuthConfigChange`) monitor remote modifications; if an administrator updates a logged-in user's password or profile name, the app instantly and forcefully logs them out with a relogin notification.
+    - **WCAG 2.1 AA & Localization Compliance**: Fully accessible with screen reader support, mobile-friendly responsive modals, and zero hardcoded strings (`UI_TEXT`).
+
 ---
 
 ## 6. Automated Testing & Storybook

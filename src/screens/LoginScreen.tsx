@@ -23,6 +23,10 @@ import { useAuth } from "../context/AuthContext";
 import { useDatabase } from "../context/DatabaseContext";
 import { useUI } from "../context/UIContext";
 import { ThemeToggleButton } from "../components/common/ThemeToggleButton";
+import { verifyPassword, encryptPassword } from "../utils/authUtils";
+import { createFirebaseRepository } from "../repository";
+
+const repository = createFirebaseRepository();
 
 export function LoginScreen() {
   const { handleLogin } = useAuth();
@@ -47,10 +51,13 @@ export function LoginScreen() {
       }
 
       const user = authConfig.users.find(
-        (u: any) => u.username === username && u.password === password
+        (u: any) => u.username === username
       );
 
-      if (user) {
+      const isMatch = user ? verifyPassword(password, user) : false;
+
+      if (user && isMatch) {
+
         const isDeletedOrDisabled = user.deleted === true || user.deleted === "true" || user.deleted === 1 || user.deleted === "1" ||
                                     user.disabled === true || user.disabled === "true" || user.disabled === 1 || user.disabled === "1";
         if (isDeletedOrDisabled) {

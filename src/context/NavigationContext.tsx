@@ -19,6 +19,9 @@ interface NavigationContextType {
   history: Screen[];
   navigate: (next: Screen) => void;
   goBack: () => boolean;
+  isAccountModalVisible: boolean;
+  openAccountModal: () => void;
+  closeAccountModal: () => void;
 
   // Selection States (Hoisted from screens)
   selectedId: string;
@@ -108,6 +111,10 @@ export function NavigationProvider({ children }: { children: React.ReactNode }) 
   const [isQuickCheckout, setIsQuickCheckout] = useState(false);
   const [isParcelCheckout, setIsParcelCheckout] = useState(false);
   const [isQuickFreeMealMode, setIsQuickFreeMealMode] = useState(false);
+  const [isAccountModalVisible, setIsAccountModalVisible] = useState(false);
+
+  const openAccountModal = useCallback(() => setIsAccountModalVisible(true), []);
+  const closeAccountModal = useCallback(() => setIsAccountModalVisible(false), []);
 
   // View Filter states
   const [reportType, setReportType] = useState<ReportType>(ReportType.DAY);
@@ -312,7 +319,8 @@ export function NavigationProvider({ children }: { children: React.ReactNode }) 
     targetDay, setTargetDay, targetMeal, setTargetMeal,
     isQuickCheckout, setIsQuickCheckout,
     isParcelCheckout, setIsParcelCheckout,
-    isQuickFreeMealMode, setIsQuickFreeMealMode
+    isQuickFreeMealMode, setIsQuickFreeMealMode,
+    isAccountModalVisible, openAccountModal, closeAccountModal
   }), [
     screen, history, selectedId, selectedRecord, editing,
     reportType, reportDayId, reportMealType,
@@ -320,6 +328,7 @@ export function NavigationProvider({ children }: { children: React.ReactNode }) 
     subscriptionSearch, activeFilters, selectedBlock,
     subscriptionSortBy, subscriptionIsAscending,
     targetDay, targetMeal, isQuickCheckout, isParcelCheckout, isQuickFreeMealMode,
+    isAccountModalVisible, openAccountModal, closeAccountModal,
     startNew, openScannedValue, navigate, goBack
   ]);
 
