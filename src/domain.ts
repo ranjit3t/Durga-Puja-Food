@@ -483,6 +483,7 @@ export type Note = {
 
 export type AppVersionInfo = {
   version: string;
+  deprecatedVersion?: string;
   androidAppLocation?: string;
   iosAppLocation?: string;
 };
@@ -519,6 +520,7 @@ export type ChatUser = {
   unreadCount: number;
   disabled?: boolean;
   deleted?: boolean;
+  locked?: boolean;
   lastMessage?: ChatMessage;
 };
 

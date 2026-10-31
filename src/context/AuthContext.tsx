@@ -24,7 +24,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUserRole(role);
     setUserName(name);
     setUserAccountName(username || name);
-    setVersionAlertShown(false);
   }, []);
 
   const handleLogout = useCallback(() => {

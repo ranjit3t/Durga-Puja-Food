@@ -472,6 +472,14 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
 ### AW. Real-Time Login Page App Version Checking (`LoginScreen.tsx`, `repository.ts`)
 - **Login-Stage Version Updates (`LoginScreen.tsx`)**: App version checks and update alerts are performed on the Login Page (`LoginScreen`) using real-time WebSocket listeners (`onAppVersionChange`), notifying users before authentication.
 
+### AX. Account Lockout & Brute-Force Protection (`LoginScreen.tsx`, `UserManagementScreen.tsx`, `DatabaseContext.tsx`)
+- **Brute-Force Auto-Lock (`LoginScreen.tsx`)**: Tracks consecutive failed login attempts; entering an incorrect password **3 consecutive times** automatically locks the account (`locked: true`), resetting to 0 upon successful login.
+- **Admin Manual Lockout (`UserManagementScreen.tsx`)**: Administrators can manually lock or unlock any non-admin account via the dedicated "Locked Out" toggle switch in the Edit User modal.
+- **Real-Time Forceful Logout (`DatabaseContext.tsx`)**: Real-time WebSocket listeners (`onAuthConfigChange`) monitor account lockout flags (`locked: true`); if an active mobile session is locked out, the app instantly and forcefully logs them out with a localized lockout notice.
+
+### AY. Firebase RTDB Security Rules for Deprecated Version (`database.rules.json`)
+- **Deprecated Version Node Access (`database.rules.json`)**: Configures public read (`.read: true`) and authenticated write (`.write: "auth != null"`) permissions on the `deprecatedVersion` root path in Firebase Realtime Database, preventing `[Error: Permission denied]` permission errors during progressive app version loading.
+
 ## 6. Quality Assurance & UI Catalog
 
 ### Jest Test Boundary

@@ -1016,6 +1016,33 @@ export function isVersionBehind(local: string, remote: string): boolean {
 }
 
 /**
+ * Compares two semantic version strings.
+ * Returns true if local version is less than or equal to target version.
+ */
+export function isVersionLessOrEqual(local: string, target: string): boolean {
+  if (!local || !target) return false;
+  const parseSemver = (v: string) => {
+    const clean = String(v).replace(/^v/, "").split("-")[0];
+    const parts = clean.split(".").map((n) => parseInt(n, 10) || 0);
+    return [parts[0] || 0, parts[1] || 0, parts[2] || 0];
+  };
+
+  const [lMaj, lMin, lPat] = parseSemver(local);
+  const [tMaj, tMin, tPat] = parseSemver(target);
+
+  if (lMaj < tMaj) return true;
+  if (lMaj > tMaj) return false;
+
+  if (lMin < tMin) return true;
+  if (lMin > tMin) return false;
+
+  if (lPat < tPat) return true;
+  if (lPat > tPat) return false;
+
+  return true; // Equal
+}
+
+/**
  * Returns a short summary of meal counts across days for the subscription list.
  */
 export const mealSummary = (subscription: Subscription, config: ConfigDay[], kidsEnabled: boolean, guestsEnabled: boolean = false) =>

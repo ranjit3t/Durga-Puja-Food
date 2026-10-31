@@ -6,6 +6,10 @@
       ".read": true,
       ".write": "auth != null"
     },
+    "deprecatedVersion": {
+      ".read": true,
+      ".write": "auth != null"
+    },
     "androidAppLocation": {
       ".read": true,
       ".write": "auth != null"

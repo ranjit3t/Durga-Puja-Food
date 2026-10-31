@@ -47,7 +47,8 @@ import {
   getMealVarieties,
   getMealFreeMealCounts,
   isGuestsParcelEnabled,
-  isMealSlotAbsent
+  isMealSlotAbsent,
+  isVersionLessOrEqual
 } from "../constants";
 import { useUI } from "./UIContext";
 
@@ -141,6 +142,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
   const { userRole, userName, userAccountName, handleLogout } = useAuth();
   const lastKnownAuthRef = useRef<{ password?: string; name?: string } | null>(null);
   const lastSelfUpdateRef = useRef<number>(0);
+  const lastDeprecationAlertVersionRef = useRef<string | null>(null);
 
   const markSelfUpdate = useCallback(() => {
     lastSelfUpdateRef.current = Date.now();
@@ -570,10 +572,39 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
     });
 
     const unsubAppVersion = repository.onAppVersionChange((info) => {
+      if (!isMounted) return;
       if (info) {
         setRemoteAppVersion(info.version);
         setAndroidAppLocation(info.androidAppLocation);
         setIosAppLocation(info.iosAppLocation);
+
+        if (
+          Platform.OS !== "web" &&
+          userRole &&
+          info.deprecatedVersion &&
+          isVersionLessOrEqual(UI_TEXT.appVersion, info.deprecatedVersion) &&
+          lastDeprecationAlertVersionRef.current !== info.deprecatedVersion
+        ) {
+          lastDeprecationAlertVersionRef.current = info.deprecatedVersion;
+          const appLocation = Platform.OS === "android" ? info.androidAppLocation : (Platform.OS === "ios" ? info.iosAppLocation : undefined);
+          const message = UI_TEXT.appDeprecationMessage
+            .replace("{current}", UI_TEXT.appVersion)
+            .replace("{remote}", info.version || info.deprecatedVersion);
+
+          Alert.alert(
+            UI_TEXT.appDeprecationTitle,
+            message,
+            [
+              {
+                text: UI_TEXT.ok,
+                onPress: () => {
+                  handleLogout();
+                },
+              },
+            ],
+            { cancelable: false }
+          );
+        }
       }
     });
 
@@ -584,8 +615,19 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
         const foundUser = cfg.users.find((u: any) => u.username && u.username.toLowerCase() === currentClean);
 
         if (!foundUser) {
-          handleLogout();
-          Alert.alert(UI_TEXT.error, UI_TEXT.accountDisabledError);
+          Alert.alert(
+            UI_TEXT.error,
+            UI_TEXT.accountDisabledError,
+            [
+              {
+                text: UI_TEXT.ok,
+                onPress: () => {
+                  handleLogout();
+                },
+              },
+            ],
+            { cancelable: false }
+          );
           return;
         }
 
@@ -599,9 +641,18 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
           foundUser.deleted === 1 ||
           foundUser.deleted === "1";
 
-        if (isDisabled) {
+        const isLocked =
+          foundUser.locked === true ||
+          foundUser.locked === "true" ||
+          foundUser.locked === 1 ||
+          foundUser.locked === "1";
+
+        if (isDisabled || isLocked) {
           handleLogout();
-          Alert.alert(UI_TEXT.error, UI_TEXT.accountDisabledError);
+          Alert.alert(
+            UI_TEXT.error,
+            isLocked ? UI_TEXT.accountLockedError : UI_TEXT.accountDisabledError
+          );
           return;
         }
 

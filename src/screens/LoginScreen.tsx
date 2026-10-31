@@ -17,7 +17,7 @@ import { useStyles } from "../styles";
 import { useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
 import { UserRole, AppThemeMode, ActivityModule, ActivityAction } from "../types";
-import { isVersionBehind } from "../constants";
+import { isVersionBehind, isVersionLessOrEqual } from "../constants";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useAuth } from "../context/AuthContext";
@@ -28,6 +28,20 @@ import { verifyPassword, encryptPassword } from "../utils/authUtils";
 import { createFirebaseRepository } from "../repository";
 
 const repository = createFirebaseRepository();
+
+const failedAttemptsMap = new Map<string, number>();
+
+function recordFailedAttempt(username: string): number {
+  const key = username.trim().toLowerCase();
+  const count = (failedAttemptsMap.get(key) || 0) + 1;
+  failedAttemptsMap.set(key, count);
+  return count;
+}
+
+function clearFailedAttempts(username: string) {
+  const key = username.trim().toLowerCase();
+  failedAttemptsMap.delete(key);
+}
 
 export function LoginScreen() {
   const { handleLogin, versionAlertShown, markVersionAlertShown } = useAuth();
@@ -42,6 +56,7 @@ export function LoginScreen() {
   const [loading, setLoading] = useState(false);
 
   const [remoteAppVersion, setRemoteAppVersion] = useState<string | null>(null);
+  const [deprecatedVersion, setDeprecatedVersion] = useState<string | null>(null);
   const [androidAppLocation, setAndroidAppLocation] = useState<string | undefined>();
   const [iosAppLocation, setIosAppLocation] = useState<string | undefined>();
 
@@ -49,6 +64,7 @@ export function LoginScreen() {
     const unsubVersion = repository.onAppVersionChange((info) => {
       if (info) {
         setRemoteAppVersion(info.version);
+        setDeprecatedVersion(info.deprecatedVersion || null);
         setAndroidAppLocation(info.androidAppLocation);
         setIosAppLocation(info.iosAppLocation);
       }
@@ -58,26 +74,38 @@ export function LoginScreen() {
     };
   }, []);
 
+  const isDeprecated = Boolean(
+    deprecatedVersion && isVersionLessOrEqual(UI_TEXT.appVersion, deprecatedVersion)
+  );
+
   useEffect(() => {
-    if (
-      Platform.OS !== "web" &&
-      !versionAlertShown &&
-      remoteAppVersion &&
-      isVersionBehind(UI_TEXT.appVersion, remoteAppVersion)
-    ) {
-      markVersionAlertShown();
+    if (Platform.OS !== "web" && !versionAlertShown) {
       const appLocation = Platform.OS === "android" ? androidAppLocation : (Platform.OS === "ios" ? iosAppLocation : undefined);
-      const message = UI_TEXT.appUpdatedMessage
-        .replace("{current}", UI_TEXT.appVersion)
-        .replace("{remote}", remoteAppVersion);
-      showAlert(
-        UI_TEXT.appUpdateTitle,
-        message,
-        [{ text: UI_TEXT.ok, style: "default" }],
-        appLocation
-      );
+      if (isDeprecated && deprecatedVersion) {
+        markVersionAlertShown();
+        const message = UI_TEXT.appDeprecationMessage
+          .replace("{current}", UI_TEXT.appVersion)
+          .replace("{remote}", remoteAppVersion || deprecatedVersion);
+        showAlert(
+          UI_TEXT.appDeprecationTitle,
+          message,
+          [{ text: UI_TEXT.ok, style: "default" }],
+          appLocation
+        );
+      } else if (remoteAppVersion && isVersionBehind(UI_TEXT.appVersion, remoteAppVersion)) {
+        markVersionAlertShown();
+        const message = UI_TEXT.appUpdatedMessage
+          .replace("{current}", UI_TEXT.appVersion)
+          .replace("{remote}", remoteAppVersion);
+        showAlert(
+          UI_TEXT.appUpdateTitle,
+          message,
+          [{ text: UI_TEXT.ok, style: "default" }],
+          appLocation
+        );
+      }
     }
-  }, [remoteAppVersion, androidAppLocation, iosAppLocation, versionAlertShown, markVersionAlertShown, showAlert]);
+  }, [remoteAppVersion, deprecatedVersion, isDeprecated, androidAppLocation, iosAppLocation, versionAlertShown, markVersionAlertShown, showAlert]);
 
   const onLoginSubmit = async () => {
     setVerifying(true);
@@ -93,9 +121,22 @@ export function LoginScreen() {
         (u: any) => u.username === username
       );
 
+      const isLocked = user && (user.locked === true || user.locked === "true" || user.locked === 1 || user.locked === "1");
+      if (user && isLocked) {
+        setVerifying(false);
+        addActivityLog({
+          module: ActivityModule.AUTH,
+          action: ActivityAction.ERROR,
+          description: UI_TEXT.logAccountLocked.replace("{user}", username)
+        }, username);
+        showAlert(UI_TEXT.error, UI_TEXT.accountLockedError);
+        return;
+      }
+
       const isMatch = user ? verifyPassword(password, user) : false;
 
       if (user && isMatch) {
+        clearFailedAttempts(username);
 
         const isDeletedOrDisabled = user.deleted === true || user.deleted === "true" || user.deleted === 1 || user.deleted === "1" ||
                                     user.disabled === true || user.disabled === "true" || user.disabled === 1 || user.disabled === "1";
@@ -124,12 +165,26 @@ export function LoginScreen() {
         handleLogin(user.role as UserRole, displayName, user.username);
       } else {
         setVerifying(false);
-        addActivityLog({
-          module: ActivityModule.AUTH,
-          action: ActivityAction.ERROR,
-          description: UI_TEXT.logLoginFail.replace("{user}", username)
-        }, username);
-        showAlert(UI_TEXT.error, UI_TEXT.invalidCredentials);
+        const attempts = recordFailedAttempt(username);
+        if (user && attempts >= 3) {
+          const updatedUsers = authConfig.users.map((u: any) =>
+            u.username.toLowerCase() === username.toLowerCase() ? { ...u, locked: true, disabled: true } : u
+          );
+          await repository.updateAuthConfig({ ...authConfig, users: updatedUsers }).catch(() => {});
+          addActivityLog({
+            module: ActivityModule.AUTH,
+            action: ActivityAction.ERROR,
+            description: `Account auto-locked after 3 failed login attempts: ${username}`
+          }, username);
+          showAlert(UI_TEXT.error, UI_TEXT.failedLoginLockoutMsg);
+        } else {
+          addActivityLog({
+            module: ActivityModule.AUTH,
+            action: ActivityAction.ERROR,
+            description: UI_TEXT.logLoginFail.replace("{user}", username)
+          }, username);
+          showAlert(UI_TEXT.error, UI_TEXT.invalidCredentials);
+        }
       }
     } catch (err) {
       setVerifying(false);
@@ -216,15 +271,23 @@ export function LoginScreen() {
               </View>
 
               <Pressable
-                style={[styles.primary, (!username || !password || loading || verifying) && { opacity: 0.5 }, { marginTop: 40 }]}
-                onPress={onLoginSubmit}
-                disabled={!username || !password || loading || verifying}
+                style={[styles.primary, (!username || !password || loading || verifying || isDeprecated) && { opacity: 0.5 }, { marginTop: 40 }]}
+                onPress={isDeprecated ? () => {
+                  const appLocation = Platform.OS === "android" ? androidAppLocation : (Platform.OS === "ios" ? iosAppLocation : undefined);
+                  const message = UI_TEXT.appDeprecationMessage
+                    .replace("{current}", UI_TEXT.appVersion)
+                    .replace("{remote}", remoteAppVersion || deprecatedVersion || "");
+                  showAlert(UI_TEXT.appDeprecationTitle, message, [{ text: UI_TEXT.ok, style: "default" }], appLocation);
+                } : onLoginSubmit}
+                disabled={!username || !password || loading || verifying || isDeprecated}
                 accessible={true}
                 accessibilityRole="button"
-                accessibilityLabel={verifying ? UI_TEXT.verifying : loading ? UI_TEXT.loading : UI_TEXT.loginButton}
-                accessibilityState={{ disabled: !username || !password || loading || verifying }}
+                accessibilityLabel={isDeprecated ? UI_TEXT.appDeprecationTitle : (verifying ? UI_TEXT.verifying : loading ? UI_TEXT.loading : UI_TEXT.loginButton)}
+                accessibilityState={{ disabled: !username || !password || loading || verifying || isDeprecated }}
               >
-                <Text style={styles.primaryText}>{verifying ? UI_TEXT.verifying : loading ? UI_TEXT.loading : UI_TEXT.loginButton}</Text>
+                <Text style={styles.primaryText}>
+                  {isDeprecated ? "Update Required (Deprecated)" : (verifying ? UI_TEXT.verifying : loading ? UI_TEXT.loading : UI_TEXT.loginButton)}
+                </Text>
               </Pressable>
             </View>
           </View>

@@ -1,6 +1,6 @@
 /**
  * User Management Screen for Administrators.
- * Allows admins to create, edit, change password, enable/disable, and soft-delete non-admin system users.
+ * Allows admins to create, edit, change password, enable/disable, lock/unlock, and soft-delete non-admin system users.
  * Fully accessible, mobile-friendly, and localized.
  */
 import React, { useState, useEffect, useCallback } from "react";
@@ -12,6 +12,7 @@ import {
   Pressable,
   TextInput,
   Modal,
+  Platform,
   useWindowDimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -58,6 +59,7 @@ export function UserManagementScreen() {
   const [formRole, setFormRole] = useState<string>(UserRole.CATERER);
   const [formDisabled, setFormDisabled] = useState(false);
   const [formDeleted, setFormDeleted] = useState(false);
+  const [formLocked, setFormLocked] = useState(false);
 
   // Change Password Modal State
   const [passwordModalVisible, setPasswordModalVisible] = useState(false);
@@ -110,6 +112,7 @@ export function UserManagementScreen() {
     setFormRole(UserRole.CATERER);
     setFormDisabled(false);
     setFormDeleted(false);
+    setFormLocked(false);
     setModalVisible(true);
   };
 
@@ -128,6 +131,7 @@ export function UserManagementScreen() {
     setFormRole(userRoleLower === UserRole.VENDOR ? UserRole.VENDOR : UserRole.CATERER);
     setFormDisabled(Boolean(user.disabled));
     setFormDeleted(Boolean(user.deleted));
+    setFormLocked(Boolean(user.locked));
     setModalVisible(true);
   };
 
@@ -188,6 +192,7 @@ export function UserManagementScreen() {
           role: formRole,
           disabled: false,
           deleted: false,
+          locked: false,
           encrypted: true,
         };
 
@@ -221,6 +226,7 @@ export function UserManagementScreen() {
           role: formRole,
           disabled: formDisabled,
           deleted: formDeleted,
+          locked: formLocked,
         };
 
         await repository.updateAuthConfig({ ...authConfig, users: currentUsers });
@@ -229,7 +235,7 @@ export function UserManagementScreen() {
           module: ActivityModule.AUTH,
           action: ActivityAction.UPDATE,
           targetId: editUsername,
-          description: `Updated system user: ${editUsername} (Role: ${formRole}, Disabled: ${formDisabled}, Deleted: ${formDeleted})`,
+          description: `Updated system user: ${editUsername} (Role: ${formRole}, Disabled: ${formDisabled}, Deleted: ${formDeleted}, Locked: ${formLocked})`,
         });
 
         showAlert(UI_TEXT.success || "Success", UI_TEXT.userUpdatedSuccess);
@@ -388,6 +394,7 @@ export function UserManagementScreen() {
           {nonAdminUsers.map((user: any) => {
             const isDeleted = Boolean(user.deleted);
             const isDisabled = Boolean(user.disabled);
+            const isLocked = Boolean(user.locked);
 
             return (
               <View
@@ -396,7 +403,7 @@ export function UserManagementScreen() {
                   styles.card,
                   {
                     backgroundColor: theme.colors.surface,
-                    borderColor: isDeleted ? theme.colors.error + "60" : isDisabled ? theme.colors.warning + "60" : theme.colors.border,
+                    borderColor: isDeleted || isLocked ? theme.colors.error + "60" : isDisabled ? theme.colors.warning + "60" : theme.colors.border,
                     borderWidth: 1.5,
                   },
                 ]}
@@ -411,6 +418,12 @@ export function UserManagementScreen() {
                         <View style={{ backgroundColor: theme.colors.errorLight || "#fee2e2", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
                           <Text style={{ fontSize: 10, fontWeight: "900", color: theme.colors.error || "#ef4444" }}>
                             {UI_TEXT.deletedStatus}
+                          </Text>
+                        </View>
+                      ) : isLocked ? (
+                        <View style={{ backgroundColor: theme.colors.errorLight || "#fee2e2", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                          <Text style={{ fontSize: 10, fontWeight: "900", color: theme.colors.error || "#ef4444" }}>
+                            {UI_TEXT.accountLockedBadge}
                           </Text>
                         </View>
                       ) : isDisabled ? (
@@ -493,7 +506,7 @@ export function UserManagementScreen() {
                           const currentUsers = Array.isArray(authConfig.users) ? [...authConfig.users] : [];
                           const idx = currentUsers.findIndex((u: any) => u.username && u.username === user.username);
                           if (idx !== -1) {
-                            currentUsers[idx] = { ...currentUsers[idx], deleted: false, disabled: false };
+                            currentUsers[idx] = { ...currentUsers[idx], deleted: false, disabled: false, locked: false };
                             await repository.updateAuthConfig({ ...authConfig, users: currentUsers });
                             addActivityLog({
                               module: ActivityModule.AUTH,
@@ -734,6 +747,45 @@ export function UserManagementScreen() {
                         borderRadius: 12,
                         backgroundColor: theme.colors.white,
                         transform: [{ translateX: formDisabled ? 20 : 0 }],
+                      }}
+                    />
+                  </Pressable>
+                </View>
+              )}
+
+              {/* Locked Out Toggle (Edit mode only) */}
+              {isEditing && (
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 4, backgroundColor: theme.colors.surfaceDark, padding: 12, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.border }}>
+                  <View style={{ flex: 1, marginRight: 12 }}>
+                    <Text style={{ fontSize: 13, fontWeight: "900", color: theme.colors.textPrimary }}>
+                      {UI_TEXT.lockedStatus}
+                    </Text>
+                    <Text style={{ fontSize: 11, color: theme.colors.textSecondary, marginTop: 2 }}>
+                      {UI_TEXT.lockedOutNotice}
+                    </Text>
+                  </View>
+                  <Pressable
+                    onPress={() => setFormLocked(!formLocked)}
+                    accessible={true}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: formLocked }}
+                    accessibilityLabel="Lock out user account"
+                    style={{
+                      width: 48,
+                      height: 28,
+                      borderRadius: 14,
+                      backgroundColor: formLocked ? theme.colors.error || "#ef4444" : theme.colors.border,
+                      padding: 2,
+                      justifyContent: "center",
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: 24,
+                        height: 24,
+                        borderRadius: 12,
+                        backgroundColor: theme.colors.white,
+                        transform: [{ translateX: formLocked ? 20 : 0 }],
                       }}
                     />
                   </Pressable>

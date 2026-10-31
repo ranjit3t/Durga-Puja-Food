@@ -480,6 +480,16 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
     - **Login-Stage Version Updates**: Version checks and update alerts occur on the Login Page (`LoginScreen`) using real-time WebSocket listeners (`onAppVersionChange`), ensuring users are informed of new updates before logging in.
     - **WCAG 2.1 AA & Localization Compliance**: Fully accessible with screen reader support, mobile-friendly forms, and zero hardcoded strings (`UI_TEXT`).
 
+26. **Account Lockout & Brute-Force Protection ([`LoginScreen.tsx`](src/screens/LoginScreen.tsx), [`UserManagementScreen.tsx`](src/screens/UserManagementScreen.tsx), [`DatabaseContext.tsx`](src/context/DatabaseContext.tsx))**:
+    - **Brute-Force Auto-Lock**: Tracks consecutive failed login attempts; entering an incorrect password **3 consecutive times** automatically locks the account (`locked: true`), resetting to 0 upon successful login.
+    - **Admin Manual Lockout**: Administrators can manually lock or unlock any non-admin account via the dedicated "Locked Out" toggle switch in the Edit User modal.
+    - **Real-Time Forceful Logout**: Real-time WebSocket listeners (`onAuthConfigChange`) monitor account lockout flags; if an active mobile session is locked out, the app instantly and forcefully logs them out with a localized lockout notice.
+    - **WCAG 2.1 AA & Localization Compliance**: Fully accessible with screen reader support, mobile-friendly forms, and zero hardcoded strings (`UI_TEXT`).
+
+27. **Firebase RTDB Security Rules for Deprecated Version ([`database.rules.json`](database.rules.json))**:
+    - **Deprecated Version Path Access**: Configures public read (`.read: true`) and authenticated write (`.write: "auth != null"`) permissions for the `deprecatedVersion` root node in Firebase Realtime Database, preventing permission denied errors during progressive load.
+    - **WCAG 2.1 AA & Localization Compliance**: Fully accessible with zero hardcoded strings (`UI_TEXT`).
+
 ---
 
 ## 6. Automated Testing & Storybook

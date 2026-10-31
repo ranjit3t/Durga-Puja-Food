@@ -36,7 +36,6 @@ import {
   MealType,
   DietType,
   DietaryOption,
-  normalizeChoice,
   normalizeSlot,
   toBool,
   ActivityLog,
@@ -46,8 +45,6 @@ import {
   AppVersionInfo,
   ChatMessage,
   UserPresence,
-  ChatUser,
-  MessageStatus,
   FoodPackage,
   CatererTransaction,
 } from "./domain";
@@ -828,15 +825,37 @@ export function createFirebaseRepository(): SubscriptionRepository {
     async getAppVersion() {
       const services = await ensureFirebaseAuth();
       if (!services) return null;
-      const [verSnap, androidSnap, iosSnap] = await Promise.all([
+      const [verSnap, depSnap, androidSnap, iosSnap] = await Promise.all([
         get(ref(services.db, appVersionPath)),
+        get(ref(services.db, "deprecatedVersion")),
         get(ref(services.db, "androidAppLocation")),
         get(ref(services.db, "iosAppLocation")),
       ]);
-      const version = verSnap.exists() ? String(verSnap.val()) : null;
-      if (!version) return null;
+
+      const versionVal = verSnap.exists() ? verSnap.val() : null;
+      const depVal = depSnap.exists() ? depSnap.val() : null;
+
+      let versionStr = "";
+      if (typeof versionVal === "string") {
+        versionStr = versionVal;
+      } else if (versionVal && typeof versionVal === "object") {
+        versionStr = versionVal.version || "";
+      }
+
+      let deprecatedStr = "";
+      if (typeof depVal === "string") {
+        deprecatedStr = depVal;
+      } else if (depVal && typeof depVal === "object") {
+        deprecatedStr = depVal.version || depVal.deprecatedVersion || "";
+      } else if (versionVal && typeof versionVal === "object" && versionVal.deprecatedVersion) {
+        deprecatedStr = versionVal.deprecatedVersion;
+      }
+
+      if (!versionStr && !deprecatedStr) return null;
+
       return {
-        version,
+        version: versionStr,
+        deprecatedVersion: deprecatedStr || undefined,
         androidAppLocation: androidSnap.exists() && typeof androidSnap.val() === "string" ? String(androidSnap.val()).trim() : undefined,
         iosAppLocation: iosSnap.exists() && typeof iosSnap.val() === "string" ? String(iosSnap.val()).trim() : undefined,
       };
@@ -1117,16 +1136,39 @@ export function createFirebaseRepository(): SubscriptionRepository {
 
     onAppVersionChange(callback) {
       let unsubVersion: (() => void) | null = null;
+      let unsubDep: (() => void) | null = null;
       let unsubAndroid: (() => void) | null = null;
       let unsubIos: (() => void) | null = null;
 
-      let version: string | null = null;
+      let latestVersionVal: any = null;
+      let latestDepVal: any = null;
       let androidAppLocation: string | undefined = undefined;
       let iosAppLocation: string | undefined = undefined;
 
       const notify = () => {
-        if (version) {
-          callback({ version, androidAppLocation, iosAppLocation });
+        let versionStr = "";
+        if (typeof latestVersionVal === "string") {
+          versionStr = latestVersionVal;
+        } else if (latestVersionVal && typeof latestVersionVal === "object") {
+          versionStr = latestVersionVal.version || "";
+        }
+
+        let deprecatedStr = "";
+        if (typeof latestDepVal === "string") {
+          deprecatedStr = latestDepVal;
+        } else if (latestDepVal && typeof latestDepVal === "object") {
+          deprecatedStr = latestDepVal.version || latestDepVal.deprecatedVersion || "";
+        } else if (latestVersionVal && typeof latestVersionVal === "object" && latestVersionVal.deprecatedVersion) {
+          deprecatedStr = latestVersionVal.deprecatedVersion;
+        }
+
+        if (versionStr || deprecatedStr) {
+          callback({
+            version: versionStr,
+            deprecatedVersion: deprecatedStr || undefined,
+            androidAppLocation,
+            iosAppLocation,
+          });
         } else {
           callback(null);
         }
@@ -1135,7 +1177,11 @@ export function createFirebaseRepository(): SubscriptionRepository {
       ensureFirebaseAuth().then((services) => {
         if (!services?.db) return;
         unsubVersion = onValue(ref(services.db, appVersionPath), (snapshot) => {
-          version = snapshot.exists() ? String(snapshot.val()) : null;
+          latestVersionVal = snapshot.exists() ? snapshot.val() : null;
+          notify();
+        });
+        unsubDep = onValue(ref(services.db, "deprecatedVersion"), (snapshot) => {
+          latestDepVal = snapshot.exists() ? snapshot.val() : null;
           notify();
         });
         unsubAndroid = onValue(ref(services.db, "androidAppLocation"), (snapshot) => {
@@ -1150,6 +1196,7 @@ export function createFirebaseRepository(): SubscriptionRepository {
 
       return () => {
         if (unsubVersion) unsubVersion();
+        if (unsubDep) unsubDep();
         if (unsubAndroid) unsubAndroid();
         if (unsubIos) unsubIos();
       };

@@ -1,4 +1,12 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import { createFirebaseRepository } from "../repository";
 import { useAuth } from "./AuthContext";
 import { ChatMessage, ChatUser, UserPresence } from "../types";
@@ -57,8 +65,19 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [activeRecipient, setActiveRecipient] = useState<ChatUser | null>(null);
 
   // System users & Presence
-  const [systemUsers, setSystemUsers] = useState<Array<{ username: string; name?: string; role?: string; disabled?: boolean | string | number; deleted?: boolean | string | number }>>([]);
-  const [presenceMap, setPresenceMap] = useState<Record<string, UserPresence>>({});
+  const [systemUsers, setSystemUsers] = useState<
+    Array<{
+      username: string;
+      name?: string;
+      role?: string;
+      disabled?: boolean | string | number;
+      deleted?: boolean | string | number;
+      locked?: boolean | string | number;
+    }>
+  >([]);
+  const [presenceMap, setPresenceMap] = useState<Record<string, UserPresence>>(
+    {},
+  );
   const [unreadMap, setUnreadMap] = useState<Record<string, number>>({});
   const [lastMsgMap, setLastMsgMap] = useState<Record<string, ChatMessage>>({});
 
@@ -124,7 +143,12 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     if (!userAccountName || !userRole) return;
     let cleanupPresence: (() => void) | null = null;
 
-    repository.updateUserPresence(userAccountName, userName || userAccountName, userRole)
+    repository
+      .updateUserPresence(
+        userAccountName,
+        userName || userAccountName,
+        userRole,
+      )
       .then((cleanup) => {
         cleanupPresence = cleanup;
       })
@@ -147,10 +171,13 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   // Listen to unread counts and last messages across all chats for current user
   useEffect(() => {
     if (!userAccountName) return;
-    const unsub = repository.onAllChatsSummaryChange(userAccountName, (unread, lastMsgs) => {
-      setUnreadMap(unread || {});
-      setLastMsgMap(lastMsgs || {});
-    });
+    const unsub = repository.onAllChatsSummaryChange(
+      userAccountName,
+      (unread, lastMsgs) => {
+        setUnreadMap(unread || {});
+        setLastMsgMap(lastMsgs || {});
+      },
+    );
     return () => unsub();
   }, [userAccountName]);
 
@@ -174,9 +201,22 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       systemUsernames.add(cleanU);
       if (cleanU === currentClean) return;
 
-      const isDisabled = u.disabled === true || u.disabled === "true" || u.disabled === 1 || u.disabled === "1";
-      const isDeleted = u.deleted === true || u.deleted === "true" || u.deleted === 1 || u.deleted === "1";
-      const isBlocked = isDisabled || isDeleted;
+      const isDisabled =
+        u.disabled === true ||
+        u.disabled === "true" ||
+        u.disabled === 1 ||
+        u.disabled === "1";
+      const isDeleted =
+        u.deleted === true ||
+        u.deleted === "true" ||
+        u.deleted === 1 ||
+        u.deleted === "1";
+      const isLocked =
+        u.locked === true ||
+        u.locked === "true" ||
+        u.locked === 1 ||
+        u.locked === "1";
+      const isBlocked = isDisabled || isDeleted || isLocked;
 
       const p = presenceMap[cleanU];
       const isOnline = p ? p.online : false;
@@ -184,7 +224,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       const unread = unreadMap[cleanU] || 0;
       const lastMsg = lastMsgMap[cleanU];
 
-      // Exclude blocked (disabled/deleted) users from new chat initiation (show only if historical chat exists)
+      // Exclude blocked (disabled/deleted/locked) users from new chat initiation (show only if historical chat exists)
       if (isBlocked && !lastMsg) return;
 
       usersMap.set(cleanU, {
@@ -196,6 +236,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         unreadCount: unread,
         disabled: isBlocked,
         deleted: isDeleted,
+        locked: isLocked,
         lastMessage: lastMsg,
       });
     });
@@ -224,7 +265,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         username: p?.username || cleanU,
         displayName: p?.displayName || p?.username || cleanU,
         role: p?.role || "User",
-        online: isDeleted ? false : (p ? p.online : false),
+        online: isDeleted ? false : p ? p.online : false,
         lastSeen: p ? p.lastSeen : 0,
         unreadCount: unread,
         disabled: isDeleted ? true : false,
@@ -247,7 +288,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!activeRecipient) return;
     const cleanU = activeRecipient.username.toLowerCase();
-    const liveUser = availableUsers.find((u) => u.username.toLowerCase() === cleanU);
+    const liveUser = availableUsers.find(
+      (u) => u.username.toLowerCase() === cleanU,
+    );
     if (liveUser) {
       setActiveRecipient((prev) => {
         if (!prev) return liveUser;
@@ -264,7 +307,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         return prev;
       });
     } else {
-      setActiveRecipient((prev) => prev ? { ...prev, disabled: true, deleted: true } : null);
+      setActiveRecipient((prev) =>
+        prev ? { ...prev, disabled: true, deleted: true } : null,
+      );
     }
   }, [availableUsers, activeRecipient]);
 
@@ -281,9 +326,13 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    const unsub = repository.onChatMessagesChange(activeChatId, userAccountName, (msgList) => {
-      setMessages(msgList);
-    });
+    const unsub = repository.onChatMessagesChange(
+      activeChatId,
+      userAccountName,
+      (msgList) => {
+        setMessages(msgList);
+      },
+    );
 
     return () => unsub();
   }, [activeChatId, userAccountName]);
@@ -312,9 +361,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   // Mark messages as read when chat is expanded and active
   useEffect(() => {
     if (isExpanded && activeChatId && userAccountName) {
-      repository.markChatMessagesAsRead(activeChatId, userAccountName).catch((err) => {
-        console.error("Error marking chat messages read:", err);
-      });
+      repository
+        .markChatMessagesAsRead(activeChatId, userAccountName)
+        .catch((err) => {
+          console.error("Error marking chat messages read:", err);
+        });
     }
   }, [isExpanded, activeChatId, userAccountName, messages]);
 
@@ -327,14 +378,24 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const sendMessage = useCallback(
     async (text: string) => {
       const trimmed = text.trim();
-      if (!trimmed || !activeChatId || !userAccountName || !activeRecipient || activeRecipient.disabled || activeRecipient.deleted) return;
+      if (
+        !trimmed ||
+        !activeChatId ||
+        !userAccountName ||
+        !activeRecipient ||
+        activeRecipient.disabled ||
+        activeRecipient.deleted
+      )
+        return;
 
       // Clear typing indicator immediately
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
         typingTimeoutRef.current = null;
       }
-      repository.setTypingStatus(activeChatId, userAccountName, false).catch(() => {});
+      repository
+        .setTypingStatus(activeChatId, userAccountName, false)
+        .catch(() => {});
 
       await repository.sendChatMessage(activeChatId, {
         chatId: activeChatId,
@@ -344,27 +405,39 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         text: trimmed,
       });
     },
-    [activeChatId, userAccountName, userName, activeRecipient]
+    [activeChatId, userAccountName, userName, activeRecipient],
   );
 
   // Send Typing Signal
   const sendTypingSignal = useCallback(
     (isTyping: boolean) => {
-      if (!activeChatId || !userAccountName || activeRecipient?.disabled || activeRecipient?.deleted) return;
+      if (
+        !activeChatId ||
+        !userAccountName ||
+        activeRecipient?.disabled ||
+        activeRecipient?.deleted
+      )
+        return;
 
       if (isTyping) {
-        repository.setTypingStatus(activeChatId, userAccountName, true).catch(() => {});
+        repository
+          .setTypingStatus(activeChatId, userAccountName, true)
+          .catch(() => {});
         if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
 
         typingTimeoutRef.current = setTimeout(() => {
-          repository.setTypingStatus(activeChatId, userAccountName, false).catch(() => {});
+          repository
+            .setTypingStatus(activeChatId, userAccountName, false)
+            .catch(() => {});
         }, 2500);
       } else {
         if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-        repository.setTypingStatus(activeChatId, userAccountName, false).catch(() => {});
+        repository
+          .setTypingStatus(activeChatId, userAccountName, false)
+          .catch(() => {});
       }
     },
-    [activeChatId, userAccountName]
+    [activeChatId, userAccountName],
   );
 
   // Clear Chat History for Active Conversation (Per-User Soft Delete)
@@ -379,11 +452,17 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   }, [activeChatId, userAccountName, activeRecipient]);
 
   // Window toggle methods
-  const toggleChatWindow = useCallback(() => setIsExpanded((prev) => !prev), []);
+  const toggleChatWindow = useCallback(
+    () => setIsExpanded((prev) => !prev),
+    [],
+  );
   const minimizeChatWindow = useCallback(() => setIsExpanded(false), []);
   const expandChatWindow = useCallback(() => setIsExpanded(true), []);
 
-  const hasMoreMessages = useMemo(() => messages.length > displayMessageCount, [messages.length, displayMessageCount]);
+  const hasMoreMessages = useMemo(
+    () => messages.length > displayMessageCount,
+    [messages.length, displayMessageCount],
+  );
 
   const loadMoreMessages = useCallback(() => {
     setDisplayMessageCount((prev) => prev + 20);
@@ -433,7 +512,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       isModalOpen,
       registerModalOpen,
       unregisterModalOpen,
-    ]
+    ],
   );
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
