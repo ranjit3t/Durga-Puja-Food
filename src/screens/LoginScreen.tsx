@@ -47,7 +47,7 @@ export function LoginScreen() {
       }
 
       const user = authConfig.users.find(
-        (u: any) => u.username.toLowerCase() === username.toLowerCase() && u.password === password
+        (u: any) => u.username === username && u.password === password
       );
 
       if (user) {

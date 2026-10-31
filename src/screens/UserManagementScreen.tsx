@@ -1,6 +1,6 @@
 /**
  * User Management Screen for Administrators.
- * Allows admins to create, edit, enable/disable, and soft-delete non-admin system users.
+ * Allows admins to create, edit, change password, enable/disable, and soft-delete non-admin system users.
  * Fully accessible, mobile-friendly, and localized.
  */
 import React, { useState, useEffect, useCallback } from "react";
@@ -12,6 +12,7 @@ import {
   Pressable,
   TextInput,
   Modal,
+  Platform,
   useWindowDimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -23,7 +24,6 @@ import { BackButton } from "./../components/common/BackButton";
 import { HomeButton } from "./../components/common/HomeButton";
 import { LogoutButton } from "./../components/common/LogoutButton";
 import { ThemeToggleButton } from "./../components/common/ThemeToggleButton";
-import { UserGreeting } from "./../components/common/UserGreeting";
 import { useAuth } from "./../context/AuthContext";
 import { useDatabase, useActivityLogs } from "./../context/DatabaseContext";
 import { useAppNavigation } from "./../context/NavigationContext";
@@ -54,9 +54,16 @@ export function UserManagementScreen() {
   const [formName, setFormName] = useState("");
   const [formUsername, setFormUsername] = useState("");
   const [formPassword, setFormPassword] = useState("");
+  const [formConfirmPassword, setFormConfirmPassword] = useState("");
   const [formRole, setFormRole] = useState<string>(UserRole.CATERER);
   const [formDisabled, setFormDisabled] = useState(false);
   const [formDeleted, setFormDeleted] = useState(false);
+
+  // Change Password Modal State
+  const [passwordModalVisible, setPasswordModalVisible] = useState(false);
+  const [targetPasswordUser, setTargetPasswordUser] = useState<any>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -99,6 +106,7 @@ export function UserManagementScreen() {
     setFormName("");
     setFormUsername("");
     setFormPassword("");
+    setFormConfirmPassword("");
     setFormRole(UserRole.CATERER);
     setFormDisabled(false);
     setFormDeleted(false);
@@ -114,7 +122,8 @@ export function UserManagementScreen() {
     setEditUsername(user.username);
     setFormName(user.name || "");
     setFormUsername(user.username);
-    setFormPassword(user.password || "");
+    setFormPassword("");
+    setFormConfirmPassword("");
     const userRoleLower = user.role ? user.role.toLowerCase() : "";
     setFormRole(userRoleLower === UserRole.VENDOR ? UserRole.VENDOR : UserRole.CATERER);
     setFormDisabled(Boolean(user.disabled));
@@ -122,14 +131,37 @@ export function UserManagementScreen() {
     setModalVisible(true);
   };
 
+  const openPasswordModal = (user: any) => {
+    if (user.role?.toLowerCase() === UserRole.ADMIN) {
+      showAlert(UI_TEXT.error, UI_TEXT.adminModificationForbidden);
+      return;
+    }
+    setTargetPasswordUser(user);
+    setNewPassword("");
+    setConfirmPassword("");
+    setPasswordModalVisible(true);
+  };
+
   const handleSaveUser = async () => {
     const trimmedUsername = formUsername.trim();
     const trimmedName = formName.trim();
     const trimmedPassword = formPassword.trim();
+    const trimmedConfirmPassword = formConfirmPassword.trim();
 
-    if (!trimmedUsername || !trimmedPassword) {
-      showAlert(UI_TEXT.error, UI_TEXT.invalidCredentials || "Please fill all required fields.");
+    if (!trimmedUsername) {
+      showAlert(UI_TEXT.error, UI_TEXT.invalidCredentials || "Please enter a valid username.");
       return;
+    }
+
+    if (!isEditing) {
+      if (!trimmedPassword || !trimmedConfirmPassword) {
+        showAlert(UI_TEXT.error, "Please enter and confirm the password.");
+        return;
+      }
+      if (trimmedPassword !== trimmedConfirmPassword) {
+        showAlert(UI_TEXT.error, UI_TEXT.passwordsMismatchError);
+        return;
+      }
     }
 
     if (formRole.toLowerCase() === UserRole.ADMIN) {
@@ -142,8 +174,8 @@ export function UserManagementScreen() {
       const currentUsers = Array.isArray(authConfig.users) ? [...authConfig.users] : [];
 
       if (!isEditing) {
-        // Check unique username constraint
-        const exists = currentUsers.some((u: any) => u.username && u.username.toLowerCase() === trimmedUsername.toLowerCase());
+        // Check unique username constraint (Case-sensitive exact match)
+        const exists = currentUsers.some((u: any) => u.username && u.username === trimmedUsername);
         if (exists) {
           showAlert(UI_TEXT.error, UI_TEXT.usernameUniqueError);
           return;
@@ -170,7 +202,7 @@ export function UserManagementScreen() {
 
         showAlert(UI_TEXT.success || "Success", UI_TEXT.userCreatedSuccess);
       } else {
-        const idx = currentUsers.findIndex((u: any) => u.username && u.username.toLowerCase() === editUsername.toLowerCase());
+        const idx = currentUsers.findIndex((u: any) => u.username && u.username === editUsername);
         if (idx === -1) {
           showAlert(UI_TEXT.error, UI_TEXT.noRecords);
           return;
@@ -185,7 +217,6 @@ export function UserManagementScreen() {
         currentUsers[idx] = {
           ...targetUser,
           name: trimmedName || trimmedUsername,
-          password: trimmedPassword || targetUser.password,
           role: formRole,
           disabled: formDisabled,
           deleted: formDeleted,
@@ -211,6 +242,54 @@ export function UserManagementScreen() {
     }
   };
 
+  const handleSavePasswordChange = async () => {
+    if (!targetPasswordUser) return;
+    const trimmedNew = newPassword.trim();
+    const trimmedConfirm = confirmPassword.trim();
+
+    if (!trimmedNew || !trimmedConfirm) {
+      showAlert(UI_TEXT.error, "Please enter and confirm the new password.");
+      return;
+    }
+
+    if (trimmedNew !== trimmedConfirm) {
+      showAlert(UI_TEXT.error, UI_TEXT.passwordsMismatchError);
+      return;
+    }
+
+    try {
+      const authConfig = (await repository.getAuthConfig()) || { users: [] };
+      const currentUsers = Array.isArray(authConfig.users) ? [...authConfig.users] : [];
+      const idx = currentUsers.findIndex((u: any) => u.username && u.username === targetPasswordUser.username);
+
+      if (idx === -1) {
+        showAlert(UI_TEXT.error, UI_TEXT.noRecords);
+        return;
+      }
+
+      currentUsers[idx] = {
+        ...currentUsers[idx],
+        password: trimmedNew,
+      };
+
+      await repository.updateAuthConfig({ ...authConfig, users: currentUsers });
+
+      addActivityLog({
+        module: ActivityModule.AUTH,
+        action: ActivityAction.UPDATE,
+        targetId: targetPasswordUser.username,
+        description: `Changed password for system user: ${targetPasswordUser.username}`,
+      });
+
+      showAlert(UI_TEXT.success || "Success", UI_TEXT.passwordChangedSuccess);
+      setPasswordModalVisible(false);
+      fetchUsers();
+    } catch (err: any) {
+      console.error("Failed to change password:", err);
+      showAlert(UI_TEXT.error, err.message || UI_TEXT.authServerError);
+    }
+  };
+
   const handleSoftDelete = async (user: any) => {
     if (user.role?.toLowerCase() === UserRole.ADMIN) {
       showAlert(UI_TEXT.error, UI_TEXT.adminModificationForbidden);
@@ -220,7 +299,7 @@ export function UserManagementScreen() {
     try {
       const authConfig = (await repository.getAuthConfig()) || { users: [] };
       const currentUsers = Array.isArray(authConfig.users) ? [...authConfig.users] : [];
-      const idx = currentUsers.findIndex((u: any) => u.username && u.username.toLowerCase() === user.username.toLowerCase());
+      const idx = currentUsers.findIndex((u: any) => u.username && u.username === user.username);
       if (idx === -1) return;
 
       currentUsers[idx] = {
@@ -379,12 +458,38 @@ export function UserManagementScreen() {
                       </Text>
                     </Pressable>
 
+                    <Pressable
+                      onPress={() => openPasswordModal(user)}
+                      accessible={true}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Change password for user ${user.username}`}
+                      style={({ pressed }) => [
+                        {
+                          backgroundColor: theme.colors.surfaceDark,
+                          paddingHorizontal: 10,
+                          paddingVertical: 6,
+                          borderRadius: 8,
+                          borderWidth: 1,
+                          borderColor: theme.colors.border,
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: 4,
+                        },
+                        pressed && { opacity: 0.7 },
+                      ]}
+                    >
+                      <Ionicons name="key-outline" size={14} color={theme.colors.secondary || theme.colors.primary} />
+                      <Text style={{ fontSize: 12, fontWeight: "800", color: theme.colors.secondary || theme.colors.primary }}>
+                        {UI_TEXT.changePasswordButton}
+                      </Text>
+                    </Pressable>
+
                     {isDeleted ? (
                       <Pressable
                         onPress={async () => {
                           const authConfig = (await repository.getAuthConfig()) || { users: [] };
                           const currentUsers = Array.isArray(authConfig.users) ? [...authConfig.users] : [];
-                          const idx = currentUsers.findIndex((u: any) => u.username && u.username.toLowerCase() === user.username.toLowerCase());
+                          const idx = currentUsers.findIndex((u: any) => u.username && u.username === user.username);
                           if (idx !== -1) {
                             currentUsers[idx] = { ...currentUsers[idx], deleted: false, disabled: false };
                             await repository.updateAuthConfig({ ...authConfig, users: currentUsers });
@@ -522,22 +627,42 @@ export function UserManagementScreen() {
                 />
               </View>
 
-              {/* Password */}
-              <View style={{ gap: 4 }}>
-                <Text style={{ fontSize: 12, fontWeight: "800", color: theme.colors.textSecondary, textTransform: "uppercase" }}>
-                  {UI_TEXT.passwordLabel}
-                </Text>
-                <TextInput
-                  style={[styles.input, { backgroundColor: theme.colors.surfaceDark, color: theme.colors.textPrimary, borderColor: theme.colors.border }]}
-                  placeholder={UI_TEXT.passwordPlaceholder}
-                  placeholderTextColor={theme.colors.textMuted}
-                  value={formPassword}
-                  onChangeText={setFormPassword}
-                  secureTextEntry={true}
-                  accessible={true}
-                  accessibilityLabel={UI_TEXT.passwordLabel}
-                />
-              </View>
+              {/* Password & Confirm Password (Create Mode Only) */}
+              {!isEditing && (
+                <>
+                  <View style={{ gap: 4 }}>
+                    <Text style={{ fontSize: 12, fontWeight: "800", color: theme.colors.textSecondary, textTransform: "uppercase" }}>
+                      {UI_TEXT.passwordLabel}
+                    </Text>
+                    <TextInput
+                      style={[styles.input, { backgroundColor: theme.colors.surfaceDark, color: theme.colors.textPrimary, borderColor: theme.colors.border }]}
+                      placeholder={UI_TEXT.passwordPlaceholder}
+                      placeholderTextColor={theme.colors.textMuted}
+                      value={formPassword}
+                      onChangeText={setFormPassword}
+                      secureTextEntry={true}
+                      accessible={true}
+                      accessibilityLabel={UI_TEXT.passwordLabel}
+                    />
+                  </View>
+
+                  <View style={{ gap: 4 }}>
+                    <Text style={{ fontSize: 12, fontWeight: "800", color: theme.colors.textSecondary, textTransform: "uppercase" }}>
+                      {UI_TEXT.confirmPasswordLabel}
+                    </Text>
+                    <TextInput
+                      style={[styles.input, { backgroundColor: theme.colors.surfaceDark, color: theme.colors.textPrimary, borderColor: theme.colors.border }]}
+                      placeholder={UI_TEXT.confirmPasswordPlaceholder}
+                      placeholderTextColor={theme.colors.textMuted}
+                      value={formConfirmPassword}
+                      onChangeText={setFormConfirmPassword}
+                      secureTextEntry={true}
+                      accessible={true}
+                      accessibilityLabel={UI_TEXT.confirmPasswordLabel}
+                    />
+                  </View>
+                </>
+              )}
 
               {/* Role Selection (Non-Admin only) */}
               <View style={{ gap: 4 }}>
@@ -627,6 +752,90 @@ export function UserManagementScreen() {
 
               <Pressable
                 onPress={handleSaveUser}
+                style={{ flex: 1, paddingVertical: 12, borderRadius: 10, backgroundColor: theme.colors.primary, alignItems: "center" }}
+              >
+                <Text style={{ fontSize: 13, fontWeight: "900", color: theme.colors.white }}>
+                  {UI_TEXT.save}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Change Password Modal */}
+      <Modal
+        visible={passwordModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setPasswordModalVisible(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center", padding: 16 }}>
+          <View style={[styles.card, { width: "100%", maxWidth: 420, backgroundColor: theme.colors.surface, borderRadius: 16, padding: 20, gap: 16 }]}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+              <Text style={{ fontSize: 18, fontWeight: "900", color: theme.colors.textPrimary }}>
+                {UI_TEXT.changePasswordButton}
+              </Text>
+              <Pressable onPress={() => setPasswordModalVisible(false)} hitSlop={8}>
+                <Ionicons name="close" size={22} color={theme.colors.textSecondary} />
+              </Pressable>
+            </View>
+
+            {targetPasswordUser && (
+              <Text style={{ fontSize: 13, fontWeight: "700", color: theme.colors.textSecondary }}>
+                Target User: <Text style={{ fontWeight: "900", color: theme.colors.primary }}>@{targetPasswordUser.username}</Text>
+              </Text>
+            )}
+
+            <View style={{ gap: 12 }}>
+              {/* New Password */}
+              <View style={{ gap: 4 }}>
+                <Text style={{ fontSize: 12, fontWeight: "800", color: theme.colors.textSecondary, textTransform: "uppercase" }}>
+                  {UI_TEXT.newPasswordLabel}
+                </Text>
+                <TextInput
+                  style={[styles.input, { backgroundColor: theme.colors.surfaceDark, color: theme.colors.textPrimary, borderColor: theme.colors.border }]}
+                  placeholder={UI_TEXT.newPasswordPlaceholder}
+                  placeholderTextColor={theme.colors.textMuted}
+                  value={newPassword}
+                  onChangeText={setNewPassword}
+                  secureTextEntry={true}
+                  accessible={true}
+                  accessibilityLabel={UI_TEXT.newPasswordLabel}
+                />
+              </View>
+
+              {/* Confirm New Password */}
+              <View style={{ gap: 4 }}>
+                <Text style={{ fontSize: 12, fontWeight: "800", color: theme.colors.textSecondary, textTransform: "uppercase" }}>
+                  {UI_TEXT.confirmPasswordLabel}
+                </Text>
+                <TextInput
+                  style={[styles.input, { backgroundColor: theme.colors.surfaceDark, color: theme.colors.textPrimary, borderColor: theme.colors.border }]}
+                  placeholder={UI_TEXT.confirmPasswordPlaceholder}
+                  placeholderTextColor={theme.colors.textMuted}
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  secureTextEntry={true}
+                  accessible={true}
+                  accessibilityLabel={UI_TEXT.confirmPasswordLabel}
+                />
+              </View>
+            </View>
+
+            {/* Modal Actions */}
+            <View style={{ flexDirection: "row", gap: 12, marginTop: 8 }}>
+              <Pressable
+                onPress={() => setPasswordModalVisible(false)}
+                style={{ flex: 1, paddingVertical: 12, borderRadius: 10, backgroundColor: theme.colors.surfaceDark, alignItems: "center", borderWidth: 1, borderColor: theme.colors.border }}
+              >
+                <Text style={{ fontSize: 13, fontWeight: "800", color: theme.colors.textPrimary }}>
+                  {UI_TEXT.cancel}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                onPress={handleSavePasswordChange}
                 style={{ flex: 1, paddingVertical: 12, borderRadius: 10, backgroundColor: theme.colors.primary, alignItems: "center" }}
               >
                 <Text style={{ fontSize: 13, fontWeight: "900", color: theme.colors.white }}>
