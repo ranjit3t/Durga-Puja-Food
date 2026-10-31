@@ -15,6 +15,7 @@ import { ParcelCheckoutModal } from "./ParcelCheckoutModal";
 import { QuickFreeMealModal } from "./QuickFreeMealModal";
 import { ThemeToggleButton } from "./ThemeToggleButton";
 import { UserGreeting } from "./UserGreeting";
+import { AccountModal } from "./AccountModal";
 import { ChatWidget } from "../chat/ChatWidget";
 import { DietaryOption, MealType, DietType } from "../../domain";
 import { useDatabase } from "../../context/DatabaseContext";
@@ -392,4 +393,20 @@ export const ChatWindowConversationStory = {
     ],
     isRecipientTyping: true,
   }} />,
+};
+
+function AccountModalExample() {
+  return (
+    <StoryMockProvider
+      auth={{ userName: "Sagnik Admin", userAccountName: "admin", userRole: "admin" }}
+      navigation={{ isAccountModalVisible: true }}
+    >
+      <AccountModal />
+    </StoryMockProvider>
+  );
+}
+
+export const AccountModalStory = {
+  name: "AccountModal/UpdateProfileAndPassword",
+  render: () => <AccountModalExample />,
 };
