@@ -22,6 +22,7 @@ import {
   serverTimestamp
 } from "firebase/database";
 import { ensureFirebaseAuth, firebaseConfigured } from "./firebase";
+import { encryptChatMessage, decryptChatMessage } from "./utils/chatEncryption";
 import {
   SubscriptionRecord,
   FoodMenu,
@@ -1215,8 +1216,10 @@ export function createFirebaseRepository(): SubscriptionRepository {
       const msgsRef = ref(services.db, `${chatsPath}/${chatId}/messages`);
       const newMsgRef = push(msgsRef);
       const now = Date.now();
+      const encryptedText = encryptChatMessage(msg.text, msg.sender, msg.recipient);
       const messageData = {
         ...msg,
+        text: encryptedText,
         id: newMsgRef.key as string,
         chatId,
         timestamp: serverTimestamp(),
@@ -1249,6 +1252,10 @@ export function createFirebaseRepository(): SubscriptionRepository {
 
           const list = Object.values(messagesData)
             .filter((m) => getMsgTime(m) > userClearedAt)
+            .map((m) => ({
+              ...m,
+              text: decryptChatMessage(m.text, m.sender, m.recipient),
+            }))
             .sort((a, b) => {
               const timeA = getMsgTime(a);
               const timeB = getMsgTime(b);
@@ -1286,6 +1293,10 @@ export function createFirebaseRepository(): SubscriptionRepository {
                 const userClearedAt = cData.clearedAt?.[cleanUser] || 0;
                 const msgs = Object.values(cData.messages)
                   .filter((m) => getMsgTime(m) > userClearedAt)
+                  .map((m) => ({
+                    ...m,
+                    text: decryptChatMessage(m.text, m.sender, m.recipient),
+                  }))
                   .sort((a, b) => {
                     const timeA = getMsgTime(a);
                     const timeB = getMsgTime(b);

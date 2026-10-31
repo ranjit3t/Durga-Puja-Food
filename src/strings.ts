@@ -940,6 +940,8 @@ export const UI_TEXT = {
   confirmClearChatMsg: "Are you sure you want to delete all messages with {user}? This action cannot be undone.",
   chatClearedSuccess: "Chat history cleared successfully.",
   noActiveConversations: "No active conversations. Search above to start chatting.",
+  searchMinCharsPrompt: "Please enter at least 3 characters to search...",
+  noUsersFound: "No users found matching your search",
   accountDisabledBadge: "Disabled",
   userDeletedBadge: "User Deleted",
   userDisabledNotice: "This user's account is disabled. You can view message history, but new messages cannot be sent.",

@@ -198,17 +198,18 @@ export function ChatWidget() {
   }
 
   // Filter users:
-  // When no search query is typed, show ONLY users with active conversations (where lastMessage exists) or unread messages.
-  // When a search query is typed, search across all available users to initiate or resume chats.
+  // - If search query has fewer than 3 characters (< 3), show ONLY users with active conversations.
+  // - If search query has 3 or more characters (>= 3), search across available users by username or name (case-insensitive substring match).
+  const query = searchQuery.trim().toLowerCase();
+  const currentClean = userAccountName?.toLowerCase() || "";
   const filteredUsers = availableUsers.filter((u) => {
-    const query = searchQuery.trim().toLowerCase();
-    if (!query) {
+    if (u.username.toLowerCase() === currentClean) return false;
+    if (query.length < 3) {
       return Boolean(u.lastMessage) || (u.unreadCount || 0) > 0;
     }
     return (
       u.displayName.toLowerCase().includes(query) ||
-      u.username.toLowerCase().includes(query) ||
-      u.role.toLowerCase().includes(query)
+      u.username.toLowerCase().includes(query)
     );
   });
 
@@ -227,6 +228,20 @@ export function ChatWidget() {
   };
 
   const handleTextChange = (val: string) => {
+    if (val.endsWith("\n")) {
+      const cleaned = val.trim();
+      if (cleaned && !sending) {
+        setSending(true);
+        setInputMessage("");
+        sendTypingSignal(false);
+        sendMessage(cleaned)
+          .catch((err) => console.error("Failed to send message:", err))
+          .finally(() => setSending(false));
+      } else {
+        setInputMessage("");
+      }
+      return;
+    }
     setInputMessage(val);
     sendTypingSignal(val.length > 0);
   };
@@ -623,8 +638,15 @@ export function ChatWidget() {
                     placeholderTextColor={theme.colors.textMuted}
                     value={inputMessage}
                     onChangeText={handleTextChange}
+                    onKeyPress={(e: any) => {
+                      if (Platform.OS === "web" && e.nativeEvent.key === "Enter" && !e.nativeEvent.shiftKey) {
+                        e.preventDefault?.();
+                        handleSend();
+                      }
+                    }}
                     onFocus={() => setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 150)}
                     multiline={true}
+                    blurOnSubmit={false}
                     onSubmitEditing={handleSend}
                   />
 

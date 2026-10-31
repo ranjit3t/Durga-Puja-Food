@@ -465,6 +465,10 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
 - **Global User Profile & Password Self-Service (`AccountModal.tsx`, `UserGreeting.tsx`)**: Any authenticated user (Admin, Caterer, Vendor) can tap their personalized greeting badge to open the Account & Password modal to update their full name and change their password (with current password verification and confirmation matching).
 - **Real-Time Remote Update Enforcement (`DatabaseContext.tsx`)**: Real-time WebSocket listeners (`onAuthConfigChange`) monitor account profiles; if an administrator updates a logged-in user's password or name remotely, the app instantly and forcefully logs them out with a relogin notification.
 
+### AV. Cross-Platform Enter Key Chat Message Sending (`ChatWidget.tsx`)
+- **Web Enter Key Support**: Intercepts `Enter` key presses (`onKeyPress`) without Shift to instantly transmit chat messages while preserving Shift+Enter for multiline entry.
+- **Mobile Return Key Support**: Automatically detects trailing newlines (`\n`) from virtual keyboard return taps, instantly transmitting messages and resetting the input buffer.
+
 ## 6. Quality Assurance & UI Catalog
 
 ### Jest Test Boundary

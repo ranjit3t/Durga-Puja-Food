@@ -471,6 +471,11 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
     - **Real-Time Remote Profile Update & Force Logout**: Active WebSocket listeners (`onAuthConfigChange`) monitor remote modifications; if an administrator updates a logged-in user's password or profile name, the app instantly and forcefully logs them out with a relogin notification.
     - **WCAG 2.1 AA & Localization Compliance**: Fully accessible with screen reader support, mobile-friendly responsive modals, and zero hardcoded strings (`UI_TEXT`).
 
+24. **Cross-Platform Enter Key Chat Message Sending ([`ChatWidget.tsx`](src/components/chat/ChatWidget.tsx))**:
+    - **Web Enter Key Support**: Intercepts `Enter` key presses (`onKeyPress`) without Shift to instantly transmit chat messages while preserving Shift+Enter for multiline entry.
+    - **Mobile Return Key Support**: Automatically detects trailing newlines (`\n`) from virtual keyboard return taps, instantly transmitting messages and resetting the input buffer.
+    - **WCAG 2.1 AA & Localization Compliance**: Fully accessible with screen reader support, touch targets, and zero hardcoded strings (`UI_TEXT`).
+
 ---
 
 ## 6. Automated Testing & Storybook

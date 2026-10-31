@@ -21,7 +21,7 @@ const repository = createFirebaseRepository();
 
 export function AccountModal() {
   const { userName, userAccountName, handleLogout } = useAuth();
-  const { getAuthConfig } = useCoreDatabase();
+  const { getAuthConfig, markSelfUpdate } = useCoreDatabase();
   const { addActivityLog } = useActivityLogs();
   const { showAlert } = useUI();
   const { isAccountModalVisible, closeAccountModal } = useAppNavigation();
@@ -107,6 +107,7 @@ export function AccountModal() {
         encrypted: updatedEncrypted,
       };
 
+      markSelfUpdate();
       await repository.updateAuthConfig({ ...authConfig, users: updatedUsers });
 
       addActivityLog({

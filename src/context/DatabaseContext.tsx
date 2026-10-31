@@ -100,6 +100,7 @@ export interface CoreDatabaseContextType {
   checkInPassAtomic: (flatId: string, updatesMap: Record<string, boolean>, metricsIncrements?: Record<string, number>) => Promise<void>;
   getByPasscode: (passcode: string) => Promise<Subscription | undefined>;
   getAuthConfig: () => Promise<any>;
+  markSelfUpdate: () => void;
   updateFreeMealCountDebounced: (dayId: string, mealKey: MealType, field: string, value: number, source?: FreeMealCheckoutSource | string) => void;
 }
 
@@ -139,6 +140,11 @@ const CatererFinanceContext = createContext<CatererFinanceContextType | undefine
 export function DatabaseProvider({ children }: { children: React.ReactNode }) {
   const { userRole, userName, userAccountName, handleLogout } = useAuth();
   const lastKnownAuthRef = useRef<{ password?: string; name?: string } | null>(null);
+  const lastSelfUpdateRef = useRef<number>(0);
+
+  const markSelfUpdate = useCallback(() => {
+    lastSelfUpdateRef.current = Date.now();
+  }, []);
 
   useEffect(() => {
     if (!userAccountName) {
@@ -611,6 +617,13 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
         const nameChanged = foundUser.name && lastKnownAuthRef.current.name && foundUser.name !== lastKnownAuthRef.current.name;
 
         if (passwordChanged || nameChanged) {
+          if (Date.now() - lastSelfUpdateRef.current < 4000) {
+            lastKnownAuthRef.current = {
+              password: foundUser.password,
+              name: foundUser.name,
+            };
+            return;
+          }
           lastKnownAuthRef.current = {
             password: foundUser.password,
             name: foundUser.name,
@@ -1653,7 +1666,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
     upsertSubscription, deleteSubscription, updateConfig, updateMenu,
     updateFreeMealCount, updateMealMenu, updateSubscriptionStatus, updateMealAbsent,
     checkInPassAtomic, getByPasscode,
-    getAuthConfig, updateFreeMealCountDebounced
+    getAuthConfig, markSelfUpdate, updateFreeMealCountDebounced
   }), [
     loading, firebaseError, refreshAllData,
     subscriptions, foodMenu, dayConfig, seasonName, seasonEnabled, paymentConfig,
@@ -1663,7 +1676,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
     upsertSubscription, deleteSubscription, updateConfig, updateMenu,
     updateFreeMealCount, updateMealMenu, updateSubscriptionStatus, updateMealAbsent,
     checkInPassAtomic, getByPasscode,
-    getAuthConfig, updateFreeMealCountDebounced
+    getAuthConfig, markSelfUpdate, updateFreeMealCountDebounced
   ]);
 
   const logsValue = useMemo(() => ({
