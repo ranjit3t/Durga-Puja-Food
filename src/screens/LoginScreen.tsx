@@ -2,7 +2,7 @@
  * Authentication screen for the application.
  * Handles user login and role assignment (Admin/Vendor).
  */
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -78,22 +78,17 @@ export function LoginScreen() {
     deprecatedVersion && isVersionLessOrEqual(UI_TEXT.appVersion, deprecatedVersion)
   );
 
+  const lastAlertedVersionRef = useRef<string | null>(null);
+
   useEffect(() => {
-    if (Platform.OS !== "web" && !versionAlertShown) {
-      const appLocation = Platform.OS === "android" ? androidAppLocation : (Platform.OS === "ios" ? iosAppLocation : undefined);
-      if (isDeprecated && deprecatedVersion) {
+    if (Platform.OS !== "web" && remoteAppVersion && !isDeprecated) {
+      if (
+        isVersionBehind(UI_TEXT.appVersion, remoteAppVersion) &&
+        lastAlertedVersionRef.current !== remoteAppVersion
+      ) {
+        lastAlertedVersionRef.current = remoteAppVersion;
         markVersionAlertShown();
-        const message = UI_TEXT.appDeprecationMessage
-          .replace("{current}", UI_TEXT.appVersion)
-          .replace("{remote}", remoteAppVersion || deprecatedVersion);
-        showAlert(
-          UI_TEXT.appDeprecationTitle,
-          message,
-          [{ text: UI_TEXT.ok, style: "default" }],
-          appLocation
-        );
-      } else if (remoteAppVersion && isVersionBehind(UI_TEXT.appVersion, remoteAppVersion)) {
-        markVersionAlertShown();
+        const appLocation = Platform.OS === "android" ? androidAppLocation : (Platform.OS === "ios" ? iosAppLocation : undefined);
         const message = UI_TEXT.appUpdatedMessage
           .replace("{current}", UI_TEXT.appVersion)
           .replace("{remote}", remoteAppVersion);
@@ -105,7 +100,7 @@ export function LoginScreen() {
         );
       }
     }
-  }, [remoteAppVersion, deprecatedVersion, isDeprecated, androidAppLocation, iosAppLocation, versionAlertShown, markVersionAlertShown, showAlert]);
+  }, [remoteAppVersion, isDeprecated, androidAppLocation, iosAppLocation, markVersionAlertShown, showAlert]);
 
   const onLoginSubmit = async () => {
     setVerifying(true);
@@ -225,6 +220,22 @@ export function LoginScreen() {
               <Text style={[styles.title, { textAlign: "center", marginTop: 12 }]}>{UI_TEXT.loginTitle}</Text>
             </View>
 
+            {isDeprecated && (
+              <View style={{ backgroundColor: theme.colors.errorLight || "#fee2e2", borderWidth: 1.5, borderColor: theme.colors.error || "#ef4444", borderRadius: 12, padding: 14, marginBottom: 20, gap: 8 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <Ionicons name="warning-outline" size={20} color={theme.colors.error || "#ef4444"} />
+                  <Text style={{ fontSize: 14, fontWeight: "900", color: theme.colors.error || "#ef4444" }}>
+                    {UI_TEXT.appDeprecationTitle}
+                  </Text>
+                </View>
+                <Text style={{ fontSize: 12, fontWeight: "700", color: theme.colors.textPrimary, lineHeight: 18 }}>
+                  {UI_TEXT.appDeprecationMessage
+                    .replace("{current}", UI_TEXT.appVersion)
+                    .replace("{remote}", remoteAppVersion || deprecatedVersion || "")}
+                </Text>
+              </View>
+            )}
+
             <View>
               <Text style={styles.label}>{UI_TEXT.username}</Text>
               <TextInput
@@ -282,11 +293,11 @@ export function LoginScreen() {
                 disabled={!username || !password || loading || verifying || isDeprecated}
                 accessible={true}
                 accessibilityRole="button"
-                accessibilityLabel={isDeprecated ? UI_TEXT.appDeprecationTitle : (verifying ? UI_TEXT.verifying : loading ? UI_TEXT.loading : UI_TEXT.loginButton)}
+                accessibilityLabel={verifying ? UI_TEXT.verifying : loading ? UI_TEXT.loading : UI_TEXT.loginButton}
                 accessibilityState={{ disabled: !username || !password || loading || verifying || isDeprecated }}
               >
                 <Text style={styles.primaryText}>
-                  {isDeprecated ? "Update Required (Deprecated)" : (verifying ? UI_TEXT.verifying : loading ? UI_TEXT.loading : UI_TEXT.loginButton)}
+                  {verifying ? UI_TEXT.verifying : loading ? UI_TEXT.loading : UI_TEXT.loginButton}
                 </Text>
               </Pressable>
             </View>

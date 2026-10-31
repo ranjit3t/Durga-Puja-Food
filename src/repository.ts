@@ -1147,10 +1147,15 @@ export function createFirebaseRepository(): SubscriptionRepository {
 
       const notify = () => {
         let versionStr = "";
+        let finalAndroidLoc = androidAppLocation;
+        let finalIosLoc = iosAppLocation;
+
         if (typeof latestVersionVal === "string") {
           versionStr = latestVersionVal;
         } else if (latestVersionVal && typeof latestVersionVal === "object") {
           versionStr = latestVersionVal.version || "";
+          if (latestVersionVal.androidAppLocation) finalAndroidLoc = latestVersionVal.androidAppLocation;
+          if (latestVersionVal.iosAppLocation) finalIosLoc = latestVersionVal.iosAppLocation;
         }
 
         let deprecatedStr = "";
@@ -1166,8 +1171,8 @@ export function createFirebaseRepository(): SubscriptionRepository {
           callback({
             version: versionStr,
             deprecatedVersion: deprecatedStr || undefined,
-            androidAppLocation,
-            iosAppLocation,
+            androidAppLocation: finalAndroidLoc,
+            iosAppLocation: finalIosLoc,
           });
         } else {
           callback(null);
