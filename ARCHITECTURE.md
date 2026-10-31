@@ -469,6 +469,9 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
 - **Web Enter Key Support**: Intercepts `Enter` key presses (`onKeyPress`) without Shift to instantly transmit chat messages while preserving Shift+Enter for multiline entry.
 - **Mobile Return Key Support**: Automatically detects trailing newlines (`\n`) from virtual keyboard return taps, instantly transmitting messages and resetting the input buffer.
 
+### AW. Real-Time Login Page App Version Checking (`LoginScreen.tsx`, `repository.ts`)
+- **Login-Stage Version Updates (`LoginScreen.tsx`)**: App version checks and update alerts are performed on the Login Page (`LoginScreen`) using real-time WebSocket listeners (`onAppVersionChange`), notifying users before authentication.
+
 ## 6. Quality Assurance & UI Catalog
 
 ### Jest Test Boundary

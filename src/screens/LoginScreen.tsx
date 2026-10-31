@@ -2,7 +2,7 @@
  * Authentication screen for the application.
  * Handles user login and role assignment (Admin/Vendor).
  */
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import { useStyles } from "../styles";
 import { useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
 import { UserRole, AppThemeMode, ActivityModule, ActivityAction } from "../types";
+import { isVersionBehind } from "../constants";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useAuth } from "../context/AuthContext";
@@ -29,7 +30,7 @@ import { createFirebaseRepository } from "../repository";
 const repository = createFirebaseRepository();
 
 export function LoginScreen() {
-  const { handleLogin } = useAuth();
+  const { handleLogin, versionAlertShown, markVersionAlertShown } = useAuth();
   const { getAuthConfig, addActivityLog } = useDatabase();
   const { showAlert } = useUI();
   const styles = useStyles();
@@ -39,6 +40,44 @@ export function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const [remoteAppVersion, setRemoteAppVersion] = useState<string | null>(null);
+  const [androidAppLocation, setAndroidAppLocation] = useState<string | undefined>();
+  const [iosAppLocation, setIosAppLocation] = useState<string | undefined>();
+
+  useEffect(() => {
+    const unsubVersion = repository.onAppVersionChange((info) => {
+      if (info) {
+        setRemoteAppVersion(info.version);
+        setAndroidAppLocation(info.androidAppLocation);
+        setIosAppLocation(info.iosAppLocation);
+      }
+    });
+    return () => {
+      unsubVersion();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (
+      Platform.OS !== "web" &&
+      !versionAlertShown &&
+      remoteAppVersion &&
+      isVersionBehind(UI_TEXT.appVersion, remoteAppVersion)
+    ) {
+      markVersionAlertShown();
+      const appLocation = Platform.OS === "android" ? androidAppLocation : (Platform.OS === "ios" ? iosAppLocation : undefined);
+      const message = UI_TEXT.appUpdatedMessage
+        .replace("{current}", UI_TEXT.appVersion)
+        .replace("{remote}", remoteAppVersion);
+      showAlert(
+        UI_TEXT.appUpdateTitle,
+        message,
+        [{ text: UI_TEXT.ok, style: "default" }],
+        appLocation
+      );
+    }
+  }, [remoteAppVersion, androidAppLocation, iosAppLocation, versionAlertShown, markVersionAlertShown, showAlert]);
 
   const onLoginSubmit = async () => {
     setVerifying(true);

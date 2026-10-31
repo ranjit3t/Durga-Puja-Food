@@ -28,28 +28,6 @@ export function HomeScreen() {
   const { showAlert, showGlobalError } = useUI();
   const { width } = useWindowDimensions();
 
-  React.useEffect(() => {
-    if (
-      Platform.OS !== "web" &&
-      !loading &&
-      !versionAlertShown &&
-      remoteAppVersion &&
-      isVersionBehind(UI_TEXT.appVersion, remoteAppVersion)
-    ) {
-      markVersionAlertShown();
-      const appLocation = Platform.OS === "android" ? androidAppLocation : (Platform.OS === "ios" ? iosAppLocation : undefined);
-      const message = UI_TEXT.appUpdatedMessage
-        .replace("{current}", UI_TEXT.appVersion)
-        .replace("{remote}", remoteAppVersion);
-      showAlert(
-        UI_TEXT.appUpdateTitle,
-        message,
-        [{ text: UI_TEXT.ok, style: "default" }],
-        appLocation
-      );
-    }
-  }, [remoteAppVersion, androidAppLocation, iosAppLocation, loading, versionAlertShown, markVersionAlertShown, showAlert]);
-
   const isNarrow = width < 400;
   const cardPadding = isWeb ? s(12) : (isNarrow ? 14 : s(16));
   const cardMinHeight = undefined;

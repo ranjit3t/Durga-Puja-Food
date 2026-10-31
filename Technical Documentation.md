@@ -476,6 +476,10 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
     - **Mobile Return Key Support**: Automatically detects trailing newlines (`\n`) from virtual keyboard return taps, instantly transmitting messages and resetting the input buffer.
     - **WCAG 2.1 AA & Localization Compliance**: Fully accessible with screen reader support, touch targets, and zero hardcoded strings (`UI_TEXT`).
 
+25. **Real-Time Login Page App Version Checking ([`LoginScreen.tsx`](src/screens/LoginScreen.tsx), [`repository.ts`](src/repository.ts))**:
+    - **Login-Stage Version Updates**: Version checks and update alerts occur on the Login Page (`LoginScreen`) using real-time WebSocket listeners (`onAppVersionChange`), ensuring users are informed of new updates before logging in.
+    - **WCAG 2.1 AA & Localization Compliance**: Fully accessible with screen reader support, mobile-friendly forms, and zero hardcoded strings (`UI_TEXT`).
+
 ---
 
 ## 6. Automated Testing & Storybook
