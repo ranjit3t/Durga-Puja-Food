@@ -483,6 +483,9 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
 ### AZ. Username Format & Length Validation Rules (`UserManagementScreen.tsx`)
 - **Alphanumeric & Length Limits**: User creation enforces strict alphanumeric validation (`/^[a-zA-Z0-9]+$/`) and a 10-character maximum length limit (`trimmedUsername.length <= 10`), displaying localized alerts (`UI_TEXT.usernameAlphanumericError` / `UI_TEXT.usernameLengthError`) if violated.
 
+### BA. Direct Download Action on Deprecation Banner (`LoginScreen.tsx`)
+- **Interactive Update Trigger**: The Login Page deprecation banner features a high-contrast, accessible "Download Latest Version" action button that opens `androidAppLocation` / `iosAppLocation` via `Linking.openURL`, allowing users to download updates directly.
+
 ## 6. Quality Assurance & UI Catalog
 
 ### Jest Test Boundary

@@ -494,6 +494,10 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
     - **Alphanumeric & Length Enforcement**: User creation enforces strict alphanumeric validation without spaces or symbols (`/^[a-zA-Z0-9]+$/`) and caps username length at 10 characters (`trimmedUsername.length <= 10`), triggering localized validation alerts (`UI_TEXT.usernameAlphanumericError` / `UI_TEXT.usernameLengthError`) if violated.
     - **WCAG 2.1 AA & Localization Compliance**: Fully accessible with screen reader support, mobile-friendly forms, and zero hardcoded strings (`UI_TEXT`).
 
+29. **Direct Download Action on Deprecation Banner ([`LoginScreen.tsx`](src/screens/LoginScreen.tsx))**:
+    - **Interactive Update Link**: The Login Page deprecation card renders an accessible "Download Latest Version" button that opens `androidAppLocation` / `iosAppLocation` via `Linking.openURL`, allowing users to download updates directly.
+    - **WCAG 2.1 AA & Localization Compliance**: Fully accessible with screen reader support, mobile-friendly touch targets, and zero hardcoded strings (`UI_TEXT`).
+
 ---
 
 ## 6. Automated Testing & Storybook

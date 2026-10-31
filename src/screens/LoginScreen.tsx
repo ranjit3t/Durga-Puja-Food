@@ -12,6 +12,7 @@ import {
   Platform,
   StatusBar,
   ScrollView,
+  Linking,
 } from "react-native";
 import { useStyles } from "../styles";
 import { useAppTheme } from "../theme";
@@ -221,18 +222,57 @@ export function LoginScreen() {
             </View>
 
             {isDeprecated && (
-              <View style={{ backgroundColor: theme.colors.errorLight || "#fee2e2", borderWidth: 1.5, borderColor: theme.colors.error || "#ef4444", borderRadius: 12, padding: 14, marginBottom: 20, gap: 8 }}>
+              <View style={{ backgroundColor: theme.colors.errorLight || "#fee2e2", borderWidth: 1.5, borderColor: theme.colors.error || "#ef4444", borderRadius: 12, padding: 16, marginBottom: 20, gap: 10 }}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                  <Ionicons name="warning-outline" size={20} color={theme.colors.error || "#ef4444"} />
-                  <Text style={{ fontSize: 14, fontWeight: "900", color: theme.colors.error || "#ef4444" }}>
+                  <Ionicons name="warning-outline" size={22} color={theme.colors.error || "#ef4444"} />
+                  <Text style={{ fontSize: 15, fontWeight: "900", color: theme.colors.error || "#ef4444" }}>
                     {UI_TEXT.appDeprecationTitle}
                   </Text>
                 </View>
-                <Text style={{ fontSize: 12, fontWeight: "700", color: theme.colors.textPrimary, lineHeight: 18 }}>
+                <Text style={{ fontSize: 13, fontWeight: "700", color: theme.colors.textPrimary, lineHeight: 18 }}>
                   {UI_TEXT.appDeprecationMessage
                     .replace("{current}", UI_TEXT.appVersion)
                     .replace("{remote}", remoteAppVersion || deprecatedVersion || "")}
                 </Text>
+
+                {Boolean(Platform.OS === "android" ? androidAppLocation : iosAppLocation) ? (
+                  <Pressable
+                    onPress={() => {
+                      const loc = Platform.OS === "android" ? androidAppLocation : iosAppLocation;
+                      if (loc) {
+                        Linking.openURL(loc).catch((err) => console.error("Failed to open update URL:", err));
+                      }
+                    }}
+                    accessible={true}
+                    accessibilityRole="button"
+                    accessibilityLabel="Download Latest Version"
+                    accessibilityHint="Opens link to download the latest app update"
+                    style={({ pressed }) => [
+                      {
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 6,
+                        backgroundColor: theme.colors.primary,
+                        paddingVertical: 10,
+                        paddingHorizontal: 16,
+                        borderRadius: 10,
+                        marginTop: 4,
+                        elevation: 2,
+                      },
+                      pressed && { opacity: 0.8 },
+                    ]}
+                  >
+                    <Ionicons name="download-outline" size={18} color={theme.colors.white} />
+                    <Text style={{ color: theme.colors.white, fontWeight: "900", fontSize: 13 }}>
+                      Download Latest Version ({remoteAppVersion || "Update"})
+                    </Text>
+                  </Pressable>
+                ) : (
+                  <Text style={{ fontSize: 11, fontWeight: "600", color: theme.colors.textSecondary, fontStyle: "italic", marginTop: 2 }}>
+                    Please contact your administrator to download the latest update.
+                  </Text>
+                )}
               </View>
             )}
 
