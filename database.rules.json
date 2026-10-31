@@ -36,7 +36,7 @@
     },
     "auth_config": {
       ".read": "auth != null",
-      ".write": false
+      ".write": "auth != null"
     },
     "logs": {
       ".read": "auth != null",

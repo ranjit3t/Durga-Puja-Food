@@ -71,6 +71,7 @@ export interface SubscriptionRepository {
   updateSubscriptionStatus(flatId: string, dayId: string, personIndex: number, slot: string, taken: boolean, timeStr?: string, userStr?: string): Promise<void>;
   checkInPassAtomic(flatId: string, updatesMap: Record<string, boolean>, metricsIncrements?: Record<string, number>): Promise<void>;
   getAuthConfig(): Promise<any>;
+  updateAuthConfig(config: any): Promise<void>;
   addActivityLog(log: Omit<ActivityLog, "id">): Promise<void>;
   getActivityLogs(limit?: number): Promise<ActivityLog[]>;
   getNotes(): Promise<Note[]>;
@@ -118,11 +119,12 @@ export interface SubscriptionRepository {
   updateUserPresence(username: string, displayName: string, role: string): Promise<() => void>;
   onAllPresenceChange(callback: (presences: Record<string, UserPresence>) => void): () => void;
   sendChatMessage(chatId: string, msg: Omit<ChatMessage, "id" | "timestamp" | "status">): Promise<void>;
-  onChatMessagesChange(chatId: string, callback: (messages: ChatMessage[]) => void): () => void;
+  onChatMessagesChange(chatId: string, currentUsername: string, callback: (messages: ChatMessage[]) => void): () => void;
   onAllChatsSummaryChange(currentUsername: string, callback: (unreadMap: Record<string, number>, lastMsgMap: Record<string, ChatMessage>) => void): () => void;
   setTypingStatus(chatId: string, username: string, isTyping: boolean): Promise<void>;
   onTypingStatusChange(chatId: string, callback: (typingMap: Record<string, boolean>) => void): () => void;
   markChatMessagesAsRead(chatId: string, currentUsername: string): Promise<void>;
+  clearChatForUser(chatId: string, username: string): Promise<void>;
 }
 
 const subscriptionsPath = "subscriptions";
@@ -712,6 +714,11 @@ export function createFirebaseRepository(): SubscriptionRepository {
       const snapshot = await get(ref(services.db, authConfigPath));
       return snapshot.exists() ? snapshot.val() : undefined;
     },
+    async updateAuthConfig(config) {
+      const services = await ensureFirebaseAuth();
+      if (!services) return;
+      await set(ref(services.db, authConfigPath), cleanUndefined(config));
+    },
     async addActivityLog(log) {
       const services = await ensureFirebaseAuth();
       if (!services) return;
@@ -1204,27 +1211,36 @@ export function createFirebaseRepository(): SubscriptionRepository {
       await set(newMsgRef, cleanUndefined(messageData));
     },
 
-    onChatMessagesChange(chatId, callback) {
+    onChatMessagesChange(chatId, currentUsername, callback) {
       let unsub: (() => void) | null = null;
+      const cleanUser = currentUsername ? currentUsername.trim().toLowerCase() : "";
       ensureFirebaseAuth().then((services) => {
         if (!services?.db) return;
-        const chatMsgsRef = ref(services.db, `${chatsPath}/${chatId}/messages`);
-        unsub = onValue(chatMsgsRef, (snapshot) => {
+        const chatRef = ref(services.db, `${chatsPath}/${chatId}`);
+        unsub = onValue(chatRef, (snapshot) => {
           if (!snapshot.exists()) {
             callback([]);
             return;
           }
-          const data = snapshot.val() as Record<string, ChatMessage>;
+          const chatVal = snapshot.val() || {};
+          const messagesData = (chatVal.messages || {}) as Record<string, ChatMessage>;
+          const clearedAtData = (chatVal.clearedAt || {}) as Record<string, number>;
+          const userClearedAt = cleanUser ? (clearedAtData[cleanUser] || 0) : 0;
+
           const getMsgTime = (m: any) => {
             if (typeof m.timestamp === "number" && m.timestamp > 0) return m.timestamp;
             return m.localTimestamp || 0;
           };
-          const list = Object.values(data).sort((a, b) => {
-            const timeA = getMsgTime(a);
-            const timeB = getMsgTime(b);
-            if (timeA !== timeB) return timeA - timeB;
-            return (a.id || "").localeCompare(b.id || "");
-          });
+
+          const list = Object.values(messagesData)
+            .filter((m) => getMsgTime(m) > userClearedAt)
+            .sort((a, b) => {
+              const timeA = getMsgTime(a);
+              const timeB = getMsgTime(b);
+              if (timeA !== timeB) return timeA - timeB;
+              return (a.id || "").localeCompare(b.id || "");
+            });
+
           callback(list);
         });
       }).catch(err => console.error("Chat messages listener error:", err));
@@ -1245,19 +1261,23 @@ export function createFirebaseRepository(): SubscriptionRepository {
           const lastMsgMap: Record<string, ChatMessage> = {};
 
           if (snapshot.exists()) {
-            const chatsData = snapshot.val() as Record<string, { messages?: Record<string, ChatMessage> }>;
+            const chatsData = snapshot.val() as Record<string, { messages?: Record<string, ChatMessage>; clearedAt?: Record<string, number> }>;
             const getMsgTime = (m: any) => {
               if (typeof m.timestamp === "number" && m.timestamp > 0) return m.timestamp;
               return m.localTimestamp || 0;
             };
             Object.entries(chatsData).forEach(([cId, cData]) => {
               if (cId.includes(cleanUser) && cData.messages) {
-                const msgs = Object.values(cData.messages).sort((a, b) => {
-                  const timeA = getMsgTime(a);
-                  const timeB = getMsgTime(b);
-                  if (timeA !== timeB) return timeA - timeB;
-                  return (a.id || "").localeCompare(b.id || "");
-                });
+                const userClearedAt = cData.clearedAt?.[cleanUser] || 0;
+                const msgs = Object.values(cData.messages)
+                  .filter((m) => getMsgTime(m) > userClearedAt)
+                  .sort((a, b) => {
+                    const timeA = getMsgTime(a);
+                    const timeB = getMsgTime(b);
+                    if (timeA !== timeB) return timeA - timeB;
+                    return (a.id || "").localeCompare(b.id || "");
+                  });
+
                 if (msgs.length > 0) {
                   const lastMsg = msgs[msgs.length - 1];
                   const otherUser = lastMsg.sender.toLowerCase() === cleanUser ? lastMsg.recipient.toLowerCase() : lastMsg.sender.toLowerCase();
@@ -1333,6 +1353,12 @@ export function createFirebaseRepository(): SubscriptionRepository {
           await update(ref(services.db), updates);
         }
       }
+    },
+    async clearChatForUser(chatId, username) {
+      const services = await ensureFirebaseAuth();
+      if (!services?.db) return;
+      const cleanUser = username.trim().toLowerCase();
+      await set(ref(services.db, `${chatsPath}/${chatId}/clearedAt/${cleanUser}`), Date.now());
     },
   };
 }

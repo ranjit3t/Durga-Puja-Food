@@ -450,11 +450,19 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
 - **`src/features/subscriptions/`**: Houses decoupled pass registration and payment tracking sections (`SubscriptionBasicInfoSection`, `SubscriptionPaymentSection`).
 - **Payment Time Tracking & Audit Architecture**: Supports capturing exact payment timestamps (`paymentTime`) per payment entry. Automatically records save timestamps (`Date.now()`) for new split payments while retaining previously saved timestamps. Provides an interactive Date/Time Editor Modal in Edit Pass and detailed unclubbed payment event exports (`pass_payments_report.artifact.md`).
 
-21. **User Account Disable & Delete Status Enforcement & Chat Restrictions ([`LoginScreen.tsx`](src/screens/LoginScreen.tsx), [`ChatContext.tsx`](src/context/ChatContext.tsx), [`ChatWidget.tsx`](src/components/chat/ChatWidget.tsx))**:
-    - **Authentication Blocking**: Accounts with `disabled: true` or `deleted: true` in `auth_config` are strictly blocked from logging in, logging structured `ActivityAction.ERROR` activity audit trails and displaying localized system alerts (`UI_TEXT.accountDisabledError`).
-    - **New Chat Search Restriction**: Disabled and deleted user accounts without prior chat history are excluded from the available users list when initiating new conversations.
-    - **Historical Chat Read-Only Preservation**: Existing conversations with disabled or deleted users remain accessible in chat history to review past messages, tagged with prominent **"Disabled"** (`UI_TEXT.accountDisabledBadge`) or **"User Deleted"** (`UI_TEXT.userDeletedBadge`) status badges. Message input bars and typing signals are locked (`UI_TEXT.chatDisabledUserPlaceholder` / `UI_TEXT.chatDeletedUserPlaceholder`), preventing further outbound messaging.
-    - **WCAG 2.1 AA & Localization Compliance**: Fully accessible with screen reader hints (`accessibilityHint`), mobile-friendly viewports, and zero hardcoded strings (`UI_TEXT`).
+21. **System User Management & Account Safeguards ([`UserManagementScreen.tsx`](src/screens/UserManagementScreen.tsx), [`HomeScreen.tsx`](src/screens/HomeScreen.tsx), [`SettingsScreen.tsx`](src/screens/SettingsScreen.tsx), [`LoginScreen.tsx`](src/screens/LoginScreen.tsx), [`ChatContext.tsx`](src/context/ChatContext.tsx))**:
+    - **Admin-Only Management Console**: Accessible via dedicated menu buttons on both the Home Page and Settings screen strictly for administrators (`isAdmin`).
+    - **Non-Admin Role Restriction**: Admins can create and manage non-admin accounts restricted strictly to **Caterer** and **Vendor** roles, enforcing unique username validation during creation and complete username immutability post-creation.
+    - **Admin Protection Guard**: Administrators cannot create or modify other admin accounts.
+    - **Soft-Deletion & Restoration Support**: Accounts can be soft-deleted (`deleted: true`) to preserve historical audit logs and chat history, and can be fully restored / undeleted or re-enabled at any time.
+    - **Authentication Blocking & Real-Time Sync**: Accounts marked disabled or deleted are immediately blocked from logging in (`UI_TEXT.accountDisabledError`) and forcefully logged out in real time if currently active. Real-time WebSocket listeners (`onAuthConfigChange`) sync user additions, edits, and status changes instantly across all clients.
+    - **WCAG 2.1 AA & Localization Compliance**: Fully accessible with screen reader support, mobile-friendly responsive modals, and zero hardcoded strings (`UI_TEXT`).
+
+22. **Per-User Soft-Clearing Chat History & Active List Filtering ([`ChatWidget.tsx`](src/components/chat/ChatWidget.tsx), [`ChatContext.tsx`](src/context/ChatContext.tsx), [`repository.ts`](src/repository.ts))**:
+    - **Header Clear Action Button**: In the chat window header for any active peer-to-peer conversation, a dedicated trash action button (`UI_TEXT.clearChatButton`) enables clearing all messages for that specific user session.
+    - **Per-User Soft Delete & Recipient History Preservation**: Executes `repository.clearChatForUser(chatId, username)` to save a per-user `clearedAt` timestamp in Firebase RTDB, removing past messages strictly for the clearing user while leaving the conversation history 100% intact for the recipient.
+    - **Active Conversation Filtering**: The opening chat popup list displays ONLY users with active, uncleared conversations. Cleared chats and users with no history do not appear in the initial list. Users can search by name/role in the search bar to initiate or resume conversations.
+    - **WCAG 2.1 AA & Localization Compliance**: Fully accessible with screen reader labels and hints (`accessibilityHint`), mobile-friendly touch targets, and zero hardcoded strings (`UI_TEXT`).
 
 ---
 

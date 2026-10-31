@@ -32,6 +32,7 @@ import { NotesScreen } from "../screens/NotesScreen";
 import { ContactsScreen } from "../screens/ContactsScreen";
 import { FoodPackageScreen } from "../screens/FoodPackageScreen";
 import { CatererIncomeExpenseScreen } from "../screens/CatererIncomeExpenseScreen";
+import { UserManagementScreen } from "../screens/UserManagementScreen";
 
 import { HomeScreen } from "../screens/HomeScreen";
 
@@ -109,6 +110,9 @@ export function AppNavigator() {
         break;
       case AppScreen.CATERER_INCOME_EXPENSE:
         screenComponent = <CatererIncomeExpenseScreen />;
+        break;
+      case AppScreen.USER_MANAGEMENT:
+        screenComponent = <UserManagementScreen />;
         break;
       case AppScreen.SUBSCRIPTION_LIST:
         screenComponent = <SubscriptionListScreen />;

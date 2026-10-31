@@ -445,6 +445,20 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
 - **New Chat Filtering (`ChatContext.tsx`)**: Disabled or deleted user accounts without pre-existing chat history are excluded from the available users list when initiating new conversations.
 - **Historical Chat Read-Only Preservation (`ChatWidget.tsx`)**: Existing conversations with disabled or deleted users remain viewable in chat history with prominent status badges (`UI_TEXT.accountDisabledBadge` / `UI_TEXT.userDeletedBadge`), while message inputs are locked (`UI_TEXT.chatDisabledUserPlaceholder` / `UI_TEXT.chatDeletedUserPlaceholder`).
 
+### AS. System User Management & Administrative Safeguards (`UserManagementScreen.tsx`, `SettingsScreen.tsx`, `HomeScreen.tsx`, `repository.ts`)
+- **Admin-Only Management Console (`UserManagementScreen.tsx`)**: Accessible via the dedicated "Manage Users" button on the Home Page and Settings strictly for administrators (`isAdmin`).
+- **Non-Admin User Creation & Role Restriction**: Admins can create and manage non-admin users restricted strictly to **Caterer** and **Vendor** roles, enforcing unique username validation during creation and immutability of usernames post-creation.
+- **Admin Protection Guard**: Administrators cannot create or modify other admin accounts.
+- **Soft-Deletion & Restoration Support**: Users can be soft-deleted (`deleted: true`) to preserve historical audit logs and chat history, and can be fully restored / undeleted or re-enabled at any time.
+- **Real-Time Firebase Synchronization (`onAuthConfigChange`)**: All user account additions, edits, enable/disable toggles, and soft-deletions sync instantly across connected clients.
+- **Audit Logging**: Generates structured audit trail entries (`ActivityModule.AUTH`) for user creation, update, and soft-deletion.
+
+### AT. Per-User Soft-Clearing Chat History & Active Conversation List Filtering (`ChatWidget.tsx`, `ChatContext.tsx`, `repository.ts`)
+- **Per-User Soft Delete**: In the chat window header for any active peer conversation, a dedicated trash action button (`UI_TEXT.clearChatButton`) enables clearing chat history for that specific user session.
+- **Recipient History Preservation**: Clearing chat records a per-user timestamp (`chats/${chatId}/clearedAt/${username}`), removing past messages strictly for the clearing user while keeping the message history 100% intact and visible for the recipient.
+- **Active-Only Initial Chat List**: The opening chat popup list displays ONLY users with active, uncleared conversations (`lastMessage !== undefined` or unread messages). Users with no chat history or whose chat was cleared do not appear in the default list.
+- **Search-to-Resume Conversation**: Users can search for any system user in the chat search bar to initiate or resume conversations after clearing.
+
 ## 6. Quality Assurance & UI Catalog
 
 ### Jest Test Boundary

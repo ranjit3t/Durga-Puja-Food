@@ -1057,6 +1057,15 @@ export function HomeScreen() {
               <Pressable
                 accessible={true}
                 accessibilityRole="button"
+                accessibilityLabel={UI_TEXT.manageUsersButton}
+                onPress={() => navigate(AppScreen.USER_MANAGEMENT)}
+                style={[styles.compactSecondary, { backgroundColor: theme.cardColors[3].accent || theme.colors.primary, borderColor: theme.cardColors[3].accent || theme.colors.primary }]}
+              >
+                <ActionLabel icon="people-circle-outline" label={UI_TEXT.manageUsersButton} color={theme.colors.white} size={iconSize} vertical />
+              </Pressable>
+              <Pressable
+                accessible={true}
+                accessibilityRole="button"
                 accessibilityLabel={UI_TEXT.settings}
                 onPress={() => navigate(AppScreen.SETTINGS)}
                 style={[styles.compactSecondary, { backgroundColor: theme.colors.textMuted, borderColor: theme.colors.textMuted }]}

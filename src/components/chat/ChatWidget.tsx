@@ -68,6 +68,7 @@ export function ChatWidget() {
     isRecipientTyping,
     sendMessage,
     sendTypingSignal,
+    clearChatHistory,
     totalUnreadCount,
     displayMessageCount,
     hasMoreMessages,
@@ -75,7 +76,7 @@ export function ChatWidget() {
     isModalOpen,
   } = useChat();
 
-  const { alertConfig } = useUI();
+  const { showAlert, alertConfig } = useUI();
 
   const [inputMessage, setInputMessage] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -196,11 +197,19 @@ export function ChatWidget() {
     return null;
   }
 
-  // Filter users by search query
+  // Filter users:
+  // When no search query is typed, show ONLY users with active conversations (where lastMessage exists) or unread messages.
+  // When a search query is typed, search across all available users to initiate or resume chats.
   const filteredUsers = availableUsers.filter((u) => {
-    if (!searchQuery.trim()) return true;
-    const query = searchQuery.toLowerCase();
-    return u.displayName.toLowerCase().includes(query) || u.username.toLowerCase().includes(query) || u.role.toLowerCase().includes(query);
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) {
+      return Boolean(u.lastMessage) || (u.unreadCount || 0) > 0;
+    }
+    return (
+      u.displayName.toLowerCase().includes(query) ||
+      u.username.toLowerCase().includes(query) ||
+      u.role.toLowerCase().includes(query)
+    );
   });
 
   const handleSend = async () => {
@@ -220,6 +229,24 @@ export function ChatWidget() {
   const handleTextChange = (val: string) => {
     setInputMessage(val);
     sendTypingSignal(val.length > 0);
+  };
+
+  const handleConfirmClearChat = () => {
+    if (!activeRecipient) return;
+    showAlert(
+      UI_TEXT.confirmClearChatTitle,
+      UI_TEXT.confirmClearChatMsg.replace("{user}", activeRecipient.displayName || activeRecipient.username),
+      [
+        { text: UI_TEXT.cancel, style: "cancel" },
+        {
+          text: UI_TEXT.clearChatButton,
+          style: "destructive",
+          onPress: async () => {
+            await clearChatHistory();
+          },
+        },
+      ]
+    );
   };
 
   // Display subset of messages for pagination
@@ -346,16 +373,32 @@ export function ChatWidget() {
               </View>
             )}
 
-            <Pressable
-              style={styles.headerIconButton}
-              onPress={handleMinimize}
-              accessible={true}
-              accessibilityRole="button"
-              accessibilityLabel={UI_TEXT.minimizeChat}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Ionicons name="chevron-down" size={24} color={theme.colors.white} />
-            </Pressable>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+              {activeRecipient && (
+                <Pressable
+                  style={styles.headerIconButton}
+                  onPress={handleConfirmClearChat}
+                  accessible={true}
+                  accessibilityRole="button"
+                  accessibilityLabel={UI_TEXT.clearChatButton}
+                  accessibilityHint={UI_TEXT.clearChatHint}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons name="trash-outline" size={18} color={theme.colors.white} />
+                </Pressable>
+              )}
+
+              <Pressable
+                style={styles.headerIconButton}
+                onPress={handleMinimize}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={UI_TEXT.minimizeChat}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name="chevron-down" size={24} color={theme.colors.white} />
+              </Pressable>
+            </View>
           </View>
 
           {/* --- Content Area --- */}
@@ -381,8 +424,10 @@ export function ChatWidget() {
               <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingVertical: 8 }} keyboardShouldPersistTaps="handled">
                 {filteredUsers.length === 0 ? (
                   <View style={styles.emptyContainer}>
-                    <Ionicons name="people-outline" size={40} color={theme.colors.textMuted} />
-                    <Text style={[styles.emptyText, { color: theme.colors.textMuted }]}>{UI_TEXT.noOtherUsers}</Text>
+                    <Ionicons name="chatbubbles-outline" size={40} color={theme.colors.textMuted} />
+                    <Text style={[styles.emptyText, { color: theme.colors.textMuted, textAlign: "center", paddingHorizontal: 16 }]}>
+                      {searchQuery.trim() ? UI_TEXT.noOtherUsers : UI_TEXT.noActiveConversations}
+                    </Text>
                   </View>
                 ) : (
                   filteredUsers.map((user) => (

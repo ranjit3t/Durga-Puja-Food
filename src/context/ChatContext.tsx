@@ -33,6 +33,7 @@ interface ChatContextType {
   isRecipientTyping: boolean;
   sendMessage: (text: string) => Promise<void>;
   sendTypingSignal: (isTyping: boolean) => void;
+  clearChatHistory: () => Promise<void>;
 
   // Unread Count Badge
   totalUnreadCount: number;
@@ -275,17 +276,17 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
   // Listen to messages for active chat
   useEffect(() => {
-    if (!activeChatId) {
+    if (!activeChatId || !userAccountName) {
       setMessages([]);
       return;
     }
 
-    const unsub = repository.onChatMessagesChange(activeChatId, (msgList) => {
+    const unsub = repository.onChatMessagesChange(activeChatId, userAccountName, (msgList) => {
       setMessages(msgList);
     });
 
     return () => unsub();
-  }, [activeChatId]);
+  }, [activeChatId, userAccountName]);
 
   // Listen to typing status for active chat
   useEffect(() => {
@@ -366,6 +367,17 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     [activeChatId, userAccountName]
   );
 
+  // Clear Chat History for Active Conversation (Per-User Soft Delete)
+  const clearChatHistory = useCallback(async () => {
+    if (!activeChatId || !userAccountName || !activeRecipient) return;
+    try {
+      await repository.clearChatForUser(activeChatId, userAccountName);
+      setMessages([]);
+    } catch (err) {
+      console.error("Error clearing chat history:", err);
+    }
+  }, [activeChatId, userAccountName, activeRecipient]);
+
   // Window toggle methods
   const toggleChatWindow = useCallback(() => setIsExpanded((prev) => !prev), []);
   const minimizeChatWindow = useCallback(() => setIsExpanded(false), []);
@@ -392,6 +404,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       isRecipientTyping,
       sendMessage,
       sendTypingSignal,
+      clearChatHistory,
       totalUnreadCount,
       displayMessageCount,
       hasMoreMessages,

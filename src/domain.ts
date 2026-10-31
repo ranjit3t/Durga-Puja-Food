@@ -100,6 +100,7 @@ export enum AppScreen {
   CONTACTS = "contacts",
   FOOD_PACKAGE = "foodPackage",
   CATERER_INCOME_EXPENSE = "catererIncomeExpense",
+  USER_MANAGEMENT = "userManagement",
 }
 
 export enum CatererFinanceCategory {

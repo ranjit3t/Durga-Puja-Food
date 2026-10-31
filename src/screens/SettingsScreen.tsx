@@ -28,9 +28,9 @@ import { useAuth } from "../context/AuthContext";
 import { useCoreDatabase, useActivityLogs } from "../context/DatabaseContext";
 import { useUI } from "../context/UIContext";
 import { useAppNavigation } from "../context/NavigationContext";
-import { getPaymentModeLabel, getMealLabel, getMealConstraints, getMealVarieties, isMealEnabled, isMealDone } from "../constants";
+import { getPaymentModeLabel, getMealLabel, getMealVarieties, isMealEnabled, isMealDone } from "../constants";
 import { calculateSeasonVendorTotals, formatCurrencyAmount } from "../utils/paymentUtils";
-import { MealConfig, MealType, DietType } from "../domain";
+import { MealConfig, MealType, DietType, UserRole } from "../domain";
 
 type PresetColor = {
   hex: string;
@@ -233,6 +233,7 @@ export function SettingsScreen() {
   const { addActivityLog } = useActivityLogs();
   const { showAlert } = useUI();
   const { navigate, goBack } = useAppNavigation();
+  const { userRole } = useAuth();
 
   const styles = useStyles();
   const { s } = useScaling();
@@ -1013,6 +1014,33 @@ export function SettingsScreen() {
             <HomeButton onPress={() => navigate(AppScreen.HOME)} />
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            {userRole === UserRole.ADMIN && (
+              <Pressable
+                onPress={() => navigate(AppScreen.USER_MANAGEMENT)}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={UI_TEXT.manageUsersButton}
+                style={({ pressed }) => [
+                  {
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 4,
+                    backgroundColor: theme.colors.surfaceDark,
+                    paddingHorizontal: s(10),
+                    paddingVertical: s(6),
+                    borderRadius: s(8),
+                    borderWidth: 1,
+                    borderColor: theme.colors.border,
+                  },
+                  pressed && { opacity: 0.7 }
+                ]}
+              >
+                <Ionicons name="people-outline" size={16} color={theme.colors.primary} />
+                <Text style={{ fontSize: 12, fontWeight: '800', color: theme.colors.primary }}>
+                  {UI_TEXT.manageUsersButton}
+                </Text>
+              </Pressable>
+            )}
             {hasChanged && (
               <Pressable
                 onPress={handleSave}
