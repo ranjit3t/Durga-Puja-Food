@@ -152,12 +152,27 @@ export function UserManagementScreen() {
     const trimmedPassword = formPassword.trim();
     const trimmedConfirmPassword = formConfirmPassword.trim();
 
+    if (!trimmedName) {
+      showAlert(UI_TEXT.error, UI_TEXT.nameRequiredError);
+      return;
+    }
+
     if (!trimmedUsername) {
-      showAlert(UI_TEXT.error, UI_TEXT.invalidCredentials || "Please enter a valid username.");
+      showAlert(UI_TEXT.error, UI_TEXT.usernameRequiredError);
       return;
     }
 
     if (!isEditing) {
+      if (trimmedUsername.length > 10) {
+        showAlert(UI_TEXT.error, UI_TEXT.usernameLengthError);
+        return;
+      }
+
+      if (!/^[a-zA-Z0-9]+$/.test(trimmedUsername)) {
+        showAlert(UI_TEXT.error, UI_TEXT.usernameAlphanumericError);
+        return;
+      }
+
       if (!trimmedPassword || !trimmedConfirmPassword) {
         showAlert(UI_TEXT.error, "Please enter and confirm the password.");
         return;
@@ -187,7 +202,7 @@ export function UserManagementScreen() {
 
         const newUser = {
           username: trimmedUsername,
-          name: trimmedName || trimmedUsername,
+          name: trimmedName,
           password: encryptPassword(trimmedPassword),
           role: formRole,
           disabled: false,
@@ -222,7 +237,7 @@ export function UserManagementScreen() {
 
         currentUsers[idx] = {
           ...targetUser,
-          name: trimmedName || trimmedUsername,
+          name: trimmedName,
           role: formRole,
           disabled: formDisabled,
           deleted: formDeleted,
@@ -604,7 +619,7 @@ export function UserManagementScreen() {
             </View>
 
             <View style={{ gap: 12 }}>
-              {/* Full Name */}
+              {/* Name */}
               <View style={{ gap: 4 }}>
                 <Text style={{ fontSize: 12, fontWeight: "800", color: theme.colors.textSecondary, textTransform: "uppercase" }}>
                   {UI_TEXT.nameLabel}
@@ -636,6 +651,7 @@ export function UserManagementScreen() {
                   value={formUsername}
                   onChangeText={setFormUsername}
                   editable={!isEditing}
+                  maxLength={10}
                   autoCapitalize="none"
                   accessible={true}
                   accessibilityLabel={UI_TEXT.usernameLabel}

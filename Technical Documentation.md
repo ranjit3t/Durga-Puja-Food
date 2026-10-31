@@ -490,6 +490,10 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
     - **Deprecated Version Path Access**: Configures public read (`.read: true`) and authenticated write (`.write: "auth != null"`) permissions for the `deprecatedVersion` root node in Firebase Realtime Database, preventing permission denied errors during progressive load.
     - **WCAG 2.1 AA & Localization Compliance**: Fully accessible with zero hardcoded strings (`UI_TEXT`).
 
+28. **Username Format & Length Validation Rules ([`UserManagementScreen.tsx`](src/screens/UserManagementScreen.tsx))**:
+    - **Alphanumeric & Length Enforcement**: User creation enforces strict alphanumeric validation without spaces or symbols (`/^[a-zA-Z0-9]+$/`) and caps username length at 10 characters (`trimmedUsername.length <= 10`), triggering localized validation alerts (`UI_TEXT.usernameAlphanumericError` / `UI_TEXT.usernameLengthError`) if violated.
+    - **WCAG 2.1 AA & Localization Compliance**: Fully accessible with screen reader support, mobile-friendly forms, and zero hardcoded strings (`UI_TEXT`).
+
 ---
 
 ## 6. Automated Testing & Storybook

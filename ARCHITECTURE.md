@@ -480,6 +480,9 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
 ### AY. Firebase RTDB Security Rules for Deprecated Version (`database.rules.json`)
 - **Deprecated Version Node Access (`database.rules.json`)**: Configures public read (`.read: true`) and authenticated write (`.write: "auth != null"`) permissions on the `deprecatedVersion` root path in Firebase Realtime Database, preventing `[Error: Permission denied]` permission errors during progressive app version loading.
 
+### AZ. Username Format & Length Validation Rules (`UserManagementScreen.tsx`)
+- **Alphanumeric & Length Limits**: User creation enforces strict alphanumeric validation (`/^[a-zA-Z0-9]+$/`) and a 10-character maximum length limit (`trimmedUsername.length <= 10`), displaying localized alerts (`UI_TEXT.usernameAlphanumericError` / `UI_TEXT.usernameLengthError`) if violated.
+
 ## 6. Quality Assurance & UI Catalog
 
 ### Jest Test Boundary

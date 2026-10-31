@@ -86,6 +86,20 @@ export function AccountModal() {
       }
 
       const targetUser = authConfig.users[userIdx];
+
+      const isBlocked = Boolean(
+        targetUser.disabled === true || targetUser.disabled === "true" || targetUser.disabled === 1 ||
+        targetUser.deleted === true || targetUser.deleted === "true" || targetUser.deleted === 1 ||
+        targetUser.locked === true || targetUser.locked === "true" || targetUser.locked === 1
+      );
+
+      if (isBlocked) {
+        closeAccountModal();
+        handleLogout();
+        showAlert(UI_TEXT.error, targetUser.locked ? UI_TEXT.accountLockedError : UI_TEXT.accountDisabledError);
+        return;
+      }
+
       let updatedPassword = targetUser.password;
       let updatedEncrypted = targetUser.encrypted;
 
@@ -162,7 +176,7 @@ export function AccountModal() {
           </View>
 
           <View style={{ gap: 12 }}>
-            {/* Full Name */}
+            {/* Name */}
             <View style={{ gap: 4 }}>
               <Text style={{ fontSize: 12, fontWeight: "800", color: theme.colors.textSecondary, textTransform: "uppercase" }}>
                 {UI_TEXT.nameLabel}
