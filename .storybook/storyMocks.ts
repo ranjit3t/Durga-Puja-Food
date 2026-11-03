@@ -306,6 +306,14 @@ export function useFoodPackages() {
   return { foodPackages: [samplePackage], upsertFoodPackage: emptyAsync, deleteFoodPackage: emptyAsync };
 }
 
+export function useCatererFinance() {
+  return {
+    catererTransactions: [],
+    upsertCatererTransaction: emptyAsync,
+    deleteCatererTransaction: emptyAsync,
+  };
+}
+
 export function useUI() {
   return {
     alertConfig: { visible: false, title: "", message: "" },

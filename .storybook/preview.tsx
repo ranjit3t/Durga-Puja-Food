@@ -1,5 +1,6 @@
 import React from "react";
 import type { Preview } from "@storybook/react-native-web-vite";
+import "./iconFonts.css";
 import { View } from "react-native";
 import { ThemeProvider } from "../src/theme";
 import { AppThemeMode } from "../src/types";

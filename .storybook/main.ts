@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 
 const storyMocks = fileURLToPath(new URL("./storyMocks.ts", import.meta.url));
 const nativeMocks = fileURLToPath(new URL("./nativeMocks.tsx", import.meta.url));
+const firebaseMock = fileURLToPath(new URL("./firebaseMock.ts", import.meta.url));
 const reactNativeShim = fileURLToPath(new URL("./reactNativeShim.ts", import.meta.url));
 const expoModulesCoreShim = fileURLToPath(new URL("./expoModulesCoreShim.ts", import.meta.url));
 const contextNames = [
@@ -32,6 +33,7 @@ const config: StorybookConfig = {
         ...viteConfig.resolve,
         alias: [
           ...aliases,
+          { find: /^\.{1,2}\/firebase(?:\.tsx?)?$/, replacement: firebaseMock },
           { find: "expo-camera", replacement: nativeMocks },
           { find: /^expo-contacts(?:\/.*)?$/, replacement: nativeMocks },
           { find: "expo-image-picker", replacement: nativeMocks },
