@@ -610,8 +610,8 @@ export const isDineInFallbackParcelEnabled = (
   );
 };
 
-export const blockOptions = Array.from({ length: 25 }, (_, index) =>
-  String(index + 1)
+export const blockOptions = Array.from({ length: 26 }, (_, index) =>
+  String(index)
 );
 
 /**

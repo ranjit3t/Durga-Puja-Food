@@ -23,6 +23,7 @@ import {
 } from "firebase/database";
 import { ensureFirebaseAuth, firebaseConfigured } from "./firebase";
 import { encryptChatMessage, decryptChatMessage } from "./utils/chatEncryption";
+import { withServerTimeout } from "./utils/asyncUtils";
 import {
   SubscriptionRecord,
   FoodMenu,
@@ -549,7 +550,7 @@ export function createFirebaseRepository(): SubscriptionRepository {
       .map((d) => d.id);
   }
 
-  return {
+  const baseRepo: SubscriptionRepository = {
     async list() {
       const services = await ensureFirebaseAuth();
       if (!services) return [];
@@ -1439,4 +1440,25 @@ export function createFirebaseRepository(): SubscriptionRepository {
       await set(ref(services.db, `${chatsPath}/${chatId}/clearedAt/${cleanUser}`), Date.now());
     },
   };
+
+  return wrapRepositoryWithTimeout(baseRepo);
+}
+
+function wrapRepositoryWithTimeout(repo: SubscriptionRepository): SubscriptionRepository {
+  const wrapped: any = {};
+  for (const key of Object.keys(repo) as (keyof SubscriptionRepository)[]) {
+    const fn = (repo as any)[key];
+    if (typeof fn === "function") {
+      if (key.startsWith("on") || key === "updateUserPresence") {
+        wrapped[key] = fn.bind(repo);
+      } else {
+        wrapped[key] = (...args: any[]) => {
+          return withServerTimeout(Promise.resolve().then(() => fn.apply(repo, args)));
+        };
+      }
+    } else {
+      wrapped[key] = fn;
+    }
+  }
+  return wrapped as SubscriptionRepository;
 }

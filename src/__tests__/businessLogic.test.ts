@@ -265,8 +265,17 @@ describe("remainder distribution and detailed payment report calculation", () =>
   });
 });
 
-import { findSubscriptionByPassCodeOrCheatCode, qrValueFor } from "../constants";
+import { findSubscriptionByPassCodeOrCheatCode, qrValueFor, blockOptions } from "../constants";
 import { encryptQrPayload, decryptQrPayload } from "../utils/qrEncryption";
+
+describe("Block Options Configuration", () => {
+  it("includes Block 0 in blockOptions starting from 0 to 25", () => {
+    expect(blockOptions[0]).toBe("0");
+    expect(blockOptions).toContain("0");
+    expect(blockOptions).toContain("25");
+    expect(blockOptions.length).toBe(26);
+  });
+});
 
 describe("QR Code Encryption & Decryption Lookup", () => {
   const mockSubs: any[] = [

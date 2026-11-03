@@ -37,9 +37,13 @@ export function getFirebaseServices() {
   return { auth: persistedAuth, db: getDatabase(app) };
 }
 
+import { withServerTimeout } from "./utils/asyncUtils";
+
 export async function ensureFirebaseAuth() {
   const services = getFirebaseServices();
   if (!services) return undefined;
-  if (!services.auth.currentUser) await signInAnonymously(services.auth);
+  if (!services.auth.currentUser) {
+    await withServerTimeout(signInAnonymously(services.auth));
+  }
   return services;
 }
