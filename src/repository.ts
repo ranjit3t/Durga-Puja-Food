@@ -50,7 +50,7 @@ import {
   CatererTransaction,
 } from "./domain";
 import { ConfigDay, AppConfig } from "./types";
-import { generatePasscode, getDietTypeForChoice } from "./constants";
+import { blockOptions, generatePasscode, getDietTypeForChoice } from "./constants";
 
 // --- Repository Interface ---
 
@@ -527,6 +527,83 @@ function normalizeDayConfig(days: any[]): ConfigDay[] {
   });
 }
 
+function normalizeConfig(val: any): AppConfig {
+  const defaultPayment = { enabled: true, maxPayments: 10, options: { upi: true, cash: true, bankTransfer: true } };
+  if (!val) {
+    return {
+      seasonName: "",
+      days: [],
+      payment: defaultPayment,
+      freeMealEnabled: true,
+      mobileEnabled: true,
+      foodPriceEnabled: false,
+      seasonEnabled: true,
+      kidsEnabled: false,
+      vendorKidsMealChargingEnabled: true,
+      soundEnabled: true,
+      cheatCodeEnabled: false,
+      identity1Enabled: true,
+      identity1Name: "Block No",
+      identity1Options: blockOptions,
+      identity2Enabled: true,
+      identity2Name: "Flat No",
+    };
+  }
+
+  if (Array.isArray(val)) {
+    return {
+      seasonName: "",
+      days: normalizeDayConfig(val),
+      payment: defaultPayment,
+      freeMealEnabled: true,
+      mobileEnabled: true,
+      foodPriceEnabled: false,
+      seasonEnabled: true,
+      kidsEnabled: false,
+      identity1Enabled: true,
+      identity1Name: "Block No",
+      identity1Options: blockOptions,
+      identity2Enabled: true,
+      identity2Name: "Flat No",
+    };
+  }
+
+  const days = Array.isArray(val.days)
+    ? val.days
+    : (val.days ? Object.values(val.days) : []);
+
+  let finalDays = days as ConfigDay[];
+  if (finalDays.length === 0 && !val.days) {
+    finalDays = Object.values(val).filter(v => v && typeof v === 'object' && (v as any).id) as ConfigDay[];
+  }
+
+  return {
+    seasonName: val.seasonName || "",
+    days: normalizeDayConfig(finalDays),
+    payment: val.payment || defaultPayment,
+    freeMealEnabled: val.freeMealEnabled !== false,
+    mobileEnabled: val.mobileEnabled !== false,
+    foodPriceEnabled: val.foodPriceEnabled || false,
+    seasonEnabled: val.seasonEnabled !== false,
+    kidsEnabled: val.kidsEnabled || false,
+    guestsEnabled: val.guestsEnabled || false,
+    vendorKidsMealChargingEnabled: val.vendorKidsMealChargingEnabled !== false,
+    whatsappCountryCode: val.whatsappCountryCode || "91",
+    quickCheckoutAutoCloseMs: val.quickCheckoutAutoCloseMs ?? 3000,
+    soundEnabled: val.soundEnabled !== undefined ? Boolean(val.soundEnabled) : true,
+    vendorName: val.vendorName || "",
+    vendorAddress: val.vendorAddress || "",
+    vendorSettledCost: val.vendorSettledCost || "",
+    nonAdminCheckoutEnabled: val.nonAdminCheckoutEnabled !== false,
+    cheatCodeEnabled: val.cheatCodeEnabled === true,
+    identity1Enabled: val.identity1Enabled !== false,
+    identity1Name: val.identity1Name || "Block No",
+    identity1Options: Array.isArray(val.identity1Options) && val.identity1Options.length > 0 ? val.identity1Options : blockOptions,
+    identity2Enabled: val.identity2Enabled !== false,
+    identity2Name: val.identity2Name || "Flat No",
+  };
+}
+
 export function createFirebaseRepository(): SubscriptionRepository {
   /**
    * Helper to get active day IDs from database config.
@@ -632,48 +709,9 @@ export function createFirebaseRepository(): SubscriptionRepository {
     },
     async getConfig() {
       const services = await ensureFirebaseAuth();
-      if (!services) return { seasonName: "", days: [], payment: { enabled: true, options: { upi: true, cash: true, bankTransfer: true } }, freeMealEnabled: true, mobileEnabled: true, foodPriceEnabled: false, seasonEnabled: true, kidsEnabled: false, vendorKidsMealChargingEnabled: true, cheatCodeEnabled: false };
+      if (!services) return normalizeConfig(null);
       const snapshot = await get(ref(services.db, configPath));
-      const val = snapshot.val();
-
-      const defaultPayment = { enabled: true, maxPayments: 10, options: { upi: true, cash: true, bankTransfer: true } };
-
-      if (snapshot.exists() && val) {
-        if (Array.isArray(val)) {
-          return { seasonName: "", days: normalizeDayConfig(val), payment: defaultPayment, freeMealEnabled: true, mobileEnabled: true, foodPriceEnabled: false, seasonEnabled: true, kidsEnabled: false, cheatCodeEnabled: false };
-        }
-
-        const days = Array.isArray(val.days)
-          ? val.days
-          : (val.days ? Object.values(val.days) : []);
-
-        let finalDays = days as ConfigDay[];
-        if (finalDays.length === 0 && !val.days) {
-          finalDays = Object.values(val).filter(v => v && typeof v === 'object' && (v as any).id) as ConfigDay[];
-        }
-
-        return {
-          seasonName: val.seasonName || "",
-          days: normalizeDayConfig(finalDays),
-          payment: val.payment || defaultPayment,
-          freeMealEnabled: val.freeMealEnabled !== false,
-          mobileEnabled: val.mobileEnabled !== false,
-          foodPriceEnabled: val.foodPriceEnabled || false,
-          seasonEnabled: val.seasonEnabled !== false,
-          kidsEnabled: val.kidsEnabled || false,
-          guestsEnabled: val.guestsEnabled || false,
-          vendorKidsMealChargingEnabled: val.vendorKidsMealChargingEnabled !== false,
-          whatsappCountryCode: val.whatsappCountryCode || "91",
-          quickCheckoutAutoCloseMs: val.quickCheckoutAutoCloseMs ?? 3000,
-          soundEnabled: val.soundEnabled !== undefined ? Boolean(val.soundEnabled) : true,
-          vendorName: val.vendorName || "",
-          vendorAddress: val.vendorAddress || "",
-          vendorSettledCost: val.vendorSettledCost || "",
-          nonAdminCheckoutEnabled: val.nonAdminCheckoutEnabled !== false,
-          cheatCodeEnabled: val.cheatCodeEnabled === true,
-        };
-      }
-      return { seasonName: "", days: [], payment: defaultPayment, freeMealEnabled: true, mobileEnabled: true, foodPriceEnabled: false, seasonEnabled: true, kidsEnabled: false, vendorKidsMealChargingEnabled: true, soundEnabled: true, cheatCodeEnabled: false };
+      return normalizeConfig(snapshot.exists() ? snapshot.val() : null);
     },
     async updateConfig(config) {
       const services = await ensureFirebaseAuth();
@@ -1082,37 +1120,7 @@ export function createFirebaseRepository(): SubscriptionRepository {
         if (!services?.db) return;
         unsub = onValue(ref(services.db, configPath), (snapshot) => {
           if (!snapshot.exists()) return;
-          const val = snapshot.val();
-          const defaultPayment = { enabled: true, maxPayments: 10, options: { upi: true, cash: true, bankTransfer: true } };
-          if (Array.isArray(val)) {
-            callback({ seasonName: "", days: normalizeDayConfig(val), payment: defaultPayment, freeMealEnabled: true, mobileEnabled: true, foodPriceEnabled: false, seasonEnabled: true, kidsEnabled: false });
-          } else {
-            const days = Array.isArray(val.days) ? val.days : (val.days ? Object.values(val.days) : []);
-            let finalDays = days as ConfigDay[];
-            if (finalDays.length === 0 && !val.days) {
-              finalDays = Object.values(val).filter(v => v && typeof v === 'object' && (v as any).id) as ConfigDay[];
-            }
-            callback({
-              seasonName: val.seasonName || "",
-              days: normalizeDayConfig(finalDays),
-              payment: val.payment || defaultPayment,
-              freeMealEnabled: val.freeMealEnabled !== false,
-              mobileEnabled: val.mobileEnabled !== false,
-              foodPriceEnabled: val.foodPriceEnabled || false,
-              seasonEnabled: val.seasonEnabled !== false,
-              kidsEnabled: val.kidsEnabled || false,
-              guestsEnabled: val.guestsEnabled || false,
-              vendorKidsMealChargingEnabled: val.vendorKidsMealChargingEnabled !== false,
-              whatsappCountryCode: val.whatsappCountryCode || "91",
-              quickCheckoutAutoCloseMs: val.quickCheckoutAutoCloseMs ?? 3000,
-              soundEnabled: val.soundEnabled !== undefined ? Boolean(val.soundEnabled) : true,
-              nonAdminCheckoutEnabled: val.nonAdminCheckoutEnabled !== false,
-              cheatCodeEnabled: val.cheatCodeEnabled === true,
-              vendorName: val.vendorName || "",
-              vendorAddress: val.vendorAddress || "",
-              vendorSettledCost: val.vendorSettledCost || "",
-            });
-          }
+          callback(normalizeConfig(snapshot.val()));
         });
       }).catch(err => console.error("Config listener error:", err));
 

@@ -102,7 +102,8 @@ export function SubscriptionForm() {
   const { userRole, userName, userAccountName, handleLogout } = useAuth();
   const {
     dayConfig, paymentConfig, seasonEnabled, foodPriceEnabled, foodMenu, mobileEnabled,
-    upsertSubscription, deleteSubscription, kidsEnabled, guestsEnabled, subscriptions
+    upsertSubscription, deleteSubscription, kidsEnabled, guestsEnabled, subscriptions,
+    identity1Enabled, identity1Name, identity1Options, identity2Enabled, identity2Name
   } = useCoreDatabase();
   const { addActivityLog } = useActivityLogs();
   const { showAlert: showGlobalAlert } = useUI();
@@ -1571,11 +1572,16 @@ export function SubscriptionForm() {
         <SubscriptionBasicInfoSection
           block={form.block}
           setBlock={(block) => set("block", block)}
-          blockOptions={blockOptions}
+          blockOptions={identity1Options && identity1Options.length > 0 ? identity1Options : blockOptions}
           flat={form.flat}
           setFlat={(flat) => set("flat", flat.toUpperCase())}
           phone={mobileInput}
           setPhone={setMobileInput}
+          identity1Enabled={identity1Enabled}
+          identity1Name={identity1Name}
+          identity1Options={identity1Options}
+          identity2Enabled={identity2Enabled}
+          identity2Name={identity2Name}
           peopleCount={form.peopleCount}
           setPeopleCount={(count) => {
             const oldPeople = form.peopleCount;

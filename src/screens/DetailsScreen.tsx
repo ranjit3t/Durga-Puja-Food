@@ -484,7 +484,7 @@ export function DetailsScreen() {
             ) : (
                `${subscription.peopleCount + (subscription.kidsCount || 0) + (subscription.guestsCount || 0)}${subscription.peopleCount + (subscription.kidsCount || 0) + (subscription.guestsCount || 0) === 1 ? UI_TEXT.personSuffix : UI_TEXT.personsSuffix}`
             )}
-            {isAdmin && paymentConfig.enabled && `${UI_TEXT.pipe}$${UI_TEXT.space}${subscription.amount || UI_TEXT.zero}`}
+            {isAdmin && paymentConfig.enabled && `${UI_TEXT.pipe}${UI_TEXT.space}${subscription.amount || UI_TEXT.zero}`}
             {isAdmin && mobileEnabled && subscription.mobile && `${UI_TEXT.pipe}${subscription.mobile}`}
           </Text>
 
@@ -1043,26 +1043,30 @@ export function DetailsScreen() {
 
         {/* Actions */}
         <View style={{ gap: 16, marginBottom: 40 }}>
-          {canQuickCheckout && hasUnservedFoodForCurrentMeal && (
+          {canQuickCheckout && (hasUnservedFoodForCurrentMeal || hasUnservedParcelForCurrentMeal) && (
             <View style={{ flexDirection: 'row', gap: 12 }}>
-              <Pressable
-                onPress={handleQuickCheckoutClick}
-                accessible={true}
-                accessibilityRole="button"
-                accessibilityLabel={UI_TEXT.quickCheckout}
-                style={[styles.primary, { flex: 1, backgroundColor: theme.colors.warning || theme.colors.secondary, marginTop: 0, height: 52, borderRadius: 16 }]}
-              >
-                <ActionLabel icon="flash-outline" label={UI_TEXT.quickCheckout} color={theme.colors.white} />
-              </Pressable>
-              <Pressable
-                onPress={handleParcelCheckoutClick}
-                accessible={true}
-                accessibilityRole="button"
-                accessibilityLabel={UI_TEXT.parcelCheckout}
-                style={[styles.primary, { flex: 1, backgroundColor: theme.colors.primary, marginTop: 0, height: 52, borderRadius: 16 }]}
-              >
-                <ActionLabel icon="cube-outline" label={UI_TEXT.parcelCheckout} color={theme.colors.white} />
-              </Pressable>
+              {hasUnservedFoodForCurrentMeal && (
+                <Pressable
+                  onPress={handleQuickCheckoutClick}
+                  accessible={true}
+                  accessibilityRole="button"
+                  accessibilityLabel={UI_TEXT.quickCheckout}
+                  style={[styles.primary, { flex: 1, backgroundColor: theme.colors.warning || theme.colors.secondary, marginTop: 0, height: 52, borderRadius: 16 }]}
+                >
+                  <ActionLabel icon="flash-outline" label={UI_TEXT.quickCheckout} color={theme.colors.white} />
+                </Pressable>
+              )}
+              {hasUnservedParcelForCurrentMeal && (
+                <Pressable
+                  onPress={handleParcelCheckoutClick}
+                  accessible={true}
+                  accessibilityRole="button"
+                  accessibilityLabel={UI_TEXT.parcelCheckout}
+                  style={[styles.primary, { flex: 1, backgroundColor: theme.colors.primary, marginTop: 0, height: 52, borderRadius: 16 }]}
+                >
+                  <ActionLabel icon="cube-outline" label={UI_TEXT.parcelCheckout} color={theme.colors.white} />
+                </Pressable>
+              )}
             </View>
           )}
           {canEditPass && (

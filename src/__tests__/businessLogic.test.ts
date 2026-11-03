@@ -267,6 +267,22 @@ describe("remainder distribution and detailed payment report calculation", () =>
 
 import { findSubscriptionByPassCodeOrCheatCode, qrValueFor, blockOptions } from "../constants";
 import { encryptQrPayload, decryptQrPayload } from "../utils/qrEncryption";
+import { getPassDisplayLabel } from "../domain";
+
+describe("Configurable Pass Identities", () => {
+  it("formats pass display label correctly with custom identity names and enabled states", () => {
+    const sub = { block: "10", flat: "A2" };
+
+    // Default both enabled
+    expect(getPassDisplayLabel(sub, { identity1Enabled: true, identity2Enabled: true })).toBe("10-A2");
+
+    // Only identity 1 enabled
+    expect(getPassDisplayLabel(sub, { identity1Enabled: true, identity1Name: "Tower No", identity2Enabled: false })).toBe("10");
+
+    // Only identity 2 enabled
+    expect(getPassDisplayLabel(sub, { identity1Enabled: false, identity2Enabled: true, identity2Name: "House No" })).toBe("A2");
+  });
+});
 
 describe("Block Options Configuration", () => {
   it("includes Block 0 in blockOptions starting from 0 to 25", () => {

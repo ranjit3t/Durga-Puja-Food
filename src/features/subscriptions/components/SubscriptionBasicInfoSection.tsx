@@ -30,6 +30,11 @@ interface SubscriptionBasicInfoSectionProps {
   minKids: number;
   minGuests?: number;
   pickContact?: () => void;
+  identity1Enabled?: boolean;
+  identity1Name?: string;
+  identity1Options?: string[];
+  identity2Enabled?: boolean;
+  identity2Name?: string;
   theme: any;
   styles: any;
   s: (n: number) => number;
@@ -60,42 +65,92 @@ export const SubscriptionBasicInfoSection: React.FC<SubscriptionBasicInfoSection
   minKids,
   minGuests = 0,
   pickContact,
+  identity1Enabled,
+  identity1Name,
+  identity1Options,
+  identity2Enabled,
+  identity2Name,
   theme,
   styles,
   s,
 }) => {
-  return (
-    <View style={[styles.card, { marginTop: 8, backgroundColor: theme.cardColors[1].bg, borderColor: theme.cardColors[1].border }]}>
-      <Text style={[styles.sectionTitle, { fontSize: 18, marginBottom: 12, color: theme.cardColors[1].accent }]}>
-        {UI_TEXT.blockAndFlat}
-      </Text>
+  const id1Enabled = identity1Enabled !== false;
+  const id2Enabled = identity2Enabled !== false;
+  const id1Label = identity1Name || UI_TEXT.blockNo;
+  const id2Label = identity2Name || UI_TEXT.flatNo;
+  const resolvedBlockOptions = identity1Options && identity1Options.length > 0 ? identity1Options : blockOptions;
 
-      <View style={styles.row}>
-        <View style={styles.fieldHalf}>
-          <Text style={styles.label}>{UI_TEXT.blockNo}</Text>
+  const renderIdentityFields = () => {
+    if (id1Enabled && id2Enabled) {
+      return (
+        <View style={styles.row}>
+          <View style={styles.fieldHalf}>
+            <Text style={styles.label}>{id1Label}</Text>
+            <Dropdown
+              value={block}
+              options={resolvedBlockOptions}
+              onChange={setBlock}
+              disabled={!isAdmin || lockIdentity}
+            />
+          </View>
+          <View style={styles.fieldHalf}>
+            <Text style={styles.label}>{id2Label}</Text>
+            <TextInput
+              value={flat}
+              onChangeText={(txt) => setFlat(txt.toUpperCase())}
+              placeholder={`Enter ${id2Label}`}
+              placeholderTextColor={theme.colors.textMuted}
+              keyboardType="default"
+              autoCapitalize="characters"
+              editable={isAdmin && !lockIdentity}
+              accessible={true}
+              accessibilityLabel={id2Label}
+              style={[styles.input, (!isAdmin || lockIdentity) && { backgroundColor: theme.colors.surface }]}
+            />
+          </View>
+        </View>
+      );
+    } else if (id1Enabled) {
+      return (
+        <View style={{ marginBottom: 12 }}>
+          <Text style={styles.label}>{id1Label}</Text>
           <Dropdown
             value={block}
-            options={blockOptions}
+            options={resolvedBlockOptions}
             onChange={setBlock}
             disabled={!isAdmin || lockIdentity}
           />
         </View>
-        <View style={styles.fieldHalf}>
-          <Text style={styles.label}>{UI_TEXT.flatNo}</Text>
+      );
+    } else if (id2Enabled) {
+      return (
+        <View style={{ marginBottom: 12 }}>
+          <Text style={styles.label}>{id2Label}</Text>
           <TextInput
             value={flat}
             onChangeText={(txt) => setFlat(txt.toUpperCase())}
-            placeholder={UI_TEXT.flatNoPlaceholder}
+            placeholder={`Enter ${id2Label}`}
             placeholderTextColor={theme.colors.textMuted}
             keyboardType="default"
             autoCapitalize="characters"
             editable={isAdmin && !lockIdentity}
             accessible={true}
-            accessibilityLabel={UI_TEXT.flatNo}
+            accessibilityLabel={id2Label}
             style={[styles.input, (!isAdmin || lockIdentity) && { backgroundColor: theme.colors.surface }]}
           />
         </View>
-      </View>
+      );
+    }
+    return null;
+  };
+
+  return (
+    <View style={[styles.card, { marginTop: 8, backgroundColor: theme.cardColors[1].bg, borderColor: theme.cardColors[1].border }]}>
+      <Text style={[styles.sectionTitle, { fontSize: 18, marginBottom: 12, color: theme.cardColors[1].accent }]}>
+        {id1Enabled && id2Enabled ? `${id1Label} & ${id2Label}` : (id1Enabled ? id1Label : id2Label)}
+      </Text>
+
+      {renderIdentityFields()}
 
       {isAdmin && mobileEnabled && (
         <>

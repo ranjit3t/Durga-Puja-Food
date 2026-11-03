@@ -486,6 +486,18 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
 ### BA. Direct Download Action on Deprecation Banner (`LoginScreen.tsx`)
 - **Interactive Update Trigger**: The Login Page deprecation banner features a high-contrast, accessible "Download Latest Version" action button that opens `androidAppLocation` / `iosAppLocation` via `Linking.openURL`, allowing users to download updates directly.
 
+### BB. Fully Encrypted QR Code Passes (`qrEncryption.ts`, `QrScreen.tsx`, `ScannerScreen.tsx`)
+- **100% Cipher Obfuscation**: Encrypts pass payloads into fully secure cipher strings (`DPF_ENC_...`) so external camera apps and QR readers cannot read plain-text URL or pass details. Automatically decrypted by the app scanner across Normal Scan, Quick Checkout, and Parcel Checkout modes.
+
+### BC. Server Call Timeout Watcher (`asyncUtils.ts`, `repository.ts`, `firebase.ts`)
+- **Timeout Protection**: Enforces a configured 15-second timeout (`serverTimeoutMs`) on all repository and network async calls, preventing infinite hanging and gracefully unblocking the app UI on disconnect.
+
+### BD. Configurable Pass Identities (`domain.ts`, `constants.ts`, `SettingsScreen.tsx`)
+- **Customizable Pass Groupings**: Season Settings support enabling and naming Identity 1 and Identity 2 (e.g., Tower No, House No) with pre-populated select options including Block 0 through 25, protected by a database guard preventing disabling when passes exist.
+
+### BE. Currency Display & Settings Header Polish (`DetailsScreen.tsx`, `SettingsScreen.tsx`)
+- **Clean Formatting**: Removed the currency symbol (`$`) prefix from pass amount displays and removed the Manage Users button from the Settings screen header.
+
 ## 6. Quality Assurance & UI Catalog
 
 ### Jest Test Boundary

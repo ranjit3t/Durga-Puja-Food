@@ -228,7 +228,8 @@ export function SettingsScreen() {
   const {
     dayConfig: config, seasonName, seasonEnabled, paymentConfig: payment, freeMealEnabled, mobileEnabled, foodPriceEnabled,
     whatsappCountryCode, updateConfig, kidsEnabled, guestsEnabled, vendorKidsMealChargingEnabled, subscriptions, foodMenu, quickCheckoutAutoCloseMs, soundEnabled,
-    vendorName, vendorAddress, vendorSettledCost, nonAdminCheckoutEnabled, cheatCodeEnabled
+    vendorName, vendorAddress, vendorSettledCost, nonAdminCheckoutEnabled, cheatCodeEnabled,
+    identity1Enabled, identity1Name, identity1Options, identity2Enabled, identity2Name
   } = useCoreDatabase();
   const { addActivityLog } = useActivityLogs();
   const { showAlert } = useUI();
@@ -262,6 +263,11 @@ export function SettingsScreen() {
   const [localVendorName, setLocalVendorName] = useState("");
   const [localVendorAddress, setLocalVendorAddress] = useState("");
   const [localVendorSettledCost, setLocalVendorSettledCost] = useState("");
+  const [localIdentity1Enabled, setLocalIdentity1Enabled] = useState(true);
+  const [localIdentity1Name, setLocalIdentity1Name] = useState("Block No");
+  const [localIdentity1OptionsText, setLocalIdentity1OptionsText] = useState("0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25");
+  const [localIdentity2Enabled, setLocalIdentity2Enabled] = useState(true);
+  const [localIdentity2Name, setLocalIdentity2Name] = useState("Flat No");
   const [saving, setSaving] = useState(false);
 
   // Saved baseline state representing the current persisted configuration
@@ -284,6 +290,11 @@ export function SettingsScreen() {
     vendorName: string;
     vendorAddress: string;
     vendorSettledCost: string;
+    identity1Enabled: boolean;
+    identity1Name: string;
+    identity1Options: string[];
+    identity2Enabled: boolean;
+    identity2Name: string;
   } | null>(null);
 
   const [editingVarietyModal, setEditingVarietyModal] = useState<{
@@ -456,6 +467,11 @@ export function SettingsScreen() {
         vendorName: vendorName || "",
         vendorAddress: vendorAddress || "",
         vendorSettledCost: vendorSettledCost || "",
+        identity1Enabled: identity1Enabled !== false,
+        identity1Name: identity1Name || "Block No",
+        identity1Options: identity1Options || blockOptions,
+        identity2Enabled: identity2Enabled !== false,
+        identity2Name: identity2Name || "Flat No",
       };
 
       const serverChanged = JSON.stringify(currentContextBaseline) !== JSON.stringify(lastServerConfigRef.current);
@@ -479,6 +495,11 @@ export function SettingsScreen() {
         setLocalVendorName(currentContextBaseline.vendorName);
         setLocalVendorAddress(currentContextBaseline.vendorAddress);
         setLocalVendorSettledCost(currentContextBaseline.vendorSettledCost);
+        setLocalIdentity1Enabled(currentContextBaseline.identity1Enabled);
+        setLocalIdentity1Name(currentContextBaseline.identity1Name);
+        setLocalIdentity1OptionsText(Array.isArray(currentContextBaseline.identity1Options) ? currentContextBaseline.identity1Options.join(", ") : blockOptions.join(", "));
+        setLocalIdentity2Enabled(currentContextBaseline.identity2Enabled);
+        setLocalIdentity2Name(currentContextBaseline.identity2Name);
         setSavedBaseline(currentContextBaseline);
         lastServerConfigRef.current = currentContextBaseline;
       } else if (!savedBaseline) {
@@ -486,7 +507,7 @@ export function SettingsScreen() {
         lastServerConfigRef.current = currentContextBaseline;
       }
     }
-  }, [config, seasonName, seasonEnabled, payment, freeMealEnabled, mobileEnabled, foodPriceEnabled, kidsEnabled, guestsEnabled, vendorKidsMealChargingEnabled, whatsappCountryCode, quickCheckoutAutoCloseMs, soundEnabled, nonAdminCheckoutEnabled, cheatCodeEnabled, vendorName, vendorAddress, vendorSettledCost, savedBaseline]);
+  }, [config, seasonName, seasonEnabled, payment, freeMealEnabled, mobileEnabled, foodPriceEnabled, kidsEnabled, guestsEnabled, vendorKidsMealChargingEnabled, whatsappCountryCode, quickCheckoutAutoCloseMs, soundEnabled, nonAdminCheckoutEnabled, cheatCodeEnabled, vendorName, vendorAddress, vendorSettledCost, identity1Enabled, identity1Name, identity1Options, identity2Enabled, identity2Name, savedBaseline]);
 
   const updateDay = (id: string, next: Partial<ConfigDay>) => {
     setLocalConfig((current) =>
@@ -893,6 +914,24 @@ export function SettingsScreen() {
   const handleSave = async () => {
     setSaving(true);
     try {
+      if (!localIdentity1Enabled && !localIdentity2Enabled) {
+        showAlert("Error", "At least one pass identity (Identity 1 or Identity 2) must be enabled.");
+        setSaving(false);
+        return;
+      }
+
+      if (subscriptions && subscriptions.length > 0 && (!localIdentity1Enabled || !localIdentity2Enabled)) {
+        showAlert("Error", "Pass identities cannot be disabled while passes are already registered in the system.");
+        setSaving(false);
+        return;
+      }
+
+      const optionsArray = localIdentity1OptionsText
+        .split(/[,|\n]/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const finalIdentity1Options = optionsArray.length > 0 ? optionsArray : blockOptions;
+
       const changeLog = getSettingsChangeLog();
 
       const newBaseline = {
@@ -914,6 +953,11 @@ export function SettingsScreen() {
         vendorName: localVendorName,
         vendorAddress: localVendorAddress,
         vendorSettledCost: areAllMealsDone ? localVendorSettledCost : vendorSettledCost,
+        identity1Enabled: localIdentity1Enabled,
+        identity1Name: localIdentity1Name.trim() || "Block No",
+        identity1Options: finalIdentity1Options,
+        identity2Enabled: localIdentity2Enabled,
+        identity2Name: localIdentity2Name.trim() || "Flat No",
       };
 
       await updateConfig({
@@ -935,6 +979,11 @@ export function SettingsScreen() {
         vendorName: localVendorName,
         vendorAddress: localVendorAddress,
         vendorSettledCost: areAllMealsDone ? localVendorSettledCost : vendorSettledCost,
+        identity1Enabled: localIdentity1Enabled,
+        identity1Name: localIdentity1Name.trim() || "Block No",
+        identity1Options: finalIdentity1Options,
+        identity2Enabled: localIdentity2Enabled,
+        identity2Name: localIdentity2Name.trim() || "Flat No",
       });
 
       setSavedBaseline(newBaseline);
@@ -977,7 +1026,12 @@ export function SettingsScreen() {
       localCheatCodeEnabled !== savedBaseline.cheatCodeEnabled ||
       localVendorName !== savedBaseline.vendorName ||
       localVendorAddress !== savedBaseline.vendorAddress ||
-      (areAllMealsDone && localVendorSettledCost !== savedBaseline.vendorSettledCost)
+      (areAllMealsDone && localVendorSettledCost !== savedBaseline.vendorSettledCost) ||
+      localIdentity1Enabled !== savedBaseline.identity1Enabled ||
+      localIdentity1Name !== savedBaseline.identity1Name ||
+      localIdentity1OptionsText !== (Array.isArray(savedBaseline.identity1Options) ? savedBaseline.identity1Options.join(", ") : blockOptions.join(", ")) ||
+      localIdentity2Enabled !== savedBaseline.identity2Enabled ||
+      localIdentity2Name !== savedBaseline.identity2Name
     );
   }, [
     savedBaseline,
@@ -999,6 +1053,11 @@ export function SettingsScreen() {
     localVendorName,
     localVendorAddress,
     localVendorSettledCost,
+    localIdentity1Enabled,
+    localIdentity1Name,
+    localIdentity1OptionsText,
+    localIdentity2Enabled,
+    localIdentity2Name,
     areAllMealsDone
   ]);
 
@@ -1014,33 +1073,6 @@ export function SettingsScreen() {
             <HomeButton onPress={() => navigate(AppScreen.HOME)} />
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-            {userRole === UserRole.ADMIN && (
-              <Pressable
-                onPress={() => navigate(AppScreen.USER_MANAGEMENT)}
-                accessible={true}
-                accessibilityRole="button"
-                accessibilityLabel={UI_TEXT.manageUsersButton}
-                style={({ pressed }) => [
-                  {
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 4,
-                    backgroundColor: theme.colors.surfaceDark,
-                    paddingHorizontal: s(10),
-                    paddingVertical: s(6),
-                    borderRadius: s(8),
-                    borderWidth: 1,
-                    borderColor: theme.colors.border,
-                  },
-                  pressed && { opacity: 0.7 }
-                ]}
-              >
-                <Ionicons name="people-outline" size={16} color={theme.colors.primary} />
-                <Text style={{ fontSize: 12, fontWeight: '800', color: theme.colors.primary }}>
-                  {UI_TEXT.manageUsersButton}
-                </Text>
-              </Pressable>
-            )}
             {hasChanged && (
               <Pressable
                 onPress={handleSave}
@@ -1328,6 +1360,83 @@ export function SettingsScreen() {
                 style={{ flexShrink: 0 }}
               />
            </View>
+        </View>
+
+        {/* Pass Identity Configuration Card */}
+        <View style={[styles.dashboardCard, { backgroundColor: theme.cardColors[2].bg, borderColor: theme.cardColors[2].border, borderWidth: 1.5, marginTop: 16 }]}>
+          <Text style={{ fontSize: 18, fontWeight: '900', color: theme.cardColors[2].accent, marginBottom: 4 }}>
+            Pass Identity Configuration
+          </Text>
+          <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600', marginBottom: 12 }}>
+            Configure identity fields (e.g. Tower No, Block No, Flat No, House No) used across passes, forms, and reports.
+          </Text>
+          {subscriptions.length > 0 && (
+            <Text style={{ fontSize: 11, color: theme.colors.error, fontWeight: '700', marginBottom: 12 }}>
+              ⚠ Pass identities cannot be disabled because passes are already created in the system.
+            </Text>
+          )}
+
+          {/* Identity 1 */}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <View style={{ flex: 1, marginRight: 10 }}>
+              <Text style={{ fontSize: 15, fontWeight: '800', color: theme.colors.textPrimary }}>Enable Identity 1</Text>
+              <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600' }}>Primary pass grouping (e.g. Block / Tower No)</Text>
+            </View>
+            <Switch
+              value={localIdentity1Enabled}
+              onValueChange={setLocalIdentity1Enabled}
+              disabled={subscriptions.length > 0}
+              trackColor={{ true: theme.colors.primary }}
+            />
+          </View>
+          {localIdentity1Enabled && (
+            <View style={{ gap: 10, marginBottom: 16, backgroundColor: theme.colors.surface, borderRadius: 12, padding: 12 }}>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: theme.colors.textPrimary }}>Identity 1 Name / Label</Text>
+              <TextInput
+                style={styles.input}
+                value={localIdentity1Name}
+                onChangeText={setLocalIdentity1Name}
+                placeholder="e.g. Block No, Tower No"
+                placeholderTextColor={theme.colors.textMuted}
+              />
+              <Text style={{ fontSize: 12, fontWeight: '700', color: theme.colors.textPrimary, marginTop: 4 }}>Identity 1 Select Options (Comma-separated)</Text>
+              <TextInput
+                style={styles.input}
+                value={localIdentity1OptionsText}
+                onChangeText={setLocalIdentity1OptionsText}
+                placeholder="0, 1, 2, 3, 4, 5, ..."
+                placeholderTextColor={theme.colors.textMuted}
+              />
+            </View>
+          )}
+
+          <View style={{ height: 1, backgroundColor: theme.colors.border, marginVertical: 12 }} />
+
+          {/* Identity 2 */}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <View style={{ flex: 1, marginRight: 10 }}>
+              <Text style={{ fontSize: 15, fontWeight: '800', color: theme.colors.textPrimary }}>Enable Identity 2</Text>
+              <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600' }}>Secondary pass unit (e.g. Flat / House No)</Text>
+            </View>
+            <Switch
+              value={localIdentity2Enabled}
+              onValueChange={setLocalIdentity2Enabled}
+              disabled={subscriptions.length > 0}
+              trackColor={{ true: theme.colors.primary }}
+            />
+          </View>
+          {localIdentity2Enabled && (
+            <View style={{ gap: 10, backgroundColor: theme.colors.surface, borderRadius: 12, padding: 12 }}>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: theme.colors.textPrimary }}>Identity 2 Name / Label</Text>
+              <TextInput
+                style={styles.input}
+                value={localIdentity2Name}
+                onChangeText={setLocalIdentity2Name}
+                placeholder="e.g. Flat No, House No"
+                placeholderTextColor={theme.colors.textMuted}
+              />
+            </View>
+          )}
         </View>
 
         {/* Vendor Details & Financial Settlement Section Card */}

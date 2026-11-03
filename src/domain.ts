@@ -217,6 +217,11 @@ export type AppConfig = {
   vendorSettledCost?: string;
   nonAdminCheckoutEnabled?: boolean;
   cheatCodeEnabled?: boolean;
+  identity1Enabled?: boolean;
+  identity1Name?: string;
+  identity1Options?: string[];
+  identity2Enabled?: boolean;
+  identity2Name?: string;
 };
 
 export enum ActivityModule {
@@ -524,12 +529,36 @@ export type ChatUser = {
   lastMessage?: ChatMessage;
 };
 
-export const getPassDisplayLabel = (sub?: { block?: string; flat?: string; id?: string } | null): string => {
+export const getPassDisplayLabel = (
+  sub?: { block?: string; flat?: string; id?: string } | null,
+  config?: {
+    identity1Enabled?: boolean;
+    identity1Name?: string;
+    identity2Enabled?: boolean;
+    identity2Name?: string;
+  } | null
+): string => {
   if (!sub) return "";
-  const block = sub.block?.trim();
-  const flat = sub.flat?.trim();
-  if (block && flat) return `${block}-${flat}`;
-  if (flat) return flat;
-  if (block) return `Block ${block}`;
+  const id1Enabled = config?.identity1Enabled !== false;
+  const id2Enabled = config?.identity2Enabled !== false;
+
+  const b = sub.block?.trim();
+  const f = sub.flat?.trim();
+
+  if (id1Enabled && id2Enabled) {
+    if (b && f) return `${b}-${f}`;
+    if (b) return b;
+    if (f) return f;
+  } else if (id1Enabled) {
+    if (b) return b;
+    if (f) return f;
+  } else if (id2Enabled) {
+    if (f) return f;
+    if (b) return b;
+  }
+
+  if (b && f) return `${b}-${f}`;
+  if (b) return b;
+  if (f) return f;
   return sub.id || "";
 };

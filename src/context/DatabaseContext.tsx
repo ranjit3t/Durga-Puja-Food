@@ -48,7 +48,8 @@ import {
   getMealFreeMealCounts,
   isGuestsParcelEnabled,
   isMealSlotAbsent,
-  isVersionLessOrEqual
+  isVersionLessOrEqual,
+  blockOptions
 } from "../constants";
 import { useUI } from "./UIContext";
 
@@ -79,6 +80,11 @@ export interface CoreDatabaseContextType {
   vendorSettledCost: string;
   nonAdminCheckoutEnabled: boolean;
   cheatCodeEnabled: boolean;
+  identity1Enabled: boolean;
+  identity1Name: string;
+  identity1Options: string[];
+  identity2Enabled: boolean;
+  identity2Name: string;
   remoteAppVersion: string | null;
   androidAppLocation?: string;
   iosAppLocation?: string;
@@ -181,6 +187,11 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
   const [vendorName, setVendorName] = useState("");
   const [vendorAddress, setVendorAddress] = useState("");
   const [vendorSettledCost, setVendorSettledCost] = useState("");
+  const [identity1Enabled, setIdentity1Enabled] = useState(true);
+  const [identity1Name, setIdentity1Name] = useState("Block No");
+  const [identity1Options, setIdentity1Options] = useState<string[]>(blockOptions);
+  const [identity2Enabled, setIdentity2Enabled] = useState(true);
+  const [identity2Name, setIdentity2Name] = useState("Flat No");
   const [remoteAppVersion, setRemoteAppVersion] = useState<string | null>(null);
   const [androidAppLocation, setAndroidAppLocation] = useState<string | undefined>(undefined);
   const [iosAppLocation, setIosAppLocation] = useState<string | undefined>(undefined);
@@ -322,6 +333,11 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       setVendorName(config.vendorName || "");
       setVendorAddress(config.vendorAddress || "");
       setVendorSettledCost(config.vendorSettledCost || "");
+      setIdentity1Enabled(config.identity1Enabled !== false);
+      setIdentity1Name(config.identity1Name || "Block No");
+      setIdentity1Options(config.identity1Options || blockOptions);
+      setIdentity2Enabled(config.identity2Enabled !== false);
+      setIdentity2Name(config.identity2Name || "Flat No");
       setFoodMenu(menu);
       setNotes(notesData);
       setFoodPackages(packagesData);
@@ -377,6 +393,11 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       setVendorName(config.vendorName || "");
       setVendorAddress(config.vendorAddress || "");
       setVendorSettledCost(config.vendorSettledCost || "");
+      setIdentity1Enabled(config.identity1Enabled !== false);
+      setIdentity1Name(config.identity1Name || "Block No");
+      setIdentity1Options(config.identity1Options || blockOptions);
+      setIdentity2Enabled(config.identity2Enabled !== false);
+      setIdentity2Name(config.identity2Name || "Flat No");
       setFoodMenu(menu);
       setNotes(notesData || []);
       setFoodPackages(packagesData || []);
@@ -565,6 +586,11 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       setVendorName(config.vendorName || "");
       setVendorAddress(config.vendorAddress || "");
       setVendorSettledCost(config.vendorSettledCost || "");
+      setIdentity1Enabled(config.identity1Enabled !== false);
+      setIdentity1Name(config.identity1Name || "Block No");
+      setIdentity1Options(config.identity1Options || blockOptions);
+      setIdentity2Enabled(config.identity2Enabled !== false);
+      setIdentity2Name(config.identity2Name || "Flat No");
     });
 
     const unsubMetrics = repository.onMetricsChange((metrics) => {
@@ -1712,7 +1738,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
     loading, firebaseError, refreshAllData,
     subscriptions, foodMenu, dayConfig, seasonName, seasonEnabled, paymentConfig,
     freeMealEnabled, mobileEnabled, foodPriceEnabled,
-    kidsEnabled, guestsEnabled, vendorKidsMealChargingEnabled, whatsappCountryCode, quickCheckoutAutoCloseMs, soundEnabled, nonAdminCheckoutEnabled, cheatCodeEnabled, vendorName, vendorAddress, vendorSettledCost, remoteAppVersion, androidAppLocation, iosAppLocation, kitchenMetrics,
+    kidsEnabled, guestsEnabled, vendorKidsMealChargingEnabled, whatsappCountryCode, quickCheckoutAutoCloseMs, soundEnabled, nonAdminCheckoutEnabled, cheatCodeEnabled, identity1Enabled, identity1Name, identity1Options, identity2Enabled, identity2Name, vendorName, vendorAddress, vendorSettledCost, remoteAppVersion, androidAppLocation, iosAppLocation, kitchenMetrics,
     dashboardData, collections, totalPeople,
     upsertSubscription, deleteSubscription, updateConfig, updateMenu,
     updateFreeMealCount, updateMealMenu, updateSubscriptionStatus, updateMealAbsent,
@@ -1722,7 +1748,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
     loading, firebaseError, refreshAllData,
     subscriptions, foodMenu, dayConfig, seasonName, seasonEnabled, paymentConfig,
     freeMealEnabled, mobileEnabled, foodPriceEnabled,
-    kidsEnabled, guestsEnabled, vendorKidsMealChargingEnabled, whatsappCountryCode, quickCheckoutAutoCloseMs, soundEnabled, nonAdminCheckoutEnabled, cheatCodeEnabled, vendorName, vendorAddress, vendorSettledCost, remoteAppVersion, androidAppLocation, iosAppLocation, kitchenMetrics,
+    kidsEnabled, guestsEnabled, vendorKidsMealChargingEnabled, whatsappCountryCode, quickCheckoutAutoCloseMs, soundEnabled, nonAdminCheckoutEnabled, cheatCodeEnabled, identity1Enabled, identity1Name, identity1Options, identity2Enabled, identity2Name, vendorName, vendorAddress, vendorSettledCost, remoteAppVersion, androidAppLocation, iosAppLocation, kitchenMetrics,
     dashboardData, collections, totalPeople,
     upsertSubscription, deleteSubscription, updateConfig, updateMenu,
     updateFreeMealCount, updateMealMenu, updateSubscriptionStatus, updateMealAbsent,

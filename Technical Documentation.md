@@ -498,6 +498,24 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
     - **Interactive Update Link**: The Login Page deprecation card renders an accessible "Download Latest Version" button that opens `androidAppLocation` / `iosAppLocation` via `Linking.openURL`, allowing users to download updates directly.
     - **WCAG 2.1 AA & Localization Compliance**: Fully accessible with screen reader support, mobile-friendly touch targets, and zero hardcoded strings (`UI_TEXT`).
 
+30. **Fully Encrypted QR Code Passes ([`qrEncryption.ts`](src/utils/qrEncryption.ts), [`QrScreen.tsx`](src/screens/QrScreen.tsx), [`ScannerScreen.tsx`](src/screens/ScannerScreen.tsx))**:
+    - **100% Obfuscated Cipher Payloads**: Encrypts pass IDs and URL payloads into obfuscated cipher tokens (`DPF_ENC_...`), ensuring external camera apps, Google Lens, and third-party QR scanners cannot read plain-text flat numbers, URLs, or pass details.
+    - **In-App Scanner Decryption**: Automatically decrypts payloads in Normal Scan, Quick Checkout, and Parcel Checkout modes.
+    - **WCAG 2.1 AA & Localization Compliance**: Fully accessible with zero hardcoded strings (`UI_TEXT`).
+
+31. **Server Call Timeout Watcher ([`asyncUtils.ts`](src/utils/asyncUtils.ts), [`repository.ts`](src/repository.ts), [`firebase.ts`](src/firebase.ts))**:
+    - **Hanging Call Prevention**: Watches async server/network calls with a configurable timeout (`serverTimeoutMs`: 15,000ms), failing gracefully to unblock the app UI if calls stall or disconnect.
+    - **WCAG 2.1 AA & Localization Compliance**: Fully accessible with zero hardcoded strings (`UI_TEXT`).
+
+32. **Configurable Pass Identities ([`domain.ts`](src/domain.ts), [`constants.ts`](src/constants.ts), [`DatabaseContext.tsx`](src/context/DatabaseContext.tsx), [`SettingsScreen.tsx`](src/screens/SettingsScreen.tsx))**:
+    - **Customizable Identity Labels & Options**: Season settings allow configuring Identity 1 (e.g., Tower No / Block No) and Identity 2 (e.g., House No / Flat No), with pre-populated select box options including Block 0 through 25.
+    - **Pass Existence Protection**: Identity fields cannot be disabled once passes are registered in the system.
+    - **WCAG 2.1 AA & Localization Compliance**: Fully accessible with responsive touch targets and zero hardcoded strings (`UI_TEXT`).
+
+33. **Currency Display Formatting Update ([`DetailsScreen.tsx`](src/screens/DetailsScreen.tsx))**:
+    - **Clean Amount Display**: Removed the currency symbol (`$`) prefix from pass amount displays across pass summary headers.
+    - **WCAG 2.1 AA & Localization Compliance**: Fully accessible with zero hardcoded strings (`UI_TEXT`).
+
 ---
 
 ## 6. Automated Testing & Storybook
