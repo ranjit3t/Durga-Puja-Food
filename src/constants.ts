@@ -4,6 +4,7 @@
 import { FoodMenu, ConfigDay, AppConfig, MealType, DietType, DietaryOption, normalizeChoice, toBool, PaymentMode, MealAllocation, DietaryVariety, MealConfig, MealMenu, PackageApplicability, MealSlot, TakenState } from "./domain";
 import { UI_TEXT } from "./strings";
 import { Subscription } from "./types";
+import { encryptQrPayload, decryptQrPayload } from "./utils/qrEncryption";
 
 /**
  * Returns the enabled days from the config.
@@ -925,8 +926,7 @@ export const emptyFoodMenu = (config: ConfigDay[]): FoodMenu => {
   ) as FoodMenu;
 };
 
-export const qrValueFor = (id: string) =>
-  `https://durga-puja-food.app/flat/${encodeURIComponent(id)}`;
+export const qrValueFor = (id: string) => encryptQrPayload(id);
 
 /**
  * Generates a guaranteed unique 4-digit passcode for a pass.
@@ -1352,11 +1352,25 @@ export function findSubscriptionByPassCodeOrCheatCode(
   const trimmed = code.trim();
   if (trimmed.length === 0) return undefined;
 
-  // 1. Check standard passcode / ID / QR value match first
+  // 1. Try decrypting encrypted QR code payload first
+  const decryptedId = decryptQrPayload(trimmed);
+  if (decryptedId) {
+    const match = subscriptions.find((s) => s.id === decryptedId);
+    if (match) return match;
+  }
+
+  // 2. Check standard passcode / ID / QR value match
   const standardMatch = subscriptions.find(
     (s) => s.passcode === trimmed || s.id === trimmed || qrValueFor(s.id) === trimmed
   );
   if (standardMatch) return standardMatch;
+
+  // 3. Fallback check for legacy unencrypted URL scanning (e.g., https://durga-puja-food.app/flat/14-3S)
+  if (trimmed.includes("/flat/")) {
+    const legacyId = decodeURIComponent(trimmed.split("/flat/").pop() || "");
+    const legacyMatch = subscriptions.find((s) => s.id === legacyId);
+    if (legacyMatch) return legacyMatch;
+  }
 
   // If cheat code is not enabled, return undefined
   if (!cheatCodeEnabled) return undefined;

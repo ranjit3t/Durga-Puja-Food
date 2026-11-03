@@ -265,13 +265,45 @@ describe("remainder distribution and detailed payment report calculation", () =>
   });
 });
 
-import { findSubscriptionByPassCodeOrCheatCode } from "../constants";
+import { findSubscriptionByPassCodeOrCheatCode, qrValueFor } from "../constants";
+import { encryptQrPayload, decryptQrPayload } from "../utils/qrEncryption";
 
-describe("cheat code pass lookup", () => {
+describe("QR Code Encryption & Decryption Lookup", () => {
   const mockSubs: any[] = [
     { id: "14-3S", block: "14", flat: "3S", passcode: "9999" },
     { id: "6-2E", block: "6", flat: "2E", passcode: "8888" },
   ];
+
+  it("encrypts the ENTIRE QR payload into a cipher string without plain text URL or pass ID", () => {
+    const encUrl = qrValueFor("14-3S");
+    expect(encUrl.startsWith("DPF_ENC_")).toBe(true);
+    expect(encUrl).not.toContain("https://");
+    expect(encUrl).not.toContain("durga-puja-food");
+    expect(encUrl).not.toContain("14-3S");
+  });
+
+  it("decrypts valid encrypted QR payload back to original pass ID", () => {
+    const encUrl = encryptQrPayload("14-3S");
+    const decrypted = decryptQrPayload(encUrl);
+    expect(decrypted).toBe("14-3S");
+  });
+
+  it("returns null when decrypting invalid or unencrypted strings", () => {
+    expect(decryptQrPayload("https://random-url.com")).toBeNull();
+    expect(decryptQrPayload("14-3S")).toBeNull();
+  });
+
+  it("finds pass by encrypted QR payload string in scanner lookup", () => {
+    const encUrl = qrValueFor("14-3S");
+    const match = findSubscriptionByPassCodeOrCheatCode(encUrl, mockSubs, false);
+    expect(match?.id).toBe("14-3S");
+  });
+
+  it("finds pass by legacy unencrypted flat URL for backwards compatibility", () => {
+    const legacyUrl = "https://durga-puja-food.app/flat/14-3S";
+    const match = findSubscriptionByPassCodeOrCheatCode(legacyUrl, mockSubs, false);
+    expect(match?.id).toBe("14-3S");
+  });
 
   it("finds pass by cheat code when enabled", () => {
     expect(findSubscriptionByPassCodeOrCheatCode("143s", mockSubs, true)?.id).toBe("14-3S");

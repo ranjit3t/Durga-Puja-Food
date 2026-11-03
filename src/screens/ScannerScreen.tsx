@@ -13,6 +13,7 @@ import { useCoreDatabase, useActivityLogs } from "../context/DatabaseContext";
 import { useUI } from "../context/UIContext";
 import { AppScreen, AppThemeMode, ActivityModule, ActivityAction, Subscription, MealType, DietaryOption, CheckoutSource } from "../types";
 import { getActiveDays, isMealCurrent, isMealEnabled, getDayLabel, getMealLabel, qrValueFor, isParcelEnabled, findSubscriptionByPassCodeOrCheatCode, isMealSlotAbsent } from "../constants";
+import { decryptQrPayload } from "../utils/qrEncryption";
 
 // Memoized Camera View to prevent UI/WebSocket re-renders from dropping camera FPS
 const MemoizedCamera = memo(({ onScan }: { onScan: (data: string) => void }) => {
@@ -93,13 +94,15 @@ export function ScannerScreen() {
     if (!isQuickCheckout && !isParcelCheckout) {
       const found = openScannedValue(dataOrCode, subscriptions, cheatCodeEnabled);
       if (found) {
+        const decryptedId = decryptQrPayload(dataOrCode);
+        const displayId = decryptedId || (dataOrCode.includes('/') ? dataOrCode.split('/').pop() : dataOrCode);
         addActivityLog({
           module: ActivityModule.SCANNER,
           action: isPassCode ? ActivityAction.PASS : ActivityAction.SCAN,
-          targetId: dataOrCode.split('/').pop(),
+          targetId: displayId,
           description: isPassCode
-            ? UI_TEXT.logPassSuccess.replace("{id}", dataOrCode) + " (Pass Code)"
-            : UI_TEXT.logScanSuccess.replace("{id}", dataOrCode.split('/').pop() || "")
+            ? UI_TEXT.logPassSuccess.replace("{id}", displayId || dataOrCode) + " (Pass Code)"
+            : UI_TEXT.logScanSuccess.replace("{id}", displayId || dataOrCode)
         });
       } else {
         addActivityLog({
