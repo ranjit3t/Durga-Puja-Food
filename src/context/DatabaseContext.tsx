@@ -239,12 +239,13 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
     if (!user) return;
     const isSuperAdmin = role === UserRole.SUPER_ADMIN || userRole === UserRole.SUPER_ADMIN;
     const effectiveTenantId = isSuperAdmin ? undefined : (effectiveTenantIdOverride || undefined);
+    const effectiveSeasonCode = isSuperAdmin ? "" : (seasonCode || activeSeasonCode || "");
     void repository.addActivityLog({
       ...log,
       timestamp: Date.now(),
       userName: user,
       userRole: role || undefined,
-      seasonCode: seasonCode || activeSeasonCode || "",
+      seasonCode: effectiveSeasonCode,
       os: Platform.OS,
       device: Platform.Version ? String(Platform.Version) : undefined,
       appVersion: UI_TEXT.appVersion

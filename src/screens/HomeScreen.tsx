@@ -828,7 +828,7 @@ export function HomeScreen() {
               )}
 
               {/* Total Free Meal Served */}
-              {freeMealEnabled && (
+              {freeMealEnabled && freeMealServedSummary.seasonTotal > 0 && (
                 <View style={{ flexDirection: "row", alignItems: "center", gap: s(6), flexWrap: 'wrap' }}>
                   <Text style={[styles.summaryLabel, { opacity: 0.8, fontSize: labelFontSize }]}>{UI_TEXT.totalfreeMealsServed.toUpperCase()}:</Text>
                   <Text style={[styles.summaryNumber, { fontSize: secondaryFontSize, marginTop: 0, lineHeight: secondaryFontSize + 2 }]}>
