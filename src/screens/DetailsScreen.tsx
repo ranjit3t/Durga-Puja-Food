@@ -67,7 +67,7 @@ import {
 export function DetailsScreen() {
   const { userRole, tenantId, handleLogout } = useAuth();
   const {
-    subscriptions, dayConfig, paymentConfig, seasonEnabled, seasonCompleted, foodMenu, mobileEnabled,
+    subscriptions, dayConfig, paymentConfig, seasonEnabled, seasonCompleted, passcodeDigitCount, foodMenu, mobileEnabled,
     deleteSubscription, whatsappCountryCode, kidsEnabled, guestsEnabled, nonAdminCheckoutEnabled, seasonCode, footerText
   } = useCoreDatabase();
   const { foodPackages } = useFoodPackages();
@@ -297,7 +297,31 @@ export function DetailsScreen() {
     });
   }, [dayConfig, subscription]);
 
-  const canDeletePass = !hasAnyMealTaken && !hasSubscribedPassedMeal && !seasonCompleted;
+  const hasSubscriptionForCurrentMeal = React.useMemo(() => {
+    const activeDays = getActiveDays(dayConfig);
+    return activeDays.some((dayId) => {
+      const dayConf = (dayConfig || []).find((d) => d.id === dayId);
+      if (!dayConf || !dayConf.enabled) return false;
+
+      const slots = subscription.mealSlots[dayId] || [];
+      if (slots.length === 0) return false;
+
+      return [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].some((mType) => {
+        if (!isMealEnabled(dayId, mType, dayConfig)) return false;
+        const isCurrent = isMealCurrent(dayId, mType, dayConfig);
+        if (!isCurrent) return false;
+
+        return slots.some((slot) => {
+          const choice = slot[mType];
+          if (!choice) return false;
+          const normalized = String(choice).trim().toUpperCase();
+          return normalized !== "" && normalized !== "X" && normalized !== "N" && normalized !== "0" && normalized !== "NONE";
+        });
+      });
+    });
+  }, [dayConfig, subscription]);
+
+  const canDeletePass = !hasAnyMealTaken && !hasSubscribedPassedMeal && !hasSubscriptionForCurrentMeal && !seasonCompleted;
 
   const onDelete = () => {
     const passLabel = getPassDisplayLabel(subscription);
@@ -429,7 +453,7 @@ export function DetailsScreen() {
               </View>
               {isAdmin && (
                 <Text style={{ fontSize: 13, fontWeight: "700", color: theme.colors.white, opacity: 0.9, marginTop: 4 }}>
-                  {UI_TEXT.passCodeLabel}: {subscription.passcode || generateUniquePasscode(subscriptions, subscription.id, subscription.id, tenantId || "", seasonCode)}
+                  {UI_TEXT.passCodeLabel}: {subscription.passcode || generateUniquePasscode(subscriptions, subscription.id, subscription.id, tenantId || "", seasonCode, passcodeDigitCount)}
                 </Text>
               )}
               {(() => {

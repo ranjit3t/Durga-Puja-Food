@@ -361,18 +361,18 @@ describe("QR Code Encryption & Decryption Lookup", () => {
 
   it("rejects legacy unencrypted flat URLs and old QRs as invalid", () => {
     const legacyUrl = "https://durga-puja-food.app/flat/14-3S";
-    const match = findSubscriptionByPassCodeOrCheatCode(legacyUrl, mockSubs, false, "eternia", "DP2026");
+    const match = findSubscriptionByPassCodeOrCheatCode(legacyUrl, mockSubs, false, "fooddesk", "DP2026");
     expect(match).toBeUndefined();
   });
 
   it("strictly rejects QR codes belonging to a different tenant or season", () => {
-    const encUrlEternia = encryptQrPayload("14-3S", "eternia", "DP2026", "14", "3S");
+    const encUrlFoodDesk = encryptQrPayload("14-3S", "fooddesk", "DP2026", "14", "3S");
     const encUrlOtherTenant = encryptQrPayload("14-3S", "other_tenant", "DP2026", "14", "3S");
-    const encUrlOtherSeason = encryptQrPayload("14-3S", "eternia", "DP2025", "14", "3S");
+    const encUrlOtherSeason = encryptQrPayload("14-3S", "fooddesk", "DP2025", "14", "3S");
 
-    expect(findSubscriptionByPassCodeOrCheatCode(encUrlEternia, mockSubs, false, "eternia", "DP2026")?.id).toBe("14-3S");
-    expect(findSubscriptionByPassCodeOrCheatCode(encUrlOtherTenant, mockSubs, false, "eternia", "DP2026")).toBeUndefined();
-    expect(findSubscriptionByPassCodeOrCheatCode(encUrlOtherSeason, mockSubs, false, "eternia", "DP2026")).toBeUndefined();
+    expect(findSubscriptionByPassCodeOrCheatCode(encUrlFoodDesk, mockSubs, false, "fooddesk", "DP2026")?.id).toBe("14-3S");
+    expect(findSubscriptionByPassCodeOrCheatCode(encUrlOtherTenant, mockSubs, false, "fooddesk", "DP2026")).toBeUndefined();
+    expect(findSubscriptionByPassCodeOrCheatCode(encUrlOtherSeason, mockSubs, false, "fooddesk", "DP2026")).toBeUndefined();
   });
 
   it("guarantees 100% unique passcodes for all passes in the same season without collisions", () => {
@@ -381,7 +381,7 @@ describe("QR Code Encryption & Decryption Lookup", () => {
 
     for (let i = 1; i <= 50; i++) {
       const passId = `14-${i}S`;
-      const passCode = generateUniquePasscode(subs, passId, passId, "eternia", "DP2026");
+      const passCode = generateUniquePasscode(subs, passId, passId, "fooddesk", "DP2026");
       expect(usedPasscodes.has(passCode)).toBe(false);
       usedPasscodes.add(passCode);
       subs.push({ id: passId, passcode: passCode });
@@ -403,5 +403,13 @@ describe("QR Code Encryption & Decryption Lookup", () => {
 
   it("finds pass by standard passcode when numeric", () => {
     expect(findSubscriptionByPassCodeOrCheatCode("9999", mockSubs, false)?.id).toBe("14-3S");
+  });
+
+  it("supports custom passcode digit count and padded cheat codes", () => {
+    const code5 = generateUniquePasscode([], "14-3S", "14-3S", "fooddesk", "DP2026", 5);
+    expect(code5.length).toBe(5);
+
+    const paddedCheatMatch = findSubscriptionByPassCodeOrCheatCode("0143s", mockSubs, true, "fooddesk", "DP2026", 5);
+    expect(paddedCheatMatch?.id).toBe("14-3S");
   });
 });

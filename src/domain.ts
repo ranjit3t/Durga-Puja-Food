@@ -222,6 +222,7 @@ export type SeasonConfig = {
   vendorSettledCost?: string;
   nonAdminCheckoutEnabled?: boolean;
   cheatCodeEnabled?: boolean;
+  passcodeDigitCount?: number;
   footerText?: string;
 };
 
@@ -247,6 +248,7 @@ export type AppConfig = {
   vendorSettledCost?: string;
   nonAdminCheckoutEnabled?: boolean;
   cheatCodeEnabled?: boolean;
+  passcodeDigitCount?: number;
   seasonCompleted?: boolean;
   seasonCode?: string;
   identity1Enabled?: boolean;

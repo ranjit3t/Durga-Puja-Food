@@ -168,7 +168,7 @@ export function LoginScreen() {
         const formattedUser = user.name && user.name.toLowerCase() !== user.username.toLowerCase()
           ? `${user.name} (${user.username})`
           : user.username;
-        const effectiveTenant = user.role === UserRole.SUPER_ADMIN ? undefined : (user.tenantId || "eternia");
+        const effectiveTenant = user.role === UserRole.SUPER_ADMIN ? undefined : (user.tenantId || undefined);
         handleLogin(user.role as UserRole, displayName, user.username, effectiveTenant);
         addActivityLog({
           module: ActivityModule.AUTH,

@@ -3,6 +3,7 @@ import { BackHandler, Platform } from "react-native";
 import { Screen, Subscription, Day, ReportType, ConfigDay, PaymentConfig, MealType, AppScreen, PaymentMode, FilterMode } from "../types";
 import { DirectorySortMode } from "../domain";
 import { useAuth } from "./AuthContext";
+import { useCoreDatabase } from "./DatabaseContext";
 import {
   getEnabledPaymentMethods,
   emptyMeals,
@@ -92,7 +93,7 @@ interface NavigationContextType {
 
   // Actions
   startNew: (dayConfig: ConfigDay[], seasonName: string, paymentConfig: PaymentConfig, freeMealEnabled: boolean, mobileEnabled: boolean, seasonEnabled: boolean) => void;
-  openScannedValue: (val: string, subscriptions: Subscription[], cheatCodeEnabled?: boolean, tenantId?: string, seasonCode?: string) => boolean;
+  openScannedValue: (val: string, subscriptions: Subscription[], cheatCodeEnabled?: boolean, tenantId?: string, seasonCode?: string, passcodeDigitCount?: number) => boolean;
 }
 
 const NavigationContext = createContext<NavigationContextType | undefined>(undefined);
@@ -189,8 +190,10 @@ export function NavigationProvider({ children }: { children: React.ReactNode }) 
     navigate(AppScreen.FORM);
   };
 
-  const openScannedValue = (val: string, subscriptions: Subscription[], cheatCodeEnabled: boolean = false, tenantId: string = "", seasonCode: string = "") => {
-    const match = findSubscriptionByPassCodeOrCheatCode(val, subscriptions, cheatCodeEnabled, tenantId, seasonCode);
+  const { passcodeDigitCount } = useCoreDatabase();
+
+  const openScannedValue = (val: string, subscriptions: Subscription[], cheatCodeEnabled: boolean = false, tenantId: string = "", seasonCode: string = "", digitCount?: number) => {
+    const match = findSubscriptionByPassCodeOrCheatCode(val, subscriptions, cheatCodeEnabled, tenantId, seasonCode, digitCount !== undefined ? digitCount : passcodeDigitCount);
 
     if (match) {
       setSelectedId(match.id);

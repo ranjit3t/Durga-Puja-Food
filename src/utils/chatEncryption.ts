@@ -38,7 +38,7 @@ export function decryptChatMessage(cipherText: string, user1: string, user2: str
 
 function getSharedChatKey(u1: string, u2: string): string {
   const sorted = [(u1 || "").trim().toLowerCase(), (u2 || "").trim().toLowerCase()].sort();
-  return `eternia_p2p_chat_secret_${sorted[0]}_${sorted[1]}`;
+  return `fooddesk_p2p_chat_secret_${sorted[0]}_${sorted[1]}`;
 }
 
 const btoa = typeof globalThis.btoa === "function" ? globalThis.btoa : (str: string) => {

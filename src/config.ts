@@ -7,11 +7,12 @@ import { AppConfig } from "./types";
 const emptyMeal = { enabled: false, veg: true, nonVeg: true, parcel: false };
 
 export const DEFAULT_APP_CONFIG: AppConfig = {
-  seasonName: "ETERNIA FESTIVAL",
+  seasonName: "FOODDESK FESTIVAL",
   footerText: "",
   quickCheckoutAutoCloseMs: 3000,
   soundEnabled: true,
   cheatCodeEnabled: false,
+  passcodeDigitCount: 4,
   days: [
     {
       id: "Shashthi",

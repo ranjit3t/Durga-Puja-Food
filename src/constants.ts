@@ -1027,8 +1027,12 @@ export const generateUniquePasscode = (
   currentPassId?: string,
   seed?: string,
   tenantId: string = "",
-  seasonCode: string = ""
+  seasonCode: string = "",
+  digitCount: number = 4
 ): string => {
+  const digits = Math.max(4, Math.min(8, Math.floor(digitCount || 4)));
+  const mod = Math.pow(10, digits);
+
   const usedPasscodes = new Set<string>();
   for (const s of existingSubscriptions) {
     if (s && s.passcode && s.id !== currentPassId) {
@@ -1043,38 +1047,38 @@ export const generateUniquePasscode = (
       hash = (hash << 5) - hash + fullSeed.charCodeAt(i);
       hash |= 0;
     }
-    const baseCandidateVal = Math.abs(hash) % 10000;
-    const baseCandidate = baseCandidateVal.toString().padStart(4, "0");
+    const baseCandidateVal = Math.abs(hash) % mod;
+    const baseCandidate = baseCandidateVal.toString().padStart(digits, "0");
     if (!usedPasscodes.has(baseCandidate)) {
       return baseCandidate;
     }
-    for (let offset = 1; offset < 10000; offset++) {
-      const nextCandidate = ((baseCandidateVal + offset) % 10000).toString().padStart(4, "0");
+    for (let offset = 1; offset < mod; offset++) {
+      const nextCandidate = ((baseCandidateVal + offset) % mod).toString().padStart(digits, "0");
       if (!usedPasscodes.has(nextCandidate)) {
         return nextCandidate;
       }
     }
   }
 
-  for (let attempt = 0; attempt < 10000; attempt++) {
-    const candidate = Math.floor(Math.random() * 10000).toString().padStart(4, "0");
+  for (let attempt = 0; attempt < mod; attempt++) {
+    const candidate = Math.floor(Math.random() * mod).toString().padStart(digits, "0");
     if (!usedPasscodes.has(candidate)) {
       return candidate;
     }
   }
 
-  for (let i = 0; i < 10000; i++) {
-    const candidate = i.toString().padStart(4, "0");
+  for (let i = 0; i < mod; i++) {
+    const candidate = i.toString().padStart(digits, "0");
     if (!usedPasscodes.has(candidate)) {
       return candidate;
     }
   }
 
-  return "0000";
+  return "0".repeat(digits);
 };
 
-export const generatePasscode = (seed?: string) => {
-  return generateUniquePasscode([], undefined, seed);
+export const generatePasscode = (seed?: string, digitCount: number = 4) => {
+  return generateUniquePasscode([], undefined, seed, "", "", digitCount);
 };
 
 /**
@@ -1437,13 +1441,14 @@ export function findSubscriptionByPassCodeOrCheatCode(
   subscriptions: Subscription[],
   cheatCodeEnabled: boolean,
   activeTenantId: string = "",
-  activeSeasonCode: string = ""
+  activeSeasonCode: string = "",
+  passcodeDigitCount: number = 4
 ): Subscription | undefined {
   if (!code || typeof code !== "string") return undefined;
   const trimmed = code.trim();
   if (trimmed.length === 0) return undefined;
 
-  const isQrScan = trimmed.startsWith("DPF_ENC_") || trimmed.includes("http") || trimmed.includes("durga-puja-food") || trimmed.length > 8;
+  const isQrScan = trimmed.startsWith("DPF_ENC_") || trimmed.includes("http") || trimmed.includes("durga-puja-food") || trimmed.length > 12;
 
   // 1. Try decrypting encrypted QR code payload first
   const decodedQr = decryptQrPayloadDetails(trimmed);
@@ -1475,13 +1480,27 @@ export function findSubscriptionByPassCodeOrCheatCode(
   // If cheat code is not enabled, return undefined
   if (!cheatCodeEnabled) return undefined;
 
-  // 2. Cheat code checking
+  // 3. Cheat code checking with candidates support
   const cleanCode = trimmed.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
   if (cleanCode.length === 0) return undefined;
 
   const candidates: string[] = [cleanCode];
-  if (cleanCode.startsWith("0") && cleanCode.length > 1) {
-    candidates.push(cleanCode.slice(1));
+  let unpadded = cleanCode;
+  while (unpadded.startsWith("0") && unpadded.length > 1) {
+    unpadded = unpadded.slice(1);
+    if (!candidates.includes(unpadded)) {
+      candidates.push(unpadded);
+    }
+  }
+
+  const digits = Math.max(4, Math.min(8, Math.floor(passcodeDigitCount || 4)));
+  const codeDigits = cleanCode.replace(/[^0-9]/g, "");
+  const codeLetters = cleanCode.replace(/[^a-zA-Z]/g, "").toLowerCase();
+  if (codeDigits) {
+    const padded = codeDigits.padStart(digits, "0") + codeLetters;
+    if (!candidates.includes(padded)) {
+      candidates.push(padded);
+    }
   }
 
   for (const cand of candidates) {
@@ -1515,7 +1534,6 @@ export function findSubscriptionByPassCodeOrCheatCode(
 
   return undefined;
 }
-
 
 
 

@@ -10,7 +10,7 @@ export const UI_TEXT = {
   clickHereToUpdatePrefix: "Click ",
   clickHereToUpdateLink: "here",
   clickHereToUpdateSuffix: " to update.",
-  headerTitle: "Eternia FestiveDesk",
+  headerTitle: "FoodDesk FestiveDesk",
   loading: "Loading data...",
   offlineMode: "Offline Mode Active",
   day: "Day",
@@ -537,6 +537,7 @@ export const UI_TEXT = {
   allowCamera: "Enable Camera",
   scanFrameHint: "Center the Pass QR within the frame",
   passCodeEntryHint: "Enter 4-Digit Pass Code",
+  passCodeEntryHintDynamic: "Enter {count}-Digit Pass Code",
   scanError: "Invalid QR code. Record not found.",
   passCodeError: "Invalid Pass Code. Please check and try again.",
 
@@ -557,7 +558,7 @@ export const UI_TEXT = {
   share: "Share",
   download: "Download",
   passMessage: "Festive pass for Unit ",
-  passShareMessage: "ETERNIA FESTIVEDESK 2026 - Digital Festival Pass",
+  passShareMessage: "FOODDESK FESTIVEDESK 2026 - Digital Festival Pass",
   passIdLabel: "Pass ID",
   passInstruction: "Please present this digital food pass during meal collection. Food committee members can assist with dietary adjustments.",
   lockSeasonPassesConstraintWarning: "Festive season cannot be disabled while passes are already issued in the system.",
@@ -847,7 +848,10 @@ export const UI_TEXT = {
   parcelAlertLabel: "Parcel Verification Banner",
   parcelAlertActive: "One or more members have opted for parcel service for the current meal. Please verify parcel packaging.",
   cheatCodeEnabledLabel: "Cheat Code Pass Codes",
-  cheatCodeEnabledHelper: "Allow 4-letter alphanumeric cheat codes as pass codes in quick checkout and parcel checkout modals.",
+  cheatCodeEnabledHelper: "Allow short alphanumeric cheat codes as pass codes in quick checkout and parcel checkout modals.",
+  passcodeDigitCountLabel: "Passcode Digit Count",
+  passcodeDigitCountHelper: "Number of digits for auto-generated passcodes (4 to 8 digits).",
+  passcodeDigitCountLockedNote: "Passcode digit count is locked because passes have already been issued for this season.",
   markDoneLabel: "Mark Meal Completed",
   markDoneHelper: "Closes service for this meal slot",
   currentMealLabel: "Active Current Meal",
@@ -1032,7 +1036,7 @@ export const UI_TEXT = {
 
   // Footer Settings
   footerTextLabel: "Footer Text / Committee Name",
-  footerTextPlaceholder: "e.g. Eternia Durga Puja Food Committee",
+  footerTextPlaceholder: "e.g. FoodDesk Festival Committee",
   footerTextHelper: "This footer text will be shown across app footer and QR pass.",
 
   // Super Admin Portal
@@ -1316,8 +1320,8 @@ export const UI_TEXT = {
   tenantManagementTitle: "Tenant & User Management",
   tenantManagementSubtitle: "Create tenants, toggle active status, and manage multi-tenant users",
   createNewTenantTitle: "Create New Tenant",
-  tenantIdPlaceholder: "Tenant ID (e.g. eternia)",
-  tenantNamePlaceholder: "Tenant Name (e.g. Eternia)",
+  tenantIdPlaceholder: "Tenant ID (e.g. fooddesk)",
+  tenantNamePlaceholder: "Tenant Name (e.g. FoodDesk)",
   editTenantNameTitle: "Edit Tenant Name",
   tenantIdImmutable: "(Cannot be edited)",
   createUserTitle: "Create User",

@@ -40,13 +40,16 @@ export function MealMenuEditor({
 }) {
   const styles = useStyles();
   const { theme } = useAppTheme();
+  const vegEnabled = isDietaryEnabled(dayId, mealKey, DietType.VEG, config);
+  const nonVegEnabled = isDietaryEnabled(dayId, mealKey, DietType.NON_VEG, config);
+  const isBothEnabled = vegEnabled && nonVegEnabled;
   const isCurrent = isMealCurrent(dayId, mealKey, config);
   const priceEditable = isAdmin || !disabled;
   const itemsEditable = isAdmin || !disabled;
 
   const dayConf = config.find((d) => d.id === dayId);
   const mConf = dayConf ? dayConf[mealKey] : null;
-  const varieties = getMealVarieties(mConf || undefined);
+  const varieties = getMealVarieties(mConf || undefined, dayConf?.vegOnly);
 
   const [newItemText, setNewItemText] = useState<Record<string, string>>({});
 
@@ -200,6 +203,14 @@ export function MealMenuEditor({
           {isCurrent && (
             <View style={{ backgroundColor: theme.colors.primary, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
               <Text style={{ color: theme.colors.white, fontSize: 10, fontWeight: "900" }}>{UI_TEXT.live.toUpperCase()}</Text>
+            </View>
+          )}
+          {!isBothEnabled && (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: vegEnabled ? theme.colors.successLight : theme.colors.errorLight, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: 0.5, borderColor: vegEnabled ? theme.colors.veg : theme.colors.nonVeg }}>
+              <Ionicons name={vegEnabled ? "leaf" : "flame"} size={10} color={vegEnabled ? theme.colors.veg : theme.colors.nonVeg} />
+              <Text style={{ color: vegEnabled ? theme.colors.veg : theme.colors.nonVeg, fontSize: 10, fontWeight: "800" }}>
+                {(vegEnabled ? UI_TEXT.vegOnly : UI_TEXT.nonVegOnly).toUpperCase()}
+              </Text>
             </View>
           )}
         </View>

@@ -519,8 +519,15 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
 - **Season Creation & Single Active Invariant**: Administrators can create new seasons via `createNewSeason` modal in Settings. Activating or creating a season deactivates all other seasons, enforcing the single active season rule.
 
 ### BI. Multi-Tenant Data Isolation Architecture (`AuthContext.tsx`, `repository.ts`, `database.rules.json`)
-- **Common Auth Level**: User credentials and roles are managed at the common level (`auth_config`), with each user entry containing a `tenantId` property (e.g. `"eternia"`).
+- **Common Auth Level**: User credentials and roles are managed at the common level (`auth_config`), with each user entry containing a `tenantId` property (e.g. `"fooddesk"`).
 - **Tenant Data Isolation**: Upon login, the user's `tenantId` dynamically scopes all tenant-specific data (`config`, `notes`, `logs`, `seasons_data/${seasonCode}/...`) under `tenants/${tenantId}/...`, enforcing strict data segregation across tenants.
+
+### BJ. Passcode Digit Count Configuration (`SettingsScreen.tsx`, `constants.ts`, `repository.ts`)
+- **Configurable Passcode Length**: Season settings support a numeric stepper (min 4, max 8 digits, default 4) controlling auto-generated passcodes. Once passes are issued (`subscriptions.length > 0`), the digit count setting is locked to preserve system integrity.
+- **Variable-Length Cheat Codes**: Cheat codes automatically scale with `passcodeDigitCount`, padding shorter flat IDs with leading zeros (e.g., `0143s` for 5-digit passcodes).
+
+### BK. Strict Root vs. Tenant Audit Log Segregation (`repository.ts`, `DatabaseContext.tsx`, `database.rules.json`)
+- **Complete Log Segregation**: SuperAdmin actions are posted exclusively to the root-level logs node (`logs`) and viewed via the SuperAdmin audit log screen. Tenant-level users post and view logs strictly within their respective tenant-level logs node (`tenants/{tenantId}/seasons_data/{seasonCode}/logs`), with zero cross-contamination.
 
 ## 6. Quality Assurance & UI Catalog
 
@@ -538,4 +545,4 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
 
 ---
 
-© 2026 Eternia Festival Committee — Architecture Documentation
+© 2026 FoodDesk Festival Committee — Architecture Documentation

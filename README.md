@@ -505,4 +505,4 @@ npx expo run:ios           # Native iOS build
 - **Real-Time WebSocket Sync**: Firebase real-time delta listeners sync absent status changes across all connected devices in sub-100ms.
 - **Accessibility & Mobile-Friendly**: Fully WCAG 2.1 AA accessible, responsive scaling (`s()`), and zero hardcoded strings (`UI_TEXT`).
 
-© 2026 Eternia Festival Committee — FestiveDesk Operations Architecture Document
+© 2026 FoodDesk Festival Committee — FoodDesk Operations Architecture Document

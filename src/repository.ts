@@ -94,6 +94,7 @@ export interface SubscriptionRepository {
   onTenantsChange(callback: (tenants: Record<string, any>) => void): () => void;
   updateAppVersionInfo(info: { androidAppLocation?: string; iosAppLocation?: string; version?: string; deprecatedVersion?: string }): Promise<void>;
   onTenantStatusChange(tenantId: string, callback: (status: { exists: boolean; enabled: boolean }) => void): () => void;
+  hasAnyPassesAcrossSeasons(tenantId?: string): Promise<boolean>;
   getMetrics(): Promise<KitchenMetrics | null>;
   // Real-time Delta Listeners
   onSubscriptionsDelta(
@@ -541,9 +542,9 @@ function normalizeDayConfig(days: any[]): ConfigDay[] {
   });
 }
 
-export function getSeasonPath(collection: string, seasonCode: string = "", tenantId: string = "eternia"): string {
+export function getSeasonPath(collection: string, seasonCode: string = "", tenantId?: string): string {
   const code = (seasonCode || "").trim();
-  const tCode = (tenantId || "eternia").trim();
+  const tCode = (tenantId || "").trim();
   const base = code ? `seasons_data/${code}/${collection}` : collection;
   if (tCode) {
     return `tenants/${tCode}/${base}`;
@@ -581,6 +582,7 @@ function normalizeSeasonItem(val: any): SeasonConfig {
     vendorSettledCost: val?.vendorSettledCost || "",
     nonAdminCheckoutEnabled: val?.nonAdminCheckoutEnabled !== false,
     cheatCodeEnabled: val?.cheatCodeEnabled === true,
+    passcodeDigitCount: val?.passcodeDigitCount !== undefined ? Number(val.passcodeDigitCount) : 4,
     footerText: val?.footerText || "",
   };
 }
@@ -772,7 +774,7 @@ export function createFirebaseRepository(): SubscriptionRepository {
         const configVal = await baseRepo.getConfig();
         const seasonCode = configVal.seasonCode || configVal.activeSeasonCode || "";
         const tCode = await getActiveTenantId(services);
-        record.passcode = generateUniquePasscode([], record.id, record.id, tCode, seasonCode);
+        record.passcode = generateUniquePasscode([], record.id, record.id, tCode, seasonCode, configVal.passcodeDigitCount || 4);
       }
 
       const cleaned = cleanUndefined(record);
@@ -930,6 +932,7 @@ export function createFirebaseRepository(): SubscriptionRepository {
         vendorSettledCost: config.vendorSettledCost,
         nonAdminCheckoutEnabled: config.nonAdminCheckoutEnabled,
         cheatCodeEnabled: config.cheatCodeEnabled,
+        passcodeDigitCount: config.passcodeDigitCount !== undefined ? Number(config.passcodeDigitCount) : 4,
         footerText: config.footerText || "",
       };
 
@@ -1839,6 +1842,24 @@ export function createFirebaseRepository(): SubscriptionRepository {
       return () => {
         if (unsub) unsub();
       };
+    },
+    async hasAnyPassesAcrossSeasons(tenantId) {
+      const services = await ensureFirebaseAuth();
+      if (!services) return false;
+      const tCode = await getActiveTenantId(services, tenantId);
+      if (!tCode) return false;
+
+      const seasonsSnap = await get(ref(services.db, `tenants/${tCode}/seasons_data`));
+      if (!seasonsSnap.exists()) return false;
+
+      const seasonsVal = seasonsSnap.val();
+      for (const sCode of Object.keys(seasonsVal)) {
+        const subsSnap = await get(ref(services.db, `tenants/${tCode}/seasons_data/${sCode}/subscriptions`));
+        if (subsSnap.exists() && Object.keys(subsSnap.val() || {}).length > 0) {
+          return true;
+        }
+      }
+      return false;
     },
   };
 

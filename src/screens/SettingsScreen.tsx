@@ -299,8 +299,8 @@ export function SettingsScreen() {
   const {
     dayConfig: config, seasonName, seasonCode, seasonEnabled, paymentConfig: payment, freeMealEnabled, mobileEnabled, foodPriceEnabled,
     whatsappCountryCode, updateConfig, kidsEnabled, guestsEnabled, vendorKidsMealChargingEnabled, subscriptions, foodMenu, quickCheckoutAutoCloseMs, soundEnabled,
-    vendorName, vendorAddress, vendorSettledCost, nonAdminCheckoutEnabled, cheatCodeEnabled, seasonCompleted,
-    identity1Enabled, identity1Name, identity1Options, identity2Enabled, identity2Name,
+    vendorName, vendorAddress, vendorSettledCost, nonAdminCheckoutEnabled, cheatCodeEnabled, passcodeDigitCount, seasonCompleted,
+    identity1Enabled, identity1Name, identity1Options, identity2Enabled, identity2Name, hasAnyPassesAcrossSeasons,
     seasons, activeSeasonCode, createNewSeason, switchActiveSeason, footerText
   } = useCoreDatabase();
   const { addActivityLog } = useActivityLogs();
@@ -354,6 +354,7 @@ export function SettingsScreen() {
   const [localSoundEnabled, setLocalSoundEnabled] = useState<boolean>(true);
   const [localNonAdminCheckoutEnabled, setLocalNonAdminCheckoutEnabled] = useState<boolean>(true);
   const [localCheatCodeEnabled, setLocalCheatCodeEnabled] = useState<boolean>(false);
+  const [localPasscodeDigitCount, setLocalPasscodeDigitCount] = useState<number>(passcodeDigitCount || 4);
   const [localSeasonCompleted, setLocalSeasonCompleted] = useState<boolean>(false);
   const [localVendorName, setLocalVendorName] = useState("");
   const [localVendorAddress, setLocalVendorAddress] = useState("");
@@ -383,6 +384,7 @@ export function SettingsScreen() {
     soundEnabled: boolean;
     nonAdminCheckoutEnabled: boolean;
     cheatCodeEnabled: boolean;
+    passcodeDigitCount: number;
     seasonCompleted: boolean;
     vendorName: string;
     vendorAddress: string;
@@ -567,6 +569,7 @@ export function SettingsScreen() {
         soundEnabled: soundEnabled !== false,
         nonAdminCheckoutEnabled: nonAdminCheckoutEnabled !== false,
         cheatCodeEnabled: cheatCodeEnabled || false,
+        passcodeDigitCount: passcodeDigitCount || 4,
         seasonCompleted: seasonCompleted === true,
         vendorName: vendorName || "",
         vendorAddress: vendorAddress || "",
@@ -598,6 +601,7 @@ export function SettingsScreen() {
         setLocalSoundEnabled(currentContextBaseline.soundEnabled);
         setLocalNonAdminCheckoutEnabled(currentContextBaseline.nonAdminCheckoutEnabled);
         setLocalCheatCodeEnabled(currentContextBaseline.cheatCodeEnabled);
+        setLocalPasscodeDigitCount(currentContextBaseline.passcodeDigitCount);
         setLocalSeasonCompleted(currentContextBaseline.seasonCompleted);
         setLocalVendorName(currentContextBaseline.vendorName);
         setLocalVendorAddress(currentContextBaseline.vendorAddress);
@@ -615,7 +619,7 @@ export function SettingsScreen() {
         lastServerConfigRef.current = currentContextBaseline;
       }
     }
-  }, [config, seasonName, seasonCode, seasonEnabled, payment, freeMealEnabled, mobileEnabled, foodPriceEnabled, kidsEnabled, guestsEnabled, vendorKidsMealChargingEnabled, whatsappCountryCode, quickCheckoutAutoCloseMs, soundEnabled, nonAdminCheckoutEnabled, cheatCodeEnabled, seasonCompleted, vendorName, vendorAddress, vendorSettledCost, identity1Enabled, identity1Name, identity1Options, identity2Enabled, identity2Name, footerText, savedBaseline]);
+  }, [config, seasonName, seasonCode, seasonEnabled, payment, freeMealEnabled, mobileEnabled, foodPriceEnabled, kidsEnabled, guestsEnabled, vendorKidsMealChargingEnabled, whatsappCountryCode, quickCheckoutAutoCloseMs, soundEnabled, nonAdminCheckoutEnabled, cheatCodeEnabled, passcodeDigitCount, seasonCompleted, vendorName, vendorAddress, vendorSettledCost, identity1Enabled, identity1Name, identity1Options, identity2Enabled, identity2Name, footerText, savedBaseline]);
 
   const updateDay = (id: string, next: Partial<ConfigDay>) => {
     setLocalConfig((current) =>
@@ -1091,6 +1095,7 @@ export function SettingsScreen() {
         soundEnabled: localSoundEnabled,
         nonAdminCheckoutEnabled: localNonAdminCheckoutEnabled,
         cheatCodeEnabled: localCheatCodeEnabled,
+        passcodeDigitCount: localPasscodeDigitCount,
         seasonCompleted: localSeasonCompleted,
         vendorName: localVendorName,
         vendorAddress: localVendorAddress,
@@ -1120,6 +1125,7 @@ export function SettingsScreen() {
         soundEnabled: localSoundEnabled,
         nonAdminCheckoutEnabled: localNonAdminCheckoutEnabled,
         cheatCodeEnabled: localCheatCodeEnabled,
+        passcodeDigitCount: localPasscodeDigitCount,
         seasonCompleted: localSeasonCompleted,
         vendorName: localVendorName,
         vendorAddress: localVendorAddress,
@@ -1171,6 +1177,7 @@ export function SettingsScreen() {
       localSoundEnabled !== savedBaseline.soundEnabled ||
       localNonAdminCheckoutEnabled !== savedBaseline.nonAdminCheckoutEnabled ||
       localCheatCodeEnabled !== savedBaseline.cheatCodeEnabled ||
+      localPasscodeDigitCount !== savedBaseline.passcodeDigitCount ||
       localSeasonCompleted !== savedBaseline.seasonCompleted ||
       localVendorName !== savedBaseline.vendorName ||
       localVendorAddress !== savedBaseline.vendorAddress ||
@@ -1200,6 +1207,7 @@ export function SettingsScreen() {
     localSoundEnabled,
     localNonAdminCheckoutEnabled,
     localCheatCodeEnabled,
+    localPasscodeDigitCount,
     localSeasonCompleted,
     localVendorName,
     localVendorAddress,
@@ -1691,6 +1699,56 @@ export function SettingsScreen() {
                 trackColor={{ true: theme.colors.primary }}
                 style={{ flexShrink: 0 }}
               />
+           </View>
+           <View style={{ height: 1, backgroundColor: theme.colors.border, marginVertical: 20 }} />
+           {/* Passcode Digit Count Configuration */}
+           <View style={{ marginBottom: 4 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                 <View style={{ flex: 1, marginRight: 10 }}>
+                    <Text style={{ fontSize: 16, fontWeight: '800', color: theme.colors.textPrimary }}>{UI_TEXT.passcodeDigitCountLabel}</Text>
+                    <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600' }}>{UI_TEXT.passcodeDigitCountHelper}</Text>
+                 </View>
+                 <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: subscriptions.length > 0 ? theme.colors.surfaceDark : theme.colors.surface, borderRadius: 12, borderWidth: 1.5, borderColor: theme.colors.border, padding: 4, gap: 12 }}>
+                    <Pressable
+                       onPress={() => setLocalPasscodeDigitCount(prev => Math.max(4, prev - 1))}
+                       disabled={subscriptions.length > 0 || localPasscodeDigitCount <= 4}
+                       style={({ pressed }) => [
+                         { width: 32, height: 32, borderRadius: 8, backgroundColor: theme.colors.surfaceDark, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: theme.colors.border },
+                         (subscriptions.length > 0 || localPasscodeDigitCount <= 4) && { opacity: 0.4 },
+                         pressed && { opacity: 0.7 }
+                       ]}
+                       accessible={true}
+                       accessibilityRole="button"
+                       accessibilityLabel="Decrease passcode digit count"
+                    >
+                       <Ionicons name="remove" size={16} color={theme.colors.textPrimary} />
+                    </Pressable>
+
+                    <Text style={{ fontSize: 16, fontWeight: '900', color: theme.colors.primary, minWidth: 60, textAlign: 'center' }}>
+                       {localPasscodeDigitCount} Digits
+                    </Text>
+
+                    <Pressable
+                       onPress={() => setLocalPasscodeDigitCount(prev => Math.min(8, prev + 1))}
+                       disabled={subscriptions.length > 0 || localPasscodeDigitCount >= 8}
+                       style={({ pressed }) => [
+                         { width: 32, height: 32, borderRadius: 8, backgroundColor: theme.colors.surfaceDark, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: theme.colors.border },
+                         (subscriptions.length > 0 || localPasscodeDigitCount >= 8) && { opacity: 0.4 },
+                         pressed && { opacity: 0.7 }
+                       ]}
+                       accessible={true}
+                       accessibilityRole="button"
+                       accessibilityLabel="Increase passcode digit count"
+                    >
+                       <Ionicons name="add" size={16} color={theme.colors.textPrimary} />
+                    </Pressable>
+                 </View>
+              </View>
+              {subscriptions.length > 0 && (
+                <Text style={{ fontSize: 11, color: theme.colors.error || "#ef4444", fontWeight: '700', marginTop: 4 }}>
+                   {UI_TEXT.passcodeDigitCountLockedNote}
+                </Text>
+              )}
            </View>
            <View style={{ height: 1, backgroundColor: theme.colors.border, marginVertical: 20 }} />
            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>

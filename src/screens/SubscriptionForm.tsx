@@ -107,7 +107,7 @@ export function SubscriptionForm() {
   const {
     dayConfig, paymentConfig, seasonEnabled, foodPriceEnabled, foodMenu, mobileEnabled,
     upsertSubscription, deleteSubscription, kidsEnabled, guestsEnabled, subscriptions,
-    identity1Enabled, identity1Name, identity1Options, identity2Enabled, identity2Name, seasonCode, footerText
+    identity1Enabled, identity1Name, identity1Options, identity2Enabled, identity2Name, seasonCode, passcodeDigitCount, footerText
   } = useCoreDatabase();
   const { addActivityLog } = useActivityLogs();
   const { showAlert: showGlobalAlert } = useUI();
@@ -911,7 +911,7 @@ export function SubscriptionForm() {
     amount: !isAdmin && value?.amount !== undefined ? value.amount : totalAmount.toFixed(0),
     paymentMode: !isAdmin && value?.paymentMode !== undefined ? value.paymentMode : (payments[0]?.mode || PaymentMode.CASH),
     transactionId: !isAdmin && value?.transactionId !== undefined ? value.transactionId : (payments[0]?.transactionId || ""),
-    passcode: !isAdmin && value?.passcode ? value.passcode : (form.passcode || generateUniquePasscode(subscriptions, passId, passId, tenantId || "", seasonCode)),
+    passcode: !isAdmin && value?.passcode ? value.passcode : (form.passcode || generateUniquePasscode(subscriptions, passId, passId, tenantId || "", seasonCode, passcodeDigitCount)),
   };
 
   if (prepared.mobile === undefined) {
@@ -1373,9 +1373,9 @@ export function SubscriptionForm() {
       return;
     }
 
-    let finalPasscode = !isAdmin && value?.passcode ? value.passcode : (updatedPrepared.passcode || generateUniquePasscode(subscriptions, passId, passId, tenantId || "", seasonCode));
+    let finalPasscode = !isAdmin && value?.passcode ? value.passcode : (updatedPrepared.passcode || generateUniquePasscode(subscriptions, passId, passId, tenantId || "", seasonCode, passcodeDigitCount));
     while (subscriptions.some(s => s.passcode === finalPasscode && s.id !== passId)) {
-      finalPasscode = generateUniquePasscode(subscriptions, passId, passId + "_" + Math.floor(Math.random() * 10000), tenantId || "", seasonCode);
+      finalPasscode = generateUniquePasscode(subscriptions, passId, passId + "_" + Math.floor(Math.random() * 10000), tenantId || "", seasonCode, passcodeDigitCount);
     }
     updatedPrepared.passcode = finalPasscode;
 
@@ -1424,7 +1424,7 @@ export function SubscriptionForm() {
   const summaryPassId = lockIdentity
     ? value.id
     : (form.flat ? `${form.block ? `${form.block}-` : ""}${form.flat}` : value?.id);
-  const summaryPasscode = form.passcode || (summaryPassId ? generateUniquePasscode(subscriptions, summaryPassId, summaryPassId) : undefined);
+  const summaryPasscode = form.passcode || (summaryPassId ? generateUniquePasscode(subscriptions, summaryPassId, summaryPassId, tenantId || "", seasonCode, passcodeDigitCount) : undefined);
 
   return (
     <KeyboardAvoidingView

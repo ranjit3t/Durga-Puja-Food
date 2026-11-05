@@ -41,7 +41,7 @@ export function MealDisplay({
 
   const dayConf = config.find((d) => d.id === dayId);
   const mConf = dayConf ? dayConf[mealKey] : null;
-  const varieties = getMealVarieties(mConf || undefined);
+  const varieties = getMealVarieties(mConf || undefined, dayConf?.vegOnly);
 
   const vegEnabled = isDietaryEnabled(dayId, mealKey, DietType.VEG, config);
   const nonVegEnabled = isDietaryEnabled(dayId, mealKey, DietType.NON_VEG, config);

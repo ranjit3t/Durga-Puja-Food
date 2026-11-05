@@ -86,12 +86,14 @@ export interface CoreDatabaseContextType {
   vendorSettledCost: string;
   nonAdminCheckoutEnabled: boolean;
   cheatCodeEnabled: boolean;
+  passcodeDigitCount: number;
   seasonCompleted: boolean;
   identity1Enabled: boolean;
   identity1Name: string;
   identity1Options: string[];
   identity2Enabled: boolean;
   identity2Name: string;
+  hasAnyPassesAcrossSeasons: boolean;
   footerText: string;
   remoteAppVersion: string | null;
   androidAppLocation?: string;
@@ -197,6 +199,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
   const [nonAdminCheckoutEnabled, setNonAdminCheckoutEnabled] = useState(true);
   const [cheatCodeEnabled, setCheatCodeEnabled] = useState(false);
+  const [passcodeDigitCount, setPasscodeDigitCount] = useState<number>(4);
   const [seasonCompleted, setSeasonCompleted] = useState(false);
   const [vendorName, setVendorName] = useState("");
   const [vendorAddress, setVendorAddress] = useState("");
@@ -206,6 +209,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
   const [identity1Options, setIdentity1Options] = useState<string[]>(blockOptions);
   const [identity2Enabled, setIdentity2Enabled] = useState(true);
   const [identity2Name, setIdentity2Name] = useState("Flat No");
+  const [hasAnyPassesAcrossSeasons, setHasAnyPassesAcrossSeasons] = useState<boolean>(false);
   const [footerText, setFooterText] = useState<string>("");
   const [remoteAppVersion, setRemoteAppVersion] = useState<string | null>(null);
   const [androidAppLocation, setAndroidAppLocation] = useState<string | undefined>(undefined);
@@ -339,7 +343,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      const [subs, config, menu, notesData, packagesData, catererData, appVer, logsData, metricsData] = await Promise.all([
+      const [subs, config, menu, notesData, packagesData, catererData, appVer, logsData, metricsData, hasPasses] = await Promise.all([
         repository.list(tenantId || undefined),
         repository.getConfig(tenantId || undefined),
         repository.getMenu(tenantId || undefined),
@@ -349,7 +353,9 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
         repository.getAppVersion(),
         repository.getActivityLogs(100, tenantId || undefined, false),
         repository.getMetrics(),
+        repository.hasAnyPassesAcrossSeasons(tenantId || undefined),
       ]);
+      setHasAnyPassesAcrossSeasons(hasPasses);
 
       if (appVer) {
         setRemoteAppVersion(appVer.version);
@@ -389,6 +395,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       setIdentity1Options(config.identity1Options || blockOptions);
       setIdentity2Enabled(config.identity2Enabled !== false);
       setIdentity2Name(config.identity2Name || "Flat No");
+      setPasscodeDigitCount(config.passcodeDigitCount !== undefined ? Number(config.passcodeDigitCount) : 4);
       setFoodMenu(menu);
       setNotes(notesData);
       setFoodPackages(packagesData);
@@ -454,8 +461,10 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       repository.getAppVersion(),
       repository.getActivityLogs(100, tenantId || undefined, false),
       repository.getMetrics(),
-    ]).then(([config, menu, notesData, packagesData, catererData, appVer, logsData, metricsData]) => {
+      repository.hasAnyPassesAcrossSeasons(tenantId || undefined),
+    ]).then(([config, menu, notesData, packagesData, catererData, appVer, logsData, metricsData, hasPasses]) => {
       if (!isMounted) return;
+      setHasAnyPassesAcrossSeasons(hasPasses);
 
       setDayConfig(config.days || []);
       setSeasonName(config.seasonName || "");
@@ -485,6 +494,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       setIdentity1Options(config.identity1Options || blockOptions);
       setIdentity2Enabled(config.identity2Enabled !== false);
       setIdentity2Name(config.identity2Name || "Flat No");
+      setPasscodeDigitCount(config.passcodeDigitCount !== undefined ? Number(config.passcodeDigitCount) : 4);
       setFooterText(config.footerText || "");
       setFoodMenu(menu);
       setNotes(notesData || []);
@@ -682,6 +692,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       setIdentity1Options(config.identity1Options || blockOptions);
       setIdentity2Enabled(config.identity2Enabled !== false);
       setIdentity2Name(config.identity2Name || "Flat No");
+      setPasscodeDigitCount(config.passcodeDigitCount !== undefined ? Number(config.passcodeDigitCount) : 4);
       setFooterText(config.footerText || "");
     });
 
@@ -1891,6 +1902,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       soundEnabled: true,
       nonAdminCheckoutEnabled: true,
       cheatCodeEnabled: false,
+      passcodeDigitCount: passcodeDigitCount || 4,
       footerText: "",
     };
 
@@ -1911,12 +1923,13 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       identity1Options,
       identity2Enabled,
       identity2Name,
+      passcodeDigitCount,
     };
 
     await updateConfig(fullConfig);
     await refreshAllData(true);
     showAlert(UI_TEXT.success, UI_TEXT.seasonCreatedSuccess);
-  }, [seasons, whatsappCountryCode, identity1Enabled, identity1Name, identity1Options, identity2Enabled, identity2Name, updateConfig, refreshAllData, showAlert]);
+  }, [seasons, whatsappCountryCode, identity1Enabled, identity1Name, identity1Options, identity2Enabled, identity2Name, passcodeDigitCount, updateConfig, refreshAllData, showAlert]);
 
   const switchActiveSeason = useCallback(async (targetSeasonCode: string) => {
     const targetCode = targetSeasonCode.trim().toUpperCase();
@@ -1935,6 +1948,9 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
 
     const activeSeasonItem = updatedSeasons.find(s => (s.seasonCode || s.id || "").toUpperCase() === targetCode) || targetSeason;
 
+    const targetDigitCount = activeSeasonItem.passcodeDigitCount !== undefined ? Number(activeSeasonItem.passcodeDigitCount) : 4;
+    const targetCheatCode = activeSeasonItem.cheatCodeEnabled === true;
+
     const fullConfig: AppConfig = {
       activeSeasonCode: targetCode,
       seasons: updatedSeasons,
@@ -1946,19 +1962,23 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       identity1Options,
       identity2Enabled,
       identity2Name,
+      passcodeDigitCount: targetDigitCount,
+      cheatCodeEnabled: targetCheatCode,
       footerText: activeSeasonItem.footerText || "",
     };
 
+    setPasscodeDigitCount(targetDigitCount);
+    setCheatCodeEnabled(targetCheatCode);
     await updateConfig(fullConfig);
     await refreshAllData(true);
-  }, [seasons, identity1Enabled, identity1Name, identity1Options, identity2Enabled, identity2Name, footerText, updateConfig, refreshAllData]);
+  }, [seasons, identity1Enabled, identity1Name, identity1Options, identity2Enabled, identity2Name, updateConfig, refreshAllData]);
 
   const coreValue = useMemo(() => ({
     loading, firebaseError, refreshAllData,
     subscriptions, foodMenu, dayConfig, seasonName, seasonCode, seasonEnabled, paymentConfig,
     seasons, activeSeasonCode, createNewSeason, switchActiveSeason,
     freeMealEnabled, mobileEnabled, foodPriceEnabled,
-    kidsEnabled, guestsEnabled, vendorKidsMealChargingEnabled, whatsappCountryCode, quickCheckoutAutoCloseMs, soundEnabled, nonAdminCheckoutEnabled, cheatCodeEnabled, seasonCompleted, identity1Enabled, identity1Name, identity1Options, identity2Enabled, identity2Name, footerText, vendorName, vendorAddress, vendorSettledCost, remoteAppVersion, androidAppLocation, iosAppLocation, kitchenMetrics,
+    kidsEnabled, guestsEnabled, vendorKidsMealChargingEnabled, whatsappCountryCode, quickCheckoutAutoCloseMs, soundEnabled, nonAdminCheckoutEnabled, cheatCodeEnabled, passcodeDigitCount, seasonCompleted, identity1Enabled, identity1Name, identity1Options, identity2Enabled, identity2Name, hasAnyPassesAcrossSeasons, footerText, vendorName, vendorAddress, vendorSettledCost, remoteAppVersion, androidAppLocation, iosAppLocation, kitchenMetrics,
     dashboardData, collections, totalPeople,
     upsertSubscription, deleteSubscription, updateConfig, updateMenu,
     updateFreeMealCount, updateMealMenu, updateSubscriptionStatus, updateMealAbsent,
@@ -1969,7 +1989,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
     subscriptions, foodMenu, dayConfig, seasonName, seasonCode, seasonEnabled, paymentConfig,
     seasons, activeSeasonCode, createNewSeason, switchActiveSeason,
     freeMealEnabled, mobileEnabled, foodPriceEnabled,
-    kidsEnabled, guestsEnabled, vendorKidsMealChargingEnabled, whatsappCountryCode, quickCheckoutAutoCloseMs, soundEnabled, nonAdminCheckoutEnabled, cheatCodeEnabled, seasonCompleted, identity1Enabled, identity1Name, identity1Options, identity2Enabled, identity2Name, footerText, vendorName, vendorAddress, vendorSettledCost, remoteAppVersion, androidAppLocation, iosAppLocation, kitchenMetrics,
+    kidsEnabled, guestsEnabled, vendorKidsMealChargingEnabled, whatsappCountryCode, quickCheckoutAutoCloseMs, soundEnabled, nonAdminCheckoutEnabled, cheatCodeEnabled, passcodeDigitCount, seasonCompleted, identity1Enabled, identity1Name, identity1Options, identity2Enabled, identity2Name, hasAnyPassesAcrossSeasons, footerText, vendorName, vendorAddress, vendorSettledCost, remoteAppVersion, androidAppLocation, iosAppLocation, kitchenMetrics,
     dashboardData, collections, totalPeople,
     upsertSubscription, deleteSubscription, updateConfig, updateMenu,
     updateFreeMealCount, updateMealMenu, updateSubscriptionStatus, updateMealAbsent,

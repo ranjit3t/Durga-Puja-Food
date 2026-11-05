@@ -22,7 +22,7 @@ import { useAppNavigation } from "../context/NavigationContext";
 export function QrScreen() {
   const { userRole, tenantId, handleLogout } = useAuth();
   const {
-    seasonName, seasonCode, seasonEnabled, mobileEnabled, subscriptions, whatsappCountryCode, kidsEnabled, footerText
+    seasonName, seasonCode, seasonEnabled, mobileEnabled, subscriptions, whatsappCountryCode, kidsEnabled, passcodeDigitCount, footerText
   } = useCoreDatabase();
   const { addActivityLog } = useActivityLogs();
   const { shareQr, printPass } = useUI();
@@ -160,7 +160,7 @@ export function QrScreen() {
                 fontWeight: "900",
                 fontSize: 18,
               }}>
-                {UI_TEXT.passCodeLabel}: {subscription.passcode || generateUniquePasscode(subscriptions, subscription.id, subscription.id, tenantId || "", seasonCode)}
+                {UI_TEXT.passCodeLabel}: {subscription.passcode || generateUniquePasscode(subscriptions, subscription.id, subscription.id, tenantId || "", seasonCode, passcodeDigitCount)}
               </Text>
             </View>
 
@@ -229,7 +229,7 @@ export function QrScreen() {
             {canShare && mobileEnabled && subscription.mobile ? (
               <Pressable
                 onPress={async () => {
-                  const passCode = subscription.passcode || generateUniquePasscode(subscriptions, subscription.id, subscription.id, tenantId || "", seasonCode);
+                  const passCode = subscription.passcode || generateUniquePasscode(subscriptions, subscription.id, subscription.id, tenantId || "", seasonCode, passcodeDigitCount);
                   const message = `${UI_TEXT.bold}${seasonName || UI_TEXT.headerTitle}${UI_TEXT.bold}${UI_TEXT.newline}${UI_TEXT.newline}${UI_TEXT.bold}${UI_TEXT.passIdLabel}${UI_TEXT.colon}${UI_TEXT.bold}${UI_TEXT.space}${subscription.id}${UI_TEXT.newline}${UI_TEXT.bold}${UI_TEXT.passCodeLabel}${UI_TEXT.colon}${UI_TEXT.bold}${UI_TEXT.space}${passCode}${UI_TEXT.newline}${UI_TEXT.newline}${UI_TEXT.passInstruction}${UI_TEXT.newline}${UI_TEXT.newline}${UI_TEXT.bold}${footerText}${UI_TEXT.bold}`;
                   const url = `https://wa.me/${whatsappCountryCode}${subscription.mobile}?text=${encodeURIComponent(message)}`;
 

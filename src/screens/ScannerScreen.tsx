@@ -36,7 +36,7 @@ export function ScannerScreen() {
   const [permission, requestPermission] = useCameraPermissions();
 
   const { openScannedValue, goBack, navigate, isQuickCheckout, isParcelCheckout } = useAppNavigation();
-  const { seasonCode, subscriptions, dayConfig, kidsEnabled, guestsEnabled, cheatCodeEnabled } = useCoreDatabase();
+  const { seasonCode, subscriptions, dayConfig, kidsEnabled, guestsEnabled, cheatCodeEnabled, passcodeDigitCount } = useCoreDatabase();
   const { tenantId } = useAuth();
   const { addActivityLog } = useActivityLogs();
   const { showAlert } = useUI();
@@ -132,7 +132,7 @@ export function ScannerScreen() {
     }
 
     // Quick Checkout Mode Validation
-    const match = findSubscriptionByPassCodeOrCheatCode(dataOrCode, subscriptions, cheatCodeEnabled, tenantId || "", seasonCode);
+    const match = findSubscriptionByPassCodeOrCheatCode(dataOrCode, subscriptions, cheatCodeEnabled, tenantId || "", seasonCode, passcodeDigitCount);
 
     if (!match) {
       addActivityLog({
@@ -173,7 +173,7 @@ export function ScannerScreen() {
     }
 
     if (!currentMeal) {
-      openScannedValue(dataOrCode, subscriptions, cheatCodeEnabled, tenantId || "", seasonCode);
+      openScannedValue(dataOrCode, subscriptions, cheatCodeEnabled, tenantId || "", seasonCode, passcodeDigitCount);
       return;
     }
 
@@ -361,11 +361,10 @@ export function ScannerScreen() {
   };
 
   const handlePassCode = (code: string) => {
-    const filtered = cheatCodeEnabled
-      ? code.replace(/[^a-zA-Z0-9]/g, "").slice(0, 4)
-      : code.replace(/[^0-9]/g, "").slice(0, 4);
+    const digitCount = passcodeDigitCount || 4;
+    const filtered = code.replace(/[^a-zA-Z0-9]/g, "").slice(0, digitCount);
     setPassCode(filtered);
-    if (filtered.length === 4) {
+    if (filtered.length === digitCount) {
       processCodeOrData(filtered, true);
     }
   };
@@ -433,33 +432,41 @@ export function ScannerScreen() {
         >
           <BackButton onPress={goBack} />
           <View style={{ flex: 1, alignItems: 'center', marginLeft: -40 }}>
-            <TextInput
-              value={passCode}
-              onChangeText={handlePassCode}
-              placeholder="XXXX"
-              placeholderTextColor={theme.colors.white + "88"}
-              keyboardType={cheatCodeEnabled ? "default" : "number-pad"}
-              autoCapitalize="characters"
-              maxLength={4}
-              accessible={true}
-              accessibilityLabel={UI_TEXT.passCodeEntryHint}
-              accessibilityHint={cheatCodeEnabled ? UI_TEXT.cheatCodeEnabledHelper : UI_TEXT.passCodeEntryHint}
-              style={{
-                backgroundColor: theme.colors.shadow + "AA",
-                color: theme.colors.white,
-                fontSize: 24,
-                fontWeight: "900",
-                textAlign: "center",
-                width: 120,
-                height: 50,
-                borderRadius: 12,
-                borderWidth: 2,
-                borderColor: theme.colors.secondary,
-              }}
-            />
-            <Text style={{ color: theme.colors.white, fontSize: 10, marginTop: 4, fontWeight: '700' }}>
-              {UI_TEXT.passCodeEntryHint}
-            </Text>
+            {(() => {
+              const digitCount = passcodeDigitCount || 4;
+              const hintText = (UI_TEXT.passCodeEntryHintDynamic || "Enter {count}-Digit Pass Code").replace("{count}", String(digitCount));
+              return (
+                <>
+                  <TextInput
+                    value={passCode}
+                    onChangeText={handlePassCode}
+                    placeholder={"X".repeat(digitCount)}
+                    placeholderTextColor={theme.colors.white + "88"}
+                    keyboardType={cheatCodeEnabled ? "default" : "number-pad"}
+                    autoCapitalize="characters"
+                    maxLength={digitCount}
+                    accessible={true}
+                    accessibilityLabel={hintText}
+                    accessibilityHint={cheatCodeEnabled ? UI_TEXT.cheatCodeEnabledHelper : hintText}
+                    style={{
+                      backgroundColor: theme.colors.shadow + "AA",
+                      color: theme.colors.white,
+                      fontSize: 22,
+                      fontWeight: "900",
+                      textAlign: "center",
+                      width: Math.max(120, digitCount * 22),
+                      height: 50,
+                      borderRadius: 12,
+                      borderWidth: 2,
+                      borderColor: theme.colors.secondary,
+                    }}
+                  />
+                  <Text style={{ color: theme.colors.white, fontSize: 10, marginTop: 4, fontWeight: '700' }}>
+                    {hintText}
+                  </Text>
+                </>
+              );
+            })()}
           </View>
         </View>
 

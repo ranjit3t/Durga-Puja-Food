@@ -54,10 +54,10 @@ describe("QR Code Encryption & Decryption Utility (qrEncryption.ts)", () => {
     });
 
     it("decrypts full payload details including tenantId and seasonCode", () => {
-      const encrypted = encryptQrPayload("14-3S", "eternia", "DP2027", "14", "3S");
+      const encrypted = encryptQrPayload("14-3S", "fooddesk", "DP2027", "14", "3S");
       const details = decryptQrPayloadDetails(encrypted);
       expect(details).toEqual({
-        tenantId: "eternia",
+        tenantId: "fooddesk",
         seasonCode: "DP2027",
         passId: "14-3S",
       });
