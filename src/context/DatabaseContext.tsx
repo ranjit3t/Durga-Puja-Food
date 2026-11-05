@@ -1863,6 +1863,14 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       showAlert(UI_TEXT.error, UI_TEXT.seasonCodeRequired);
       return;
     }
+    if (cleanCode.length > 10) {
+      showAlert(UI_TEXT.error, UI_TEXT.seasonCodeLengthError);
+      return;
+    }
+    if (!/^[A-Z0-9]+$/.test(cleanCode)) {
+      showAlert(UI_TEXT.error, UI_TEXT.seasonCodeAlphanumericError);
+      return;
+    }
     if (!cleanName) {
       showAlert(UI_TEXT.error, UI_TEXT.seasonNameRequired);
       return;

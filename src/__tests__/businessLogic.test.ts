@@ -359,10 +359,10 @@ describe("QR Code Encryption & Decryption Lookup", () => {
     expect(match?.id).toBe("14-3S");
   });
 
-  it("rejects legacy unencrypted flat URLs and old QRs as invalid", () => {
+  it("accepts unencrypted legacy flat URLs as fallback", () => {
     const legacyUrl = "https://durga-puja-food.app/flat/14-3S";
     const match = findSubscriptionByPassCodeOrCheatCode(legacyUrl, mockSubs, false, "fooddesk", "DP2026");
-    expect(match).toBeUndefined();
+    expect(match?.id).toBe("14-3S");
   });
 
   it("strictly rejects QR codes belonging to a different tenant or season", () => {

@@ -362,7 +362,7 @@ export function getMealVarieties(mealConfig?: MealConfig, vegOnly?: boolean): Di
   if (nonVegAllowed) baseVarieties.push({ ...DEFAULT_NON_VEG_VARIETY });
 
   rawVarieties.forEach((cv) => {
-    const existingIdx = baseVarieties.findIndex((bv) => bv.id === cv.id || bv.type === cv.type);
+    const existingIdx = baseVarieties.findIndex((bv) => bv.id === cv.id);
     if (existingIdx >= 0) {
       baseVarieties[existingIdx] = {
         ...baseVarieties[existingIdx],
@@ -488,8 +488,12 @@ export function getMealFreeMealCounts(
   };
 }
 
-export function getDietTypeForChoice(choice: string | undefined, varieties?: DietaryVariety[]): DietType | undefined {
-  if (!choice || choice === DietaryOption.NONE || choice === "None") return undefined;
+export function getDietTypeForChoice(
+  choice: string | undefined,
+  varieties?: DietaryVariety[],
+  dayConfig?: ConfigDay[]
+): DietType | undefined {
+  if (!choice || choice === DietaryOption.NONE || choice === "None" || choice === "none") return undefined;
 
   if (varieties && varieties.length > 0) {
     const match = varieties.find((v) => v.id === choice);
@@ -499,14 +503,31 @@ export function getDietTypeForChoice(choice: string | undefined, varieties?: Die
   if (choice === "veg_default" || choice === DietaryOption.VEG || choice === "veg" || choice === "v") {
     return DietType.VEG;
   }
-  if (choice === "nonVeg_default" || choice === DietaryOption.NON_VEG || choice === "nonVeg" || choice === "non_veg" || choice === "nv") {
+  if (choice === "nonVeg_default" || choice === DietaryOption.NON_VEG || choice === "nonVeg" || choice === "non_veg" || choice === "nv" || choice === "n") {
     return DietType.NON_VEG;
+  }
+
+  if (dayConfig && Array.isArray(dayConfig) && dayConfig.length > 0) {
+    for (const dConf of dayConfig) {
+      if (!dConf) continue;
+      for (const mKey of [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER]) {
+        const mConf = dConf[mKey];
+        if (mConf) {
+          const vars = getMealVarieties(mConf);
+          const match = vars.find((v) => v.id === choice);
+          if (match) return match.type;
+        }
+      }
+    }
   }
 
   if (choice && typeof choice === 'string') {
     const lower = choice.toLowerCase();
-    if (lower.includes("nonveg") || lower.includes("non-veg") || lower.includes("nv")) {
+    if (lower.includes("nonveg") || lower.includes("non-veg") || lower.includes("nv") || lower.includes("mutton") || lower.includes("fish") || lower.includes("chicken") || lower.includes("egg")) {
       return DietType.NON_VEG;
+    }
+    if (lower.includes("veg")) {
+      return DietType.VEG;
     }
   }
 
@@ -1467,11 +1488,27 @@ export function findSubscriptionByPassCodeOrCheatCode(
     return undefined;
   }
 
-  if (isQrScan) {
-    return undefined;
+  // 2. Fallback for unencrypted QR code / Legacy URL / Pass ID / Passcode match
+  let rawCode = trimmed;
+  if (trimmed.includes("http://") || trimmed.includes("https://") || trimmed.includes("durga-puja-food")) {
+    try {
+      const urlObj = new URL(trimmed.startsWith("http") ? trimmed : `https://${trimmed}`);
+      const segments = urlObj.pathname.split("/").filter(Boolean);
+      if (segments.length > 0) {
+        rawCode = segments[segments.length - 1];
+      }
+    } catch {
+      const parts = trimmed.split("/");
+      rawCode = parts[parts.length - 1] || trimmed;
+    }
   }
 
-  // 2. Check standard passcode / ID match
+  const unencryptedMatch = subscriptions.find(
+    (s) => (s.id && s.id.toLowerCase() === rawCode.toLowerCase()) || (s.passcode && s.passcode === rawCode)
+  );
+  if (unencryptedMatch) return unencryptedMatch;
+
+  // 3. Check standard passcode / ID match
   const standardMatch = subscriptions.find(
     (s) => s.passcode === trimmed || s.id === trimmed
   );
@@ -1480,7 +1517,7 @@ export function findSubscriptionByPassCodeOrCheatCode(
   // If cheat code is not enabled, return undefined
   if (!cheatCodeEnabled) return undefined;
 
-  // 3. Cheat code checking with candidates support
+  // 4. Cheat code checking with candidates support
   const cleanCode = trimmed.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
   if (cleanCode.length === 0) return undefined;
 

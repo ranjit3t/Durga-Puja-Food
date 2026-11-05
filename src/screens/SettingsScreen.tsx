@@ -360,10 +360,10 @@ export function SettingsScreen() {
   const [localVendorAddress, setLocalVendorAddress] = useState("");
   const [localVendorSettledCost, setLocalVendorSettledCost] = useState("");
   const [localIdentity1Enabled, setLocalIdentity1Enabled] = useState(true);
-  const [localIdentity1Name, setLocalIdentity1Name] = useState("Block No");
+  const [localIdentity1Name, setLocalIdentity1Name] = useState(UI_TEXT.blockNoDefault);
   const [localIdentity1OptionsText, setLocalIdentity1OptionsText] = useState("0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25");
   const [localIdentity2Enabled, setLocalIdentity2Enabled] = useState(true);
-  const [localIdentity2Name, setLocalIdentity2Name] = useState("Flat No");
+  const [localIdentity2Name, setLocalIdentity2Name] = useState(UI_TEXT.flatNoDefault);
   const [saving, setSaving] = useState(false);
 
   // Saved baseline state representing the current persisted configuration
@@ -1276,15 +1276,15 @@ export function SettingsScreen() {
         {/* Pass Identity Configuration Card (Common Settings - Always on Top) */}
         <View style={[styles.dashboardCard, { backgroundColor: theme.cardColors[2].bg, borderColor: theme.cardColors[2].border, borderWidth: 1.5, marginBottom: 16 }]}>
           <Text style={{ fontSize: 18, fontWeight: '900', color: theme.cardColors[2].accent, marginBottom: 4 }}>
-            Pass Identity Configuration (Block & Flat)
+            {UI_TEXT.passIdentityConfigTitle}
           </Text>
           <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600', marginBottom: 12 }}>
-            Common settings shared across all seasons (e.g. Block No, Flat / House No).
+            {UI_TEXT.passIdentityCommonSubtitle}
           </Text>
           {subscriptions.length > 0 && (
             <View style={{ backgroundColor: theme.colors.errorLight || "#fee2e2", padding: 10, borderRadius: 8, marginBottom: 12 }}>
               <Text style={{ fontSize: 11, color: theme.colors.error || "#ef4444", fontWeight: '800' }}>
-                ⚠ Identity fields (Identity 1 & Identity 2) are locked because passes have already been issued for this season. Changes are disabled to prevent unbalancing the system.
+                {UI_TEXT.passIdentityLockedNote}
               </Text>
             </View>
           )}
@@ -1292,8 +1292,8 @@ export function SettingsScreen() {
           {/* Identity 1 */}
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <View style={{ flex: 1, marginRight: 10 }}>
-              <Text style={{ fontSize: 15, fontWeight: '800', color: theme.colors.textPrimary }}>Enable Identity 1</Text>
-              <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600' }}>Primary pass grouping (e.g. Block / Tower No)</Text>
+              <Text style={{ fontSize: 15, fontWeight: '800', color: theme.colors.textPrimary }}>{UI_TEXT.identity1Title}</Text>
+              <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600' }}>{UI_TEXT.identity1Subtitle}</Text>
             </View>
             <Switch
               value={localIdentity1Enabled}
@@ -1304,7 +1304,7 @@ export function SettingsScreen() {
           </View>
           {localIdentity1Enabled && (
             <View pointerEvents={subscriptions.length > 0 ? "none" : "auto"} style={[{ gap: 10, marginBottom: 16, backgroundColor: theme.colors.surface, borderRadius: 12, padding: 12 }, subscriptions.length > 0 && { opacity: 0.6, backgroundColor: theme.colors.surfaceDark }]}>
-              <Text style={{ fontSize: 12, fontWeight: '700', color: theme.colors.textPrimary }}>Identity 1 Name / Label</Text>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: theme.colors.textPrimary }}>{UI_TEXT.identity1NameLabel}</Text>
               <TextInput
                 style={[styles.input, subscriptions.length > 0 && { backgroundColor: theme.colors.surfaceDark, color: theme.colors.textMuted }]}
                 value={localIdentity1Name}
@@ -1312,10 +1312,10 @@ export function SettingsScreen() {
                   if (subscriptions.length === 0) setLocalIdentity1Name(text);
                 }}
                 editable={subscriptions.length === 0}
-                placeholder="e.g. Block No, Tower No"
+                placeholder={UI_TEXT.blockPlaceholder}
                 placeholderTextColor={theme.colors.textMuted}
               />
-              <Text style={{ fontSize: 12, fontWeight: '700', color: theme.colors.textPrimary, marginTop: 4 }}>Identity 1 Select Options (Comma-separated)</Text>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: theme.colors.textPrimary, marginTop: 4 }}>{UI_TEXT.identity1OptionsLabel}</Text>
               <TextInput
                 style={[styles.input, subscriptions.length > 0 && { backgroundColor: theme.colors.surfaceDark, color: theme.colors.textMuted }]}
                 value={localIdentity1OptionsText}
@@ -1334,8 +1334,8 @@ export function SettingsScreen() {
           {/* Identity 2 */}
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <View style={{ flex: 1, marginRight: 10 }}>
-              <Text style={{ fontSize: 15, fontWeight: '800', color: theme.colors.textPrimary }}>Enable Identity 2</Text>
-              <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600' }}>Secondary pass unit (e.g. Flat / House No)</Text>
+              <Text style={{ fontSize: 15, fontWeight: '800', color: theme.colors.textPrimary }}>{UI_TEXT.identity2Title}</Text>
+              <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600' }}>{UI_TEXT.identity2Subtitle}</Text>
             </View>
             <Switch
               value={localIdentity2Enabled}
@@ -1346,7 +1346,7 @@ export function SettingsScreen() {
           </View>
           {localIdentity2Enabled && (
             <View pointerEvents={subscriptions.length > 0 ? "none" : "auto"} style={[{ gap: 10, backgroundColor: theme.colors.surface, borderRadius: 12, padding: 12 }, subscriptions.length > 0 && { opacity: 0.6, backgroundColor: theme.colors.surfaceDark }]}>
-              <Text style={{ fontSize: 12, fontWeight: '700', color: theme.colors.textPrimary }}>Identity 2 Name / Label</Text>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: theme.colors.textPrimary }}>{UI_TEXT.identity2NameLabel}</Text>
               <TextInput
                 style={[styles.input, subscriptions.length > 0 && { backgroundColor: theme.colors.surfaceDark, color: theme.colors.textMuted }]}
                 value={localIdentity2Name}
@@ -1354,7 +1354,7 @@ export function SettingsScreen() {
                   if (subscriptions.length === 0) setLocalIdentity2Name(text);
                 }}
                 editable={subscriptions.length === 0}
-                placeholder="e.g. Flat No, House No"
+                placeholder={UI_TEXT.flatPlaceholder}
                 placeholderTextColor={theme.colors.textMuted}
               />
             </View>
@@ -2378,11 +2378,19 @@ export function SettingsScreen() {
                 <TextInput
                   style={styles.input}
                   value={newSeasonCodeInput}
-                  onChangeText={setNewSeasonCodeInput}
+                  onChangeText={(text) => {
+                    const cleaned = text.toUpperCase().replace(/[^A-Z0-9]/g, "");
+                    if (cleaned.length <= 10) setNewSeasonCodeInput(cleaned);
+                  }}
+                  maxLength={10}
                   placeholder="e.g. DP2027"
                   placeholderTextColor={theme.colors.textMuted}
                   autoCapitalize="characters"
+                  selectTextOnFocus
                 />
+                <Text style={{ fontSize: 10, color: newSeasonCodeInput.length >= 10 ? theme.colors.error : theme.colors.textMuted, fontWeight: '700', textAlign: 'right', marginTop: 2 }}>
+                  {newSeasonCodeInput.length}/10 (Alphanumeric only)
+                </Text>
               </View>
             </View>
 

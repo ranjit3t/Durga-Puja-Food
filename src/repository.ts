@@ -52,7 +52,7 @@ import {
   UserRole,
 } from "./domain";
 import { ConfigDay, AppConfig } from "./types";
-import { blockOptions, generatePasscode, generateUniquePasscode, getDietTypeForChoice } from "./constants";
+import { blockOptions, generatePasscode, generateUniquePasscode, getDietTypeForChoice, getMealVarieties } from "./constants";
 
 // --- Repository Interface ---
 

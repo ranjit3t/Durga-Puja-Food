@@ -501,11 +501,11 @@ export function TenantManagementScreen() {
       return;
     }
     if (tId.length > 20) {
-      showAlert(UI_TEXT.error, "Tenant ID must be at most 20 characters.");
+      showAlert(UI_TEXT.error, UI_TEXT.tenantIdLengthError);
       return;
     }
     if (!/^[a-z0-9]+$/.test(tId)) {
-      showAlert(UI_TEXT.error, "Tenant ID must be alphanumeric with no special characters.");
+      showAlert(UI_TEXT.error, UI_TEXT.tenantIdAlphanumericError);
       return;
     }
     if (!tName) {
@@ -513,7 +513,7 @@ export function TenantManagementScreen() {
       return;
     }
     if (tName.length > 100) {
-      showAlert(UI_TEXT.error, "Tenant Name must be at most 100 characters.");
+      showAlert(UI_TEXT.error, UI_TEXT.tenantNameLengthError);
       return;
     }
     if (tenants[tId]) {
@@ -547,7 +547,7 @@ export function TenantManagementScreen() {
       return;
     }
     if (tName.length > 100) {
-      showAlert(UI_TEXT.error, "Tenant Name must be at most 100 characters.");
+      showAlert(UI_TEXT.error, UI_TEXT.tenantNameLengthError);
       return;
     }
     try {
