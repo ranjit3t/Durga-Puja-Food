@@ -71,7 +71,7 @@ import {
   distributeAmountWithRemainder,
 } from "../utils/paymentUtils";
 import { ConfigDay, PaymentMode } from "../domain";
-import { getMealFreeMealCounts } from "../constants";
+import { generateUniquePasscode, getMealFreeMealCounts } from "../constants";
 
 describe("free meal parcel counts and payment report integration", () => {
   it("calculates free meal dine-in, parcel, and total served counts correctly", () => {
@@ -265,9 +265,35 @@ describe("remainder distribution and detailed payment report calculation", () =>
   });
 });
 
-import { findSubscriptionByPassCodeOrCheatCode, qrValueFor, blockOptions } from "../constants";
+import { findSubscriptionByPassCodeOrCheatCode, qrValueFor, blockOptions, isSeasonDone } from "../constants";
 import { encryptQrPayload, decryptQrPayload } from "../utils/qrEncryption";
 import { getPassDisplayLabel } from "../domain";
+
+describe("Season Completion Invariants", () => {
+  it("evaluates season as done only when all enabled meals across active days are done", () => {
+    const unfinishedConfig: any[] = [
+      {
+        id: "day1",
+        enabled: true,
+        breakfast: { enabled: true, done: true },
+        lunch: { enabled: true, done: false },
+        dinner: { enabled: true, done: false },
+      },
+    ];
+    expect(isSeasonDone(unfinishedConfig)).toBe(false);
+
+    const finishedConfig: any[] = [
+      {
+        id: "day1",
+        enabled: true,
+        breakfast: { enabled: true, done: true },
+        lunch: { enabled: true, done: true },
+        dinner: { enabled: false, done: false },
+      },
+    ];
+    expect(isSeasonDone(finishedConfig)).toBe(true);
+  });
+});
 
 describe("Configurable Pass Identities", () => {
   it("formats pass display label correctly with custom identity names and enabled states", () => {
@@ -313,6 +339,15 @@ describe("QR Code Encryption & Decryption Lookup", () => {
     expect(decrypted).toBe("14-3S");
   });
 
+  it("generates unique encrypted QR payload for different season codes even with same subscription ID", () => {
+    const sub = { id: "14-3S", block: "14", flat: "3S" };
+    const qr2025 = qrValueFor(sub as any, "DP2025");
+    const qr2026 = qrValueFor(sub as any, "DP2026");
+    expect(qr2025).not.toBe(qr2026);
+    expect(decryptQrPayload(qr2025)).toBe("14-3S");
+    expect(decryptQrPayload(qr2026)).toBe("14-3S");
+  });
+
   it("returns null when decrypting invalid or unencrypted strings", () => {
     expect(decryptQrPayload("https://random-url.com")).toBeNull();
     expect(decryptQrPayload("14-3S")).toBeNull();
@@ -324,10 +359,35 @@ describe("QR Code Encryption & Decryption Lookup", () => {
     expect(match?.id).toBe("14-3S");
   });
 
-  it("finds pass by legacy unencrypted flat URL for backwards compatibility", () => {
+  it("rejects legacy unencrypted flat URLs and old QRs as invalid", () => {
     const legacyUrl = "https://durga-puja-food.app/flat/14-3S";
-    const match = findSubscriptionByPassCodeOrCheatCode(legacyUrl, mockSubs, false);
-    expect(match?.id).toBe("14-3S");
+    const match = findSubscriptionByPassCodeOrCheatCode(legacyUrl, mockSubs, false, "eternia", "DP2026");
+    expect(match).toBeUndefined();
+  });
+
+  it("strictly rejects QR codes belonging to a different tenant or season", () => {
+    const encUrlEternia = encryptQrPayload("14-3S", "eternia", "DP2026", "14", "3S");
+    const encUrlOtherTenant = encryptQrPayload("14-3S", "other_tenant", "DP2026", "14", "3S");
+    const encUrlOtherSeason = encryptQrPayload("14-3S", "eternia", "DP2025", "14", "3S");
+
+    expect(findSubscriptionByPassCodeOrCheatCode(encUrlEternia, mockSubs, false, "eternia", "DP2026")?.id).toBe("14-3S");
+    expect(findSubscriptionByPassCodeOrCheatCode(encUrlOtherTenant, mockSubs, false, "eternia", "DP2026")).toBeUndefined();
+    expect(findSubscriptionByPassCodeOrCheatCode(encUrlOtherSeason, mockSubs, false, "eternia", "DP2026")).toBeUndefined();
+  });
+
+  it("guarantees 100% unique passcodes for all passes in the same season without collisions", () => {
+    const subs: any[] = [];
+    const usedPasscodes = new Set<string>();
+
+    for (let i = 1; i <= 50; i++) {
+      const passId = `14-${i}S`;
+      const passCode = generateUniquePasscode(subs, passId, passId, "eternia", "DP2026");
+      expect(usedPasscodes.has(passCode)).toBe(false);
+      usedPasscodes.add(passCode);
+      subs.push({ id: passId, passcode: passCode });
+    }
+
+    expect(usedPasscodes.size).toBe(50);
   });
 
   it("finds pass by cheat code when enabled", () => {

@@ -3,7 +3,7 @@
  * Allows admins to create, edit, change password, enable/disable, lock/unlock, and soft-delete non-admin system users.
  * Fully accessible, mobile-friendly, and localized.
  */
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -34,7 +34,7 @@ import { encryptPassword } from "./../utils/authUtils";
 const repository = createFirebaseRepository();
 
 export function UserManagementScreen() {
-  const { userRole, handleLogout } = useAuth();
+  const { userRole, tenantId, handleLogout } = useAuth();
   const { addActivityLog } = useActivityLogs();
   const { goBack, navigate } = useAppNavigation();
   const { showAlert } = useUI();
@@ -209,6 +209,7 @@ export function UserManagementScreen() {
           deleted: false,
           locked: false,
           encrypted: true,
+          tenantId: tenantId || "",
         };
 
         currentUsers.push(newUser);
@@ -242,6 +243,7 @@ export function UserManagementScreen() {
           disabled: formDisabled,
           deleted: formDeleted,
           locked: formLocked,
+          tenantId: targetUser.tenantId || tenantId || "",
         };
 
         await repository.updateAuthConfig({ ...authConfig, users: currentUsers });
@@ -348,7 +350,14 @@ export function UserManagementScreen() {
     }
   };
 
-  const nonAdminUsers = users.filter((u: any) => u.role?.toLowerCase() !== UserRole.ADMIN);
+  const tenantUsers = useMemo(() => {
+    const currentTenant = (tenantId || "").trim().toLowerCase();
+    if (!currentTenant) return [];
+    return users.filter((u: any) => {
+      const uTenant = (u.tenantId || "").trim().toLowerCase();
+      return uTenant === currentTenant && u.role?.toLowerCase() !== UserRole.ADMIN;
+    });
+  }, [users, tenantId]);
 
   return (
     <View style={styles.root}>
@@ -406,7 +415,7 @@ export function UserManagementScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={{ gap: 12 }}>
-          {nonAdminUsers.map((user: any) => {
+          {tenantUsers.map((user: any) => {
             const isDeleted = Boolean(user.deleted);
             const isDisabled = Boolean(user.disabled);
             const isLocked = Boolean(user.locked);
@@ -589,7 +598,7 @@ export function UserManagementScreen() {
             );
           })}
 
-          {nonAdminUsers.length === 0 && !loading && (
+          {tenantUsers.length === 0 && !loading && (
             <View style={[styles.card, { alignItems: "center", padding: 32 }]}>
               <Ionicons name="people-outline" size={40} color={theme.colors.textMuted} />
               <Text style={{ fontSize: 14, fontWeight: "700", color: theme.colors.textSecondary, marginTop: 8 }}>

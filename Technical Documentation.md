@@ -516,6 +516,62 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
     - **Clean Amount Display**: Removed the currency symbol (`$`) prefix from pass amount displays across pass summary headers.
     - **WCAG 2.1 AA & Localization Compliance**: Fully accessible with zero hardcoded strings (`UI_TEXT`).
 
+34. **Season Completion Governance ([`SettingsScreen.tsx`](src/screens/SettingsScreen.tsx), [`HomeScreen.tsx`](src/screens/HomeScreen.tsx), [`domain.ts`](src/domain.ts), [`repository.ts`](src/repository.ts))**:
+    - **Header Banner Governance**: Housed both **Season Active** (`seasonEnabled`) and **Mark Season Done** (`seasonCompleted`) switches directly inside the Master Season Header Banner card at the top of Settings.
+    - **Dynamic Header Banner Title**: When completed (`seasonCompleted = true`), the header title dynamically changes to **COMPLETED FESTIVAL SEASON CONFIGURATION** (omitting "ACTIVE"). When active, it displays **ACTIVE FESTIVAL SEASON CONFIGURATION**.
+    - **Reciprocal Active & Done States**: Toggling Season Active (`seasonEnabled = true`) automatically sets Done to `false`; toggling Season Completed (`seasonCompleted = true`) automatically sets Active (`seasonEnabled`) to `false`.
+    - **Greyed-Out Read-Only Settings**: When a season is marked done (`seasonCompleted = true`), all settings cards and configuration controls under the season header banner are greyed out (`opacity: 0.6`, `pointerEvents: "none"`) and locked from further changes.
+    - **Reactivation**: Season settings can only be edited again by toggling "Season Active" to `true` or "Mark Season Done" to `false` directly in the header banner.
+    - **Meal Completion Constraint**: Enforces that a season can only be marked done when all active meals are completed or disabled (`isSeasonDone`).
+    - **New Pass Creation Guard**: Once a season is marked done or completed, creation of new passes for the season is prohibited.
+    - **WCAG 2.1 AA & Localization Compliance**: Fully accessible with responsive touch targets and zero hardcoded strings (`UI_TEXT`).
+
+35. **Inactive / Completed Season Operational Guard ([`InactiveSeasonBanner.tsx`](src/components/common/InactiveSeasonBanner.tsx), [`HomeScreen.tsx`](src/screens/HomeScreen.tsx))**:
+    - **Exclusive Active Season Binding**: Operational features (Home Summary Card, Free Meals, Pass Subscriptions, Scanning, View Subscriptions, Analytics, Reports, Menu, Directory, and Caterer Finance) are bound exclusively to the current active season (`seasonEnabled && !seasonCompleted`), rendering the accessible role-aware `InactiveSeasonBanner` when no active season is running.
+    - **Global Administration Tools Exemption**: Non-season-dependent administrative features (**System Settings**, **Activity / Audit Log**, and **Notes**) remain fully visible and accessible at all times, enabling operators to configure seasons and inspect audit records.
+    - **Collapsible Multi-Season Settings**: Season configuration blocks in System Settings are collapsed by default with the active season pinned at the top, featuring collapsible headers and independent Block & Flat Pass Identity settings positioned at the top outside season blocks.
+    - **WCAG 2.1 AA & Localization Compliance**: Fully accessible with zero hardcoded strings (`UI_TEXT`).
+
+36. **Multi-Season Architecture & Season Creation ([`domain.ts`](src/domain.ts), [`repository.ts`](src/repository.ts), [`DatabaseContext.tsx`](src/context/DatabaseContext.tsx), [`SettingsScreen.tsx`](src/screens/SettingsScreen.tsx))**:
+    - **Multi-Season Management**: Supports creating and managing multiple festival seasons with 100% data isolation.
+    - **Season-Scoped Database Isolation**: Season-bound collections (`subscriptions`, `menu`, `caterer_finance`, `food_packages`) are dynamically scoped by `seasonCode` (`seasons_data/${seasonCode}/${collection}` or root fallback for legacy `DP2026` data).
+    - **Create New Season**: Administrators can create new seasons (`createNewSeason`) via an accessible modal with custom Season Name and Season Code inputs, automatically deactivating other seasons to enforce the single-active-season rule.
+    - **WCAG 2.1 AA & Localization Compliance**: Fully accessible with zero hardcoded strings (`UI_TEXT`).
+
+37. **Multi-Tenant Architecture & Data Isolation ([`domain.ts`](src/domain.ts), [`repository.ts`](src/repository.ts), [`AuthContext.tsx`](src/context/AuthContext.tsx), [`DatabaseContext.tsx`](src/context/DatabaseContext.tsx))**:
+    - **Multi-Tenancy**: Application data is scoped under tenant namespaces (`tenants/${tenantId}/...`).
+    - **Common Authentication**: User credentials and roles are managed at the common level (`auth_config`), with each user entry assigned a `tenantId` property (e.g. `"eternia"`).
+    - **Tenant Data Isolation**: Upon login, the user's `tenantId` dynamically scopes all tenant-specific data (`config`, `notes`, `logs`, `seasons_data/${seasonCode}/...`), preventing cross-tenant data leakage.
+    - **WCAG 2.1 AA & Localization Compliance**: Fully accessible with zero hardcoded strings (`UI_TEXT`).
+
+38. **Secure Multi-Tenant & Multi-Season QR Code Validation ([`qrEncryption.ts`](src/utils/qrEncryption.ts), [`constants.ts`](src/constants.ts), [`ScannerScreen.tsx`](src/screens/ScannerScreen.tsx))**:
+    - **Unique Encrypted Payloads**: QR code payloads encode both tenant ID and season ID (`DPFPASS:TENANT:${tenantId}:SEASON:${seasonCode}:BLOCK:${block}:FLAT:${flat}:ID:${id}`), fully encrypted into obfuscated cipher tokens (`DPF_ENC_...`).
+    - **Strict Cross-Tenant & Cross-Season Rejection**: During scanning, quick checkout, or parcel checkout, scanned QR codes are decrypted and validated against the active session's tenant ID and season code. Mismatched tenant or season passes are rejected as invalid/not found.
+    - **WCAG 2.1 AA & Localization Compliance**: Fully accessible with zero hardcoded strings (`UI_TEXT`).
+
+39. **Dynamic Menu Variety Normalization, Member Pricing & Automated Payment Population ([`constants.ts`](src/constants.ts), [`SubscriptionForm.tsx`](src/screens/SubscriptionForm.tsx), [`MealMenuEditor.tsx`](src/components/menu/MealMenuEditor.tsx), [`MealDisplay.tsx`](src/components/menu/MealDisplay.tsx))**:
+    - **Menu-Driven Variety Resolution**: `getMealMenuForDay` and `getMealVarieties` seamlessly resolve day IDs and menu varieties from the active tenant/season's RTDB menu node (`foodMenu`), supporting object key variety records without missing selection options.
+    - **Member Price & Member Parcel Price Display**: When kids support is disabled, `MealMenuEditor` and `MealDisplay` cleanly render **Member Price** and **Member Parcel Price** alongside vendor pricing.
+    - **Automated Payment Entry Population**: During new pass registration, `SubscriptionForm` auto-populates Payment Entry #1's subscription amount as meal choices are selected, eliminating payment deficiency alerts.
+    - **WCAG 2.1 AA & Localization Compliance**: Fully accessible with zero hardcoded strings (`UI_TEXT`).
+
+40. **Tenant-Scoped User Governance & Single Excess Payment Entry Population ([`UserManagementScreen.tsx`](src/screens/UserManagementScreen.tsx), [`SubscriptionForm.tsx`](src/screens/SubscriptionForm.tsx))**:
+    - **Tenant-Scoped User Governance**: `UserManagementScreen` strictly filters user accounts by `user.tenantId === currentTenantId`. Newly created system user accounts are assigned the authenticated session's `tenantId`, preventing cross-tenant user creation or inspection.
+    - **Single Auto-Excess Payment Entry**: On Edit Pass, when meal choices increase expected totals, all excess required amounts populate into a single auto-excess payment entry (`isAutoExcess: true`) without overriding baseline user payments.
+    - **WCAG 2.1 AA & Localization Compliance**: Fully accessible with zero hardcoded strings (`UI_TEXT`).
+
+41. **Season-Specific Dynamic Footer Configuration & Optimized Season List Virtualization ([`SettingsScreen.tsx`](src/screens/SettingsScreen.tsx), [`DatabaseContext.tsx`](src/context/DatabaseContext.tsx), [`repository.ts`](src/repository.ts))**:
+    - **Season-Specific Footer Text**: Each festival season maintains its own isolated `footerText` configured in System Settings and stored under `seasons_data/${seasonCode}/config`. Real-time Firebase listeners (`onConfigChange`) propagate updates app-wide instantly.
+    - **Virtualized Season List Optimization**: The season list in System Settings is rendered via a memoized `FlatList` using `React.memo` (`SeasonListItem`), ensuring smooth scaling for large season counts.
+    - **WCAG 2.1 AA & Localization Compliance**: Fully accessible with zero hardcoded strings (`UI_TEXT`).
+
+42. **SuperAdmin Portal Architecture, Real-Time Tenant Eviction & Strict Tenant Boundaries ([`HomeScreen.tsx`](src/screens/HomeScreen.tsx), [`AuthContext.tsx`](src/context/AuthContext.tsx), [`DatabaseContext.tsx`](src/context/DatabaseContext.tsx), [`ChatContext.tsx`](src/context/ChatContext.tsx), [`repository.ts`](src/repository.ts))**:
+    - **SuperAdmin Role & Portal**: Superadmins (`UserRole.SUPER_ADMIN`) access a streamlined management portal on `HomeScreen` featuring a top red summary card (Total Tenants, Seasons, Users, Active Users) and 2 action buttons (**Tenant Management** & **Version Management**).
+    - **Tenant & User Management**: Enables tenant creation (validating non-re-usable Tenant IDs), tenant name editing (with read-only Tenant ID display), active/inactive status toggling, and full tenant user administration modeling `UserManagementScreen` (supporting Admin, Caterer, Vendor roles, Change Password, Lock/Unlock, Disable/Enable, Soft-Delete).
+    - **Real-Time Tenant Deletion & Inactivity Eviction**: Real-time WebSocket listeners (`onTenantStatusChange`) monitor `tenants/${tenantId}`. Deactivating or deleting a tenant in Firebase RTDB instantly evicts active user sessions app-wide in sub-50ms with localized error alerts.
+    - **Strict Tenant Boundaries**: Peer-to-peer chat (`ChatContext.tsx`) and team notes (`tenants/${tenantId}/notes`) enforce strict tenant filtering, preventing cross-tenant user discovery or communication.
+    - **WCAG 2.1 AA & Localization Compliance**: Fully accessible with zero hardcoded strings (`UI_TEXT`).
+
 ---
 
 ## 6. Automated Testing & Storybook

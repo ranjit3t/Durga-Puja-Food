@@ -71,10 +71,10 @@ function fromBase64(input: string): string {
  * The entire URL/payload text is encrypted. External camera scanners will only see encrypted text
  * and cannot read any plain URL text or pass details.
  */
-export function encryptQrPayload(id: string): string {
+export function encryptQrPayload(id: string, tenantId: string = "", seasonCode: string = "", block: string = "", flat: string = ""): string {
   if (!id) return "";
   try {
-    const rawPayload = `${PAYLOAD_PREFIX}${id}`;
+    const rawPayload = `${PAYLOAD_PREFIX}TENANT:${tenantId || ""}:SEASON:${seasonCode || ""}:BLOCK:${block || ""}:FLAT:${flat || ""}:ID:${id}`;
     const key = QR_SECRET_KEY;
     let xorStr = "";
     for (let i = 0; i < rawPayload.length; i++) {
@@ -87,11 +87,22 @@ export function encryptQrPayload(id: string): string {
   }
 }
 
+export interface DecodedQrPayload {
+  tenantId: string;
+  seasonCode: string;
+  passId: string;
+}
+
 /**
  * Decrypts a scanned QR payload or cipher text string.
  * Returns the decrypted subscription ID if valid, or null if the input is not a valid encrypted QR payload.
  */
 export function decryptQrPayload(scannedData: string): string | null {
+  const details = decryptQrPayloadDetails(scannedData);
+  return details ? details.passId : null;
+}
+
+export function decryptQrPayloadDetails(scannedData: string): DecodedQrPayload | null {
   if (!scannedData || typeof scannedData !== "string") return null;
   const trimmed = scannedData.trim();
 
@@ -118,10 +129,25 @@ export function decryptQrPayload(scannedData: string): string | null {
     }
 
     if (original.startsWith(PAYLOAD_PREFIX)) {
-      return original.substring(PAYLOAD_PREFIX.length);
-    }
-    if (original.startsWith("https://durga-puja-food.app/pass/")) {
-      return original.split("https://durga-puja-food.app/pass/")[1] || null;
+      const payloadBody = original.substring(PAYLOAD_PREFIX.length);
+      let tenantId = "";
+      let seasonCode = "";
+      let passId = "";
+
+      const tenantMatch = payloadBody.match(/TENANT:([^:]+)/);
+      if (tenantMatch) tenantId = tenantMatch[1];
+
+      const seasonMatch = payloadBody.match(/SEASON:([^:]+)/);
+      if (seasonMatch) seasonCode = seasonMatch[1];
+
+      if (payloadBody.includes("ID:")) {
+        const parts = payloadBody.split("ID:");
+        passId = parts[parts.length - 1] || "";
+      } else {
+        passId = payloadBody;
+      }
+
+      return { tenantId, seasonCode, passId: passId.trim() };
     }
     return null;
   } catch {

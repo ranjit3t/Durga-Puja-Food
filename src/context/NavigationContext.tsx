@@ -92,7 +92,7 @@ interface NavigationContextType {
 
   // Actions
   startNew: (dayConfig: ConfigDay[], seasonName: string, paymentConfig: PaymentConfig, freeMealEnabled: boolean, mobileEnabled: boolean, seasonEnabled: boolean) => void;
-  openScannedValue: (val: string, subscriptions: Subscription[], cheatCodeEnabled?: boolean) => boolean;
+  openScannedValue: (val: string, subscriptions: Subscription[], cheatCodeEnabled?: boolean, tenantId?: string, seasonCode?: string) => boolean;
 }
 
 const NavigationContext = createContext<NavigationContextType | undefined>(undefined);
@@ -189,8 +189,8 @@ export function NavigationProvider({ children }: { children: React.ReactNode }) 
     navigate(AppScreen.FORM);
   };
 
-  const openScannedValue = (val: string, subscriptions: Subscription[], cheatCodeEnabled: boolean = false) => {
-    const match = findSubscriptionByPassCodeOrCheatCode(val, subscriptions, cheatCodeEnabled);
+  const openScannedValue = (val: string, subscriptions: Subscription[], cheatCodeEnabled: boolean = false, tenantId: string = "", seasonCode: string = "") => {
+    const match = findSubscriptionByPassCodeOrCheatCode(val, subscriptions, cheatCodeEnabled, tenantId, seasonCode);
 
     if (match) {
       setSelectedId(match.id);

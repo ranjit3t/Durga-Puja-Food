@@ -126,6 +126,11 @@ export const ActivityLogItem = memo(({
                 <Text style={{ fontSize: s(9), fontWeight: '800', color: theme.colors.textMuted }}>v{item.appVersion}</Text>
               </View>
             )}
+            {item.seasonCode && (
+              <View style={{ backgroundColor: theme.colors.success + "20", paddingHorizontal: s(6), paddingVertical: s(2), borderRadius: s(4), borderWidth: 1, borderColor: theme.colors.success + "40" }}>
+                <Text style={{ fontSize: s(9), fontWeight: '900', color: theme.colors.success }}>{item.seasonCode}</Text>
+              </View>
+            )}
           </View>
 
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(8), marginBottom: s(12), flexWrap: 'wrap' }}>

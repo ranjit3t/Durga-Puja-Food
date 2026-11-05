@@ -167,18 +167,18 @@ export function MealDisplay({
                   </View>
                 </View>
 
-                {(foodPriceEnabled || (isAdmin && (!!vendorPrice || !!vendorParcelPrice))) && (
+                {(!!adultPrice || !!kidsPrice || !!guestPrice || !!vendorPrice || !!parcelPrice || !!kidsParcelPrice || !!guestParcelPrice || !!vendorParcelPrice) && (
                   <View style={{ alignItems: "flex-end", gap: 4, flexShrink: 1 }}>
                     <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
-                      {foodPriceEnabled && adultPrice ? (
+                      {adultPrice ? (
                         <View style={[styles.pill, { backgroundColor: vColor + "22", paddingVertical: 4, paddingHorizontal: 10, borderRadius: 8, borderWidth: 1, borderColor: vColor }]}>
                           <Text style={{ fontSize: 11, fontWeight: "900", color: theme.colors.textPrimary }}>
-                            {adultPrice}
+                            {kidsEnabled ? `${UI_TEXT.adultPriceLabel}: ` : `${UI_TEXT.memberPriceLabel || "Member Price"}: `}{adultPrice}
                           </Text>
                         </View>
                       ) : null}
 
-                      {foodPriceEnabled && kidsEnabled && kidsPrice ? (
+                      {kidsEnabled && kidsPrice ? (
                         <View style={[styles.pill, { backgroundColor: vColor + "22", paddingVertical: 4, paddingHorizontal: 10, borderRadius: 8, borderStyle: "dashed", borderWidth: 1, borderColor: vColor }]}>
                           <Text style={{ fontSize: 11, fontWeight: "900", color: theme.colors.textPrimary }}>
                             {UI_TEXT.kidsAbbrLabel}{UI_TEXT.colon} {kidsPrice}
@@ -186,7 +186,7 @@ export function MealDisplay({
                         </View>
                       ) : null}
 
-                      {foodPriceEnabled && guestsEnabled && guestPrice ? (
+                      {guestsEnabled && guestPrice ? (
                         <View style={[styles.pill, { backgroundColor: vColor + "22", paddingVertical: 4, paddingHorizontal: 10, borderRadius: 8, borderStyle: "dashed", borderWidth: 1, borderColor: vColor }]}>
                           <Text style={{ fontSize: 11, fontWeight: "900", color: theme.colors.textPrimary }}>
                             {UI_TEXT.guestAbbrLabel}{UI_TEXT.colon} {guestPrice}
@@ -194,7 +194,7 @@ export function MealDisplay({
                         </View>
                       ) : null}
 
-                      {isAdmin && vendorPrice ? (
+                      {vendorPrice ? (
                         <View style={[styles.pill, { backgroundColor: vColor + "22", paddingVertical: 4, paddingHorizontal: 10, borderRadius: 8, borderStyle: "dotted", borderWidth: 1, borderColor: vColor }]}>
                           <Text style={{ fontSize: 11, fontWeight: "900", color: theme.colors.textPrimary }}>
                             {UI_TEXT.vendorPriceLabel}{UI_TEXT.colon} {vendorPrice}
@@ -203,14 +203,14 @@ export function MealDisplay({
                       ) : null}
                     </View>
 
-                    {mConf?.parcel && ((foodPriceEnabled && (parcelPrice || kidsParcelPrice || guestParcelPrice)) || (isAdmin && vendorParcelPrice)) ? (
+                    {mConf?.parcel && (parcelPrice || kidsParcelPrice || guestParcelPrice || vendorParcelPrice) ? (
                       <Text style={{ fontSize: 10, color: theme.colors.textSecondary, fontWeight: "700" }}>
-                        {foodPriceEnabled ? `${UI_TEXT.parcelLabel}${UI_TEXT.colon}${UI_TEXT.space}${parcelPrice || "0"}` : ""}
-                        {isAdmin && vendorParcelPrice ? `${foodPriceEnabled ? UI_TEXT.space : ""}(${UI_TEXT.vendorPriceLabel}: ${vendorParcelPrice})` : ""}
-                        {foodPriceEnabled && kidsEnabled && isKidsParcelEnabled(dayId, mealKey, config, kidsEnabled) && kidsParcelPrice
+                        {parcelPrice ? `${kidsEnabled ? UI_TEXT.parcelLabel : (UI_TEXT.memberParcelPriceLabel || "Member Parcel")}${UI_TEXT.colon}${UI_TEXT.space}${parcelPrice}` : ""}
+                        {vendorParcelPrice ? `${parcelPrice ? UI_TEXT.space : ""}(${UI_TEXT.vendorPriceLabel}: ${vendorParcelPrice})` : ""}
+                        {kidsEnabled && kidsParcelPrice
                           ? `${UI_TEXT.space}${UI_TEXT.openParen}${UI_TEXT.kidsAbbrLabel}${UI_TEXT.colon}${UI_TEXT.space}${kidsParcelPrice}${UI_TEXT.closeParen}`
                           : ""}
-                        {foodPriceEnabled && guestsEnabled && isGuestsParcelEnabled(dayId, mealKey, config, guestsEnabled) && guestParcelPrice
+                        {guestsEnabled && guestParcelPrice
                           ? `${UI_TEXT.space}${UI_TEXT.openParen}${UI_TEXT.guestAbbrLabel}${UI_TEXT.colon}${UI_TEXT.space}${guestParcelPrice}${UI_TEXT.closeParen}`
                           : ""}
                       </Text>

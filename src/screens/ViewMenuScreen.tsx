@@ -29,7 +29,7 @@ import { useAppNavigation } from "../context/NavigationContext";
 export function ViewMenuScreen() {
   const { userRole, handleLogout } = useAuth();
   const {
-    foodMenu, dayConfig, seasonName, seasonEnabled, foodPriceEnabled, paymentConfig, kidsEnabled, guestsEnabled, freeMealEnabled
+    foodMenu, dayConfig, seasonName, seasonEnabled, foodPriceEnabled, paymentConfig, kidsEnabled, guestsEnabled, freeMealEnabled, footerText
   } = useCoreDatabase();
   const { addActivityLog } = useActivityLogs();
   const { shareQr, showAlert } = useUI();
@@ -437,7 +437,7 @@ export function ViewMenuScreen() {
         )}
 
         <View style={styles.footer}>
-           <Text style={styles.footerText}>{UI_TEXT.footerCopyright}</Text>
+           <Text style={styles.footerText}>{footerText || ""}</Text>
         </View>
       </ScrollView>
     </View>

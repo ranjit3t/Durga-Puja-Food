@@ -30,7 +30,7 @@ import { useAppNavigation } from "../context/NavigationContext";
 
 export function ContactsScreen() {
   const { handleLogout } = useAuth();
-  const { subscriptions, whatsappCountryCode, kidsEnabled, guestsEnabled } = useCoreDatabase();
+  const { subscriptions, whatsappCountryCode, kidsEnabled, guestsEnabled, footerText } = useCoreDatabase();
   const { addActivityLog } = useActivityLogs();
   const { navigate, goBack, setSelectedId, setSelectedRecord } = useAppNavigation();
 
@@ -275,7 +275,7 @@ export function ContactsScreen() {
         }
         ListFooterComponent={
           <View style={styles.footer}>
-            <Text style={styles.footerText}>{UI_TEXT.footerCopyright}</Text>
+            <Text style={styles.footerText}>{footerText || ""}</Text>
           </View>
         }
       />

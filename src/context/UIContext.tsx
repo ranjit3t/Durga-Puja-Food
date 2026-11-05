@@ -173,6 +173,15 @@ export function UIProvider({ children }: { children: React.ReactNode }) {
 
 export function useUI() {
   const context = useContext(UIContext);
-  if (!context) throw new Error("useUI must be used within UIProvider");
+  if (!context) {
+    return {
+      alertConfig: { visible: false, title: "", message: "" },
+      showAlert: (title: string, message: string) => console.log("Alert:", title, message),
+      showGlobalError: (message: string) => console.error("Global Error:", message),
+      hideAlert: () => {},
+      shareQr: async () => {},
+      printPass: async () => {},
+    };
+  }
   return context;
 }

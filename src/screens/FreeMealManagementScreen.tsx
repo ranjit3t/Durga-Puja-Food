@@ -259,7 +259,7 @@ const FreeMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, isCat
 export function FreeMealManagementScreen() {
   const { userRole, handleLogout } = useAuth();
   const {
-    foodMenu, dayConfig, seasonEnabled, updateFreeMealCountDebounced
+    foodMenu, dayConfig, seasonEnabled, updateFreeMealCountDebounced, footerText
   } = useCoreDatabase();
   const { addActivityLog } = useActivityLogs();
   const { goBack, navigate, isQuickFreeMealMode, setIsQuickFreeMealMode } = useAppNavigation();
@@ -578,7 +578,7 @@ export function FreeMealManagementScreen() {
         })}
 
         <View style={styles.footer}>
-           <Text style={styles.footerText}>{UI_TEXT.footerCopyright}</Text>
+           <Text style={styles.footerText}>{footerText || ""}</Text>
         </View>
       </ScrollView>
 

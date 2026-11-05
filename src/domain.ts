@@ -101,6 +101,7 @@ export enum AppScreen {
   FOOD_PACKAGE = "foodPackage",
   CATERER_INCOME_EXPENSE = "catererIncomeExpense",
   USER_MANAGEMENT = "userManagement",
+  TENANT_MANAGEMENT = "tenantManagement",
 }
 
 export enum CatererFinanceCategory {
@@ -198,7 +199,36 @@ export type PaymentConfig = {
   };
 };
 
+export type SeasonConfig = {
+  id: string;
+  seasonName: string;
+  seasonCode: string;
+  tenantId?: string;
+  seasonEnabled: boolean;
+  seasonCompleted: boolean;
+  days: ConfigDay[];
+  payment?: PaymentConfig;
+  freeMealEnabled?: boolean;
+  mobileEnabled?: boolean;
+  foodPriceEnabled?: boolean;
+  kidsEnabled?: boolean;
+  guestsEnabled?: boolean;
+  vendorKidsMealChargingEnabled?: boolean;
+  whatsappCountryCode?: string;
+  quickCheckoutAutoCloseMs?: number;
+  soundEnabled?: boolean;
+  vendorName?: string;
+  vendorAddress?: string;
+  vendorSettledCost?: string;
+  nonAdminCheckoutEnabled?: boolean;
+  cheatCodeEnabled?: boolean;
+  footerText?: string;
+};
+
 export type AppConfig = {
+  tenantId?: string;
+  activeSeasonCode?: string;
+  seasons?: SeasonConfig[];
   seasonName: string;
   days: ConfigDay[];
   payment?: PaymentConfig;
@@ -217,11 +247,14 @@ export type AppConfig = {
   vendorSettledCost?: string;
   nonAdminCheckoutEnabled?: boolean;
   cheatCodeEnabled?: boolean;
+  seasonCompleted?: boolean;
+  seasonCode?: string;
   identity1Enabled?: boolean;
   identity1Name?: string;
   identity1Options?: string[];
   identity2Enabled?: boolean;
   identity2Name?: string;
+  footerText?: string;
 };
 
 export enum ActivityModule {
@@ -272,6 +305,7 @@ export type ActivityLog = {
   os?: string;
   stack?: string;
   appVersion?: string;
+  seasonCode?: string;
 };
 
 export enum ReportType {
@@ -295,6 +329,7 @@ export enum UserRole {
   ADMIN = "admin",
   VENDOR = "vendor",
   CATERER = "caterer",
+  SUPER_ADMIN = "superadmin",
 }
 
 export enum DirectorySortMode {

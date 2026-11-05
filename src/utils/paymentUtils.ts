@@ -15,7 +15,7 @@ import {
   FoodMenu,
   TakenState,
 } from "../domain";
-import { isParcelEnabled, isKidsParcelEnabled, isDietaryEnabled, isMealEnabled, getMealVarieties, getDietTypeForChoice, getVarietyForChoice, isGuestsParcelEnabled, getMealFreeMealCounts, isMealSlotAbsent } from "../constants";
+import { isParcelEnabled, isKidsParcelEnabled, isDietaryEnabled, isMealEnabled, getMealVarieties, getDietTypeForChoice, getVarietyForChoice, isGuestsParcelEnabled, getMealFreeMealCounts, isMealSlotAbsent, findDayConfig, getMealMenuForDay } from "../constants";
 
 export interface DiscrepancyItem {
   id: string;
@@ -132,10 +132,10 @@ export function resolveVarietyPrice(
   dayConfig: any[] = [],
   foodMenu: Record<string, any> = {}
 ): number {
-  const dayConf = dayConfig.find((d) => d.id === dayId);
+  const dayConf = findDayConfig(dayConfig, dayId);
   const mealConf = dayConf ? dayConf[mType] : null;
-  const dayMenu = foodMenu?.[dayId]?.[mType];
-  const varieties = getMealVarieties(mealConf);
+  const dayMenu = getMealMenuForDay(foodMenu, dayId, dayConfig)?.[mType];
+  const varieties = getMealVarieties(mealConf || undefined);
   const variety = varieties.find((v) => v.id === varietyId);
 
   let adultMealPrice: any;
@@ -159,9 +159,7 @@ export function resolveVarietyPrice(
 
     adultMealPrice = (varMenu?.adultPrice !== undefined && varMenu?.adultPrice !== "") ? varMenu.adultPrice : defaultAdultMeal;
     kidsMealPrice = (varMenu?.kidsPrice !== undefined && varMenu?.kidsPrice !== "") ? varMenu.kidsPrice : defaultKidsMeal;
-    guestsMealPrice = (varMenu?.guestsVegPrice !== undefined && varMenu?.guestsVegPrice !== "") ? varMenu.guestsVegPrice :
-                      (varMenu?.guestsNonVegPrice !== undefined && varMenu?.guestsNonVegPrice !== "") ? varMenu.guestsNonVegPrice :
-                      (varMenu?.guestPrice !== undefined && varMenu?.guestPrice !== "") ? varMenu.guestPrice : defaultGuestsMeal;
+    guestsMealPrice = (varMenu?.guestPrice !== undefined && varMenu?.guestPrice !== "") ? varMenu.guestPrice : defaultGuestsMeal;
   } else {
     adultMealPrice = dayMenu?.vegPrice ?? mealConf?.vegPrice;
     kidsMealPrice = dayMenu?.kidsVegPrice;
@@ -195,10 +193,10 @@ export function calculatePersonMealAndParcelCost(
   const dayIds = Object.keys(mealSlots || {});
 
   dayIds.forEach((dayId) => {
-    const dayConf = dayConfig.find((d) => d.id === dayId);
+    const dayConf = findDayConfig(dayConfig, dayId);
     if (!dayConf || !dayConf.enabled) return;
 
-    const dayMenu = foodMenu?.[dayId];
+    const dayMenu = getMealMenuForDay(foodMenu, dayId, dayConfig);
     const slots = mealSlots[dayId] || [];
     const personSlot = slots[personIndex];
     if (!personSlot) return;
@@ -209,7 +207,7 @@ export function calculatePersonMealAndParcelCost(
     mealTypes.forEach((mType) => {
       if (!isMealEnabled(dayId, mType, dayConfig)) return;
       const mealConf = dayConf[mType];
-      const varieties = getMealVarieties(mealConf);
+      const varieties = getMealVarieties(mealConf || undefined);
 
       const choice = normalizeChoice(personSlot[mType]);
       if (choice === DietaryOption.NONE) return;
@@ -258,13 +256,10 @@ export function calculatePersonMealAndParcelCost(
 
         adultMealPrice = (varMenu?.adultPrice !== undefined && varMenu?.adultPrice !== "") ? varMenu.adultPrice : defaultAdultMeal;
         kidsMealPrice = (varMenu?.kidsPrice !== undefined && varMenu?.kidsPrice !== "") ? varMenu.kidsPrice : defaultKidsMeal;
-        guestsMealPrice = (varMenu?.guestsVegPrice !== undefined && varMenu?.guestsVegPrice !== "") ? varMenu.guestsVegPrice :
-                          (varMenu?.guestsNonVegPrice !== undefined && varMenu?.guestsNonVegPrice !== "") ? varMenu.guestsNonVegPrice :
-                          (varMenu?.guestPrice !== undefined && varMenu?.guestPrice !== "") ? varMenu.guestPrice : defaultGuestsMeal;
+        guestsMealPrice = (varMenu?.guestPrice !== undefined && varMenu?.guestPrice !== "") ? varMenu.guestPrice : defaultGuestsMeal;
         adultParcelPrice = (varMenu?.parcelPrice !== undefined && varMenu?.parcelPrice !== "") ? varMenu.parcelPrice : defaultAdultParcel;
         kidsParcelPrice = (varMenu?.kidsParcelPrice !== undefined && varMenu?.kidsParcelPrice !== "") ? varMenu.kidsParcelPrice : defaultKidsParcel;
-        guestsParcelPrice = (varMenu?.guestsParcelPrice !== undefined && varMenu?.guestsParcelPrice !== "") ? varMenu.guestsParcelPrice :
-                            (varMenu?.guestParcelPrice !== undefined && varMenu?.guestParcelPrice !== "") ? varMenu.guestParcelPrice : defaultGuestsParcel;
+        guestsParcelPrice = (varMenu?.guestParcelPrice !== undefined && varMenu?.guestParcelPrice !== "") ? varMenu.guestParcelPrice : defaultGuestsParcel;
       } else {
         const isVeg = diet === DietType.VEG;
         adultMealPrice = isVeg ? (dayMenu?.[mType]?.vegPrice ?? mealConf.vegPrice) : (dayMenu?.[mType]?.nonVegPrice ?? mealConf.nonVegPrice);

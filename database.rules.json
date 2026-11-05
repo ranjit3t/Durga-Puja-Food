@@ -1,77 +1,101 @@
 {
   "rules": {
-    ".read": false,
-    ".write": false,
+    ".read": true,
+    ".write": true,
     "appVersion": {
       ".read": true,
-      ".write": "auth != null"
+      ".write": true
     },
     "deprecatedVersion": {
       ".read": true,
-      ".write": "auth != null"
+      ".write": true
     },
     "androidAppLocation": {
       ".read": true,
-      ".write": "auth != null"
+      ".write": true
     },
     "iosAppLocation": {
       ".read": true,
-      ".write": "auth != null"
-    },
-    "subscriptions": {
-      ".read": "auth != null",
-      ".indexOn": ["passcode", "block", "flat"],
-      "$flatId": {
-        ".read": "auth != null",
-        ".write": "auth != null"
-      }
-    },
-    "menu": {
-      ".read": "auth != null",
-      ".write": "auth != null"
-    },
-    "metrics": {
-      ".read": "auth != null",
-      ".write": "auth != null"
-    },
-    "config": {
-      ".read": "auth != null",
-      ".write": "auth != null"
+      ".write": true
     },
     "auth_config": {
-      ".read": "auth != null",
-      ".write": "auth != null"
+      ".read": true,
+      ".write": true
     },
     "logs": {
-      ".read": "auth != null",
-      ".write": "auth != null"
-    },
-    "notes": {
-      ".read": "auth != null",
-      ".write": "auth != null"
-    },
-    "food_packages": {
-      ".read": "auth != null",
-      ".write": "auth != null"
+      ".read": true,
+      ".write": true,
+      ".indexOn": ["timestamp"]
     },
     "presence": {
-      ".read": "auth != null",
+      ".read": true,
+      ".write": true,
       "$username": {
-        ".write": "auth != null"
+        ".write": true
       }
     },
     "chats": {
-      ".read": "auth != null",
+      ".read": true,
+      ".write": true,
       "$chatId": {
-        ".read": "auth != null",
-        ".write": "auth != null",
+        ".read": true,
+        ".write": true,
         ".indexOn": ["sender", "recipient", "timestamp"]
       }
     },
-    "caterer_finance": {
-      ".read": "auth != null",
-      ".write": "auth != null",
-      ".indexOn": ["date", "type"]
+    "tenants": {
+      ".read": true,
+      ".write": true,
+      "$tenantId": {
+        ".read": true,
+        ".write": true,
+        "config": {
+          ".read": true,
+          ".write": true
+        },
+        "notes": {
+          ".read": true,
+          ".write": true
+        },
+        "logs": {
+          ".read": true,
+          ".write": true,
+          ".indexOn": ["timestamp"]
+        },
+        "seasons_data": {
+          ".read": true,
+          ".write": true,
+          "$seasonCode": {
+            ".read": true,
+            ".write": true,
+            "config": {
+              ".read": true,
+              ".write": true
+            },
+            "subscriptions": {
+              ".read": true,
+              ".indexOn": ["passcode", "block", "flat"],
+              "$flatId": {
+                ".read": true,
+                ".write": true
+              }
+            },
+            "menu": {
+              ".read": true,
+              ".write": true
+            },
+            "food_packages": {
+              ".read": true,
+              ".write": true
+            },
+            "caterer_finance": {
+              ".read": true,
+              ".write": true,
+              ".indexOn": ["date", "type"]
+            }
+          }
+        }
+      }
     }
   }
 }

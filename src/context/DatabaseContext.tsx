@@ -52,6 +52,7 @@ import {
   blockOptions
 } from "../constants";
 import { useUI } from "./UIContext";
+import { SeasonConfig } from "../domain";
 
 export interface CoreDatabaseContextType {
   // Sync Status
@@ -64,7 +65,12 @@ export interface CoreDatabaseContextType {
   foodMenu: FoodMenu;
   dayConfig: ConfigDay[];
   seasonName: string;
+  seasonCode: string;
   seasonEnabled: boolean;
+  seasons: SeasonConfig[];
+  activeSeasonCode: string;
+  createNewSeason: (newSeasonName: string, newSeasonCode: string) => Promise<void>;
+  switchActiveSeason: (targetSeasonCode: string) => Promise<void>;
   paymentConfig: PaymentConfig;
   freeMealEnabled: boolean;
   mobileEnabled: boolean;
@@ -80,11 +86,13 @@ export interface CoreDatabaseContextType {
   vendorSettledCost: string;
   nonAdminCheckoutEnabled: boolean;
   cheatCodeEnabled: boolean;
+  seasonCompleted: boolean;
   identity1Enabled: boolean;
   identity1Name: string;
   identity1Options: string[];
   identity2Enabled: boolean;
   identity2Name: string;
+  footerText: string;
   remoteAppVersion: string | null;
   androidAppLocation?: string;
   iosAppLocation?: string;
@@ -113,7 +121,7 @@ export interface CoreDatabaseContextType {
 
 export interface ActivityLogsContextType {
   activityLogs: ActivityLog[];
-  addActivityLog: (log: Omit<ActivityLog, "id" | "timestamp" | "userName" | "userRole" | "device" | "os">, manualUser?: string, manualRole?: UserRole | string) => void;
+  addActivityLog: (log: Omit<ActivityLog, "id" | "timestamp" | "userName" | "userRole" | "device" | "os">, manualUser?: string, manualRole?: UserRole | string, manualTenantId?: string) => void;
   getActivityLogs: (limit?: number) => Promise<ActivityLog[]>;
   fetchMoreLogs: (limit: number) => Promise<void>;
 }
@@ -145,7 +153,9 @@ const FoodPackagesContext = createContext<FoodPackagesContextType | undefined>(u
 const CatererFinanceContext = createContext<CatererFinanceContextType | undefined>(undefined);
 
 export function DatabaseProvider({ children }: { children: React.ReactNode }) {
-  const { userRole, userName, userAccountName, handleLogout } = useAuth();
+  const { userRole, userName, userAccountName, tenantId, handleLogout } = useAuth();
+  const isSuperAdmin = userRole === UserRole.SUPER_ADMIN;
+  const { showAlert } = useUI();
   const lastKnownAuthRef = useRef<{ password?: string; name?: string } | null>(null);
   const lastSelfUpdateRef = useRef<number>(0);
   const lastDeprecationAlertVersionRef = useRef<string | null>(null);
@@ -167,6 +177,9 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
   const [foodMenu, setFoodMenu] = useState<FoodMenu>({});
   const [dayConfig, setDayConfig] = useState<ConfigDay[]>([]);
   const [seasonName, setSeasonName] = useState("");
+  const [seasonCode, setSeasonCode] = useState("");
+  const [seasons, setSeasons] = useState<SeasonConfig[]>([]);
+  const [activeSeasonCode, setActiveSeasonCode] = useState("");
   const [seasonEnabled, setSeasonEnabled] = useState(true);
   const [paymentConfig, setPaymentConfig] = useState<PaymentConfig>({
     enabled: true,
@@ -184,6 +197,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
   const [nonAdminCheckoutEnabled, setNonAdminCheckoutEnabled] = useState(true);
   const [cheatCodeEnabled, setCheatCodeEnabled] = useState(false);
+  const [seasonCompleted, setSeasonCompleted] = useState(false);
   const [vendorName, setVendorName] = useState("");
   const [vendorAddress, setVendorAddress] = useState("");
   const [vendorSettledCost, setVendorSettledCost] = useState("");
@@ -192,6 +206,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
   const [identity1Options, setIdentity1Options] = useState<string[]>(blockOptions);
   const [identity2Enabled, setIdentity2Enabled] = useState(true);
   const [identity2Name, setIdentity2Name] = useState("Flat No");
+  const [footerText, setFooterText] = useState<string>("");
   const [remoteAppVersion, setRemoteAppVersion] = useState<string | null>(null);
   const [androidAppLocation, setAndroidAppLocation] = useState<string | undefined>(undefined);
   const [iosAppLocation, setIosAppLocation] = useState<string | undefined>(undefined);
@@ -203,25 +218,34 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
 
   const getAuthConfig = useCallback(() => repository.getAuthConfig(), []);
 
-  const addActivityLog = useCallback((log: Omit<ActivityLog, "id" | "timestamp" | "userName" | "userRole" | "device" | "os">, manualUser?: string, manualRole?: UserRole | string) => {
+  const addActivityLog = useCallback((
+    log: Omit<ActivityLog, "id" | "timestamp" | "userName" | "userRole" | "device" | "os">,
+    manualUser?: string,
+    manualRole?: UserRole | string,
+    manualTenantId?: string
+  ) => {
     let user = manualUser || userName;
     const role = manualRole || userRole;
+    const effectiveTenantIdOverride = manualTenantId !== undefined ? manualTenantId : tenantId;
 
     if (!manualUser && userName && userAccountName && userName.toLowerCase() !== userAccountName.toLowerCase()) {
       user = `${userName} (${userAccountName})`;
     }
 
     if (!user) return;
+    const isSuperAdmin = role === UserRole.SUPER_ADMIN || userRole === UserRole.SUPER_ADMIN;
+    const effectiveTenantId = isSuperAdmin ? undefined : (effectiveTenantIdOverride || undefined);
     void repository.addActivityLog({
       ...log,
       timestamp: Date.now(),
       userName: user,
       userRole: role || undefined,
+      seasonCode: seasonCode || activeSeasonCode || "",
       os: Platform.OS,
       device: Platform.Version ? String(Platform.Version) : undefined,
       appVersion: UI_TEXT.appVersion
-    }).catch(err => console.error("Failed to add activity log:", err));
-  }, [userName, userAccountName, userRole]);
+    }, effectiveTenantId, isSuperAdmin).catch(err => console.error("Failed to add activity log:", err));
+  }, [userName, userAccountName, userRole, seasonCode, activeSeasonCode, tenantId]);
 
   const upsertCatererTransaction = useCallback(async (tx: CatererTransaction) => {
     try {
@@ -259,17 +283,19 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
   }, [addActivityLog]);
 
   const getActivityLogs = useCallback((limitCount?: number) => {
-    return repository.getActivityLogs(limitCount);
-  }, []);
+    const isSuperAdmin = userRole === UserRole.SUPER_ADMIN;
+    return repository.getActivityLogs(limitCount, tenantId || undefined, isSuperAdmin);
+  }, [tenantId, userRole]);
 
   const fetchMoreLogs = useCallback(async (limitCount: number) => {
     try {
-      const logs = await repository.getActivityLogs(limitCount);
+      const isSuperAdmin = userRole === UserRole.SUPER_ADMIN;
+      const logs = await repository.getActivityLogs(limitCount, tenantId || undefined, isSuperAdmin);
       setActivityLogs(logs);
     } catch (err) {
       console.error("Fetch more activity logs error:", err);
     }
-  }, []);
+  }, [tenantId, userRole]);
 
   const getByPasscode = useCallback((passcode: string) => {
     return repository.getByPasscode(passcode);
@@ -286,21 +312,42 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
 
   // Fast Full Refresh (Fallback or Manual Health-Check)
   const refreshAllData = useCallback(async (silent = false) => {
+    if (!userRole) return;
+    if (!isSuperAdmin && !tenantId) return;
     if (!silent) setLoading(true);
     try {
       if (!firebaseRepositoryConfigured) {
         setFirebaseError(firebaseMissingConfig.join(", "));
         return;
       }
+      if (isSuperAdmin) {
+        const [appVer, logsData] = await Promise.all([
+          repository.getAppVersion(),
+          repository.getActivityLogs(100, undefined, true),
+        ]);
+        if (appVer) {
+          setRemoteAppVersion(appVer.version);
+          setAndroidAppLocation(appVer.androidAppLocation);
+          setIosAppLocation(appVer.iosAppLocation);
+        } else {
+          void repository.updateAppVersion(UI_TEXT.appVersion);
+          setRemoteAppVersion(UI_TEXT.appVersion);
+        }
+        setActivityLogs(logsData || []);
+        setFirebaseError("");
+        if (!silent) setLoading(false);
+        return;
+      }
+
       const [subs, config, menu, notesData, packagesData, catererData, appVer, logsData, metricsData] = await Promise.all([
-        repository.list(),
-        repository.getConfig(),
-        repository.getMenu(),
-        repository.getNotes(),
-        repository.getFoodPackages(),
-        repository.getCatererTransactions(),
+        repository.list(tenantId || undefined),
+        repository.getConfig(tenantId || undefined),
+        repository.getMenu(tenantId || undefined),
+        repository.getNotes(tenantId || undefined),
+        repository.getFoodPackages(tenantId || undefined),
+        repository.getCatererTransactions(tenantId || undefined),
         repository.getAppVersion(),
-        repository.getActivityLogs(100),
+        repository.getActivityLogs(100, tenantId || undefined, false),
         repository.getMetrics(),
       ]);
 
@@ -316,6 +363,9 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       setSubscriptions(sortSubscriptions(subs));
       setDayConfig(config.days);
       setSeasonName(config.seasonName);
+      setSeasonCode(config.seasonCode || "");
+      setSeasons(config.seasons || []);
+      setActiveSeasonCode(config.activeSeasonCode || config.seasonCode || "");
       setSeasonEnabled(config.seasonEnabled !== false);
       if (config.payment) setPaymentConfig(config.payment);
       const fmActive = config.freeMealEnabled !== undefined ? config.freeMealEnabled !== false : config.freeMealEnabled !== false;
@@ -330,6 +380,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       setSoundEnabled(config.soundEnabled !== false);
       setNonAdminCheckoutEnabled(config.nonAdminCheckoutEnabled !== false);
       setCheatCodeEnabled(config.cheatCodeEnabled || false);
+      setSeasonCompleted(config.seasonCompleted === true);
       setVendorName(config.vendorName || "");
       setVendorAddress(config.vendorAddress || "");
       setVendorSettledCost(config.vendorSettledCost || "");
@@ -352,30 +403,65 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
     } finally {
       if (!silent) setLoading(false);
     }
-  }, [sortSubscriptions]);
+  }, [sortSubscriptions, tenantId, isSuperAdmin]);
 
   // Progressive Tiered Hydration & Real-Time Universal Listeners Engine
   useEffect(() => {
     if (!userRole) return;
+    if (!isSuperAdmin && !tenantId) return;
 
     let isMounted = true;
+    setLoading(true);
+
+    if (isSuperAdmin) {
+      Promise.all([
+        repository.getAppVersion(),
+        repository.getActivityLogs(100, undefined, true),
+      ]).then(([appVer, logsData]) => {
+        if (!isMounted) return;
+        if (appVer) {
+          setRemoteAppVersion(appVer.version);
+          setAndroidAppLocation(appVer.androidAppLocation);
+          setIosAppLocation(appVer.iosAppLocation);
+        }
+        setActivityLogs(logsData || []);
+        setLoading(false);
+      }).catch(err => {
+        console.error("SuperAdmin hydration error:", err);
+        if (isMounted) setLoading(false);
+      });
+
+      const unsubLogs = repository.onLogsDelta((newLog) => {
+        setActivityLogs((prev) => {
+          if (prev.some((l) => l.id === newLog.id)) return prev;
+          return [newLog, ...prev].sort((a, b) => b.timestamp - a.timestamp);
+        });
+      }, undefined, true);
+
+      return () => {
+        isMounted = false;
+        unsubLogs();
+      };
+    }
 
     // Progressive Tier 1: Fast Parallel Metadata Load (<300ms)
-    setLoading(true);
     Promise.all([
-      repository.getConfig(),
-      repository.getMenu(),
-      repository.getNotes(),
-      repository.getFoodPackages(),
-      repository.getCatererTransactions(),
+      repository.getConfig(tenantId || undefined),
+      repository.getMenu(tenantId || undefined),
+      repository.getNotes(tenantId || undefined),
+      repository.getFoodPackages(tenantId || undefined),
+      repository.getCatererTransactions(tenantId || undefined),
       repository.getAppVersion(),
+      repository.getActivityLogs(100, tenantId || undefined, false),
       repository.getMetrics(),
-      repository.getActivityLogs(100)
-    ]).then(([config, menu, notesData, packagesData, catererData, appVer, metricsData, logsData]) => {
+    ]).then(([config, menu, notesData, packagesData, catererData, appVer, logsData, metricsData]) => {
       if (!isMounted) return;
 
       setDayConfig(config.days || []);
       setSeasonName(config.seasonName || "");
+      setSeasonCode(config.seasonCode || "");
+      setSeasons(config.seasons || []);
+      setActiveSeasonCode(config.activeSeasonCode || config.seasonCode || "");
       setSeasonEnabled(config.seasonEnabled !== false);
       if (config.payment) setPaymentConfig(config.payment);
       const fmActive = config.freeMealEnabled !== undefined ? config.freeMealEnabled !== false : config.freeMealEnabled !== false;
@@ -390,6 +476,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       setSoundEnabled(config.soundEnabled !== false);
       setNonAdminCheckoutEnabled(config.nonAdminCheckoutEnabled !== false);
       setCheatCodeEnabled(config.cheatCodeEnabled || false);
+      setSeasonCompleted(config.seasonCompleted === true);
       setVendorName(config.vendorName || "");
       setVendorAddress(config.vendorAddress || "");
       setVendorSettledCost(config.vendorSettledCost || "");
@@ -398,6 +485,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       setIdentity1Options(config.identity1Options || blockOptions);
       setIdentity2Enabled(config.identity2Enabled !== false);
       setIdentity2Name(config.identity2Name || "Flat No");
+      setFooterText(config.footerText || "");
       setFoodMenu(menu);
       setNotes(notesData || []);
       setFoodPackages(packagesData || []);
@@ -414,7 +502,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
 
       // Progressive Tier 2: Initial Subscriptions Fetch
-      repository.list().then((subs) => {
+      repository.list(tenantId || undefined).then((subs) => {
         if (!isMounted) return;
         setSubscriptions(sortSubscriptions(subs));
       }).catch(err => console.error("Subscriptions list error:", err));
@@ -425,8 +513,6 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
     });
 
     const activeDays = getActiveDays(dayConfig);
-
-    // Register Universal Real-Time WebSocket Listeners with Debounced Batching
     let subBuffer: { type: "add" | "update" | "remove"; record?: Subscription; id?: string }[] = [];
     let subBatchTimer: any = null;
 
@@ -534,6 +620,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
     let logBuffer: ActivityLog[] = [];
     let logBatchTimer: any = null;
 
+    const effectiveTenantId = isSuperAdmin ? undefined : (tenantId || undefined);
     const unsubLogs = repository.onLogsDelta((newLog) => {
       logBuffer.push(newLog);
       if (!logBatchTimer) {
@@ -561,7 +648,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
           });
         }, 150);
       }
-    });
+    }, effectiveTenantId, isSuperAdmin);
 
     const unsubMenu = repository.onMenuChange((menu) => {
       setFoodMenu(menu);
@@ -570,6 +657,9 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
     const unsubConfig = repository.onConfigChange((config) => {
       setDayConfig(config.days || []);
       setSeasonName(config.seasonName || "");
+      setSeasonCode(config.seasonCode || "");
+      setSeasons(config.seasons || []);
+      setActiveSeasonCode(config.activeSeasonCode || config.seasonCode || "");
       setSeasonEnabled(config.seasonEnabled !== false);
       if (config.payment) setPaymentConfig(config.payment);
       const fmActive = config.freeMealEnabled !== undefined ? config.freeMealEnabled !== false : config.freeMealEnabled !== false;
@@ -583,6 +673,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       setSoundEnabled(config.soundEnabled !== false);
       setNonAdminCheckoutEnabled(config.nonAdminCheckoutEnabled !== false);
       setCheatCodeEnabled(config.cheatCodeEnabled || false);
+      setSeasonCompleted(config.seasonCompleted === true);
       setVendorName(config.vendorName || "");
       setVendorAddress(config.vendorAddress || "");
       setVendorSettledCost(config.vendorSettledCost || "");
@@ -591,6 +682,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       setIdentity1Options(config.identity1Options || blockOptions);
       setIdentity2Enabled(config.identity2Enabled !== false);
       setIdentity2Name(config.identity2Name || "Flat No");
+      setFooterText(config.footerText || "");
     });
 
     const unsubMetrics = repository.onMetricsChange((metrics) => {
@@ -714,6 +806,17 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
+    const unsubTenant = repository.onTenantStatusChange(tenantId || "", (status) => {
+      if (!isMounted || (userRole as UserRole) === UserRole.SUPER_ADMIN || !tenantId) return;
+      if (!status.exists) {
+        handleLogout();
+        showAlert(UI_TEXT.error, UI_TEXT.tenantDeletedError);
+      } else if (!status.enabled) {
+        handleLogout();
+        showAlert(UI_TEXT.error, UI_TEXT.tenantDeactivatedMsg);
+      }
+    });
+
     return () => {
       isMounted = false;
       if (subBatchTimer) clearTimeout(subBatchTimer);
@@ -728,8 +831,9 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       unsubMetrics();
       unsubAppVersion();
       unsubAuthConfig();
+      if (unsubTenant) unsubTenant();
     };
-  }, [userRole, sortSubscriptions]);
+  }, [userRole, tenantId, activeSeasonCode, sortSubscriptions]);
 
   // Lifecycle Reconnection Handlers (Mobile AppState & Web Visibility)
   useEffect(() => {
@@ -807,10 +911,13 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       // Immediate local state update (Optimistic)
       if (config.days) setDayConfig(config.days);
       if (config.seasonName !== undefined) setSeasonName(config.seasonName);
+      if (config.seasonCode !== undefined) setSeasonCode(config.seasonCode);
+      if (config.activeSeasonCode !== undefined) setActiveSeasonCode(config.activeSeasonCode);
       if (config.seasonEnabled !== undefined) setSeasonEnabled(config.seasonEnabled);
+      if (config.seasonCompleted !== undefined) setSeasonCompleted(config.seasonCompleted);
+      if (config.seasons !== undefined) setSeasons(config.seasons);
       if (config.payment) setPaymentConfig(config.payment);
       if (config.freeMealEnabled !== undefined) setFreeMealEnabled(config.freeMealEnabled);
-      else if (config.freeMealEnabled !== undefined) setFreeMealEnabled(config.freeMealEnabled);
       if (config.mobileEnabled !== undefined) setMobileEnabled(config.mobileEnabled);
       if (config.foodPriceEnabled !== undefined) setFoodPriceEnabled(config.foodPriceEnabled);
       if (config.kidsEnabled !== undefined) setKidsEnabled(config.kidsEnabled);
@@ -824,8 +931,10 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       if (config.vendorName !== undefined) setVendorName(config.vendorName);
       if (config.vendorAddress !== undefined) setVendorAddress(config.vendorAddress);
       if (config.vendorSettledCost !== undefined) setVendorSettledCost(config.vendorSettledCost);
+      if (config.footerText !== undefined) setFooterText(config.footerText);
 
-      await repository.updateConfig(config);
+      await repository.updateConfig(config, tenantId || undefined);
+      await refreshAllData(true);
     } catch (err: any) {
       addActivityLog({
         module: ActivityModule.CONFIG,
@@ -835,7 +944,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       });
       throw err;
     }
-  }, [addActivityLog]);
+  }, [tenantId, refreshAllData, addActivityLog]);
 
   const updateMenu = useCallback(async (menu: FoodMenu) => {
     try {
@@ -1734,11 +1843,122 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
     return subscriptions.reduce((sum, sub) => sum + (sub.peopleCount || 0) + (kidsEnabled ? (sub.kidsCount || 0) : 0) + (guestsEnabled ? (sub.guestsCount || 0) : 0), 0);
   }, [subscriptions, kidsEnabled, guestsEnabled]);
 
+  const createNewSeason = useCallback(async (newSeasonName: string, newSeasonCode: string) => {
+    const cleanCode = newSeasonCode.trim().toUpperCase();
+    const cleanName = newSeasonName.trim();
+
+    if (!cleanCode) {
+      showAlert(UI_TEXT.error, UI_TEXT.seasonCodeRequired);
+      return;
+    }
+    if (!cleanName) {
+      showAlert(UI_TEXT.error, UI_TEXT.seasonNameRequired);
+      return;
+    }
+
+    const currentSeasons = seasons || [];
+    const anyIncomplete = currentSeasons.some((s) => s.seasonEnabled || !s.seasonCompleted);
+    if (anyIncomplete) {
+      showAlert(
+        UI_TEXT.error,
+        UI_TEXT.newSeasonConstraintWarning
+      );
+      return;
+    }
+
+    const exists = currentSeasons.some((s) => (s.seasonCode || s.id || "").toUpperCase() === cleanCode);
+    if (exists) {
+      showAlert(UI_TEXT.error, UI_TEXT.seasonCodeDuplicateError);
+      return;
+    }
+
+    const newSeasonItem: SeasonConfig = {
+      id: cleanCode,
+      seasonName: cleanName,
+      seasonCode: cleanCode,
+      seasonEnabled: true,
+      seasonCompleted: false,
+      days: [],
+      payment: { enabled: true, maxPayments: 10, options: { upi: true, cash: true, bankTransfer: true } },
+      freeMealEnabled: true,
+      mobileEnabled: true,
+      foodPriceEnabled: false,
+      kidsEnabled: false,
+      guestsEnabled: false,
+      vendorKidsMealChargingEnabled: true,
+      whatsappCountryCode: whatsappCountryCode || UI_TEXT.defaultCountryCode,
+      quickCheckoutAutoCloseMs: 3000,
+      soundEnabled: true,
+      nonAdminCheckoutEnabled: true,
+      cheatCodeEnabled: false,
+      footerText: "",
+    };
+
+    const updatedSeasons = currentSeasons.map((s) => ({
+      ...s,
+      seasonEnabled: false,
+      seasonCompleted: true,
+    }));
+
+    updatedSeasons.push(newSeasonItem);
+
+    const fullConfig: AppConfig = {
+      activeSeasonCode: cleanCode,
+      seasons: updatedSeasons,
+      ...newSeasonItem,
+      identity1Enabled,
+      identity1Name,
+      identity1Options,
+      identity2Enabled,
+      identity2Name,
+    };
+
+    await updateConfig(fullConfig);
+    await refreshAllData(true);
+    showAlert(UI_TEXT.success, UI_TEXT.seasonCreatedSuccess);
+  }, [seasons, whatsappCountryCode, identity1Enabled, identity1Name, identity1Options, identity2Enabled, identity2Name, updateConfig, refreshAllData, showAlert]);
+
+  const switchActiveSeason = useCallback(async (targetSeasonCode: string) => {
+    const targetCode = targetSeasonCode.trim().toUpperCase();
+    const currentSeasons = seasons || [];
+    const targetSeason = currentSeasons.find(s => (s.seasonCode || s.id || "").toUpperCase() === targetCode);
+    if (!targetSeason) return;
+
+    const updatedSeasons = currentSeasons.map((s) => {
+      const match = (s.seasonCode || s.id || "").toUpperCase() === targetCode;
+      return {
+        ...s,
+        seasonEnabled: match,
+        seasonCompleted: !match,
+      };
+    });
+
+    const activeSeasonItem = updatedSeasons.find(s => (s.seasonCode || s.id || "").toUpperCase() === targetCode) || targetSeason;
+
+    const fullConfig: AppConfig = {
+      activeSeasonCode: targetCode,
+      seasons: updatedSeasons,
+      ...activeSeasonItem,
+      seasonEnabled: true,
+      seasonCompleted: false,
+      identity1Enabled,
+      identity1Name,
+      identity1Options,
+      identity2Enabled,
+      identity2Name,
+      footerText: activeSeasonItem.footerText || "",
+    };
+
+    await updateConfig(fullConfig);
+    await refreshAllData(true);
+  }, [seasons, identity1Enabled, identity1Name, identity1Options, identity2Enabled, identity2Name, footerText, updateConfig, refreshAllData]);
+
   const coreValue = useMemo(() => ({
     loading, firebaseError, refreshAllData,
-    subscriptions, foodMenu, dayConfig, seasonName, seasonEnabled, paymentConfig,
+    subscriptions, foodMenu, dayConfig, seasonName, seasonCode, seasonEnabled, paymentConfig,
+    seasons, activeSeasonCode, createNewSeason, switchActiveSeason,
     freeMealEnabled, mobileEnabled, foodPriceEnabled,
-    kidsEnabled, guestsEnabled, vendorKidsMealChargingEnabled, whatsappCountryCode, quickCheckoutAutoCloseMs, soundEnabled, nonAdminCheckoutEnabled, cheatCodeEnabled, identity1Enabled, identity1Name, identity1Options, identity2Enabled, identity2Name, vendorName, vendorAddress, vendorSettledCost, remoteAppVersion, androidAppLocation, iosAppLocation, kitchenMetrics,
+    kidsEnabled, guestsEnabled, vendorKidsMealChargingEnabled, whatsappCountryCode, quickCheckoutAutoCloseMs, soundEnabled, nonAdminCheckoutEnabled, cheatCodeEnabled, seasonCompleted, identity1Enabled, identity1Name, identity1Options, identity2Enabled, identity2Name, footerText, vendorName, vendorAddress, vendorSettledCost, remoteAppVersion, androidAppLocation, iosAppLocation, kitchenMetrics,
     dashboardData, collections, totalPeople,
     upsertSubscription, deleteSubscription, updateConfig, updateMenu,
     updateFreeMealCount, updateMealMenu, updateSubscriptionStatus, updateMealAbsent,
@@ -1746,9 +1966,10 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
     getAuthConfig, markSelfUpdate, updateFreeMealCountDebounced
   }), [
     loading, firebaseError, refreshAllData,
-    subscriptions, foodMenu, dayConfig, seasonName, seasonEnabled, paymentConfig,
+    subscriptions, foodMenu, dayConfig, seasonName, seasonCode, seasonEnabled, paymentConfig,
+    seasons, activeSeasonCode, createNewSeason, switchActiveSeason,
     freeMealEnabled, mobileEnabled, foodPriceEnabled,
-    kidsEnabled, guestsEnabled, vendorKidsMealChargingEnabled, whatsappCountryCode, quickCheckoutAutoCloseMs, soundEnabled, nonAdminCheckoutEnabled, cheatCodeEnabled, identity1Enabled, identity1Name, identity1Options, identity2Enabled, identity2Name, vendorName, vendorAddress, vendorSettledCost, remoteAppVersion, androidAppLocation, iosAppLocation, kitchenMetrics,
+    kidsEnabled, guestsEnabled, vendorKidsMealChargingEnabled, whatsappCountryCode, quickCheckoutAutoCloseMs, soundEnabled, nonAdminCheckoutEnabled, cheatCodeEnabled, seasonCompleted, identity1Enabled, identity1Name, identity1Options, identity2Enabled, identity2Name, footerText, vendorName, vendorAddress, vendorSettledCost, remoteAppVersion, androidAppLocation, iosAppLocation, kitchenMetrics,
     dashboardData, collections, totalPeople,
     upsertSubscription, deleteSubscription, updateConfig, updateMenu,
     updateFreeMealCount, updateMealMenu, updateSubscriptionStatus, updateMealAbsent,

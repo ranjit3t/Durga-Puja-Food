@@ -40,7 +40,7 @@ export function MenuEditorScreen() {
   const { userRole, handleLogout } = useAuth();
   const isAdmin = userRole === UserRole.ADMIN;
   const {
-    foodMenu: menu, dayConfig: config, seasonEnabled, foodPriceEnabled, updateMenu, updateMealMenu, kidsEnabled, guestsEnabled, freeMealEnabled
+    foodMenu: menu, dayConfig: config, seasonEnabled, foodPriceEnabled, updateMenu, updateMealMenu, kidsEnabled, guestsEnabled, freeMealEnabled, footerText
   } = useCoreDatabase();
   const { addActivityLog } = useActivityLogs();
   const { showAlert } = useUI();
@@ -341,7 +341,7 @@ export function MenuEditorScreen() {
         )}
 
         <View style={styles.footer}>
-           <Text style={styles.footerText}>{UI_TEXT.footerCopyright}</Text>
+           <Text style={styles.footerText}>{footerText || ""}</Text>
         </View>
       </ScrollView>
     </View>

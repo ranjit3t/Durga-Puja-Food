@@ -147,18 +147,34 @@ export function LoginScreen() {
           return;
         }
 
+        if (user.tenantId && user.role?.toLowerCase() !== UserRole.SUPER_ADMIN) {
+          const tenantsList = await repository.listTenants();
+          const tInfo = tenantsList[user.tenantId];
+          if (!tInfo) {
+            setVerifying(false);
+            showAlert(UI_TEXT.error, UI_TEXT.tenantDeletedError);
+            return;
+          }
+          if (tInfo.enabled === false) {
+            setVerifying(false);
+            showAlert(UI_TEXT.error, UI_TEXT.tenantInactiveError);
+            return;
+          }
+        }
+
         setVerifying(false);
         setLoading(true);
         const displayName = user.name || user.username;
         const formattedUser = user.name && user.name.toLowerCase() !== user.username.toLowerCase()
           ? `${user.name} (${user.username})`
           : user.username;
+        const effectiveTenant = user.role === UserRole.SUPER_ADMIN ? undefined : (user.tenantId || "eternia");
+        handleLogin(user.role as UserRole, displayName, user.username, effectiveTenant);
         addActivityLog({
           module: ActivityModule.AUTH,
           action: ActivityAction.LOGIN,
           description: UI_TEXT.logLogin.replace("{role}", user.role)
-        }, formattedUser, user.role as UserRole);
-        handleLogin(user.role as UserRole, displayName, user.username);
+        }, formattedUser, user.role as UserRole, effectiveTenant);
       } else {
         setVerifying(false);
         const attempts = recordFailedAttempt(username);

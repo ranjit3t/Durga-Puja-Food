@@ -63,10 +63,10 @@ import {
 } from "../utils/paymentUtils";
 
 export function DetailsScreen() {
-  const { userRole, handleLogout } = useAuth();
+  const { userRole, tenantId, handleLogout } = useAuth();
   const {
-    subscriptions, dayConfig, paymentConfig, seasonEnabled, foodMenu, mobileEnabled,
-    deleteSubscription, whatsappCountryCode, kidsEnabled, guestsEnabled, nonAdminCheckoutEnabled
+    subscriptions, dayConfig, paymentConfig, seasonEnabled, seasonCompleted, foodMenu, mobileEnabled,
+    deleteSubscription, whatsappCountryCode, kidsEnabled, guestsEnabled, nonAdminCheckoutEnabled, seasonCode, footerText
   } = useCoreDatabase();
   const { foodPackages } = useFoodPackages();
   const { addActivityLog } = useActivityLogs();
@@ -271,7 +271,7 @@ export function DetailsScreen() {
     dayList.some(t => t.breakfast || t.lunch || t.dinner || t.breakfastParcel || t.lunchParcel || t.dinnerParcel)
   );
 
-  const canDeletePass = !hasNonZeroPayment && !hasAnyMealTaken;
+  const canDeletePass = !hasAnyMealTaken && !seasonCompleted;
 
   const onDelete = () => {
     const passLabel = getPassDisplayLabel(subscription);
@@ -403,7 +403,7 @@ export function DetailsScreen() {
               </View>
               {isAdmin && (
                 <Text style={{ fontSize: 13, fontWeight: "700", color: theme.colors.white, opacity: 0.9, marginTop: 4 }}>
-                  {UI_TEXT.passCodeLabel}: {subscription.passcode || generateUniquePasscode(subscriptions, subscription.id, subscription.id)}
+                  {UI_TEXT.passCodeLabel}: {subscription.passcode || generateUniquePasscode(subscriptions, subscription.id, subscription.id, tenantId || "", seasonCode)}
                 </Text>
               )}
               {(() => {
@@ -1128,7 +1128,7 @@ export function DetailsScreen() {
         </View>
 
         <View style={styles.footer}>
-           <Text style={styles.footerText}>{UI_TEXT.footerCopyright}</Text>
+           <Text style={styles.footerText}>{footerText || ""}</Text>
         </View>
       </ScrollView>
 

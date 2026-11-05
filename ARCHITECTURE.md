@@ -309,6 +309,12 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
 - **100% UI Text Localization**: All sort button labels and accessibility labels bind directly to `UI_TEXT` tokens (`UI_TEXT.block`, `UI_TEXT.createdTime`, `UI_TEXT.editedTime`, `UI_TEXT.paidAmount`).
 - **Strict Special-Meals-Only Pass Card Badges**: Pass card star icon badges strictly reflect passes subscribed exclusively to special meals (`isSpecialOnlySubscribed`), matching the Special Meals Only filter chip count and criteria perfectly.
 
+### Z2. SuperAdmin Role, Multi-Tenant Governance & Instant Real-Time Session Eviction Engine (`HomeScreen.tsx`, `AuthContext.tsx`, `DatabaseContext.tsx`, `ChatContext.tsx`, `repository.ts`)
+- **SuperAdmin Portal Architecture**: When logged in as a SuperAdmin (`UserRole.SUPER_ADMIN`), `HomeScreen` renders an uncluttered management dashboard featuring a Top Red Summary Card (Total Tenants, Seasons, Users, Active Users) and 2 dedicated action buttons (**Tenant Management** & **Version Management**).
+- **Tenant & User Management**: SuperAdmins can create new tenants (validating unique Tenant IDs to prevent re-use), edit tenant names (with Tenant ID locked as read-only once created), toggle tenant Active/Inactive status, and manage tenant user accounts (supporting Admin, Caterer, Vendor roles, Change Password, Lock/Unlock, Disable/Enable, Soft-Delete).
+- **Cascading Account Disables & Real-Time Eviction**: Marking a tenant inactive automatically disables all system user accounts belonging to that tenant (`disabled: true`). Real-time WebSocket listeners (`onTenantStatusChange`) monitor `tenants/${tenantId}`; deactivating or deleting a tenant in Firebase RTDB instantly evicts active user sessions app-wide in sub-50ms with localized error alerts.
+- **Strict Tenant Boundaries**: Peer-to-peer chat (`ChatContext.tsx`) and team notes (`tenants/${tenantId}/notes`) enforce strict tenant filtering, preventing cross-tenant user discovery or communication.
+
 ### Z. Detailed Meal-Wise & Day-Wise Payment Reports Engine ([`MealWisePaymentReport.tsx`](src/components/report/MealWisePaymentReport.tsx), [`DayWisePaymentReport.tsx`](src/components/report/DayWisePaymentReport.tsx), [`ReportSummaryCard.tsx`](src/components/report/ReportSummaryCard.tsx), [`MealReportItemCard.tsx`](src/components/report/MealReportItemCard.tsx), [`paymentUtils.ts`](src/utils/paymentUtils.ts))
 - **Modularized Report Architecture**: Reusable shared report card components (`ReportSummaryCard` and `MealReportItemCard`) cleanly modularize the presentation layer across both Meal-Wise and Day-Wise payment reports.
 - **Granular Financial Breakdown & Category Portions**: Meal-Wise and Day-Wise reports provide full meal-level component breakdowns (Menu Price, separate Parcel Charges, Package Discounts, Excess Amounts, and category-specific portion counts across Adults, Kids, and Guests when active, plus Free Meal Desk plate counts at ₹0 price).
@@ -497,6 +503,24 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
 
 ### BE. Currency Display & Settings Header Polish (`DetailsScreen.tsx`, `SettingsScreen.tsx`)
 - **Clean Formatting**: Removed the currency symbol (`$`) prefix from pass amount displays and removed the Manage Users button from the Settings screen header.
+
+### BF. Reciprocal Season Active & Done State Governance (`SettingsScreen.tsx`)
+- **Header Banner Governance**: Houses both **Season Active** (`seasonEnabled`) and **Mark Season Done** (`seasonCompleted`) switches directly inside the Master Season Header Banner card at the top of Settings.
+- **Dynamic Header Category Title**: When completed (`seasonCompleted = true`), the banner title displays **COMPLETED FESTIVAL SEASON CONFIGURATION** (omitting "ACTIVE"). When active, it displays **ACTIVE FESTIVAL SEASON CONFIGURATION**.
+- **Mutually Exclusive Reciprocal Link**: Toggling Season Active (`seasonEnabled = true`) automatically sets Done (`seasonCompleted`) to `false`. Toggling Season Completed (`seasonCompleted = true`) automatically sets Active (`seasonEnabled`) to `false`.
+- **Greyed-Out Read-Only Settings**: When a season is marked completed (`seasonCompleted = true`), all configuration cards and settings below the header banner are greyed out (`opacity: 0.6`, `pointerEvents: "none"`), locking all settings against accidental modifications until reactivated or uncompleted.
+
+### BG. Inactive / Completed Season Operational Guard (`InactiveSeasonBanner.tsx`, `HomeScreen.tsx`)
+- **Active Season Scoping**: Operational features (Home Summary Card, Free Meals, Pass Subscriptions, Scanning, View Subscriptions, Analytics, Reports, Menu, Directory, and Caterer Finance) are bound exclusively to the current active season (`seasonEnabled && !seasonCompleted`), rendering `InactiveSeasonBanner` when no active season is running.
+- **Global Tool Exemption**: Non-season-dependent administration tools (**System Settings**, **Audit Log**, and **Notes**) remain fully visible and accessible at all times to allow operators to manage system configuration and audit records.
+
+### BH. Multi-Season Architecture & Season Creation (`repository.ts`, `DatabaseContext.tsx`, `SettingsScreen.tsx`)
+- **Season-Scoped Collections**: `subscriptions`, `menu`, `caterer_finance`, and `food_packages` are dynamically scoped by `seasonCode` (`seasons_data/${seasonCode}/${collection}`). Legacy `DP2026` root paths remain supported for 100% backward compatibility.
+- **Season Creation & Single Active Invariant**: Administrators can create new seasons via `createNewSeason` modal in Settings. Activating or creating a season deactivates all other seasons, enforcing the single active season rule.
+
+### BI. Multi-Tenant Data Isolation Architecture (`AuthContext.tsx`, `repository.ts`, `database.rules.json`)
+- **Common Auth Level**: User credentials and roles are managed at the common level (`auth_config`), with each user entry containing a `tenantId` property (e.g. `"eternia"`).
+- **Tenant Data Isolation**: Upon login, the user's `tenantId` dynamically scopes all tenant-specific data (`config`, `notes`, `logs`, `seasons_data/${seasonCode}/...`) under `tenants/${tenantId}/...`, enforcing strict data segregation across tenants.
 
 ## 6. Quality Assurance & UI Catalog
 

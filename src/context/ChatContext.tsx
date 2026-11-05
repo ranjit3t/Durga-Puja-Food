@@ -60,7 +60,7 @@ interface ChatContextType {
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
 export function ChatProvider({ children }: { children: React.ReactNode }) {
-  const { userAccountName, userName, userRole } = useAuth();
+  const { userAccountName, userName, userRole, tenantId } = useAuth();
   const [isExpanded, setIsExpanded] = useState(false);
   const [activeRecipient, setActiveRecipient] = useState<ChatUser | null>(null);
 
@@ -73,6 +73,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       disabled?: boolean | string | number;
       deleted?: boolean | string | number;
       locked?: boolean | string | number;
+      tenantId: string;
     }>
   >([]);
   const [presenceMap, setPresenceMap] = useState<Record<string, UserPresence>>(
@@ -200,6 +201,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       const cleanU = u.username.toLowerCase();
       systemUsernames.add(cleanU);
       if (cleanU === currentClean) return;
+
+      // Strict Tenant Boundary: Only allow chat between users of the same tenant
+      const userTenant = (u.tenantId || "").trim().toLowerCase();
+      const currentTenant = (tenantId || "").trim().toLowerCase();
+      if (currentTenant && userTenant && userTenant !== currentTenant) return;
 
       const isDisabled =
         u.disabled === true ||

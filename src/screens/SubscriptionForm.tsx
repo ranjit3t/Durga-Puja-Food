@@ -50,6 +50,9 @@ import {
   isSlotMissedParcel,
   isMealSlotAbsent,
   isSeasonDone,
+  getMealMenuForDay,
+  findDayConfig,
+  isMealInPast,
 } from "../constants";
 import {
   MealChoice,
@@ -72,6 +75,7 @@ import {
   FoodPackage,
   AppliedPackageInfo,
   PackageApplicability,
+  MealConfig,
 } from "../domain";
 import { ActionLabel } from "../components/common/ActionLabel";
 import { PaymentScannerModal } from "../components/common/PaymentScannerModal";
@@ -99,11 +103,11 @@ import {
 } from "../utils/paymentUtils";
 
 export function SubscriptionForm() {
-  const { userRole, userName, userAccountName, handleLogout } = useAuth();
+  const { userRole, userName, userAccountName, tenantId, handleLogout } = useAuth();
   const {
     dayConfig, paymentConfig, seasonEnabled, foodPriceEnabled, foodMenu, mobileEnabled,
     upsertSubscription, deleteSubscription, kidsEnabled, guestsEnabled, subscriptions,
-    identity1Enabled, identity1Name, identity1Options, identity2Enabled, identity2Name
+    identity1Enabled, identity1Name, identity1Options, identity2Enabled, identity2Name, seasonCode, footerText
   } = useCoreDatabase();
   const { addActivityLog } = useActivityLogs();
   const { showAlert: showGlobalAlert } = useUI();
@@ -243,7 +247,7 @@ export function SubscriptionForm() {
   const [mobileInput, setMobileInput] = useState(form.mobile ? String(form.mobile) : "");
   const [selectedPerson, setSelectedPerson] = useState(0);
   const [selectedDay, setSelectedDay] = useState<Day>(currentDayId || activeDays[0]);
-  const [isManualAmount, setIsManualAmount] = useState(lockIdentity);
+  const [isManualAmount, setIsManualAmount] = useState(false);
 
   const liveRecord = useMemo(() => {
     if (!value?.id) return null;
@@ -355,7 +359,7 @@ export function SubscriptionForm() {
       if (parcelAlertFiredRef.current === passId) return;
 
       const { dayId, type } = currentMealInfo;
-      const dayConf = dayConfig.find(d => d.id === dayId);
+      const dayConf = findDayConfig(dayConfig, dayId);
       const mealConf = dayConf ? dayConf[type] : null;
 
       if (mealConf?.enabled && mealConf.parcel && mealConf.parcelAlert) {
@@ -393,7 +397,7 @@ export function SubscriptionForm() {
       let lV = 0, lN = 0, lP = 0;
       let dV = 0, dN = 0, dP = 0;
 
-      const dConfig = dayConfig.find(d => d.id === dayId);
+      const dConfig = findDayConfig(dayConfig, dayId);
       slots.forEach((s) => {
         const bConf = dConfig ? dConfig[MealType.BREAKFAST] : undefined;
         const lConf = dConfig ? dConfig[MealType.LUNCH] : undefined;
@@ -907,7 +911,7 @@ export function SubscriptionForm() {
     amount: !isAdmin && value?.amount !== undefined ? value.amount : totalAmount.toFixed(0),
     paymentMode: !isAdmin && value?.paymentMode !== undefined ? value.paymentMode : (payments[0]?.mode || PaymentMode.CASH),
     transactionId: !isAdmin && value?.transactionId !== undefined ? value.transactionId : (payments[0]?.transactionId || ""),
-    passcode: !isAdmin && value?.passcode ? value.passcode : (form.passcode || generateUniquePasscode(subscriptions, passId, passId)),
+    passcode: !isAdmin && value?.passcode ? value.passcode : (form.passcode || generateUniquePasscode(subscriptions, passId, passId, tenantId || "", seasonCode)),
   };
 
   if (prepared.mobile === undefined) {
@@ -1203,20 +1207,9 @@ export function SubscriptionForm() {
 
   // Auto-calculation of total based on food prices and dynamic excess payment entry
   useEffect(() => {
-    if (!foodPriceEnabled || !paymentConfig.enabled) return;
+    if (!paymentConfig.enabled) return;
 
-    const total = calculatePassTotalWithPackages(
-      form.mealSlots,
-      form.peopleCount,
-      form.kidsCount || 0,
-      appliedPackages,
-      foodPackages,
-      foodMenu,
-      dayConfig,
-      !!kidsEnabled,
-      form.guestsCount || 0,
-      !!guestsEnabled
-    );
+    const total = calculatedExpectedAmount;
 
     // Case 1: Single payment entry and either:
     // a) New pass (!lockIdentity) without manual price edit, OR
@@ -1235,8 +1228,8 @@ export function SubscriptionForm() {
       return;
     }
 
-    // Case 2: Editing an existing pass with changed choices (when not manually entering payment amounts)
-    if (lockIdentity && hasMealOrParcelChoicesChanged && !isManualAmount) {
+    // Case 2: Editing an existing pass (when not manually entering payment amounts)
+    if (lockIdentity && !isManualAmount) {
       const defaultMode = enabledMethods.includes(PaymentMode.UPI)
         ? PaymentMode.UPI
         : (enabledMethods[0] as any) || PaymentMode.UPI;
@@ -1380,9 +1373,9 @@ export function SubscriptionForm() {
       return;
     }
 
-    let finalPasscode = !isAdmin && value?.passcode ? value.passcode : (updatedPrepared.passcode || generateUniquePasscode(subscriptions, passId, passId));
+    let finalPasscode = !isAdmin && value?.passcode ? value.passcode : (updatedPrepared.passcode || generateUniquePasscode(subscriptions, passId, passId, tenantId || "", seasonCode));
     while (subscriptions.some(s => s.passcode === finalPasscode && s.id !== passId)) {
-      finalPasscode = generateUniquePasscode(subscriptions, passId, passId + "_" + Math.floor(Math.random() * 10000));
+      finalPasscode = generateUniquePasscode(subscriptions, passId, passId + "_" + Math.floor(Math.random() * 10000), tenantId || "", seasonCode);
     }
     updatedPrepared.passcode = finalPasscode;
 
@@ -1730,22 +1723,28 @@ export function SubscriptionForm() {
                   getValidSlotChoice(selectedDay, slot, form.mealSlots[selectedDay]?.[selectedPerson]?.[slot], dayConfig);
                 const isVegOnly = isVegOnlyDay(selectedDay, dayConfig);
                 const isDone = isMealDone(selectedDay, slot, dayConfig);
-                const isCurrent = isMealCurrent(selectedDay, slot, dayConfig);
-                const isFuture = isMealInFuture(selectedDay, slot, dayConfig);
-                const isPast = !isCurrent && !isFuture;
-                const forceLock = !isSeasonCompleted && (isDone || isPast);
-                const isLocked = forceLock || ((isDone || (!lockIdentity && isPast)) && !isAdmin);
+                const isPast = isMealInPast(selectedDay, slot, dayConfig);
+                const isInactive = isDone || isPast;
+                const isLocked = isInactive && !isAdmin;
                 const isSpecial = isSpecialMeal(selectedDay, slot, dayConfig);
 
-                const dayConf = (dayConfig || []).find((d) => d.id === selectedDay);
+                const dayConf = findDayConfig(dayConfig, selectedDay);
                 const mConf = dayConf ? dayConf[slot] : undefined;
-                const varieties = getMealVarieties(mConf);
+                const mealDayObj = getMealMenuForDay(foodMenu, selectedDay, dayConfig);
+                const mealMenuObj = mealDayObj?.[slot];
+                const combinedConf = {
+                  enabled: true,
+                  ...(mConf || {}),
+                  ...(mealMenuObj || {}),
+                  varieties: mealMenuObj?.varieties || mConf?.varieties,
+                } as MealConfig;
+                const varieties = getMealVarieties(combinedConf, isVegOnly);
 
                 return (
                   <View key={slot} style={[{ marginBottom: 16 }, isLocked && { opacity: 0.5 }]}>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 }}>
                       <Text style={[styles.label, { marginTop: 0, marginBottom: 0, fontSize: 14, color: isSpecial ? theme.colors.specialMealText : theme.colors.textPrimary }]}>
-                        {label} {isDone ? `(${UI_TEXT.mealDoneLabel})` : (!lockIdentity && isPast) ? `(${UI_TEXT.resSuffix})` : ""}
+                        {label} {isDone ? `(${UI_TEXT.mealDoneLabel})` : ""}
                       </Text>
                       {isSpecial && (
                         <View style={{ backgroundColor: theme.colors.specialMealBorder, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
@@ -1858,25 +1857,25 @@ export function SubscriptionForm() {
                       const isParcel = isParcelValidForSlot(selectedDay, slot, currentChoice, form.mealSlots[selectedDay]?.[selectedPerson]?.[`${slot}Parcel` as keyof MealSlot], dayConfig, isKidSlot, !!kidsEnabled);
                     const label = getMealLabel(slot);
                     const isDone = isMealDone(selectedDay, slot, dayConfig);
-                    const isCurrent = isMealCurrent(selectedDay, slot, dayConfig);
-                    const isFuture = isMealInFuture(selectedDay, slot, dayConfig);
-                    const isPast = !isCurrent && !isFuture;
-                    const forceLock = !isSeasonCompleted && (isDone || isPast);
-                    const isLocked = forceLock || ((isDone || (!lockIdentity && isPast)) && !isAdmin);
+                    const isPast = isMealInPast(selectedDay, slot, dayConfig);
+                    const isInactive = isDone || isPast;
+                    const isLocked = lockIdentity && isInactive && !isAdmin;
                     const isSpecial = isSpecialMeal(selectedDay, slot, dayConfig);
 
-                    const dayConf = (dayConfig || []).find((d) => d.id === selectedDay);
+                    const dayConf = findDayConfig(dayConfig, selectedDay);
                     const mConf = dayConf ? dayConf[slot] : undefined;
                     const varieties = getMealVarieties(mConf);
                     const dietKey = getDietTypeForChoice(currentChoice, varieties);
                     const variety = varieties.find(v => v.id === currentChoice) || varieties.find(v => v.type === dietKey);
                     const parcelColorStyle = variety?.color ? { backgroundColor: variety.color, borderColor: variety.color } : (dietKey === DietType.NON_VEG ? styles.nonVegChoice : styles.vegChoice);
 
+                    const isParcelDisabled = currentChoice === DietaryOption.NONE || isLocked || !canEdit;
+
                     return (
                       <Pressable
                         key={slot}
-                        disabled={currentChoice === DietaryOption.NONE || isLocked || !isAdmin}
-                        onPress={() => isAdmin && canEdit && !isLocked && setMealParcel(slot, !isParcel)}
+                        disabled={isParcelDisabled}
+                        onPress={() => canEdit && !isLocked && setMealParcel(slot, !isParcel)}
                         style={[
                           styles.choice,
                           isParcel
@@ -1887,7 +1886,7 @@ export function SubscriptionForm() {
                             borderWidth: 2,
                             borderColor: theme.colors.specialMealBorder,
                           },
-                          (currentChoice === DietaryOption.NONE || isLocked || !isAdmin) && { opacity: 0.2 },
+                          isParcelDisabled && { opacity: 0.2 },
                           { paddingVertical: 12, paddingHorizontal: 4 }
                         ]}
                       >
@@ -1911,7 +1910,7 @@ export function SubscriptionForm() {
           {/* SECTION 3: Food Collection */}
           {lockIdentity && [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].some(s => {
             const choice = form.mealSlots[selectedDay]?.[selectedPerson]?.[s];
-            const dayConf = (dayConfig || []).find((d) => d.id === selectedDay);
+            const dayConf = findDayConfig(dayConfig, selectedDay);
             const mConf = dayConf ? dayConf[s] : undefined;
             const varieties = getMealVarieties(mConf);
             const dietKey = getDietTypeForChoice(choice, varieties);
@@ -1931,7 +1930,7 @@ export function SubscriptionForm() {
                     const choice = form.mealSlots[selectedDay]?.[selectedPerson]?.[slot];
                     if (!choice || choice === DietaryOption.NONE) return null;
 
-                    const dayConf = (dayConfig || []).find((d) => d.id === selectedDay);
+                    const dayConf = findDayConfig(dayConfig, selectedDay);
                     const mConf = dayConf ? dayConf[slot] : undefined;
                     const varieties = getMealVarieties(mConf);
                     const dietKey = getDietTypeForChoice(choice, varieties);
@@ -2078,7 +2077,7 @@ export function SubscriptionForm() {
                           const parcelTakenKey = `${slot}Parcel`;
                           const isParcelTaken = !!form.takenByPerson[selectedDay]?.[selectedPerson]?.[parcelTakenKey as keyof TakenState];
 
-                          const dayConf = (dayConfig || []).find((d) => d.id === selectedDay);
+                          const dayConf = findDayConfig(dayConfig, selectedDay);
                           const mConf = dayConf ? dayConf[slot] : undefined;
                           const varieties = getMealVarieties(mConf);
                           const dietKey = getDietTypeForChoice(choice, varieties);
@@ -2247,7 +2246,7 @@ export function SubscriptionForm() {
         </View>
 
         <View style={styles.footer}>
-           <Text style={styles.footerText}>{UI_TEXT.footerCopyright}</Text>
+           <Text style={styles.footerText}>{footerText || ""}</Text>
         </View>
       </ScrollView>
 
@@ -2538,7 +2537,7 @@ export function SubscriptionForm() {
                     const mealItems = viewingPackage.selectedMealItems?.[dayId] || (viewingPackage.selectedMeals?.[dayId] || []).map((m: any) => ({ mealType: m, varietyId: "" }));
                     const mLabels = mealItems.map((i) => {
                       const mLabel = getMealLabel(i.mealType);
-                      const dObj = dayConfig.find((d) => d.id === dayId);
+                      const dObj = findDayConfig(dayConfig, dayId);
                       const mealConf = dObj ? (dObj as any)[i.mealType] : null;
                       const varieties = getMealVarieties(mealConf);
                       const v = varieties.find((vr) => vr.id === i.varietyId);

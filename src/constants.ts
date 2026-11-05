@@ -1,10 +1,17 @@
 /**
  * Shared Application Constants and Logic Helpers
  */
-import { FoodMenu, ConfigDay, AppConfig, MealType, DietType, DietaryOption, normalizeChoice, toBool, PaymentMode, MealAllocation, DietaryVariety, MealConfig, MealMenu, PackageApplicability, MealSlot, TakenState } from "./domain";
+import { FoodMenu, DayMenu, ConfigDay, AppConfig, MealType, DietType, DietaryOption, normalizeChoice, toBool, PaymentMode, MealAllocation, DietaryVariety, MealConfig, MealMenu, PackageApplicability, MealSlot, TakenState } from "./domain";
 import { UI_TEXT } from "./strings";
 import { Subscription } from "./types";
-import { encryptQrPayload, decryptQrPayload } from "./utils/qrEncryption";
+import { encryptQrPayload, decryptQrPayload, decryptQrPayloadDetails } from "./utils/qrEncryption";
+
+export function findDayConfig(config: ConfigDay[], dayId: string): ConfigDay | undefined {
+  if (!config || !dayId) return undefined;
+  const direct = (config || []).find(d => d.id === dayId || d.label === dayId || d.abbr === dayId);
+  if (direct) return direct;
+  return (config || []).find(d => (d.id || "").toLowerCase() === dayId.toLowerCase() || (d.label || "").toLowerCase() === dayId.toLowerCase() || (d.abbr || "").toLowerCase() === dayId.toLowerCase());
+}
 
 /**
  * Returns the enabled days from the config.
@@ -16,13 +23,33 @@ export const getActiveDays = (config: ConfigDay[]) =>
  * Returns the configured label for a given day ID.
  */
 export const getDayLabel = (dayId: string, config: ConfigDay[]) =>
-  (config || []).find((d) => d.id === dayId)?.label || dayId;
+  findDayConfig(config, dayId)?.label || dayId;
 
 /**
  * Returns the configured abbreviation for a given day ID.
  */
 export const getDayAbbr = (dayId: string, config: ConfigDay[]) =>
-  (config || []).find((d) => d.id === dayId)?.abbr || dayId.slice(0, 3);
+  findDayConfig(config, dayId)?.abbr || dayId.slice(0, 3);
+
+export function getMealMenuForDay(foodMenu: FoodMenu, dayId: string, config: ConfigDay[]): DayMenu | undefined {
+  if (!foodMenu) return undefined;
+  if (foodMenu[dayId]) return foodMenu[dayId];
+
+  const matchedDay = findDayConfig(config, dayId);
+  if (matchedDay) {
+    if (foodMenu[matchedDay.id]) return foodMenu[matchedDay.id];
+    if (foodMenu[matchedDay.label]) return foodMenu[matchedDay.label];
+  }
+
+  const enabledDays = (config || []).filter(d => d.enabled);
+  const idx = enabledDays.findIndex(d => d.id === dayId || d.label === dayId);
+  const menuKeys = Object.keys(foodMenu);
+  if (idx >= 0 && idx < menuKeys.length) {
+    return foodMenu[menuKeys[idx] as keyof FoodMenu];
+  }
+
+  return foodMenu[dayId as keyof FoodMenu];
+}
 
 /**
  * Checks if a specific meal slot (breakfast/lunch/dinner) is enabled for a day.
@@ -33,7 +60,7 @@ export const isMealEnabled = (
   meal: MealType,
   config: ConfigDay[]
 ) => {
-  const dayConfig = (config || []).find((d) => d.id === dayId);
+  const dayConfig = findDayConfig(config, dayId);
   if (!dayConfig || !dayConfig.enabled) return false;
   return dayConfig[meal]?.enabled || false;
 };
@@ -46,7 +73,7 @@ export const isMealDone = (
   meal: MealType,
   config: ConfigDay[]
 ) => {
-  const dayConfig = (config || []).find((d) => d.id === dayId);
+  const dayConfig = findDayConfig(config, dayId);
   if (!dayConfig || !dayConfig.enabled) return false;
   return dayConfig[meal]?.done || false;
 };
@@ -59,7 +86,7 @@ export const isMealCurrent = (
   meal: MealType,
   config: ConfigDay[]
 ) => {
-  const dayConfig = (config || []).find((d) => d.id === dayId);
+  const dayConfig = findDayConfig(config, dayId);
   if (!dayConfig || !dayConfig.enabled) return false;
   return dayConfig[meal]?.current || false;
 };
@@ -72,7 +99,7 @@ export const isSpecialMeal = (
   meal: MealType,
   config: ConfigDay[]
 ): boolean => {
-  const dayConfig = (config || []).find((d) => d.id === dayId);
+  const dayConfig = findDayConfig(config, dayId);
   if (!dayConfig || !dayConfig.enabled) return false;
   return !!dayConfig[meal]?.special;
 };
@@ -175,12 +202,13 @@ export const isMealInFuture = (
   const mealOrder = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER];
   const activeDays = (config || []).filter((d) => d && d.enabled);
 
-  const flattened: { dayId: string; meal: MealType; current: boolean }[] = [];
+  const flattened: { dayId: string; label: string; meal: MealType; current: boolean }[] = [];
   activeDays.forEach((d) => {
     mealOrder.forEach((m) => {
       if (d[m]?.enabled) {
         flattened.push({
           dayId: d.id,
+          label: d.label,
           meal: m,
           current: !!d[m]?.current,
         });
@@ -191,10 +219,51 @@ export const isMealInFuture = (
   const currentIdx = flattened.findIndex((f) => f.current);
   if (currentIdx === -1) return false;
 
-  const targetIdx = flattened.findIndex((f) => f.dayId === dayId && f.meal === meal);
+  const matchedDay = findDayConfig(config, dayId);
+  const targetDayId = matchedDay ? matchedDay.id : dayId;
+
+  const targetIdx = flattened.findIndex((f) => (f.dayId === targetDayId || f.label === dayId) && f.meal === meal);
   if (targetIdx === -1) return false;
 
   return targetIdx > currentIdx;
+};
+
+/**
+ * Checks if a specific meal slot is in the past relative to the globally active CURRENT meal.
+ * If no meal is marked as CURRENT, returns false (nothing is past).
+ */
+export const isMealInPast = (
+  dayId: string,
+  meal: MealType,
+  config: ConfigDay[]
+) => {
+  const mealOrder = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER];
+  const activeDays = (config || []).filter((d) => d && d.enabled);
+
+  const flattened: { dayId: string; label: string; meal: MealType; current: boolean }[] = [];
+  activeDays.forEach((d) => {
+    mealOrder.forEach((m) => {
+      if (d[m]?.enabled) {
+        flattened.push({
+          dayId: d.id,
+          label: d.label,
+          meal: m,
+          current: !!d[m]?.current,
+        });
+      }
+    });
+  });
+
+  const currentIdx = flattened.findIndex((f) => f.current);
+  if (currentIdx === -1) return false;
+
+  const matchedDay = findDayConfig(config, dayId);
+  const targetDayId = matchedDay ? matchedDay.id : dayId;
+
+  const targetIdx = flattened.findIndex((f) => (f.dayId === targetDayId || f.label === dayId) && f.meal === meal);
+  if (targetIdx === -1) return false;
+
+  return targetIdx < currentIdx;
 };
 
 /**
@@ -204,12 +273,13 @@ export const getMealConstraints = (dayId: string, meal: MealType, config: Config
   const mealOrder = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER];
   const activeDays = (config || []).filter((d) => d && d.enabled);
 
-  const flattened: { dayId: string; meal: MealType; done: boolean; current: boolean }[] = [];
+  const flattened: { dayId: string; label: string; meal: MealType; done: boolean; current: boolean }[] = [];
   activeDays.forEach((d) => {
     mealOrder.forEach((m) => {
       if (d[m]?.enabled) {
         flattened.push({
           dayId: d.id,
+          label: d.label,
           meal: m,
           done: !!d[m]?.done,
           current: !!d[m]?.current,
@@ -218,7 +288,10 @@ export const getMealConstraints = (dayId: string, meal: MealType, config: Config
     });
   });
 
-  const idx = flattened.findIndex((f) => f.dayId === dayId && f.meal === meal);
+  const matchedDay = findDayConfig(config, dayId);
+  const targetDayId = matchedDay ? matchedDay.id : dayId;
+
+  const idx = flattened.findIndex((f) => (f.dayId === targetDayId || f.label === dayId) && f.meal === meal);
   if (idx === -1) {
     return {
       canMarkDone: true,
@@ -272,9 +345,15 @@ export function getMealVarieties(mealConfig?: MealConfig, vegOnly?: boolean): Di
   let rawVarieties: DietaryVariety[] = [];
   if (mealConfig.varieties) {
     if (Array.isArray(mealConfig.varieties)) {
-      rawVarieties = mealConfig.varieties.filter(v => v && typeof v === 'object' && v.id);
+      rawVarieties = mealConfig.varieties.filter(v => v && typeof v === 'object');
     } else if (typeof mealConfig.varieties === 'object') {
-      rawVarieties = Object.values(mealConfig.varieties).filter(v => v && typeof v === 'object' && (v as any).id) as DietaryVariety[];
+      rawVarieties = Object.entries(mealConfig.varieties).map(([key, val]: [string, any]) => ({
+        id: val?.id || key,
+        name: val?.name || (key.toLowerCase().includes("nonveg") ? "Non-Veg" : "Veg"),
+        type: val?.type || (key.toLowerCase().includes("nonveg") ? DietType.NON_VEG : DietType.VEG),
+        color: val?.color || (key.toLowerCase().includes("nonveg") ? "#dc2626" : "#16a34a"),
+        ...val,
+      }));
     }
   }
 
@@ -283,12 +362,14 @@ export function getMealVarieties(mealConfig?: MealConfig, vegOnly?: boolean): Di
   if (nonVegAllowed) baseVarieties.push({ ...DEFAULT_NON_VEG_VARIETY });
 
   rawVarieties.forEach((cv) => {
-    const existingIdx = baseVarieties.findIndex((bv) => bv.id === cv.id);
+    const existingIdx = baseVarieties.findIndex((bv) => bv.id === cv.id || bv.type === cv.type);
     if (existingIdx >= 0) {
       baseVarieties[existingIdx] = {
         ...baseVarieties[existingIdx],
         ...cv,
+        id: cv.id || baseVarieties[existingIdx].id,
         name: cv.name || baseVarieties[existingIdx].name,
+        type: cv.type || baseVarieties[existingIdx].type,
         color: cv.color || baseVarieties[existingIdx].color,
       };
     } else {
@@ -436,7 +517,7 @@ export function getDietTypeForChoice(choice: string | undefined, varieties?: Die
  * Checks if a day is configured as Veg Only.
  */
 export const isVegOnlyDay = (dayId: string, config: ConfigDay[]) => {
-  const dayConfig = (config || []).find((d) => d.id === dayId);
+  const dayConfig = findDayConfig(config, dayId);
   return dayConfig?.vegOnly || false;
 };
 
@@ -450,7 +531,7 @@ export const isDietaryEnabled = (
   diet: DietType,
   config: ConfigDay[]
 ) => {
-  const dayConfig = (config || []).find((d) => d.id === dayId);
+  const dayConfig = findDayConfig(config, dayId);
   if (!dayConfig || !dayConfig.enabled) return false;
   return (dayConfig[meal]?.enabled && dayConfig[meal]?.[diet]) || false;
 };
@@ -473,7 +554,7 @@ export const getValidSlotChoice = (
     return DietaryOption.NONE;
   }
 
-  const dayConf = (config || []).find((d) => d.id === dayId);
+  const dayConf = findDayConfig(config, dayId);
   const mConf = dayConf ? dayConf[meal] : undefined;
   const varieties = getMealVarieties(mConf);
 
@@ -528,7 +609,7 @@ export const isDietaryEnabledForDay = (
   diet: DietType,
   config: ConfigDay[]
 ) => {
-  const dayConfig = (config || []).find((d) => d.id === dayId);
+  const dayConfig = findDayConfig(config, dayId);
   if (!dayConfig || !dayConfig.enabled) return false;
   return (
     dayConfig.breakfast?.[diet] ||
@@ -547,7 +628,7 @@ export const isParcelEnabled = (
   meal: MealType,
   config: ConfigDay[]
 ) => {
-  const dayConfig = (config || []).find((d) => d.id === dayId);
+  const dayConfig = findDayConfig(config, dayId);
   if (!dayConfig || !dayConfig.enabled) return false;
   return (dayConfig[meal]?.enabled && dayConfig[meal]?.parcel) || false;
 };
@@ -563,7 +644,7 @@ export const isKidsParcelEnabled = (
   kidsEnabled?: boolean
 ) => {
   if (!kidsEnabled) return false;
-  const dayConfig = (config || []).find((d) => d.id === dayId);
+  const dayConfig = findDayConfig(config, dayId);
   if (!dayConfig || !dayConfig.enabled) return false;
   return (
     dayConfig[meal]?.enabled &&
@@ -583,7 +664,7 @@ export const isGuestsParcelEnabled = (
   guestsEnabled?: boolean
 ) => {
   if (!guestsEnabled) return false;
-  const dayConfig = (config || []).find((d) => d.id === dayId);
+  const dayConfig = findDayConfig(config, dayId);
   if (!dayConfig || !dayConfig.enabled) return false;
   return (
     dayConfig[meal]?.enabled &&
@@ -926,7 +1007,12 @@ export const emptyFoodMenu = (config: ConfigDay[]): FoodMenu => {
   ) as FoodMenu;
 };
 
-export const qrValueFor = (id: string) => encryptQrPayload(id);
+export const qrValueFor = (sub: Subscription | string, tenantId: string = "", seasonCode: string = "") => {
+  if (typeof sub === "string") {
+    return encryptQrPayload(sub, tenantId, seasonCode, "", "");
+  }
+  return encryptQrPayload(sub.id, tenantId, seasonCode, sub.block || "", sub.flat || "");
+};
 
 /**
  * Generates a guaranteed unique 4-digit passcode for a pass.
@@ -939,7 +1025,9 @@ export const qrValueFor = (id: string) => encryptQrPayload(id);
 export const generateUniquePasscode = (
   existingSubscriptions: { id?: string; passcode?: string }[] = [],
   currentPassId?: string,
-  seed?: string
+  seed?: string,
+  tenantId: string = "",
+  seasonCode: string = ""
 ): string => {
   const usedPasscodes = new Set<string>();
   for (const s of existingSubscriptions) {
@@ -949,9 +1037,10 @@ export const generateUniquePasscode = (
   }
 
   if (seed) {
+    const fullSeed = `${tenantId}_${seasonCode}_${seed}`;
     let hash = 0;
-    for (let i = 0; i < seed.length; i++) {
-      hash = (hash << 5) - hash + seed.charCodeAt(i);
+    for (let i = 0; i < fullSeed.length; i++) {
+      hash = (hash << 5) - hash + fullSeed.charCodeAt(i);
       hash |= 0;
     }
     const baseCandidateVal = Math.abs(hash) % 10000;
@@ -1346,31 +1435,42 @@ export function isSlotMissedParcel(
 export function findSubscriptionByPassCodeOrCheatCode(
   code: string,
   subscriptions: Subscription[],
-  cheatCodeEnabled: boolean
+  cheatCodeEnabled: boolean,
+  activeTenantId: string = "",
+  activeSeasonCode: string = ""
 ): Subscription | undefined {
   if (!code || typeof code !== "string") return undefined;
   const trimmed = code.trim();
   if (trimmed.length === 0) return undefined;
 
+  const isQrScan = trimmed.startsWith("DPF_ENC_") || trimmed.includes("http") || trimmed.includes("durga-puja-food") || trimmed.length > 8;
+
   // 1. Try decrypting encrypted QR code payload first
-  const decryptedId = decryptQrPayload(trimmed);
-  if (decryptedId) {
-    const match = subscriptions.find((s) => s.id === decryptedId);
+  const decodedQr = decryptQrPayloadDetails(trimmed);
+  if (decodedQr) {
+    if (activeTenantId && (!decodedQr.tenantId || !decodedQr.seasonCode)) {
+      return undefined;
+    }
+    if (activeTenantId && decodedQr.tenantId && decodedQr.tenantId.toLowerCase() !== activeTenantId.toLowerCase()) {
+      return undefined;
+    }
+    if (activeSeasonCode && decodedQr.seasonCode && decodedQr.seasonCode.toLowerCase() !== activeSeasonCode.toLowerCase()) {
+      return undefined;
+    }
+    const match = subscriptions.find((s) => s.id === decodedQr.passId);
     if (match) return match;
+    return undefined;
   }
 
-  // 2. Check standard passcode / ID / QR value match
+  if (isQrScan) {
+    return undefined;
+  }
+
+  // 2. Check standard passcode / ID match
   const standardMatch = subscriptions.find(
-    (s) => s.passcode === trimmed || s.id === trimmed || qrValueFor(s.id) === trimmed
+    (s) => s.passcode === trimmed || s.id === trimmed
   );
   if (standardMatch) return standardMatch;
-
-  // 3. Fallback check for legacy unencrypted URL scanning (e.g., https://durga-puja-food.app/flat/14-3S)
-  if (trimmed.includes("/flat/")) {
-    const legacyId = decodeURIComponent(trimmed.split("/flat/").pop() || "");
-    const legacyMatch = subscriptions.find((s) => s.id === legacyId);
-    if (legacyMatch) return legacyMatch;
-  }
 
   // If cheat code is not enabled, return undefined
   if (!cheatCodeEnabled) return undefined;

@@ -9,6 +9,7 @@ import { QuickCheckoutModal } from "../components/common/QuickCheckoutModal";
 import { ParcelCheckoutModal } from "../components/common/ParcelCheckoutModal";
 
 import { useAppNavigation } from "../context/NavigationContext";
+import { useAuth } from "../context/AuthContext";
 import { useCoreDatabase, useActivityLogs } from "../context/DatabaseContext";
 import { useUI } from "../context/UIContext";
 import { AppScreen, AppThemeMode, ActivityModule, ActivityAction, Subscription, MealType, DietaryOption, CheckoutSource } from "../types";
@@ -35,7 +36,8 @@ export function ScannerScreen() {
   const [permission, requestPermission] = useCameraPermissions();
 
   const { openScannedValue, goBack, navigate, isQuickCheckout, isParcelCheckout } = useAppNavigation();
-  const { subscriptions, dayConfig, kidsEnabled, guestsEnabled, cheatCodeEnabled } = useCoreDatabase();
+  const { seasonCode, subscriptions, dayConfig, kidsEnabled, guestsEnabled, cheatCodeEnabled } = useCoreDatabase();
+  const { tenantId } = useAuth();
   const { addActivityLog } = useActivityLogs();
   const { showAlert } = useUI();
 
@@ -92,10 +94,10 @@ export function ScannerScreen() {
     isScanning.current = true;
 
     if (!isQuickCheckout && !isParcelCheckout) {
-      const found = openScannedValue(dataOrCode, subscriptions, cheatCodeEnabled);
+      const found = openScannedValue(dataOrCode, subscriptions, cheatCodeEnabled, tenantId || "", seasonCode);
       if (found) {
-        const decryptedId = decryptQrPayload(dataOrCode);
-        const displayId = decryptedId || (dataOrCode.includes('/') ? dataOrCode.split('/').pop() : dataOrCode);
+        const decrypted = decryptQrPayload(dataOrCode);
+        const displayId = decrypted || (dataOrCode.includes('/') ? dataOrCode.split('/').pop() : dataOrCode);
         addActivityLog({
           module: ActivityModule.SCANNER,
           action: isPassCode ? ActivityAction.PASS : ActivityAction.SCAN,
@@ -130,7 +132,7 @@ export function ScannerScreen() {
     }
 
     // Quick Checkout Mode Validation
-    const match = findSubscriptionByPassCodeOrCheatCode(dataOrCode, subscriptions, cheatCodeEnabled);
+    const match = findSubscriptionByPassCodeOrCheatCode(dataOrCode, subscriptions, cheatCodeEnabled, tenantId || "", seasonCode);
 
     if (!match) {
       addActivityLog({
@@ -171,7 +173,7 @@ export function ScannerScreen() {
     }
 
     if (!currentMeal) {
-      openScannedValue(dataOrCode, subscriptions, cheatCodeEnabled);
+      openScannedValue(dataOrCode, subscriptions, cheatCodeEnabled, tenantId || "", seasonCode);
       return;
     }
 

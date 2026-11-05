@@ -252,7 +252,7 @@ const NoteItem = memo(({
 
 export function NotesScreen() {
   const { userRole, userName, userAccountName, handleLogout } = useAuth();
-  const { loading, refreshAllData, getAuthConfig } = useCoreDatabase();
+  const { loading, refreshAllData, getAuthConfig, footerText } = useCoreDatabase();
   const { notes, deleteNote, upsertNote } = useNotes();
   const { addActivityLog } = useActivityLogs();
   const { navigate, goBack } = useAppNavigation();
@@ -750,7 +750,7 @@ export function NotesScreen() {
                 </Pressable>
               )}
               <View style={styles.footer}>
-                 <Text style={styles.footerText}>{UI_TEXT.footerCopyright}</Text>
+                 <Text style={styles.footerText}>{footerText || ""}</Text>
               </View>
             </View>
           }

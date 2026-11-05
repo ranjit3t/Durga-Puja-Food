@@ -39,7 +39,7 @@ import { ActivityLogFilterBar } from "../features/activity/components/ActivityLo
 
 export function ActivityLogScreen() {
   const { handleLogout } = useAuth();
-  const { loading, refreshAllData, subscriptions } = useCoreDatabase();
+  const { loading, refreshAllData, subscriptions, footerText } = useCoreDatabase();
   const { activityLogs, fetchMoreLogs } = useActivityLogs();
   const { navigate, goBack, setSelectedId, setSelectedRecord } = useAppNavigation();
   const { showAlert } = useUI();
@@ -155,8 +155,9 @@ export function ActivityLogScreen() {
         const matchTarget = log.targetId?.toLowerCase().includes(query);
         const matchModule = log.module?.toLowerCase().includes(query);
         const matchAction = log.action?.toLowerCase().includes(query);
+        const matchSeason = log.seasonCode?.toLowerCase().includes(query);
 
-        if (!matchDesc && !matchUser && !matchRole && !matchTarget && !matchModule && !matchAction) {
+        if (!matchDesc && !matchUser && !matchRole && !matchTarget && !matchModule && !matchAction && !matchSeason) {
           return false;
         }
       }
@@ -447,7 +448,7 @@ export function ActivityLogScreen() {
                 </Pressable>
               )}
               <View style={styles.footer}>
-                 <Text style={styles.footerText}>{UI_TEXT.footerCopyright}</Text>
+                 <Text style={styles.footerText}>{footerText || ""}</Text>
               </View>
             </View>
           }

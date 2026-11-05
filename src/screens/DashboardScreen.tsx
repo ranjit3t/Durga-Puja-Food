@@ -624,7 +624,7 @@ export function DashboardScreen() {
   const { userRole, handleLogout } = useAuth();
   const {
     foodMenu, dayConfig, seasonName, freeMealEnabled, seasonEnabled,
-    dashboardData, kidsEnabled, guestsEnabled, subscriptions
+    dashboardData, kidsEnabled, guestsEnabled, subscriptions, footerText
   } = useCoreDatabase();
 
   const { navigate, goBack } = useAppNavigation();
@@ -1461,7 +1461,7 @@ export function DashboardScreen() {
           );
         })}
         <View style={styles.footer}>
-           <Text style={styles.footerText}>{UI_TEXT.footerCopyright}</Text>
+           <Text style={styles.footerText}>{footerText || ""}</Text>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

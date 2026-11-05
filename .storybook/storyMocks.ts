@@ -198,12 +198,25 @@ const database = {
   getByPasscode: async () => sampleSubscription,
   getAuthConfig: async () => ({
     users: [
-      { username: "admin", name: "Preview Administrator", role: "admin" },
-      { username: "vendor", name: "Kitchen Vendor", role: "vendor" },
-      { username: "caterer", name: "Head Caterer", role: "caterer" },
+      { username: "admin", name: "Preview Administrator", role: "admin", tenantId: "eternia" },
+      { username: "vendor", name: "Kitchen Vendor", role: "vendor", tenantId: "eternia" },
+      { username: "caterer", name: "Head Caterer", role: "caterer", tenantId: "eternia" },
     ]
   }),
   updateFreeMealCountDebounced: noop,
+  seasons: [
+    {
+      id: "DP2026",
+      seasonName: "Durga Puja 2026",
+      seasonCode: "DP2026",
+      seasonEnabled: true,
+      seasonCompleted: false,
+      days: dayConfig,
+    }
+  ],
+  activeSeasonCode: "DP2026",
+  createNewSeason: async () => {},
+  switchActiveSeason: async () => {},
 };
 
 type StoryDatabaseOverrides = Partial<typeof database>;
@@ -214,7 +227,7 @@ type StoryListOverrides = { activityLogs?: any[]; notes?: any[] };
 const StoryListOverridesContext = React.createContext<StoryListOverrides>({});
 type StoryNavigationOverrides = Record<string, any>;
 const StoryNavigationOverridesContext = React.createContext<StoryNavigationOverrides>({});
-type StoryAuthOverrides = { userRole?: UserRole | string; userName?: string; userAccountName?: string };
+type StoryAuthOverrides = { userRole?: UserRole | string; userName?: string; userAccountName?: string; tenantId?: string };
 const StoryAuthOverridesContext = React.createContext<StoryAuthOverrides>({});
 
 export function StoryMockProvider({
@@ -261,6 +274,7 @@ export function useAuth() {
     userRole: overrides.userRole ?? UserRole.ADMIN,
     userName: overrides.userName ?? "Preview Administrator",
     userAccountName: overrides.userAccountName ?? "admin",
+    tenantId: overrides.tenantId ?? "eternia",
     handleLogin: noop,
     handleLogout: noop,
     isAuthenticated: true,

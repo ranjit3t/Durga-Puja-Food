@@ -48,68 +48,82 @@ import {
   UserPresence,
   FoodPackage,
   CatererTransaction,
+  SeasonConfig,
+  UserRole,
 } from "./domain";
 import { ConfigDay, AppConfig } from "./types";
-import { blockOptions, generatePasscode, getDietTypeForChoice } from "./constants";
+import { blockOptions, generatePasscode, generateUniquePasscode, getDietTypeForChoice } from "./constants";
 
 // --- Repository Interface ---
 
 export interface SubscriptionRepository {
-  list(): Promise<SubscriptionRecord[]>;
-  getByFlatId(flatId: string): Promise<SubscriptionRecord | undefined>;
-  getByPasscode(passcode: string): Promise<SubscriptionRecord | undefined>;
-  upsert(record: SubscriptionRecord): Promise<SubscriptionRecord>;
-  remove(flatId: string): Promise<void>;
-  getMenu(): Promise<FoodMenu>;
-  updateMenu(menu: FoodMenu): Promise<void>;
-  updateMealMenu(dayId: string, mealKey: MealType, menu: MealMenu): Promise<void>;
-  updateFreeMealCount(dayId: string, mealKey: MealType, field: string, value: number): Promise<void>;
-  updateFreeMealCounts(dayId: string, mealKey: MealType, data: Record<string, any>): Promise<void>;
-  getConfig(): Promise<AppConfig>;
-  updateConfig(config: AppConfig): Promise<void>;
-  updateSubscriptionStatus(flatId: string, dayId: string, personIndex: number, slot: string, taken: boolean, timeStr?: string, userStr?: string): Promise<void>;
-  checkInPassAtomic(flatId: string, updatesMap: Record<string, boolean>, metricsIncrements?: Record<string, number>): Promise<void>;
+  setTenantId(tenantId: string): void;
+  list(tenantId?: string): Promise<SubscriptionRecord[]>;
+  getByFlatId(flatId: string, tenantId?: string): Promise<SubscriptionRecord | undefined>;
+  getByPasscode(passcode: string, tenantId?: string): Promise<SubscriptionRecord | undefined>;
+  upsert(record: SubscriptionRecord, tenantId?: string): Promise<SubscriptionRecord>;
+  remove(flatId: string, tenantId?: string): Promise<void>;
+  getMenu(tenantId?: string): Promise<FoodMenu>;
+  updateMenu(menu: FoodMenu, tenantId?: string): Promise<void>;
+  updateMealMenu(dayId: string, mealKey: MealType, menu: MealMenu, tenantId?: string): Promise<void>;
+  updateFreeMealCount(dayId: string, mealKey: MealType, field: string, value: number, tenantId?: string): Promise<void>;
+  updateFreeMealCounts(dayId: string, mealKey: MealType, data: Record<string, any>, tenantId?: string): Promise<void>;
+  getConfig(tenantId?: string): Promise<AppConfig>;
+  updateConfig(config: AppConfig, tenantIdOverride?: string): Promise<void>;
+  updateSubscriptionStatus(flatId: string, dayId: string, personIndex: number, slot: string, taken: boolean, timeStr?: string, userStr?: string, tenantId?: string): Promise<void>;
+  checkInPassAtomic(flatId: string, updatesMap: Record<string, boolean>, metricsIncrements?: Record<string, number>, tenantId?: string): Promise<void>;
   getAuthConfig(): Promise<any>;
   updateAuthConfig(config: any): Promise<void>;
-  addActivityLog(log: Omit<ActivityLog, "id">): Promise<void>;
-  getActivityLogs(limit?: number): Promise<ActivityLog[]>;
-  getNotes(): Promise<Note[]>;
-  upsertNote(note: Note): Promise<Note>;
-  removeNote(id: string): Promise<void>;
-  getFoodPackages(): Promise<FoodPackage[]>;
-  upsertFoodPackage(pkg: FoodPackage): Promise<FoodPackage>;
-  removeFoodPackage(id: string): Promise<void>;
-  getCatererTransactions(): Promise<CatererTransaction[]>;
-  upsertCatererTransaction(tx: CatererTransaction): Promise<CatererTransaction>;
-  removeCatererTransaction(id: string): Promise<void>;
+  addActivityLog(log: Omit<ActivityLog, "id">, tenantId?: string, isSuperAdmin?: boolean): Promise<void>;
+  getActivityLogs(limit?: number, tenantId?: string, isSuperAdmin?: boolean): Promise<ActivityLog[]>;
+  getNotes(tenantId?: string): Promise<Note[]>;
+  upsertNote(note: Note, tenantId?: string): Promise<Note>;
+  removeNote(id: string, tenantId?: string): Promise<void>;
+  getFoodPackages(tenantId?: string): Promise<FoodPackage[]>;
+  upsertFoodPackage(pkg: FoodPackage, tenantId?: string): Promise<FoodPackage>;
+  removeFoodPackage(id: string, tenantId?: string): Promise<void>;
+  getCatererTransactions(tenantId?: string): Promise<CatererTransaction[]>;
+  upsertCatererTransaction(tx: CatererTransaction, tenantId?: string): Promise<CatererTransaction>;
+  removeCatererTransaction(id: string, tenantId?: string): Promise<void>;
   getAppVersion(): Promise<AppVersionInfo | null>;
   updateAppVersion(version: string): Promise<void>;
+  listTenants(): Promise<Record<string, { name?: string; tenantName?: string; enabled?: boolean }>>;
+  createTenant(tenantId: string, tenantName: string): Promise<void>;
+  updateTenantName(tenantId: string, tenantName: string): Promise<void>;
+  setTenantStatus(tenantId: string, enabled: boolean): Promise<void>;
+  onTenantsChange(callback: (tenants: Record<string, any>) => void): () => void;
+  updateAppVersionInfo(info: { androidAppLocation?: string; iosAppLocation?: string; version?: string; deprecatedVersion?: string }): Promise<void>;
+  onTenantStatusChange(tenantId: string, callback: (status: { exists: boolean; enabled: boolean }) => void): () => void;
   getMetrics(): Promise<KitchenMetrics | null>;
   // Real-time Delta Listeners
   onSubscriptionsDelta(
     onAdded: (record: SubscriptionRecord) => void,
     onChanged: (record: SubscriptionRecord) => void,
     onRemoved: (id: string) => void,
-    activeDays: string[]
+    activeDays: string[],
+    tenantId?: string
   ): () => void;
   onNotesDelta(
     onAdded: (note: Note) => void,
     onChanged: (note: Note) => void,
-    onRemoved: (id: string) => void
+    onRemoved: (id: string) => void,
+    tenantId?: string
   ): () => void;
   onFoodPackagesDelta(
     onAdded: (pkg: FoodPackage) => void,
     onChanged: (pkg: FoodPackage) => void,
-    onRemoved: (id: string) => void
+    onRemoved: (id: string) => void,
+    tenantId?: string
   ): () => void;
   onCatererTransactionsDelta(
     onAdded: (tx: CatererTransaction) => void,
     onChanged: (tx: CatererTransaction) => void,
-    onRemoved: (id: string) => void
+    onRemoved: (id: string) => void,
+    tenantId?: string
   ): () => void;
-  onLogsDelta(onAdded: (log: ActivityLog) => void): () => void;
-  onMenuChange(callback: (menu: FoodMenu) => void): () => void;
-  onConfigChange(callback: (config: AppConfig) => void): () => void;
+  onLogsDelta(onAdded: (log: ActivityLog) => void, tenantId?: string, isSuperAdmin?: boolean): () => void;
+  onMenuChange(callback: (menu: FoodMenu) => void, tenantId?: string): () => void;
+  onConfigChange(callback: (config: AppConfig) => void, tenantId?: string): () => void;
   onAuthConfigChange(callback: (config: any) => void): () => void;
   onMetricsChange(callback: (metrics: KitchenMetrics | null) => void): () => void;
   onAppVersionChange(callback: (info: AppVersionInfo | null) => void): () => void;
@@ -527,21 +541,58 @@ function normalizeDayConfig(days: any[]): ConfigDay[] {
   });
 }
 
+export function getSeasonPath(collection: string, seasonCode: string = "", tenantId: string = "eternia"): string {
+  const code = (seasonCode || "").trim();
+  const tCode = (tenantId || "eternia").trim();
+  const base = code ? `seasons_data/${code}/${collection}` : collection;
+  if (tCode) {
+    return `tenants/${tCode}/${base}`;
+  }
+  return base;
+}
+
+function normalizeSeasonItem(val: any): SeasonConfig {
+  const defaultPayment = { enabled: true, maxPayments: 10, options: { upi: true, cash: true, bankTransfer: true } };
+  const days = Array.isArray(val?.days) ? val.days : (val?.days ? Object.values(val.days) : []);
+  const seasonCode = (val?.seasonCode || val?.activeSeasonCode || val?.id || "").trim();
+
+  const isCompleted = val?.seasonCompleted === true;
+  const isEnabled = isCompleted ? false : (val?.seasonEnabled !== false);
+
+  return {
+    id: seasonCode,
+    seasonName: val?.seasonName || "",
+    seasonCode,
+    seasonEnabled: isEnabled,
+    seasonCompleted: isCompleted,
+    days: normalizeDayConfig(days),
+    payment: val?.payment || defaultPayment,
+    freeMealEnabled: val?.freeMealEnabled !== false,
+    mobileEnabled: val?.mobileEnabled !== false,
+    foodPriceEnabled: val?.foodPriceEnabled || false,
+    kidsEnabled: val?.kidsEnabled || false,
+    guestsEnabled: val?.guestsEnabled || false,
+    vendorKidsMealChargingEnabled: val?.vendorKidsMealChargingEnabled !== false,
+    whatsappCountryCode: val?.whatsappCountryCode || "91",
+    quickCheckoutAutoCloseMs: val?.quickCheckoutAutoCloseMs ?? 3000,
+    soundEnabled: val?.soundEnabled !== undefined ? Boolean(val.soundEnabled) : true,
+    vendorName: val?.vendorName || "",
+    vendorAddress: val?.vendorAddress || "",
+    vendorSettledCost: val?.vendorSettledCost || "",
+    nonAdminCheckoutEnabled: val?.nonAdminCheckoutEnabled !== false,
+    cheatCodeEnabled: val?.cheatCodeEnabled === true,
+    footerText: val?.footerText || "",
+  };
+}
+
 function normalizeConfig(val: any): AppConfig {
   const defaultPayment = { enabled: true, maxPayments: 10, options: { upi: true, cash: true, bankTransfer: true } };
   if (!val) {
+    const defaultSeason = normalizeSeasonItem({ seasonName: "", seasonCode: "" });
     return {
-      seasonName: "",
-      days: [],
-      payment: defaultPayment,
-      freeMealEnabled: true,
-      mobileEnabled: true,
-      foodPriceEnabled: false,
-      seasonEnabled: true,
-      kidsEnabled: false,
-      vendorKidsMealChargingEnabled: true,
-      soundEnabled: true,
-      cheatCodeEnabled: false,
+      activeSeasonCode: "",
+      seasons: [defaultSeason],
+      ...defaultSeason,
       identity1Enabled: true,
       identity1Name: "Block No",
       identity1Options: blockOptions,
@@ -551,15 +602,11 @@ function normalizeConfig(val: any): AppConfig {
   }
 
   if (Array.isArray(val)) {
+    const defaultSeason = normalizeSeasonItem({ seasonName: "", seasonCode: "", days: val });
     return {
-      seasonName: "",
-      days: normalizeDayConfig(val),
-      payment: defaultPayment,
-      freeMealEnabled: true,
-      mobileEnabled: true,
-      foodPriceEnabled: false,
-      seasonEnabled: true,
-      kidsEnabled: false,
+      activeSeasonCode: "",
+      seasons: [defaultSeason],
+      ...defaultSeason,
       identity1Enabled: true,
       identity1Name: "Block No",
       identity1Options: blockOptions,
@@ -568,34 +615,23 @@ function normalizeConfig(val: any): AppConfig {
     };
   }
 
-  const days = Array.isArray(val.days)
-    ? val.days
-    : (val.days ? Object.values(val.days) : []);
-
-  let finalDays = days as ConfigDay[];
-  if (finalDays.length === 0 && !val.days) {
-    finalDays = Object.values(val).filter(v => v && typeof v === 'object' && (v as any).id) as ConfigDay[];
+  let seasonsList: SeasonConfig[] = [];
+  if (val.seasons) {
+    const rawSeasons = Array.isArray(val.seasons) ? val.seasons : Object.values(val.seasons);
+    seasonsList = rawSeasons.map((s: any) => normalizeSeasonItem(s));
   }
 
+  if (seasonsList.length === 0) {
+    seasonsList = [normalizeSeasonItem(val)];
+  }
+
+  let activeCode = val.activeSeasonCode || seasonsList.find(s => s.seasonEnabled)?.seasonCode || seasonsList[0]?.seasonCode || "";
+  let activeSeason = seasonsList.find(s => s.seasonCode === activeCode) || seasonsList[0] || normalizeSeasonItem({});
+
   return {
-    seasonName: val.seasonName || "",
-    days: normalizeDayConfig(finalDays),
-    payment: val.payment || defaultPayment,
-    freeMealEnabled: val.freeMealEnabled !== false,
-    mobileEnabled: val.mobileEnabled !== false,
-    foodPriceEnabled: val.foodPriceEnabled || false,
-    seasonEnabled: val.seasonEnabled !== false,
-    kidsEnabled: val.kidsEnabled || false,
-    guestsEnabled: val.guestsEnabled || false,
-    vendorKidsMealChargingEnabled: val.vendorKidsMealChargingEnabled !== false,
-    whatsappCountryCode: val.whatsappCountryCode || "91",
-    quickCheckoutAutoCloseMs: val.quickCheckoutAutoCloseMs ?? 3000,
-    soundEnabled: val.soundEnabled !== undefined ? Boolean(val.soundEnabled) : true,
-    vendorName: val.vendorName || "",
-    vendorAddress: val.vendorAddress || "",
-    vendorSettledCost: val.vendorSettledCost || "",
-    nonAdminCheckoutEnabled: val.nonAdminCheckoutEnabled !== false,
-    cheatCodeEnabled: val.cheatCodeEnabled === true,
+    activeSeasonCode: activeSeason.seasonCode,
+    seasons: seasonsList,
+    ...activeSeason,
     identity1Enabled: val.identity1Enabled !== false,
     identity1Name: val.identity1Name || "Block No",
     identity1Options: Array.isArray(val.identity1Options) && val.identity1Options.length > 0 ? val.identity1Options : blockOptions,
@@ -605,58 +641,120 @@ function normalizeConfig(val: any): AppConfig {
 }
 
 export function createFirebaseRepository(): SubscriptionRepository {
+  let activeTenantId = "";
+
+  async function getActiveTenantId(services: any, tenantIdOverride?: string): Promise<string> {
+    const candidate = (tenantIdOverride || activeTenantId || "").trim();
+    if (candidate) {
+      activeTenantId = candidate;
+      return candidate;
+    }
+    return "";
+  }
+
   /**
    * Helper to get active day IDs from database config.
    */
   async function getActiveDays(services: any): Promise<string[]> {
-    const snapshot = await get(ref(services.db, configPath));
-    const val = snapshot.val();
-    if (!snapshot.exists() || !val) return [];
-
-    let days: ConfigDay[] = [];
-    if (Array.isArray(val)) {
-      days = val;
-    } else if (val.days) {
-      days = Array.isArray(val.days) ? val.days : Object.values(val.days);
-    } else {
-      days = Object.values(val);
-    }
-
+    const configVal = await baseRepo.getConfig();
+    let days = configVal.days || [];
     return (days || [])
       .filter((d) => d && typeof d === 'object' && d.id && d.enabled)
       .map((d) => d.id);
   }
 
+  async function resolveSeasonDataPath(services: any, collection: string, seasonCodeOverride?: string, tenantIdOverride?: string): Promise<string> {
+    const tCode = await getActiveTenantId(services, tenantIdOverride);
+    if (!tCode) {
+      return "";
+    }
+    if (collection === "notes" || collection === "logs") {
+      return `tenants/${tCode}/${collection}`;
+    }
+    if (collection === "config") {
+      return `tenants/${tCode}/config`;
+    }
+
+    let code = seasonCodeOverride;
+    if (!code) {
+      const configSnap = await get(ref(services.db, `tenants/${tCode}/${configPath}`));
+      if (configSnap.exists()) {
+        const configVal = normalizeConfig(configSnap.val());
+        code = configVal.seasonCode || configVal.activeSeasonCode || "";
+      }
+    }
+
+    return getSeasonPath(collection, code || "", tCode);
+  }
+
   const baseRepo: SubscriptionRepository = {
+    setTenantId(tenantId: string) {
+      activeTenantId = (tenantId || "").trim();
+    },
     async list() {
       const services = await ensureFirebaseAuth();
       if (!services) return [];
       const eventDays = await getActiveDays(services);
-      const snapshot = await get(ref(services.db, subscriptionsPath));
+      const subsPath = await resolveSeasonDataPath(services, subscriptionsPath);
+      if (!subsPath || !subsPath.trim()) return [];
+      const snapshot = await get(ref(services.db, subsPath));
       const records = snapshot.val() as Record<string, SubscriptionRecord> | null;
-      return records
-        ? Object.values(records).map((record) =>
-            normalizeRecord(record as Record<string, unknown>, eventDays)
-          )
-        : [];
+      if (!records) return [];
+
+      const configVal = await baseRepo.getConfig();
+      const seasonCode = configVal.seasonCode || configVal.activeSeasonCode || "";
+      const tCode = await getActiveTenantId(services);
+
+      const updates: Record<string, any> = {};
+      const result: SubscriptionRecord[] = [];
+
+      Object.values(records).forEach((rawRecord) => {
+        const norm = normalizeRecord(rawRecord as Record<string, unknown>, eventDays);
+        if (!rawRecord.passcode && norm.passcode) {
+          updates[`${subsPath}/${norm.id}/passcode`] = norm.passcode;
+        }
+        result.push(norm);
+      });
+
+      if (Object.keys(updates).length > 0) {
+        try {
+          await update(ref(services.db), updates);
+        } catch {
+          // ignore
+        }
+      }
+
+      return result;
     },
     async getByFlatId(flatId) {
       const services = await ensureFirebaseAuth();
       if (!services) return undefined;
       const eventDays = await getActiveDays(services);
+      const subsPath = await resolveSeasonDataPath(services, subscriptionsPath);
+      if (!subsPath || !subsPath.trim()) return undefined;
       const snapshot = await get(
-        ref(services.db, `${subscriptionsPath}/${flatId}`)
+        ref(services.db, `${subsPath}/${flatId}`)
       );
-      return snapshot.exists()
-        ? normalizeRecord(snapshot.val() as Record<string, unknown>, eventDays)
-        : undefined;
+      if (!snapshot.exists()) return undefined;
+      const raw = snapshot.val() as Record<string, unknown>;
+      const norm = normalizeRecord(raw, eventDays);
+      if (!raw.passcode && norm.passcode) {
+        try {
+          await set(ref(services.db, `${subsPath}/${flatId}/passcode`), norm.passcode);
+        } catch {
+          // ignore
+        }
+      }
+      return norm;
     },
     async getByPasscode(passcode) {
       const services = await ensureFirebaseAuth();
       if (!services) return undefined;
       const eventDays = await getActiveDays(services);
+      const subsPath = await resolveSeasonDataPath(services, subscriptionsPath);
+      if (!subsPath || !subsPath.trim()) return undefined;
       const passcodeQuery = query(
-        ref(services.db, subscriptionsPath),
+        ref(services.db, subsPath),
         orderByChild("passcode"),
         equalTo(passcode)
       );
@@ -669,20 +767,32 @@ export function createFirebaseRepository(): SubscriptionRepository {
     async upsert(record) {
       const services = await ensureFirebaseAuth();
       if (!services) return record;
+
+      if (!record.passcode) {
+        const configVal = await baseRepo.getConfig();
+        const seasonCode = configVal.seasonCode || configVal.activeSeasonCode || "";
+        const tCode = await getActiveTenantId(services);
+        record.passcode = generateUniquePasscode([], record.id, record.id, tCode, seasonCode);
+      }
+
       const cleaned = cleanUndefined(record);
-      await set(ref(services.db, `${subscriptionsPath}/${record.id}`), cleaned);
+      const subsPath = await resolveSeasonDataPath(services, subscriptionsPath);
+      if (!subsPath || !subsPath.trim()) return record;
+      await set(ref(services.db, `${subsPath}/${record.id}`), cleaned);
       return record;
     },
     async remove(flatId) {
       const services = await ensureFirebaseAuth();
       if (!services) return;
-      await remove(ref(services.db, `${subscriptionsPath}/${flatId}`));
+      const subsPath = await resolveSeasonDataPath(services, subscriptionsPath);
+      await remove(ref(services.db, `${subsPath}/${flatId}`));
     },
     async getMenu() {
       const services = await ensureFirebaseAuth();
       if (!services) return {};
       const eventDays = await getActiveDays(services);
-      const snapshot = await get(ref(services.db, menuPath));
+      const mPath = await resolveSeasonDataPath(services, menuPath);
+      const snapshot = await get(ref(services.db, mPath));
       return snapshot.exists()
         ? cleanCircularFields(snapshot.val() as FoodMenu)
         : emptyMenu(eventDays);
@@ -690,51 +800,181 @@ export function createFirebaseRepository(): SubscriptionRepository {
     async updateMenu(menu) {
       const services = await ensureFirebaseAuth();
       if (!services) return;
-      await set(ref(services.db, menuPath), cleanUndefined(menu));
+      const mPath = await resolveSeasonDataPath(services, menuPath);
+      await set(ref(services.db, mPath), cleanUndefined(menu));
     },
     async updateMealMenu(dayId, mealKey, menu) {
       const services = await ensureFirebaseAuth();
       if (!services) return;
-      await set(ref(services.db, `${menuPath}/${dayId}/${mealKey}`), cleanUndefined(menu));
+      const mPath = await resolveSeasonDataPath(services, menuPath);
+      await set(ref(services.db, `${mPath}/${dayId}/${mealKey}`), cleanUndefined(menu));
     },
     async updateFreeMealCount(dayId, mealKey, field, value) {
       const services = await ensureFirebaseAuth();
       if (!services) return;
-      await set(ref(services.db, `${menuPath}/${dayId}/${mealKey}/${field}`), value);
+      const mPath = await resolveSeasonDataPath(services, menuPath);
+      await set(ref(services.db, `${mPath}/${dayId}/${mealKey}/${field}`), value);
     },
     async updateFreeMealCounts(dayId, mealKey, data) {
       const services = await ensureFirebaseAuth();
       if (!services) return;
-      await update(ref(services.db, `${menuPath}/${dayId}/${mealKey}`), cleanUndefined(data));
+      const mPath = await resolveSeasonDataPath(services, menuPath);
+      await update(ref(services.db, `${mPath}/${dayId}/${mealKey}`), cleanUndefined(data));
     },
-    async getConfig() {
+    async getConfig(tenantIdOverride) {
       const services = await ensureFirebaseAuth();
       if (!services) return normalizeConfig(null);
-      const snapshot = await get(ref(services.db, configPath));
-      return normalizeConfig(snapshot.exists() ? snapshot.val() : null);
+      const tCode = await getActiveTenantId(services, tenantIdOverride);
+
+      let tenantSnap = tCode ? await get(ref(services.db, `tenants/${tCode}/config`)) : null;
+      if (!tenantSnap || !tenantSnap.exists()) {
+        tenantSnap = await get(ref(services.db, configPath));
+      }
+
+      if (tenantSnap && tenantSnap.exists()) {
+        const tenantVal = tenantSnap.val();
+        const activeCode = tenantVal.activeSeasonCode || tenantVal.seasonCode || "";
+
+        let seasonsList: SeasonConfig[] = [];
+        try {
+          const seasonsDataSnap = await get(ref(services.db, `tenants/${tCode}/seasons_data`));
+          if (seasonsDataSnap.exists()) {
+            const seasonsDataVal = seasonsDataSnap.val();
+            if (seasonsDataVal && typeof seasonsDataVal === "object") {
+              Object.keys(seasonsDataVal).forEach((sCode) => {
+                const sConfig = seasonsDataVal[sCode]?.config;
+                if (sConfig) {
+                  seasonsList.push(normalizeSeasonItem({ ...sConfig, seasonCode: sCode }));
+                }
+              });
+            }
+          }
+        } catch {
+          // ignore
+        }
+
+        if (seasonsList.length === 0) {
+          seasonsList = [normalizeSeasonItem({ ...tenantVal, seasonCode: activeCode })];
+        }
+
+        const seasonConfigPath = tCode && activeCode ? `tenants/${tCode}/seasons_data/${activeCode}/config` : (activeCode ? `seasons_data/${activeCode}/config` : "");
+
+        let seasonVal = {};
+        if (seasonConfigPath) {
+          const seasonConfigSnap = await get(ref(services.db, seasonConfigPath));
+          if (seasonConfigSnap.exists()) {
+            seasonVal = seasonConfigSnap.val();
+          }
+        }
+
+        return normalizeConfig({
+          activeSeasonCode: activeCode,
+          seasonCode: activeCode,
+          tenantId: tCode,
+          seasons: seasonsList,
+          identity1Enabled: tenantVal.identity1Enabled !== false,
+          identity1Name: tenantVal.identity1Name || "Block No",
+          identity1Options: tenantVal.identity1Options || blockOptions,
+          identity2Enabled: tenantVal.identity2Enabled !== false,
+          identity2Name: tenantVal.identity2Name || "Flat No",
+          ...seasonVal,
+        });
+      }
+
+      return normalizeConfig(null);
     },
-    async updateConfig(config) {
+    async updateConfig(config, tenantIdOverride) {
       const services = await ensureFirebaseAuth();
       if (!services) return;
-      await set(ref(services.db, configPath), cleanUndefined(config));
+
+      const activeCode = config.activeSeasonCode || config.seasonCode || "";
+      const tenantId = await getActiveTenantId(services, tenantIdOverride || config.tenantId);
+      if (!tenantId) {
+        throw new Error("Tenant ID is required");
+      }
+      if (!activeCode) {
+        throw new Error("Active season code is required");
+      }
+
+      const isCompleted = config.seasonCompleted === true;
+      const isEnabled = isCompleted ? false : (config.seasonEnabled !== false);
+
+      const tenantCommonConfig = {
+        tenantId,
+        activeSeasonCode: activeCode,
+        identity1Enabled: config.identity1Enabled !== false,
+        identity1Name: config.identity1Name || "Block No",
+        identity1Options: config.identity1Options || blockOptions,
+        identity2Enabled: config.identity2Enabled !== false,
+        identity2Name: config.identity2Name || "Flat No",
+      };
+
+      const seasonSpecificConfig = {
+        seasonCode: activeCode,
+        seasonName: config.seasonName || "",
+        seasonEnabled: isEnabled,
+        seasonCompleted: isCompleted,
+        days: config.days || [],
+        payment: config.payment,
+        freeMealEnabled: config.freeMealEnabled,
+        mobileEnabled: config.mobileEnabled,
+        foodPriceEnabled: config.foodPriceEnabled,
+        kidsEnabled: config.kidsEnabled,
+        guestsEnabled: config.guestsEnabled,
+        vendorKidsMealChargingEnabled: config.vendorKidsMealChargingEnabled,
+        whatsappCountryCode: config.whatsappCountryCode,
+        quickCheckoutAutoCloseMs: config.quickCheckoutAutoCloseMs,
+        soundEnabled: config.soundEnabled,
+        vendorName: config.vendorName,
+        vendorAddress: config.vendorAddress,
+        vendorSettledCost: config.vendorSettledCost,
+        nonAdminCheckoutEnabled: config.nonAdminCheckoutEnabled,
+        cheatCodeEnabled: config.cheatCodeEnabled,
+        footerText: config.footerText || "",
+      };
+
+      const updates: Record<string, any> = {};
+      updates[`tenants/${tenantId}/config`] = cleanUndefined(tenantCommonConfig);
+      updates[`tenants/${tenantId}/seasons_data/${activeCode}/config`] = cleanUndefined(seasonSpecificConfig);
+
+      if (config.seasons && config.seasons.length > 0) {
+        config.seasons.forEach((s) => {
+          if (s && s.seasonCode) {
+            const isMatch = s.seasonCode === activeCode;
+            const updatedS = {
+              ...s,
+              seasonEnabled: isMatch ? isEnabled : false,
+              seasonCompleted: isMatch ? isCompleted : true,
+            };
+            if (isMatch) {
+              Object.assign(updatedS, seasonSpecificConfig);
+            }
+            updates[`tenants/${tenantId}/seasons_data/${s.seasonCode}/config`] = cleanUndefined(updatedS);
+          }
+        });
+      }
+
+      await update(ref(services.db), updates);
     },
     async updateSubscriptionStatus(flatId, dayId, personIndex, slot, taken, timeStr, userStr) {
       const services = await ensureFirebaseAuth();
       if (!services) return;
+      const subsPath = await resolveSeasonDataPath(services, subscriptionsPath);
       const updates: Record<string, any> = {};
-      updates[`${subscriptionsPath}/${flatId}/takenByPerson/${dayId}/${personIndex}/${slot}`] = taken;
-      updates[`${subscriptionsPath}/${flatId}/takenByPerson/${dayId}/${personIndex}/${slot}Time`] = taken ? (timeStr || "") : null;
-      updates[`${subscriptionsPath}/${flatId}/takenByPerson/${dayId}/${personIndex}/${slot}User`] = taken ? (userStr || "") : null;
+      updates[`${subsPath}/${flatId}/takenByPerson/${dayId}/${personIndex}/${slot}`] = taken;
+      updates[`${subsPath}/${flatId}/takenByPerson/${dayId}/${personIndex}/${slot}Time`] = taken ? (timeStr || "") : null;
+      updates[`${subsPath}/${flatId}/takenByPerson/${dayId}/${personIndex}/${slot}User`] = taken ? (userStr || "") : null;
       await update(ref(services.db), updates);
     },
     async checkInPassAtomic(flatId, updatesMap, metricsIncrements) {
       const services = await ensureFirebaseAuth();
       if (!services) return;
 
+      const subsPath = await resolveSeasonDataPath(services, subscriptionsPath);
       const multiPathUpdates: Record<string, any> = {};
 
       Object.entries(updatesMap).forEach(([slotPath, val]) => {
-        multiPathUpdates[`${subscriptionsPath}/${flatId}/takenByPerson/${slotPath}`] = val;
+        multiPathUpdates[`${subsPath}/${flatId}/takenByPerson/${slotPath}`] = val;
       });
 
       if (metricsIncrements) {
@@ -771,16 +1011,29 @@ export function createFirebaseRepository(): SubscriptionRepository {
       if (!services) return;
       await set(ref(services.db, authConfigPath), cleanUndefined(config));
     },
-    async addActivityLog(log) {
+    async addActivityLog(log, tenantId, isSuperAdmin) {
       const services = await ensureFirebaseAuth();
       if (!services) return;
-      const newLogRef = push(ref(services.db, logsPath));
-      await set(newLogRef, cleanUndefined({ ...log, id: newLogRef.key }));
+      const cleanLog = cleanUndefined(log);
+      let lPath = "logs";
+      if (!isSuperAdmin) {
+        if (!tenantId) return;
+        lPath = await resolveSeasonDataPath(services, logsPath, tenantId);
+        if (!lPath || !lPath.trim()) return;
+      }
+      const newLogRef = push(ref(services.db, lPath));
+      await set(newLogRef, { ...cleanLog, id: newLogRef.key });
     },
-    async getActivityLogs(limitCount = 50) {
+    async getActivityLogs(limitCount = 50, tenantId, isSuperAdmin) {
       const services = await ensureFirebaseAuth();
       if (!services) return [];
-      const logsRef = limitCount > 0 ? query(ref(services.db, logsPath), limitToLast(limitCount)) : ref(services.db, logsPath);
+      let lPath = "logs";
+      if (!isSuperAdmin) {
+        if (!tenantId) return [];
+        lPath = await resolveSeasonDataPath(services, logsPath, tenantId);
+        if (!lPath || !lPath.trim()) return [];
+      }
+      const logsRef = limitCount > 0 ? query(ref(services.db, lPath), limitToLast(limitCount)) : ref(services.db, lPath);
       const snapshot = await get(logsRef);
       const data = snapshot.val() as Record<string, ActivityLog> | null;
       if (!data) return [];
@@ -789,7 +1042,8 @@ export function createFirebaseRepository(): SubscriptionRepository {
     async getNotes() {
       const services = await ensureFirebaseAuth();
       if (!services) return [];
-      const snapshot = await get(ref(services.db, notesPath));
+      const nPath = await resolveSeasonDataPath(services, notesPath);
+      const snapshot = await get(ref(services.db, nPath));
       const data = snapshot.val() as Record<string, Note> | null;
       if (!data) return [];
       return Object.values(data).sort((a, b) => b.timestamp - a.timestamp);
@@ -798,23 +1052,26 @@ export function createFirebaseRepository(): SubscriptionRepository {
       const services = await ensureFirebaseAuth();
       if (!services) return note;
       let targetId = note.id;
+      const nPath = await resolveSeasonDataPath(services, notesPath);
       if (!targetId) {
-        const newRef = push(ref(services.db, notesPath));
+        const newRef = push(ref(services.db, nPath));
         targetId = newRef.key as string;
       }
       const data = cleanUndefined({ ...note, id: targetId });
-      await set(ref(services.db, `${notesPath}/${targetId}`), data);
+      await set(ref(services.db, `${nPath}/${targetId}`), data);
       return { ...note, id: targetId };
     },
     async removeNote(id) {
       const services = await ensureFirebaseAuth();
       if (!services) return;
-      await remove(ref(services.db, `${notesPath}/${id}`));
+      const nPath = await resolveSeasonDataPath(services, notesPath);
+      await remove(ref(services.db, `${nPath}/${id}`));
     },
     async getFoodPackages() {
       const services = await ensureFirebaseAuth();
       if (!services) return [];
-      const snapshot = await get(ref(services.db, foodPackagesPath));
+      const pkgPath = await resolveSeasonDataPath(services, foodPackagesPath);
+      const snapshot = await get(ref(services.db, pkgPath));
       const data = snapshot.val() as Record<string, FoodPackage> | null;
       if (!data) return [];
       return Object.values(data).sort((a, b) => b.timestamp - a.timestamp);
@@ -823,23 +1080,26 @@ export function createFirebaseRepository(): SubscriptionRepository {
       const services = await ensureFirebaseAuth();
       if (!services) return pkg;
       let targetId = pkg.id;
+      const pkgPath = await resolveSeasonDataPath(services, foodPackagesPath);
       if (!targetId) {
-        const newRef = push(ref(services.db, foodPackagesPath));
+        const newRef = push(ref(services.db, pkgPath));
         targetId = newRef.key as string;
       }
       const data = cleanUndefined({ ...pkg, id: targetId });
-      await set(ref(services.db, `${foodPackagesPath}/${targetId}`), data);
+      await set(ref(services.db, `${pkgPath}/${targetId}`), data);
       return { ...pkg, id: targetId };
     },
     async removeFoodPackage(id) {
       const services = await ensureFirebaseAuth();
       if (!services) return;
-      await remove(ref(services.db, `${foodPackagesPath}/${id}`));
+      const pkgPath = await resolveSeasonDataPath(services, foodPackagesPath);
+      await remove(ref(services.db, `${pkgPath}/${id}`));
     },
     async getCatererTransactions() {
       const services = await ensureFirebaseAuth();
       if (!services) return [];
-      const snapshot = await get(ref(services.db, catererFinancePath));
+      const cPath = await resolveSeasonDataPath(services, catererFinancePath);
+      const snapshot = await get(ref(services.db, cPath));
       const data = snapshot.val() as Record<string, CatererTransaction> | null;
       if (!data) return [];
       return Object.values(data).sort((a, b) => b.date - a.date);
@@ -848,18 +1108,20 @@ export function createFirebaseRepository(): SubscriptionRepository {
       const services = await ensureFirebaseAuth();
       if (!services) return tx;
       let targetId = tx.id;
+      const cPath = await resolveSeasonDataPath(services, catererFinancePath);
       if (!targetId) {
-        const newRef = push(ref(services.db, catererFinancePath));
+        const newRef = push(ref(services.db, cPath));
         targetId = newRef.key as string;
       }
       const data = cleanUndefined({ ...tx, id: targetId });
-      await set(ref(services.db, `${catererFinancePath}/${targetId}`), data);
+      await set(ref(services.db, `${cPath}/${targetId}`), data);
       return { ...tx, id: targetId };
     },
-    async removeCatererTransaction(id) {
+    async removeCatererTransaction(id, tenantId) {
       const services = await ensureFirebaseAuth();
       if (!services) return;
-      await remove(ref(services.db, `${catererFinancePath}/${id}`));
+      const cPath = await resolveSeasonDataPath(services, catererFinancePath, tenantId);
+      await remove(ref(services.db, `${cPath}/${id}`));
     },
     async getAppVersion() {
       const services = await ensureFirebaseAuth();
@@ -913,14 +1175,16 @@ export function createFirebaseRepository(): SubscriptionRepository {
 
     // --- Real-time WebSocket Delta Listeners ---
 
-    onSubscriptionsDelta(onAdded, onChanged, onRemoved, activeDays) {
+    onSubscriptionsDelta(onAdded, onChanged, onRemoved, activeDays, tenantId) {
       let unsubAdded: (() => void) | null = null;
       let unsubChanged: (() => void) | null = null;
       let unsubRemoved: (() => void) | null = null;
 
-      ensureFirebaseAuth().then((services) => {
+      ensureFirebaseAuth().then(async (services) => {
         if (!services?.db) return;
-        const subsRef = ref(services.db, subscriptionsPath);
+        const subsPath = await resolveSeasonDataPath(services, subscriptionsPath, tenantId);
+        if (!subsPath) return;
+        const subsRef = ref(services.db, subsPath);
 
         unsubAdded = onChildAdded(subsRef, (snapshot) => {
           if (snapshot.exists()) {
@@ -948,14 +1212,16 @@ export function createFirebaseRepository(): SubscriptionRepository {
       };
     },
 
-    onNotesDelta(onAdded, onChanged, onRemoved) {
+    onNotesDelta(onAdded, onChanged, onRemoved, tenantId) {
       let unsubAdded: (() => void) | null = null;
       let unsubChanged: (() => void) | null = null;
       let unsubRemoved: (() => void) | null = null;
 
-      ensureFirebaseAuth().then((services) => {
+      ensureFirebaseAuth().then(async (services) => {
         if (!services?.db) return;
-        const nRef = ref(services.db, notesPath);
+        const nPath = await resolveSeasonDataPath(services, notesPath, tenantId);
+        if (!nPath) return;
+        const nRef = ref(services.db, nPath);
 
         unsubAdded = onChildAdded(nRef, (snapshot) => {
           if (snapshot.exists()) {
@@ -987,14 +1253,16 @@ export function createFirebaseRepository(): SubscriptionRepository {
       };
     },
 
-    onFoodPackagesDelta(onAdded, onChanged, onRemoved) {
+    onFoodPackagesDelta(onAdded, onChanged, onRemoved, tenantId) {
       let unsubAdded: (() => void) | null = null;
       let unsubChanged: (() => void) | null = null;
       let unsubRemoved: (() => void) | null = null;
 
-      ensureFirebaseAuth().then((services) => {
+      ensureFirebaseAuth().then(async (services) => {
         if (!services?.db) return;
-        const pkgRef = ref(services.db, foodPackagesPath);
+        const pkgPath = await resolveSeasonDataPath(services, foodPackagesPath, tenantId);
+        if (!pkgPath) return;
+        const pkgRef = ref(services.db, pkgPath);
 
         unsubAdded = onChildAdded(pkgRef, (snapshot) => {
           if (snapshot.exists()) {
@@ -1026,14 +1294,16 @@ export function createFirebaseRepository(): SubscriptionRepository {
       };
     },
 
-    onCatererTransactionsDelta(onAdded, onChanged, onRemoved) {
+    onCatererTransactionsDelta(onAdded, onChanged, onRemoved, tenantId) {
       let unsubAdded: (() => void) | null = null;
       let unsubChanged: (() => void) | null = null;
       let unsubRemoved: (() => void) | null = null;
 
-      ensureFirebaseAuth().then((services) => {
+      ensureFirebaseAuth().then(async (services) => {
         if (!services?.db) return;
-        const cRef = ref(services.db, catererFinancePath);
+        const cPath = await resolveSeasonDataPath(services, catererFinancePath, tenantId);
+        if (!cPath) return;
+        const cRef = ref(services.db, cPath);
 
         unsubAdded = onChildAdded(cRef, (snapshot) => {
           if (snapshot.exists()) {
@@ -1065,12 +1335,18 @@ export function createFirebaseRepository(): SubscriptionRepository {
       };
     },
 
-    onLogsDelta(onAdded) {
+    onLogsDelta(onAdded, tenantId, isSuperAdmin) {
       let unsubAdded: (() => void) | null = null;
 
-      ensureFirebaseAuth().then((services) => {
+      ensureFirebaseAuth().then(async (services) => {
         if (!services?.db) return;
-        const logsQuery = query(ref(services.db, logsPath), limitToLast(50));
+        let lPath = "logs";
+        if (!isSuperAdmin) {
+          if (!tenantId) return;
+          lPath = await resolveSeasonDataPath(services, logsPath, tenantId);
+          if (!lPath || !lPath.trim()) return;
+        }
+        const logsQuery = query(ref(services.db, lPath), limitToLast(50));
 
         unsubAdded = onChildAdded(logsQuery, (snapshot) => {
           if (snapshot.exists()) {
@@ -1086,11 +1362,13 @@ export function createFirebaseRepository(): SubscriptionRepository {
       };
     },
 
-    onMenuChange(callback) {
+    onMenuChange(callback, tenantId) {
       let unsub: (() => void) | null = null;
-      ensureFirebaseAuth().then((services) => {
+      ensureFirebaseAuth().then(async (services) => {
         if (!services?.db) return;
-        unsub = onValue(ref(services.db, menuPath), (snapshot) => {
+        const mPath = await resolveSeasonDataPath(services, menuPath, tenantId);
+        if (!mPath) return;
+        unsub = onValue(ref(services.db, mPath), (snapshot) => {
           callback(snapshot.exists() ? cleanCircularFields(snapshot.val() as FoodMenu) : {});
         });
       }).catch(err => console.error("Menu listener error:", err));
@@ -1114,18 +1392,49 @@ export function createFirebaseRepository(): SubscriptionRepository {
       };
     },
 
-    onConfigChange(callback) {
+    onTenantsChange(callback: (tenants: Record<string, any>) => void) {
       let unsub: (() => void) | null = null;
       ensureFirebaseAuth().then((services) => {
         if (!services?.db) return;
-        unsub = onValue(ref(services.db, configPath), (snapshot) => {
-          if (!snapshot.exists()) return;
-          callback(normalizeConfig(snapshot.val()));
+        unsub = onValue(ref(services.db, "tenants"), (snapshot) => {
+          callback(snapshot.exists() ? (snapshot.val() || {}) : {});
         });
-      }).catch(err => console.error("Config listener error:", err));
+      }).catch(err => console.error("Tenants listener error:", err));
 
       return () => {
         if (unsub) unsub();
+      };
+    },
+
+    onConfigChange(callback, tenantId) {
+      let unsub1: (() => void) | null = null;
+      let unsub2: (() => void) | null = null;
+
+      ensureFirebaseAuth().then(async (services) => {
+        if (!services?.db) return;
+        const tCode = await getActiveTenantId(services, tenantId);
+        if (!tCode) return;
+
+        const handleUpdate = () => {
+          baseRepo.getConfig(tCode).then(cfg => callback(cfg)).catch(() => {});
+        };
+
+        unsub1 = onValue(ref(services.db, `tenants/${tCode}/config`), handleUpdate);
+
+        try {
+          const currentCfg = await baseRepo.getConfig(tCode);
+          const seasonCode = currentCfg.seasonCode || currentCfg.activeSeasonCode || "";
+          if (seasonCode) {
+            unsub2 = onValue(ref(services.db, `tenants/${tCode}/seasons_data/${seasonCode}/config`), handleUpdate);
+          }
+        } catch {
+          // ignore
+        }
+      }).catch(err => console.error("Config listener error:", err));
+
+      return () => {
+        if (unsub1) unsub1();
+        if (unsub2) unsub2();
       };
     },
 
@@ -1446,6 +1755,90 @@ export function createFirebaseRepository(): SubscriptionRepository {
       if (!services?.db) return;
       const cleanUser = username.trim().toLowerCase();
       await set(ref(services.db, `${chatsPath}/${chatId}/clearedAt/${cleanUser}`), Date.now());
+    },
+    async listTenants() {
+      const services = await ensureFirebaseAuth();
+      if (!services) return {};
+      const snap = await get(ref(services.db, "tenants"));
+      return snap.exists() ? (snap.val() || {}) : {};
+    },
+    async createTenant(tenantId: string, tenantName: string) {
+      const services = await ensureFirebaseAuth();
+      if (!services) return;
+      const tId = tenantId.trim().toLowerCase();
+      const tName = tenantName.trim();
+      if (!tId || !tName) throw new Error("Tenant ID and Name are required");
+
+      const existingSnap = await get(ref(services.db, `tenants/${tId}`));
+      if (existingSnap.exists()) {
+        throw new Error("Tenant ID already exists. Tenant ID cannot be re-used.");
+      }
+
+      const updates: Record<string, any> = {};
+      updates[`tenants/${tId}/name`] = tName;
+      updates[`tenants/${tId}/enabled`] = true;
+      updates[`tenants/${tId}/config/tenantId`] = tId;
+      updates[`tenants/${tId}/config/seasonName`] = `${tName} Festival`;
+      updates[`tenants/${tId}/config/activeSeasonCode`] = "DP2026";
+      updates[`tenants/${tId}/seasons_data/DP2026/config/seasonName`] = `${tName} Festival 2026`;
+      updates[`tenants/${tId}/seasons_data/DP2026/config/seasonCode`] = "DP2026";
+      updates[`tenants/${tId}/seasons_data/DP2026/config/seasonEnabled`] = true;
+      updates[`tenants/${tId}/seasons_data/DP2026/config/seasonCompleted`] = false;
+
+      await update(ref(services.db), updates);
+    },
+    async updateTenantName(tenantId: string, tenantName: string) {
+      const services = await ensureFirebaseAuth();
+      if (!services) return;
+      await set(ref(services.db, `tenants/${tenantId}/name`), tenantName.trim());
+    },
+    async setTenantStatus(tenantId: string, enabled: boolean) {
+      const services = await ensureFirebaseAuth();
+      if (!services) return;
+      const updates: Record<string, any> = {};
+      updates[`tenants/${tenantId}/enabled`] = enabled;
+
+      if (!enabled) {
+        const authCfg = await baseRepo.getAuthConfig();
+        if (authCfg && Array.isArray(authCfg.users)) {
+          const updatedUsers = authCfg.users.map((u: any) => {
+            if (u && u.tenantId === tenantId && u.role?.toLowerCase() !== UserRole.SUPER_ADMIN) {
+              return { ...u, disabled: true };
+            }
+            return u;
+          });
+          updates[`${authConfigPath}/users`] = updatedUsers;
+        }
+      }
+
+      await update(ref(services.db), updates);
+    },
+    async updateAppVersionInfo(info) {
+      const services = await ensureFirebaseAuth();
+      if (!services) return;
+      const updates: Record<string, any> = {};
+      if (info.version !== undefined) updates[appVersionPath] = info.version;
+      if (info.deprecatedVersion !== undefined) updates["deprecatedVersion"] = info.deprecatedVersion;
+      if (info.androidAppLocation !== undefined) updates["androidAppLocation"] = info.androidAppLocation;
+      if (info.iosAppLocation !== undefined) updates["iosAppLocation"] = info.iosAppLocation;
+      await update(ref(services.db), updates);
+    },
+    onTenantStatusChange(tenantId: string, callback: (status: { exists: boolean; enabled: boolean }) => void) {
+      let unsub: (() => void) | null = null;
+      ensureFirebaseAuth().then((services) => {
+        if (!services?.db || !tenantId) return;
+        unsub = onValue(ref(services.db, `tenants/${tenantId}`), (snapshot) => {
+          if (!snapshot.exists()) {
+            callback({ exists: false, enabled: false });
+          } else {
+            const val = snapshot.val();
+            callback({ exists: true, enabled: val?.enabled !== false });
+          }
+        });
+      }).catch(() => {});
+      return () => {
+        if (unsub) unsub();
+      };
     },
   };
 

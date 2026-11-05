@@ -249,10 +249,60 @@ export function MealMenuEditor({
                 </View>
               )}
               <View style={[styles.row, { flexWrap: "wrap", gap: 8 }]}>
-                {foodPriceEnabled && (
+                {kidsEnabled ? (
+                  <>
+                    <View style={{ flex: 1, minWidth: 100 }}>
+                      <Text style={{ fontSize: 10, fontWeight: "700", color: theme.colors.textSecondary, marginBottom: 4 }}>
+                        {UI_TEXT.adultPriceLabel.toUpperCase()}
+                      </Text>
+                      <TextInput
+                        style={{
+                          backgroundColor: theme.colors.surfaceDark,
+                          borderWidth: 1,
+                          borderColor: theme.colors.border,
+                          borderRadius: 8,
+                          paddingHorizontal: 10,
+                          paddingVertical: 8,
+                          fontSize: 14,
+                          color: theme.colors.textPrimary,
+                          fontWeight: "700",
+                        }}
+                        value={getVarietyPrice(v, "adultPrice")}
+                        onChangeText={(val) => updateVarietyField(v, "adultPrice", val.replace(/[^0-9]/g, ""))}
+                        keyboardType="numeric"
+                        placeholder={UI_TEXT.zero}
+                        editable={priceEditable}
+                      />
+                    </View>
+
+                    <View style={{ flex: 1, minWidth: 100 }}>
+                      <Text style={{ fontSize: 10, fontWeight: "700", color: theme.colors.textSecondary, marginBottom: 4 }}>
+                        {UI_TEXT.kidsPriceLabel.toUpperCase()}
+                      </Text>
+                      <TextInput
+                        style={{
+                          backgroundColor: theme.colors.surfaceDark,
+                          borderWidth: 1,
+                          borderColor: theme.colors.border,
+                          borderRadius: 8,
+                          paddingHorizontal: 10,
+                          paddingVertical: 8,
+                          fontSize: 14,
+                          color: theme.colors.textPrimary,
+                          fontWeight: "700",
+                        }}
+                        value={getVarietyPrice(v, "kidsPrice")}
+                        onChangeText={(val) => updateVarietyField(v, "kidsPrice", val.replace(/[^0-9]/g, ""))}
+                        keyboardType="numeric"
+                        placeholder={UI_TEXT.zero}
+                        editable={priceEditable}
+                      />
+                    </View>
+                  </>
+                ) : (
                   <View style={{ flex: 1, minWidth: 100 }}>
                     <Text style={{ fontSize: 10, fontWeight: "700", color: theme.colors.textSecondary, marginBottom: 4 }}>
-                      {UI_TEXT.adultPriceLabel.toUpperCase()}
+                      {(UI_TEXT.memberPriceLabel || "Member Price").toUpperCase()}
                     </Text>
                     <TextInput
                       style={{
@@ -275,33 +325,7 @@ export function MealMenuEditor({
                   </View>
                 )}
 
-                {foodPriceEnabled && kidsEnabled && (
-                  <View style={{ flex: 1, minWidth: 100 }}>
-                    <Text style={{ fontSize: 10, fontWeight: "700", color: theme.colors.textSecondary, marginBottom: 4 }}>
-                      {UI_TEXT.kidsPriceLabel.toUpperCase()}
-                    </Text>
-                    <TextInput
-                      style={{
-                        backgroundColor: theme.colors.surfaceDark,
-                        borderWidth: 1,
-                        borderColor: theme.colors.border,
-                        borderRadius: 8,
-                        paddingHorizontal: 10,
-                        paddingVertical: 8,
-                        fontSize: 14,
-                        color: theme.colors.textPrimary,
-                        fontWeight: "700",
-                      }}
-                      value={getVarietyPrice(v, "kidsPrice")}
-                      onChangeText={(val) => updateVarietyField(v, "kidsPrice", val.replace(/[^0-9]/g, ""))}
-                      keyboardType="numeric"
-                      placeholder={UI_TEXT.zero}
-                      editable={priceEditable}
-                    />
-                  </View>
-                )}
-
-                {foodPriceEnabled && guestsEnabled && (
+                {guestsEnabled && (
                   <View style={{ flex: 1, minWidth: 100 }}>
                     <Text style={{ fontSize: 10, fontWeight: "700", color: theme.colors.textSecondary, marginBottom: 4 }}>
                       {UI_TEXT.guestPriceLabel.toUpperCase()}
@@ -354,10 +378,60 @@ export function MealMenuEditor({
 
               {mConf?.parcel && (
                 <View style={[styles.row, { flexWrap: "wrap", gap: 8 }]}>
-                  {foodPriceEnabled && (
+                  {kidsEnabled ? (
+                    <>
+                      <View style={{ flex: 1, minWidth: 100 }}>
+                        <Text style={{ fontSize: 10, fontWeight: "700", color: theme.colors.textSecondary, marginBottom: 4 }}>
+                          {UI_TEXT.parcelPriceLabel.toUpperCase()}
+                        </Text>
+                        <TextInput
+                          style={{
+                            backgroundColor: theme.colors.surfaceDark,
+                            borderWidth: 1,
+                            borderColor: theme.colors.border,
+                            borderRadius: 8,
+                            paddingHorizontal: 10,
+                            paddingVertical: 8,
+                            fontSize: 14,
+                            color: theme.colors.textPrimary,
+                            fontWeight: "700",
+                          }}
+                          value={getVarietyPrice(v, "parcelPrice")}
+                          onChangeText={(val) => updateVarietyField(v, "parcelPrice", val.replace(/[^0-9]/g, ""))}
+                          keyboardType="numeric"
+                          placeholder={UI_TEXT.zero}
+                          editable={priceEditable}
+                        />
+                      </View>
+
+                      <View style={{ flex: 1, minWidth: 100 }}>
+                        <Text style={{ fontSize: 10, fontWeight: "700", color: theme.colors.textSecondary, marginBottom: 4 }}>
+                          {UI_TEXT.kidsParcelPriceLabel ? UI_TEXT.kidsParcelPriceLabel.toUpperCase() : "KIDS PARCEL PRICE"}
+                        </Text>
+                        <TextInput
+                          style={{
+                            backgroundColor: theme.colors.surfaceDark,
+                            borderWidth: 1,
+                            borderColor: theme.colors.border,
+                            borderRadius: 8,
+                            paddingHorizontal: 10,
+                            paddingVertical: 8,
+                            fontSize: 14,
+                            color: theme.colors.textPrimary,
+                            fontWeight: "700",
+                          }}
+                          value={getVarietyPrice(v, "kidsParcelPrice" as any)}
+                          onChangeText={(val) => updateVarietyField(v, "kidsParcelPrice" as any, val.replace(/[^0-9]/g, ""))}
+                          keyboardType="numeric"
+                          placeholder={UI_TEXT.zero}
+                          editable={priceEditable}
+                        />
+                      </View>
+                    </>
+                  ) : (
                     <View style={{ flex: 1, minWidth: 100 }}>
                       <Text style={{ fontSize: 10, fontWeight: "700", color: theme.colors.textSecondary, marginBottom: 4 }}>
-                        {UI_TEXT.parcelPriceLabel.toUpperCase()}
+                        {(UI_TEXT.memberParcelPriceLabel || "Member Parcel Price").toUpperCase()}
                       </Text>
                       <TextInput
                         style={{
@@ -373,6 +447,32 @@ export function MealMenuEditor({
                         }}
                         value={getVarietyPrice(v, "parcelPrice")}
                         onChangeText={(val) => updateVarietyField(v, "parcelPrice", val.replace(/[^0-9]/g, ""))}
+                        keyboardType="numeric"
+                        placeholder={UI_TEXT.zero}
+                        editable={priceEditable}
+                      />
+                    </View>
+                  )}
+
+                  {guestsEnabled && (
+                    <View style={{ flex: 1, minWidth: 100 }}>
+                      <Text style={{ fontSize: 10, fontWeight: "700", color: theme.colors.textSecondary, marginBottom: 4 }}>
+                        {UI_TEXT.guestParcelFee ? UI_TEXT.guestParcelFee.toUpperCase() : "GUEST PARCEL FEE"}
+                      </Text>
+                      <TextInput
+                        style={{
+                          backgroundColor: theme.colors.surfaceDark,
+                          borderWidth: 1,
+                          borderColor: theme.colors.border,
+                          borderRadius: 8,
+                          paddingHorizontal: 10,
+                          paddingVertical: 8,
+                          fontSize: 14,
+                          color: theme.colors.textPrimary,
+                          fontWeight: "700",
+                        }}
+                        value={getVarietyPrice(v, "guestParcelPrice" as any)}
+                        onChangeText={(val) => updateVarietyField(v, "guestParcelPrice" as any, val.replace(/[^0-9]/g, ""))}
                         keyboardType="numeric"
                         placeholder={UI_TEXT.zero}
                         editable={priceEditable}
@@ -403,61 +503,9 @@ export function MealMenuEditor({
                       editable={priceEditable}
                     />
                   </View>
-
-                  {foodPriceEnabled && kidsEnabled && isKidsParcelEnabled(dayId, mealKey, config, kidsEnabled) && (
-                      <View style={{ flex: 1, minWidth: 100 }}>
-                        <Text style={{ fontSize: 10, fontWeight: "700", color: theme.colors.textSecondary, marginBottom: 4 }}>
-                          {UI_TEXT.kidsParcelPriceLabel.toUpperCase()}
-                        </Text>
-                        <TextInput
-                          style={{
-                            backgroundColor: theme.colors.surfaceDark,
-                            borderWidth: 1,
-                            borderColor: theme.colors.border,
-                            borderRadius: 8,
-                            paddingHorizontal: 10,
-                            paddingVertical: 8,
-                            fontSize: 14,
-                            color: theme.colors.textPrimary,
-                            fontWeight: "700",
-                          }}
-                          value={getVarietyPrice(v, "kidsParcelPrice")}
-                          onChangeText={(val) => updateVarietyField(v, "kidsParcelPrice", val.replace(/[^0-9]/g, ""))}
-                          keyboardType="numeric"
-                          placeholder={UI_TEXT.zero}
-                          editable={priceEditable}
-                        />
-                      </View>
-                    )}
-
-                    {foodPriceEnabled && guestsEnabled && isGuestsParcelEnabled(dayId, mealKey, config, guestsEnabled) && (
-                      <View style={{ flex: 1, minWidth: 100 }}>
-                        <Text style={{ fontSize: 10, fontWeight: "700", color: theme.colors.textSecondary, marginBottom: 4 }}>
-                          {UI_TEXT.guestsParcelPriceLabel.toUpperCase()}
-                        </Text>
-                        <TextInput
-                          style={{
-                            backgroundColor: theme.colors.surfaceDark,
-                            borderWidth: 1,
-                            borderColor: theme.colors.border,
-                            borderRadius: 8,
-                            paddingHorizontal: 10,
-                            paddingVertical: 8,
-                            fontSize: 14,
-                            color: theme.colors.textPrimary,
-                            fontWeight: "700",
-                          }}
-                          value={getVarietyPrice(v, "guestParcelPrice")}
-                          onChangeText={(val) => updateVarietyField(v, "guestParcelPrice", val.replace(/[^0-9]/g, ""))}
-                          keyboardType="numeric"
-                          placeholder={UI_TEXT.zero}
-                          editable={priceEditable}
-                        />
-                      </View>
-                    )}
-                  </View>
-                )}
-              </View>
+                </View>
+              )}
+            </View>
 
             {/* Menu Items Input Row */}
             <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>

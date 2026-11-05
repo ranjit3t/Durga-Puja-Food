@@ -682,7 +682,7 @@ const SubscriptionCard = React.memo(({
 export function SubscriptionListScreen() {
   const { userRole, handleLogout } = useAuth();
   const {
-    subscriptions, dayConfig, paymentConfig, seasonEnabled, whatsappCountryCode, kidsEnabled, guestsEnabled, refreshAllData, foodMenu, nonAdminCheckoutEnabled
+    subscriptions, dayConfig, paymentConfig, seasonEnabled, whatsappCountryCode, kidsEnabled, guestsEnabled, refreshAllData, foodMenu, nonAdminCheckoutEnabled, footerText
   } = useCoreDatabase();
   const { addActivityLog } = useActivityLogs();
 
@@ -2971,7 +2971,7 @@ export function SubscriptionListScreen() {
           }
           ListFooterComponent={
             <View style={styles.footer}>
-               <Text style={styles.footerText}>{UI_TEXT.footerCopyright}</Text>
+               <Text style={styles.footerText}>{footerText || ""}</Text>
             </View>
           }
           renderItem={renderItem}

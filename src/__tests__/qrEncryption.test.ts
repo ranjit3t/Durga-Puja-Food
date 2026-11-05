@@ -1,4 +1,4 @@
-import { encryptQrPayload, decryptQrPayload } from "../utils/qrEncryption";
+import { encryptQrPayload, decryptQrPayload, decryptQrPayloadDetails } from "../utils/qrEncryption";
 
 describe("QR Code Encryption & Decryption Utility (qrEncryption.ts)", () => {
   describe("encryptQrPayload", () => {
@@ -51,6 +51,16 @@ describe("QR Code Encryption & Decryption Utility (qrEncryption.ts)", () => {
         const decrypted = decryptQrPayload(encrypted);
         expect(decrypted).toBe(id);
       }
+    });
+
+    it("decrypts full payload details including tenantId and seasonCode", () => {
+      const encrypted = encryptQrPayload("14-3S", "eternia", "DP2027", "14", "3S");
+      const details = decryptQrPayloadDetails(encrypted);
+      expect(details).toEqual({
+        tenantId: "eternia",
+        seasonCode: "DP2027",
+        passId: "14-3S",
+      });
     });
 
     it("handles legacy and alternative encrypted format prefixes for backwards compatibility", () => {

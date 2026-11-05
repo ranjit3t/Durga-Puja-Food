@@ -10,7 +10,7 @@ import { useAuth } from "../context/AuthContext";
 import { useDatabase } from "../context/DatabaseContext";
 import { useAppNavigation } from "../context/NavigationContext";
 import { UI_TEXT } from "../strings";
-import { AppScreen } from "../types";
+import { AppScreen, UserRole } from "../types";
 import { useStyles } from "../styles";
 import { useAppTheme } from "../theme";
 
@@ -33,9 +33,11 @@ import { ContactsScreen } from "../screens/ContactsScreen";
 import { FoodPackageScreen } from "../screens/FoodPackageScreen";
 import { CatererIncomeExpenseScreen } from "../screens/CatererIncomeExpenseScreen";
 import { UserManagementScreen } from "../screens/UserManagementScreen";
+import { TenantManagementScreen } from "../screens/TenantManagementScreen";
 import { AccountModal } from "../components/common/AccountModal";
 
 import { HomeScreen } from "../screens/HomeScreen";
+import { SuperAdminHomeScreen } from "../screens/SuperAdminHomeScreen";
 
 export function AppNavigator() {
   const styles = useStyles();
@@ -115,12 +117,15 @@ export function AppNavigator() {
       case AppScreen.USER_MANAGEMENT:
         screenComponent = <UserManagementScreen />;
         break;
+      case AppScreen.TENANT_MANAGEMENT:
+        screenComponent = <TenantManagementScreen />;
+        break;
       case AppScreen.SUBSCRIPTION_LIST:
         screenComponent = <SubscriptionListScreen />;
         break;
       case AppScreen.HOME:
       default:
-        screenComponent = <HomeScreen />;
+        screenComponent = userRole === UserRole.SUPER_ADMIN ? <SuperAdminHomeScreen /> : <HomeScreen />;
         break;
     }
   }

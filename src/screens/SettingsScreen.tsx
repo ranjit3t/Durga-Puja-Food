@@ -2,7 +2,7 @@
  * Application Settings Screen for Admins.
  * Allows managing the festival day configuration, enabling/disabling meals, dietary choices, and parcels.
  */
-import React, { useMemo, useState, useRef, useLayoutEffect } from "react";
+import React, { useMemo, useState, useRef, useLayoutEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   TextInput,
   Switch,
   Modal,
+  FlatList,
 } from "react-native";
 import { useStyles, useScaling } from "../styles";
 import { useAppTheme } from "../theme";
@@ -28,9 +29,9 @@ import { useAuth } from "../context/AuthContext";
 import { useCoreDatabase, useActivityLogs } from "../context/DatabaseContext";
 import { useUI } from "../context/UIContext";
 import { useAppNavigation } from "../context/NavigationContext";
-import { getPaymentModeLabel, getMealLabel, getMealVarieties, isMealEnabled, isMealDone } from "../constants";
+import { getPaymentModeLabel, getMealLabel, getMealVarieties, isMealEnabled, isMealDone, blockOptions } from "../constants";
 import { calculateSeasonVendorTotals, formatCurrencyAmount } from "../utils/paymentUtils";
-import { MealConfig, MealType, DietType, UserRole } from "../domain";
+import { MealConfig, MealType, DietType, UserRole, SeasonConfig } from "../domain";
 
 type PresetColor = {
   hex: string;
@@ -223,13 +224,84 @@ function VarietyModal({
   );
 }
 
+const SeasonListItem = React.memo(({ sItem, activeSeasonCode, seasonCode, theme, switchActiveSeason }: { sItem: SeasonConfig; activeSeasonCode: string; seasonCode: string; theme: any; switchActiveSeason: (code: string) => void }) => {
+  const itemCode = (sItem.seasonCode || sItem.id || "").trim();
+  const activeCode = (activeSeasonCode || seasonCode || "").trim();
+  const isActive = itemCode === activeCode || (activeCode === "" && itemCode === "");
+
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: theme.colors.surface,
+        borderRadius: 12,
+        padding: 12,
+        borderWidth: 1.5,
+        borderColor: isActive ? theme.colors.primary : theme.colors.border,
+        marginBottom: 10,
+      }}
+    >
+      <View style={{ flex: 1, marginRight: 10 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <Text style={{ fontSize: 15, fontWeight: '900', color: theme.colors.textPrimary }}>
+            {sItem.seasonName || UI_TEXT.headerTitle}
+          </Text>
+          <View style={{
+            backgroundColor: isActive ? theme.colors.success + "20" : theme.colors.surfaceDark,
+            paddingHorizontal: 6,
+            paddingVertical: 2,
+            borderRadius: 6,
+            borderWidth: 1,
+            borderColor: isActive ? theme.colors.success : theme.colors.border
+          }}>
+            <Text style={{ fontSize: 10, fontWeight: '800', color: isActive ? theme.colors.success : theme.colors.textMuted }}>
+              {isActive ? "ACTIVE" : (sItem.seasonCompleted ? "COMPLETED" : "INACTIVE")}
+            </Text>
+          </View>
+        </View>
+        <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600', marginTop: 2 }}>
+          Code: {itemCode || "N/A"}
+        </Text>
+      </View>
+
+      {!isActive && (
+        <Pressable
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel={`Activate ${sItem.seasonName}`}
+          onPress={() => switchActiveSeason(itemCode)}
+          style={({ pressed }) => [
+            {
+              backgroundColor: theme.colors.primary + "20",
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+              borderRadius: 8,
+              borderWidth: 1,
+              borderColor: theme.colors.primary
+            },
+            pressed && { opacity: 0.7 }
+          ]}
+        >
+          <Text style={{ fontSize: 11, fontWeight: '800', color: theme.colors.primary }}>
+            Activate
+          </Text>
+        </Pressable>
+      )}
+    </View>
+  );
+});
+SeasonListItem.displayName = "SeasonListItem";
+
 export function SettingsScreen() {
   const { handleLogout } = useAuth();
   const {
-    dayConfig: config, seasonName, seasonEnabled, paymentConfig: payment, freeMealEnabled, mobileEnabled, foodPriceEnabled,
+    dayConfig: config, seasonName, seasonCode, seasonEnabled, paymentConfig: payment, freeMealEnabled, mobileEnabled, foodPriceEnabled,
     whatsappCountryCode, updateConfig, kidsEnabled, guestsEnabled, vendorKidsMealChargingEnabled, subscriptions, foodMenu, quickCheckoutAutoCloseMs, soundEnabled,
-    vendorName, vendorAddress, vendorSettledCost, nonAdminCheckoutEnabled, cheatCodeEnabled,
-    identity1Enabled, identity1Name, identity1Options, identity2Enabled, identity2Name
+    vendorName, vendorAddress, vendorSettledCost, nonAdminCheckoutEnabled, cheatCodeEnabled, seasonCompleted,
+    identity1Enabled, identity1Name, identity1Options, identity2Enabled, identity2Name,
+    seasons, activeSeasonCode, createNewSeason, switchActiveSeason, footerText
   } = useCoreDatabase();
   const { addActivityLog } = useActivityLogs();
   const { showAlert } = useUI();
@@ -240,10 +312,32 @@ export function SettingsScreen() {
   const { s } = useScaling();
   const { theme, themeType } = useAppTheme();
 
+  const seasonsData = useMemo(() => {
+    return seasons && seasons.length > 0 ? seasons : [{ id: seasonCode || "DP2026", seasonName: seasonName || UI_TEXT.headerTitle, seasonCode: seasonCode || "DP2026", seasonEnabled, seasonCompleted, days: [] }];
+  }, [seasons, seasonCode, seasonName, seasonEnabled, seasonCompleted]);
+
+  const renderSeasonItem = useCallback(({ item }: { item: SeasonConfig }) => (
+    <SeasonListItem
+      sItem={item}
+      activeSeasonCode={activeSeasonCode}
+      seasonCode={seasonCode}
+      theme={theme}
+      switchActiveSeason={switchActiveSeason}
+    />
+  ), [activeSeasonCode, seasonCode, theme, switchActiveSeason]);
+
+  const [localFooterText, setLocalFooterText] = useState(footerText || "");
+
   const lastServerConfigRef = useRef<any>(null);
 
   const [localConfig, setLocalConfig] = useState<ConfigDay[]>([]);
   const [localSeasonName, setLocalSeasonName] = useState("");
+  const [localSeasonCode, setLocalSeasonCode] = useState("");
+  const [isSeasonExpanded, setIsSeasonExpanded] = useState<boolean>(false);
+  const [isCreateSeasonModalVisible, setIsCreateSeasonModalVisible] = useState(false);
+  const [newSeasonNameInput, setNewSeasonNameInput] = useState("");
+  const [newSeasonCodeInput, setNewSeasonCodeInput] = useState("");
+  const [creatingSeason, setCreatingSeason] = useState(false);
   const [localSeasonEnabled, setLocalSeasonEnabled] = useState(true);
   const [localPayment, setLocalPayment] = useState<PaymentConfig>({
     enabled: true,
@@ -260,6 +354,7 @@ export function SettingsScreen() {
   const [localSoundEnabled, setLocalSoundEnabled] = useState<boolean>(true);
   const [localNonAdminCheckoutEnabled, setLocalNonAdminCheckoutEnabled] = useState<boolean>(true);
   const [localCheatCodeEnabled, setLocalCheatCodeEnabled] = useState<boolean>(false);
+  const [localSeasonCompleted, setLocalSeasonCompleted] = useState<boolean>(false);
   const [localVendorName, setLocalVendorName] = useState("");
   const [localVendorAddress, setLocalVendorAddress] = useState("");
   const [localVendorSettledCost, setLocalVendorSettledCost] = useState("");
@@ -274,6 +369,7 @@ export function SettingsScreen() {
   const [savedBaseline, setSavedBaseline] = useState<{
     config: ConfigDay[];
     seasonName: string;
+    seasonCode: string;
     seasonEnabled: boolean;
     payment: PaymentConfig;
     freeMealEnabled: boolean;
@@ -287,6 +383,7 @@ export function SettingsScreen() {
     soundEnabled: boolean;
     nonAdminCheckoutEnabled: boolean;
     cheatCodeEnabled: boolean;
+    seasonCompleted: boolean;
     vendorName: string;
     vendorAddress: string;
     vendorSettledCost: string;
@@ -295,6 +392,7 @@ export function SettingsScreen() {
     identity1Options: string[];
     identity2Enabled: boolean;
     identity2Name: string;
+    footerText: string;
   } | null>(null);
 
   const [editingVarietyModal, setEditingVarietyModal] = useState<{
@@ -445,12 +543,17 @@ export function SettingsScreen() {
     });
   }, [localConfig]);
 
+  const hasActiveSeason = useMemo(() => {
+    return (seasons || []).some((s) => s.seasonEnabled || !s.seasonCompleted);
+  }, [seasons]);
+
   // Sync saved baseline & local state when database config is loaded
   useLayoutEffect(() => {
     if (config) {
       const currentContextBaseline = {
         config: Array.isArray(config) ? JSON.parse(JSON.stringify(config)) : [],
         seasonName: seasonName || "",
+        seasonCode: seasonCode || "",
         seasonEnabled,
         payment: payment ? JSON.parse(JSON.stringify(payment)) : { enabled: true, options: { upi: true, cash: true, bankTransfer: true } },
         freeMealEnabled,
@@ -464,6 +567,7 @@ export function SettingsScreen() {
         soundEnabled: soundEnabled !== false,
         nonAdminCheckoutEnabled: nonAdminCheckoutEnabled !== false,
         cheatCodeEnabled: cheatCodeEnabled || false,
+        seasonCompleted: seasonCompleted === true,
         vendorName: vendorName || "",
         vendorAddress: vendorAddress || "",
         vendorSettledCost: vendorSettledCost || "",
@@ -472,6 +576,7 @@ export function SettingsScreen() {
         identity1Options: identity1Options || blockOptions,
         identity2Enabled: identity2Enabled !== false,
         identity2Name: identity2Name || "Flat No",
+        footerText: footerText || "",
       };
 
       const serverChanged = JSON.stringify(currentContextBaseline) !== JSON.stringify(lastServerConfigRef.current);
@@ -479,6 +584,7 @@ export function SettingsScreen() {
       if (!savedBaseline || (!hasChanged && serverChanged)) {
         setLocalConfig(JSON.parse(JSON.stringify(currentContextBaseline.config)));
         setLocalSeasonName(currentContextBaseline.seasonName);
+        setLocalSeasonCode(currentContextBaseline.seasonCode);
         setLocalSeasonEnabled(currentContextBaseline.seasonEnabled);
         setLocalPayment(JSON.parse(JSON.stringify(currentContextBaseline.payment)));
         setLocalFreeMealEnabled(currentContextBaseline.freeMealEnabled);
@@ -492,6 +598,7 @@ export function SettingsScreen() {
         setLocalSoundEnabled(currentContextBaseline.soundEnabled);
         setLocalNonAdminCheckoutEnabled(currentContextBaseline.nonAdminCheckoutEnabled);
         setLocalCheatCodeEnabled(currentContextBaseline.cheatCodeEnabled);
+        setLocalSeasonCompleted(currentContextBaseline.seasonCompleted);
         setLocalVendorName(currentContextBaseline.vendorName);
         setLocalVendorAddress(currentContextBaseline.vendorAddress);
         setLocalVendorSettledCost(currentContextBaseline.vendorSettledCost);
@@ -500,6 +607,7 @@ export function SettingsScreen() {
         setLocalIdentity1OptionsText(Array.isArray(currentContextBaseline.identity1Options) ? currentContextBaseline.identity1Options.join(", ") : blockOptions.join(", "));
         setLocalIdentity2Enabled(currentContextBaseline.identity2Enabled);
         setLocalIdentity2Name(currentContextBaseline.identity2Name);
+        setLocalFooterText(currentContextBaseline.footerText || "");
         setSavedBaseline(currentContextBaseline);
         lastServerConfigRef.current = currentContextBaseline;
       } else if (!savedBaseline) {
@@ -507,7 +615,7 @@ export function SettingsScreen() {
         lastServerConfigRef.current = currentContextBaseline;
       }
     }
-  }, [config, seasonName, seasonEnabled, payment, freeMealEnabled, mobileEnabled, foodPriceEnabled, kidsEnabled, guestsEnabled, vendorKidsMealChargingEnabled, whatsappCountryCode, quickCheckoutAutoCloseMs, soundEnabled, nonAdminCheckoutEnabled, cheatCodeEnabled, vendorName, vendorAddress, vendorSettledCost, identity1Enabled, identity1Name, identity1Options, identity2Enabled, identity2Name, savedBaseline]);
+  }, [config, seasonName, seasonCode, seasonEnabled, payment, freeMealEnabled, mobileEnabled, foodPriceEnabled, kidsEnabled, guestsEnabled, vendorKidsMealChargingEnabled, whatsappCountryCode, quickCheckoutAutoCloseMs, soundEnabled, nonAdminCheckoutEnabled, cheatCodeEnabled, seasonCompleted, vendorName, vendorAddress, vendorSettledCost, identity1Enabled, identity1Name, identity1Options, identity2Enabled, identity2Name, footerText, savedBaseline]);
 
   const updateDay = (id: string, next: Partial<ConfigDay>) => {
     setLocalConfig((current) =>
@@ -574,19 +682,49 @@ export function SettingsScreen() {
   };
 
   const validateAndSetSeasonEnabled = (val: boolean) => {
-    if (!val) {
-      const anyMealNotDoneOrEnabled = localConfig.some(d =>
-        d.enabled && [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].some(m => d[m].enabled && !d[m].done)
+    if (val) {
+      setLocalSeasonEnabled(true);
+      setLocalSeasonCompleted(false);
+      return;
+    }
+    if (subscriptions && subscriptions.length > 0) {
+      showAlert(
+        UI_TEXT.error,
+        UI_TEXT.lockSeasonPassesConstraintWarning || "Festive season cannot be disabled while passes are already issued in the system."
       );
-      if (anyMealNotDoneOrEnabled) {
+      return;
+    }
+    const anyMealDone = localConfig.some(d =>
+      [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].some(m => d[m]?.done)
+    );
+    if (anyMealDone) {
+      showAlert(
+        UI_TEXT.warning,
+        UI_TEXT.lockSeasonConstraintWarning || "Festive season cannot be disabled when any meal has been marked done for the season."
+      );
+      return;
+    }
+    setLocalSeasonEnabled(false);
+  };
+
+  const validateAndSetSeasonCompleted = (val: boolean) => {
+    if (val) {
+      const allMealsDoneOrDisabled = localConfig.every(d =>
+        !d.enabled || [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].every(m => !d[m].enabled || d[m].done)
+      );
+      if (!allMealsDoneOrDisabled) {
         showAlert(
           UI_TEXT.warning,
-          UI_TEXT.lockSeasonConstraintWarning || "Cannot lock season while active or uncompleted meals remain. Mark all meals as completed first."
+          UI_TEXT.seasonCompletedConstraintWarning || "Season can only be marked done when all meals are completed or disabled."
         );
         return;
       }
+      setLocalSeasonCompleted(true);
+      setLocalSeasonEnabled(false);
+      return;
     }
-    setLocalSeasonEnabled(val);
+    setLocalSeasonCompleted(false);
+    setLocalSeasonEnabled(true);
   };
 
   const validateAndSetPaymentEnabled = (val: boolean) => {
@@ -846,6 +984,7 @@ export function SettingsScreen() {
   const getSettingsChangeLog = () => {
     const changes: string[] = [];
     if (localSeasonName !== seasonName) changes.push(`Name: ${seasonName || 'None'} -> ${localSeasonName}`);
+    if (localSeasonCode !== seasonCode) changes.push(`Season Code: ${seasonCode || 'None'} -> ${localSeasonCode}`);
     if (localSeasonEnabled !== seasonEnabled) changes.push(`Status: ${seasonEnabled ? 'Active' : 'Locked'} -> ${localSeasonEnabled ? 'Active' : 'Locked'}`);
     if (localFreeMealEnabled !== freeMealEnabled) changes.push(`Free Meals: ${freeMealEnabled ? 'ON' : 'OFF'} -> ${localFreeMealEnabled ? 'ON' : 'OFF'}`);
     if (localMobileEnabled !== mobileEnabled) changes.push(`Mobile: ${mobileEnabled ? 'ON' : 'OFF'} -> ${localMobileEnabled ? 'ON' : 'OFF'}`);
@@ -857,6 +996,7 @@ export function SettingsScreen() {
     if (localSoundEnabled !== soundEnabled) changes.push(`Sound: ${soundEnabled ? 'ON' : 'OFF'} -> ${localSoundEnabled ? 'ON' : 'OFF'}`);
     if (localNonAdminCheckoutEnabled !== nonAdminCheckoutEnabled) changes.push(`Non-Admin Quick Checkout: ${nonAdminCheckoutEnabled ? 'ON' : 'OFF'} -> ${localNonAdminCheckoutEnabled ? 'ON' : 'OFF'}`);
     if (localCheatCodeEnabled !== cheatCodeEnabled) changes.push(`Cheat Code Pass Codes: ${cheatCodeEnabled ? 'ON' : 'OFF'} -> ${localCheatCodeEnabled ? 'ON' : 'OFF'}`);
+    if (localSeasonCompleted !== seasonCompleted) changes.push(`Season Completed: ${seasonCompleted ? 'ON' : 'OFF'} -> ${localSeasonCompleted ? 'ON' : 'OFF'}`);
     if (localVendorName !== vendorName) changes.push(`Vendor Name: ${vendorName || 'None'} -> ${localVendorName}`);
     if (localVendorAddress !== vendorAddress) changes.push(`Vendor Address: ${vendorAddress || 'None'} -> ${localVendorAddress}`);
     if (areAllMealsDone && localVendorSettledCost !== vendorSettledCost) changes.push(`Vendor Settled Cost: ${vendorSettledCost || 'None'} -> ${localVendorSettledCost}`);
@@ -937,6 +1077,7 @@ export function SettingsScreen() {
       const newBaseline = {
         config: JSON.parse(JSON.stringify(localConfig)),
         seasonName: localSeasonName,
+        seasonCode: localSeasonCode,
         seasonEnabled: localSeasonEnabled,
         payment: JSON.parse(JSON.stringify(localPayment)),
         freeMealEnabled: localFreeMealEnabled,
@@ -950,6 +1091,7 @@ export function SettingsScreen() {
         soundEnabled: localSoundEnabled,
         nonAdminCheckoutEnabled: localNonAdminCheckoutEnabled,
         cheatCodeEnabled: localCheatCodeEnabled,
+        seasonCompleted: localSeasonCompleted,
         vendorName: localVendorName,
         vendorAddress: localVendorAddress,
         vendorSettledCost: areAllMealsDone ? localVendorSettledCost : vendorSettledCost,
@@ -958,10 +1100,12 @@ export function SettingsScreen() {
         identity1Options: finalIdentity1Options,
         identity2Enabled: localIdentity2Enabled,
         identity2Name: localIdentity2Name.trim() || "Flat No",
+        footerText: localFooterText,
       };
 
       await updateConfig({
         seasonName: localSeasonName,
+        seasonCode: localSeasonCode,
         seasonEnabled: localSeasonEnabled,
         days: localConfig,
         payment: localPayment,
@@ -976,6 +1120,7 @@ export function SettingsScreen() {
         soundEnabled: localSoundEnabled,
         nonAdminCheckoutEnabled: localNonAdminCheckoutEnabled,
         cheatCodeEnabled: localCheatCodeEnabled,
+        seasonCompleted: localSeasonCompleted,
         vendorName: localVendorName,
         vendorAddress: localVendorAddress,
         vendorSettledCost: areAllMealsDone ? localVendorSettledCost : vendorSettledCost,
@@ -984,6 +1129,7 @@ export function SettingsScreen() {
         identity1Options: finalIdentity1Options,
         identity2Enabled: localIdentity2Enabled,
         identity2Name: localIdentity2Name.trim() || "Flat No",
+        footerText: localFooterText,
       });
 
       setSavedBaseline(newBaseline);
@@ -1011,6 +1157,7 @@ export function SettingsScreen() {
     return (
       JSON.stringify(savedBaseline.config) !== JSON.stringify(localConfig) ||
       localSeasonName !== savedBaseline.seasonName ||
+      localSeasonCode !== savedBaseline.seasonCode ||
       localSeasonEnabled !== savedBaseline.seasonEnabled ||
       JSON.stringify(localPayment) !== JSON.stringify(savedBaseline.payment) ||
       localFreeMealEnabled !== savedBaseline.freeMealEnabled ||
@@ -1024,6 +1171,7 @@ export function SettingsScreen() {
       localSoundEnabled !== savedBaseline.soundEnabled ||
       localNonAdminCheckoutEnabled !== savedBaseline.nonAdminCheckoutEnabled ||
       localCheatCodeEnabled !== savedBaseline.cheatCodeEnabled ||
+      localSeasonCompleted !== savedBaseline.seasonCompleted ||
       localVendorName !== savedBaseline.vendorName ||
       localVendorAddress !== savedBaseline.vendorAddress ||
       (areAllMealsDone && localVendorSettledCost !== savedBaseline.vendorSettledCost) ||
@@ -1031,12 +1179,14 @@ export function SettingsScreen() {
       localIdentity1Name !== savedBaseline.identity1Name ||
       localIdentity1OptionsText !== (Array.isArray(savedBaseline.identity1Options) ? savedBaseline.identity1Options.join(", ") : blockOptions.join(", ")) ||
       localIdentity2Enabled !== savedBaseline.identity2Enabled ||
-      localIdentity2Name !== savedBaseline.identity2Name
+      localIdentity2Name !== savedBaseline.identity2Name ||
+      localFooterText !== savedBaseline.footerText
     );
   }, [
     savedBaseline,
     localConfig,
     localSeasonName,
+    localSeasonCode,
     localSeasonEnabled,
     localPayment,
     localFreeMealEnabled,
@@ -1050,6 +1200,7 @@ export function SettingsScreen() {
     localSoundEnabled,
     localNonAdminCheckoutEnabled,
     localCheatCodeEnabled,
+    localSeasonCompleted,
     localVendorName,
     localVendorAddress,
     localVendorSettledCost,
@@ -1058,6 +1209,7 @@ export function SettingsScreen() {
     localIdentity1OptionsText,
     localIdentity2Enabled,
     localIdentity2Name,
+    localFooterText,
     areAllMealsDone
   ]);
 
@@ -1113,24 +1265,297 @@ export function SettingsScreen() {
       </View>
 
       <ScrollView style={{ flex: 1, width: "100%" }} contentContainerStyle={[styles.content, { paddingBottom: s(180) }]} keyboardShouldPersistTaps="handled">
-        {/* Season & General Settings Card */}
-        <View style={[styles.dashboardCard, { backgroundColor: theme.cardColors[1].bg, borderColor: theme.cardColors[1].border, borderWidth: 1.5 }, !localSeasonEnabled && { opacity: 0.6 }]}>
-           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <View style={{ flex: 1, marginRight: 10 }}>
-                 <Text style={{ fontSize: 18, fontWeight: '900', color: theme.cardColors[1].accent }}>{UI_TEXT.seasonNameLabel}</Text>
-                 <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600', marginTop: 2 }}>{UI_TEXT.seasonNameHelper}</Text>
-              </View>
-              <Switch
-                accessible={true}
-                accessibilityRole="switch"
-                accessibilityLabel={UI_TEXT.seasonNameLabel}
-                accessibilityHint={UI_TEXT.seasonStatusHelper}
-                accessibilityState={{ checked: localSeasonEnabled }}
-                value={localSeasonEnabled}
-                onValueChange={(val) => validateAndSetSeasonEnabled(val)}
-                trackColor={{ true: theme.colors.primary }}
-                style={{ flexShrink: 0 }}
+        {/* Pass Identity Configuration Card (Common Settings - Always on Top) */}
+        <View style={[styles.dashboardCard, { backgroundColor: theme.cardColors[2].bg, borderColor: theme.cardColors[2].border, borderWidth: 1.5, marginBottom: 16 }]}>
+          <Text style={{ fontSize: 18, fontWeight: '900', color: theme.cardColors[2].accent, marginBottom: 4 }}>
+            Pass Identity Configuration (Block & Flat)
+          </Text>
+          <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600', marginBottom: 12 }}>
+            Common settings shared across all seasons (e.g. Block No, Flat / House No).
+          </Text>
+          {subscriptions.length > 0 && (
+            <View style={{ backgroundColor: theme.colors.errorLight || "#fee2e2", padding: 10, borderRadius: 8, marginBottom: 12 }}>
+              <Text style={{ fontSize: 11, color: theme.colors.error || "#ef4444", fontWeight: '800' }}>
+                ⚠ Identity fields (Identity 1 & Identity 2) are locked because passes have already been issued for this season. Changes are disabled to prevent unbalancing the system.
+              </Text>
+            </View>
+          )}
+
+          {/* Identity 1 */}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <View style={{ flex: 1, marginRight: 10 }}>
+              <Text style={{ fontSize: 15, fontWeight: '800', color: theme.colors.textPrimary }}>Enable Identity 1</Text>
+              <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600' }}>Primary pass grouping (e.g. Block / Tower No)</Text>
+            </View>
+            <Switch
+              value={localIdentity1Enabled}
+              onValueChange={setLocalIdentity1Enabled}
+              disabled={subscriptions.length > 0}
+              trackColor={{ true: theme.colors.primary }}
+            />
+          </View>
+          {localIdentity1Enabled && (
+            <View pointerEvents={subscriptions.length > 0 ? "none" : "auto"} style={[{ gap: 10, marginBottom: 16, backgroundColor: theme.colors.surface, borderRadius: 12, padding: 12 }, subscriptions.length > 0 && { opacity: 0.6, backgroundColor: theme.colors.surfaceDark }]}>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: theme.colors.textPrimary }}>Identity 1 Name / Label</Text>
+              <TextInput
+                style={[styles.input, subscriptions.length > 0 && { backgroundColor: theme.colors.surfaceDark, color: theme.colors.textMuted }]}
+                value={localIdentity1Name}
+                onChangeText={(text) => {
+                  if (subscriptions.length === 0) setLocalIdentity1Name(text);
+                }}
+                editable={subscriptions.length === 0}
+                placeholder="e.g. Block No, Tower No"
+                placeholderTextColor={theme.colors.textMuted}
               />
+              <Text style={{ fontSize: 12, fontWeight: '700', color: theme.colors.textPrimary, marginTop: 4 }}>Identity 1 Select Options (Comma-separated)</Text>
+              <TextInput
+                style={[styles.input, subscriptions.length > 0 && { backgroundColor: theme.colors.surfaceDark, color: theme.colors.textMuted }]}
+                value={localIdentity1OptionsText}
+                onChangeText={(text) => {
+                  if (subscriptions.length === 0) setLocalIdentity1OptionsText(text);
+                }}
+                editable={subscriptions.length === 0}
+                placeholder="0, 1, 2, 3, 4, 5, ..."
+                placeholderTextColor={theme.colors.textMuted}
+              />
+            </View>
+          )}
+
+          <View style={{ height: 1, backgroundColor: theme.colors.border, marginVertical: 12 }} />
+
+          {/* Identity 2 */}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <View style={{ flex: 1, marginRight: 10 }}>
+              <Text style={{ fontSize: 15, fontWeight: '800', color: theme.colors.textPrimary }}>Enable Identity 2</Text>
+              <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600' }}>Secondary pass unit (e.g. Flat / House No)</Text>
+            </View>
+            <Switch
+              value={localIdentity2Enabled}
+              onValueChange={setLocalIdentity2Enabled}
+              disabled={subscriptions.length > 0}
+              trackColor={{ true: theme.colors.primary }}
+            />
+          </View>
+          {localIdentity2Enabled && (
+            <View pointerEvents={subscriptions.length > 0 ? "none" : "auto"} style={[{ gap: 10, backgroundColor: theme.colors.surface, borderRadius: 12, padding: 12 }, subscriptions.length > 0 && { opacity: 0.6, backgroundColor: theme.colors.surfaceDark }]}>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: theme.colors.textPrimary }}>Identity 2 Name / Label</Text>
+              <TextInput
+                style={[styles.input, subscriptions.length > 0 && { backgroundColor: theme.colors.surfaceDark, color: theme.colors.textMuted }]}
+                value={localIdentity2Name}
+                onChangeText={(text) => {
+                  if (subscriptions.length === 0) setLocalIdentity2Name(text);
+                }}
+                editable={subscriptions.length === 0}
+                placeholder="e.g. Flat No, House No"
+                placeholderTextColor={theme.colors.textMuted}
+              />
+            </View>
+          )}
+        </View>
+
+        {/* Seasons Management Card */}
+        <View style={[styles.dashboardCard, { backgroundColor: theme.cardColors[0].bg, borderColor: theme.cardColors[0].border, borderWidth: 1.5, marginBottom: 16 }]}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <View style={{ flex: 1, marginRight: 10 }}>
+              <Text style={{ fontSize: 18, fontWeight: '900', color: theme.cardColors[0].accent }}>
+                {UI_TEXT.switchSeasonTitle}
+              </Text>
+              <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600', marginTop: 2 }}>
+                {UI_TEXT.switchSeasonSubtitle}
+              </Text>
+            </View>
+            <Pressable
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={UI_TEXT.createNewSeason}
+              accessibilityState={{ disabled: hasActiveSeason }}
+              accessibilityHint={hasActiveSeason ? UI_TEXT.createNewSeasonHint : undefined}
+              disabled={hasActiveSeason}
+              onPress={() => {
+                setNewSeasonNameInput("");
+                setNewSeasonCodeInput("");
+                setIsCreateSeasonModalVisible(true);
+              }}
+              style={({ pressed }) => [
+                {
+                  backgroundColor: theme.colors.primary,
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                  borderRadius: 10,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 6
+                },
+                hasActiveSeason && { opacity: 0.5 },
+                pressed && !hasActiveSeason && { opacity: 0.8 }
+              ]}
+            >
+              <Ionicons name="add-circle-outline" size={18} color={theme.colors.white} />
+              <Text style={{ color: theme.colors.white, fontWeight: '800', fontSize: 12 }}>
+                {UI_TEXT.createNewSeason}
+              </Text>
+            </Pressable>
+          </View>
+
+          {/* List of Seasons */}
+          <View style={{ marginTop: 4 }}>
+            <FlatList
+              data={seasonsData}
+              keyExtractor={(item) => (item.seasonCode || item.id || item.seasonName).trim()}
+              renderItem={renderSeasonItem}
+              scrollEnabled={false}
+              initialNumToRender={10}
+              maxToRenderPerBatch={10}
+              windowSize={5}
+            />
+          </View>
+        </View>
+
+        {/* Unifying Active/Completed Festival Season Master Banner */}
+        <Pressable
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel={`${localSeasonName || UI_TEXT.headerTitle} season configuration, ${isSeasonExpanded ? "expanded" : "collapsed"}`}
+          onPress={() => setIsSeasonExpanded(!isSeasonExpanded)}
+          style={({ pressed }) => [
+            {
+              backgroundColor: theme.colors.surface,
+              borderRadius: 16,
+              padding: 16,
+              marginBottom: 16,
+              borderWidth: 1.5,
+              borderColor: localSeasonCompleted ? theme.colors.success + "60" : (localSeasonEnabled ? theme.colors.primary + "40" : theme.colors.border),
+              gap: 12
+            },
+            pressed && { opacity: 0.95 }
+          ]}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <View style={{
+              width: 44,
+              height: 44,
+              borderRadius: 12,
+              backgroundColor: localSeasonCompleted ? theme.colors.success + "20" : (localSeasonEnabled ? theme.colors.primary + "20" : theme.colors.surfaceDark),
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <Ionicons
+                name={localSeasonCompleted ? "checkmark-circle-outline" : "calendar-outline"}
+                size={24}
+                color={localSeasonCompleted ? theme.colors.success : (localSeasonEnabled ? theme.colors.primary : theme.colors.textMuted)}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{
+                fontSize: 13,
+                fontWeight: '800',
+                color: localSeasonCompleted ? theme.colors.success : (localSeasonEnabled ? theme.colors.primary : theme.colors.textMuted),
+                textTransform: 'uppercase',
+                letterSpacing: 0.5
+              }}>
+                {localSeasonCompleted
+                  ? "COMPLETED FESTIVAL SEASON CONFIGURATION"
+                  : (localSeasonEnabled ? "ACTIVE FESTIVAL SEASON CONFIGURATION" : "INACTIVE FESTIVAL SEASON CONFIGURATION")}
+              </Text>
+              <Text style={{ fontSize: 16, fontWeight: '900', color: theme.colors.textPrimary, marginTop: 2 }}>
+                {localSeasonName || UI_TEXT.headerTitle}
+              </Text>
+              <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600', marginTop: 2 }}>
+                {localSeasonCompleted
+                  ? "This season is marked as completed and locked in read-only mode. Tap to expand/collapse."
+                  : "Tap to collapse or expand season configuration settings."}
+              </Text>
+            </View>
+            <Ionicons
+              name={isSeasonExpanded ? "chevron-up-outline" : "chevron-down-outline"}
+              size={20}
+              color={theme.colors.textSecondary}
+            />
+          </View>
+
+          {isSeasonExpanded && (
+            <>
+              {/* Season Code Config */}
+              <View style={{ marginTop: 2 }}>
+                <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.textSecondary, marginBottom: 2 }}>
+                  {UI_TEXT.seasonCodeLabel || "Season Code"} ({UI_TEXT.seasonCodeHelper})
+                </Text>
+                <TextInput
+                  style={[styles.input, { height: 38, fontSize: 13, marginBottom: 0 }, localSeasonCompleted && { backgroundColor: theme.colors.surfaceDark }]}
+                  value={localSeasonCode}
+                  onChangeText={setLocalSeasonCode}
+                  editable={!localSeasonCompleted}
+                  placeholder="e.g. DP2026"
+                  placeholderTextColor={theme.colors.textMuted}
+                  autoCapitalize="characters"
+                  selectTextOnFocus
+                />
+              </View>
+
+              {/* Integrated Season Governance Toggles */}
+              <View style={{
+                height: 1,
+                backgroundColor: theme.colors.border,
+                marginVertical: 4
+              }} />
+
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 16, justifyContent: 'space-between', alignItems: 'center' }}>
+                {/* Season Active Switch */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, minWidth: 150 }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 13, fontWeight: '800', color: theme.colors.textPrimary }}>
+                      {UI_TEXT.seasonActiveLabel || "Season Active"}
+                    </Text>
+                    <Text style={{ fontSize: 10, color: theme.colors.textSecondary, fontWeight: '600' }}>
+                      {localSeasonEnabled ? "Active & Open" : "Inactive"}
+                    </Text>
+                  </View>
+                  <Switch
+                    accessible={true}
+                    accessibilityRole="switch"
+                    accessibilityLabel={UI_TEXT.seasonActiveLabel || "Season Active"}
+                    accessibilityState={{ checked: localSeasonEnabled }}
+                    value={localSeasonEnabled}
+                    onValueChange={(val) => validateAndSetSeasonEnabled(val)}
+                    trackColor={{ true: theme.colors.primary }}
+                    style={{ flexShrink: 0 }}
+                  />
+                </View>
+
+                {/* Mark Season Done Switch */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, minWidth: 150 }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 13, fontWeight: '800', color: theme.colors.textPrimary }}>
+                      {UI_TEXT.seasonCompletedLabel || "Mark Season Done"}
+                    </Text>
+                    <Text style={{ fontSize: 10, color: theme.colors.textSecondary, fontWeight: '600' }}>
+                      {localSeasonCompleted ? "Completed (Locked)" : "Mark Done"}
+                    </Text>
+                  </View>
+                  <Switch
+                    accessible={true}
+                    accessibilityRole="switch"
+                    accessibilityLabel={UI_TEXT.seasonCompletedLabel}
+                    accessibilityState={{ checked: localSeasonCompleted }}
+                    value={localSeasonCompleted}
+                    onValueChange={(val) => validateAndSetSeasonCompleted(val)}
+                    trackColor={{ true: theme.colors.success }}
+                    style={{ flexShrink: 0 }}
+                  />
+                </View>
+              </View>
+            </>
+          )}
+        </Pressable>
+
+        {isSeasonExpanded && (
+          <>
+
+        {/* Season & General Settings Card */}
+        <View style={[styles.dashboardCard, { backgroundColor: theme.cardColors[1].bg, borderColor: theme.cardColors[1].border, borderWidth: 1.5 }, (!localSeasonEnabled || localSeasonCompleted) && { opacity: 0.6 }]}>
+           <View style={{ marginBottom: 12 }}>
+              <Text style={{ fontSize: 18, fontWeight: '900', color: theme.cardColors[1].accent }}>{UI_TEXT.seasonNameLabel}</Text>
+              <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600', marginTop: 2 }}>{UI_TEXT.seasonNameHelper}</Text>
            </View>
            <TextInput
              accessible={true}
@@ -1139,10 +1564,42 @@ export function SettingsScreen() {
              style={styles.input}
              value={localSeasonName}
              onChangeText={setLocalSeasonName}
+             editable={!localSeasonCompleted}
              placeholder={UI_TEXT.seasonNamePlaceholder}
              placeholderTextColor={theme.colors.textMuted}
              selectTextOnFocus
            />
+
+           {/* Footer Text */}
+           <View style={{ marginTop: 16 }}>
+             <Text style={styles.selectorLabel}>{UI_TEXT.footerTextLabel}</Text>
+             <TextInput
+               accessible={true}
+               accessibilityLabel={UI_TEXT.footerTextLabel}
+               accessibilityHint={UI_TEXT.footerTextPlaceholder}
+               style={styles.input}
+               value={localFooterText}
+               onChangeText={(text) => {
+                 if (text.length <= 100) {
+                   setLocalFooterText(text);
+                 }
+               }}
+               maxLength={100}
+               editable={!localSeasonCompleted}
+               placeholder={UI_TEXT.footerTextPlaceholder}
+               placeholderTextColor={theme.colors.textMuted}
+               selectTextOnFocus
+             />
+             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+               <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600', flex: 1 }}>
+                 {UI_TEXT.footerTextHelper}
+               </Text>
+               <Text style={{ fontSize: 11, color: localFooterText.length >= 100 ? theme.colors.error : theme.colors.textMuted, fontWeight: '700' }}>
+                 {localFooterText.length}/100
+               </Text>
+             </View>
+           </View>
+           <View pointerEvents={localSeasonCompleted ? "none" : "auto"} style={localSeasonCompleted && { opacity: 0.6 }}>
            <View style={{ height: 1, backgroundColor: theme.colors.border, marginVertical: 20 }} />
            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
               <View style={{ flex: 1, marginRight: 10 }}>
@@ -1360,87 +1817,11 @@ export function SettingsScreen() {
                 style={{ flexShrink: 0 }}
               />
            </View>
-        </View>
-
-        {/* Pass Identity Configuration Card */}
-        <View style={[styles.dashboardCard, { backgroundColor: theme.cardColors[2].bg, borderColor: theme.cardColors[2].border, borderWidth: 1.5, marginTop: 16 }]}>
-          <Text style={{ fontSize: 18, fontWeight: '900', color: theme.cardColors[2].accent, marginBottom: 4 }}>
-            Pass Identity Configuration
-          </Text>
-          <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600', marginBottom: 12 }}>
-            Configure identity fields (e.g. Tower No, Block No, Flat No, House No) used across passes, forms, and reports.
-          </Text>
-          {subscriptions.length > 0 && (
-            <Text style={{ fontSize: 11, color: theme.colors.error, fontWeight: '700', marginBottom: 12 }}>
-              ⚠ Pass identities cannot be disabled because passes are already created in the system.
-            </Text>
-          )}
-
-          {/* Identity 1 */}
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <View style={{ flex: 1, marginRight: 10 }}>
-              <Text style={{ fontSize: 15, fontWeight: '800', color: theme.colors.textPrimary }}>Enable Identity 1</Text>
-              <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600' }}>Primary pass grouping (e.g. Block / Tower No)</Text>
-            </View>
-            <Switch
-              value={localIdentity1Enabled}
-              onValueChange={setLocalIdentity1Enabled}
-              disabled={subscriptions.length > 0}
-              trackColor={{ true: theme.colors.primary }}
-            />
-          </View>
-          {localIdentity1Enabled && (
-            <View style={{ gap: 10, marginBottom: 16, backgroundColor: theme.colors.surface, borderRadius: 12, padding: 12 }}>
-              <Text style={{ fontSize: 12, fontWeight: '700', color: theme.colors.textPrimary }}>Identity 1 Name / Label</Text>
-              <TextInput
-                style={styles.input}
-                value={localIdentity1Name}
-                onChangeText={setLocalIdentity1Name}
-                placeholder="e.g. Block No, Tower No"
-                placeholderTextColor={theme.colors.textMuted}
-              />
-              <Text style={{ fontSize: 12, fontWeight: '700', color: theme.colors.textPrimary, marginTop: 4 }}>Identity 1 Select Options (Comma-separated)</Text>
-              <TextInput
-                style={styles.input}
-                value={localIdentity1OptionsText}
-                onChangeText={setLocalIdentity1OptionsText}
-                placeholder="0, 1, 2, 3, 4, 5, ..."
-                placeholderTextColor={theme.colors.textMuted}
-              />
-            </View>
-          )}
-
-          <View style={{ height: 1, backgroundColor: theme.colors.border, marginVertical: 12 }} />
-
-          {/* Identity 2 */}
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <View style={{ flex: 1, marginRight: 10 }}>
-              <Text style={{ fontSize: 15, fontWeight: '800', color: theme.colors.textPrimary }}>Enable Identity 2</Text>
-              <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600' }}>Secondary pass unit (e.g. Flat / House No)</Text>
-            </View>
-            <Switch
-              value={localIdentity2Enabled}
-              onValueChange={setLocalIdentity2Enabled}
-              disabled={subscriptions.length > 0}
-              trackColor={{ true: theme.colors.primary }}
-            />
-          </View>
-          {localIdentity2Enabled && (
-            <View style={{ gap: 10, backgroundColor: theme.colors.surface, borderRadius: 12, padding: 12 }}>
-              <Text style={{ fontSize: 12, fontWeight: '700', color: theme.colors.textPrimary }}>Identity 2 Name / Label</Text>
-              <TextInput
-                style={styles.input}
-                value={localIdentity2Name}
-                onChangeText={setLocalIdentity2Name}
-                placeholder="e.g. Flat No, House No"
-                placeholderTextColor={theme.colors.textMuted}
-              />
-            </View>
-          )}
+           </View>
         </View>
 
         {/* Vendor Details & Financial Settlement Section Card */}
-        <View style={[styles.dashboardCard, { backgroundColor: theme.cardColors[2].bg, borderColor: theme.cardColors[2].border, borderWidth: 1.5, marginTop: 16 }]}>
+        <View style={[styles.dashboardCard, { backgroundColor: theme.cardColors[2].bg, borderColor: theme.cardColors[2].border, borderWidth: 1.5, marginTop: 16 }, localSeasonCompleted && { opacity: 0.6 }]} pointerEvents={localSeasonCompleted ? "none" : "auto"}>
            <View style={{ marginBottom: 16 }}>
               <Text style={{ fontSize: 18, fontWeight: '900', color: theme.cardColors[2].accent }}>{UI_TEXT.vendorSettingsSectionTitle}</Text>
               <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600', marginTop: 2 }}>{UI_TEXT.vendorSettledCostHelper}</Text>
@@ -1539,7 +1920,7 @@ export function SettingsScreen() {
         {(localConfig || []).map((day, index) => {
           const colorScheme = theme.cardColors[(index + 2) % theme.cardColors.length];
           return (
-            <View key={day.id} style={[styles.dashboardCard, { backgroundColor: colorScheme.bg, borderColor: colorScheme.border, borderWidth: 1.5 }, !day.enabled && { opacity: 0.6 }]}>
+            <View key={day.id} style={[styles.dashboardCard, { backgroundColor: colorScheme.bg, borderColor: colorScheme.border, borderWidth: 1.5 }, (!day.enabled || localSeasonCompleted) && { opacity: 0.6 }]} pointerEvents={localSeasonCompleted ? "none" : "auto"}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                  <Text style={{ fontSize: 18, fontWeight: '900', color: colorScheme.accent, flex: 1, marginRight: 10 }}>{UI_TEXT.dayConfigTitle}</Text>
                  {(() => {
@@ -1880,7 +2261,9 @@ export function SettingsScreen() {
         >
           <ActionLabel icon="save-outline" label={saving ? UI_TEXT.saving : UI_TEXT.updateSettingsButton} color={theme.colors.white} size={22} />
         </Pressable>
-        <View style={styles.footer}><Text style={styles.footerText}>{UI_TEXT.footerCopyright}</Text></View>
+        </>
+      )}
+        <View style={styles.footer}><Text style={styles.footerText}>{footerText || ""}</Text></View>
       </ScrollView>
 
       <VarietyModal
@@ -1891,6 +2274,103 @@ export function SettingsScreen() {
         onSave={handleSaveVariety}
         theme={theme}
       />
+
+      {/* Create New Season Modal */}
+      <Modal
+        visible={isCreateSeasonModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setIsCreateSeasonModalVisible(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center", padding: 20 }}>
+          <View style={{ backgroundColor: theme.colors.surface, borderRadius: 20, padding: 20, width: "100%", maxWidth: 450, gap: 16, borderWidth: 1.5, borderColor: theme.colors.border }}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+              <Text style={{ fontSize: 18, fontWeight: "900", color: theme.colors.textPrimary }}>
+                {UI_TEXT.createSeasonModalTitle}
+              </Text>
+              <Pressable
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={UI_TEXT.cancel}
+                onPress={() => setIsCreateSeasonModalVisible(false)}
+              >
+                <Ionicons name="close-circle-outline" size={24} color={theme.colors.textMuted} />
+              </Pressable>
+            </View>
+
+            <View style={{ gap: 12 }}>
+              <View>
+                <Text style={{ fontSize: 12, fontWeight: "800", color: theme.colors.textPrimary, marginBottom: 4 }}>
+                  {UI_TEXT.seasonNameLabel} *
+                </Text>
+                <TextInput
+                  style={styles.input}
+                  value={newSeasonNameInput}
+                  onChangeText={setNewSeasonNameInput}
+                  placeholder="e.g. Durga Puja 2027"
+                  placeholderTextColor={theme.colors.textMuted}
+                  autoCapitalize="words"
+                />
+              </View>
+
+              <View>
+                <Text style={{ fontSize: 12, fontWeight: "800", color: theme.colors.textPrimary, marginBottom: 4 }}>
+                  {UI_TEXT.seasonCodeLabel} * ({UI_TEXT.seasonCodeHelper})
+                </Text>
+                <TextInput
+                  style={styles.input}
+                  value={newSeasonCodeInput}
+                  onChangeText={setNewSeasonCodeInput}
+                  placeholder="e.g. DP2027"
+                  placeholderTextColor={theme.colors.textMuted}
+                  autoCapitalize="characters"
+                />
+              </View>
+            </View>
+
+            <View style={{ flexDirection: "row", justifyContent: "flex-end", gap: 12, marginTop: 8 }}>
+              <Pressable
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={UI_TEXT.cancel}
+                onPress={() => setIsCreateSeasonModalVisible(false)}
+                style={({ pressed }) => [
+                  { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, backgroundColor: theme.colors.surfaceDark },
+                  pressed && { opacity: 0.7 }
+                ]}
+              >
+                <Text style={{ color: theme.colors.textPrimary, fontWeight: "800", fontSize: 13 }}>
+                  {UI_TEXT.cancel}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={UI_TEXT.createSeasonButton}
+                onPress={async () => {
+                  setCreatingSeason(true);
+                  try {
+                    await createNewSeason(newSeasonNameInput, newSeasonCodeInput);
+                    setIsCreateSeasonModalVisible(false);
+                  } finally {
+                    setCreatingSeason(false);
+                  }
+                }}
+                disabled={creatingSeason}
+                style={({ pressed }) => [
+                  { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, backgroundColor: theme.colors.primary },
+                  (pressed || creatingSeason) && { opacity: 0.7 }
+                ]}
+              >
+                <Text style={{ color: theme.colors.white, fontWeight: "800", fontSize: 13 }}>
+                  {creatingSeason ? UI_TEXT.saving : UI_TEXT.createSeasonButton}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

@@ -22,7 +22,7 @@ export function HomeScreen() {
   const { theme, themeType } = useAppTheme();
   const { userRole, handleLogout, versionAlertShown, markVersionAlertShown } = useAuth();
   const {
-    subscriptions, dayConfig, seasonName, seasonEnabled, freeMealEnabled, totalPeople, firebaseError, paymentConfig, collections, kidsEnabled, guestsEnabled, foodMenu, remoteAppVersion, androidAppLocation, iosAppLocation, loading, vendorSettledCost, dashboardData
+    subscriptions, dayConfig, seasonName, seasonEnabled, freeMealEnabled, totalPeople, firebaseError, paymentConfig, collections, kidsEnabled, guestsEnabled, foodMenu, remoteAppVersion, androidAppLocation, iosAppLocation, loading, vendorSettledCost, dashboardData, footerText
   } = useCoreDatabase();
   const { navigate, startNew, setIsQuickCheckout, setIsParcelCheckout, setIsQuickFreeMealMode } = useAppNavigation();
   const { showAlert, showGlobalError } = useUI();
@@ -1054,7 +1054,7 @@ export function HomeScreen() {
           )}
         </View>
         <View style={styles.footer}>
-          <Text style={styles.footerText}>{UI_TEXT.footerCopyright}</Text>
+          <Text style={styles.footerText}>{footerText || ""}</Text>
         </View>
       </ScrollView>
     </View>

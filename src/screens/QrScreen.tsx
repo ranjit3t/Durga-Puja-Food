@@ -20,9 +20,9 @@ import { useUI } from "../context/UIContext";
 import { useAppNavigation } from "../context/NavigationContext";
 
 export function QrScreen() {
-  const { userRole, handleLogout } = useAuth();
+  const { userRole, tenantId, handleLogout } = useAuth();
   const {
-    seasonName, seasonEnabled, mobileEnabled, subscriptions, whatsappCountryCode, kidsEnabled
+    seasonName, seasonCode, seasonEnabled, mobileEnabled, subscriptions, whatsappCountryCode, kidsEnabled, footerText
   } = useCoreDatabase();
   const { addActivityLog } = useActivityLogs();
   const { shareQr, printPass } = useUI();
@@ -147,7 +147,7 @@ export function QrScreen() {
 
             <View ref={qrCodeOnlyRef} collapsable={false} style={{ padding: s(6), backgroundColor: theme.colors.white, borderRadius: s(8) }}>
               <QRCode
-                value={qrValueFor(subscription.id)}
+                value={qrValueFor(subscription, tenantId || "", seasonCode)}
                 size={qrSize}
                 color={theme.colors.shadow}
                 backgroundColor={theme.colors.white}
@@ -160,7 +160,7 @@ export function QrScreen() {
                 fontWeight: "900",
                 fontSize: 18,
               }}>
-                {UI_TEXT.passCodeLabel}: {subscription.passcode || generateUniquePasscode(subscriptions, subscription.id, subscription.id)}
+                {UI_TEXT.passCodeLabel}: {subscription.passcode || generateUniquePasscode(subscriptions, subscription.id, subscription.id, tenantId || "", seasonCode)}
               </Text>
             </View>
 
@@ -173,7 +173,7 @@ export function QrScreen() {
                 {UI_TEXT.passInstruction}
               </Text>
               <Text style={styles.qrPassCopyright}>
-                {UI_TEXT.footerCopyright}
+                {footerText || ""}
               </Text>
             </View>
           </View>
@@ -229,8 +229,8 @@ export function QrScreen() {
             {canShare && mobileEnabled && subscription.mobile ? (
               <Pressable
                 onPress={async () => {
-                  const passCode = subscription.passcode || generateUniquePasscode(subscriptions, subscription.id, subscription.id);
-                  const message = `${UI_TEXT.bold}${seasonName || UI_TEXT.headerTitle}${UI_TEXT.bold}${UI_TEXT.newline}${UI_TEXT.newline}${UI_TEXT.bold}${UI_TEXT.passIdLabel}${UI_TEXT.colon}${UI_TEXT.bold}${UI_TEXT.space}${subscription.id}${UI_TEXT.newline}${UI_TEXT.bold}${UI_TEXT.passCodeLabel}${UI_TEXT.colon}${UI_TEXT.bold}${UI_TEXT.space}${passCode}${UI_TEXT.newline}${UI_TEXT.newline}${UI_TEXT.passInstruction}${UI_TEXT.newline}${UI_TEXT.newline}${UI_TEXT.bold}${UI_TEXT.footerText}${UI_TEXT.bold}`;
+                  const passCode = subscription.passcode || generateUniquePasscode(subscriptions, subscription.id, subscription.id, tenantId || "", seasonCode);
+                  const message = `${UI_TEXT.bold}${seasonName || UI_TEXT.headerTitle}${UI_TEXT.bold}${UI_TEXT.newline}${UI_TEXT.newline}${UI_TEXT.bold}${UI_TEXT.passIdLabel}${UI_TEXT.colon}${UI_TEXT.bold}${UI_TEXT.space}${subscription.id}${UI_TEXT.newline}${UI_TEXT.bold}${UI_TEXT.passCodeLabel}${UI_TEXT.colon}${UI_TEXT.bold}${UI_TEXT.space}${passCode}${UI_TEXT.newline}${UI_TEXT.newline}${UI_TEXT.passInstruction}${UI_TEXT.newline}${UI_TEXT.newline}${UI_TEXT.bold}${footerText}${UI_TEXT.bold}`;
                   const url = `https://wa.me/${whatsappCountryCode}${subscription.mobile}?text=${encodeURIComponent(message)}`;
 
                   try {
@@ -359,7 +359,7 @@ export function QrScreen() {
         </View>
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>{UI_TEXT.footerCopyright}</Text>
+          <Text style={styles.footerText}>{footerText || ""}</Text>
         </View>
       </ScrollView>
     </View>

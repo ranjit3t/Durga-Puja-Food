@@ -47,7 +47,7 @@ import { resolveVarietyPrice } from "../utils/paymentUtils";
 
 export function FoodPackageScreen() {
   const { userRole, handleLogout } = useAuth();
-  const { dayConfig, foodMenu, subscriptions, loading, refreshAllData } = useCoreDatabase();
+  const { dayConfig, foodMenu, subscriptions, loading, refreshAllData, footerText } = useCoreDatabase();
   const { foodPackages, upsertFoodPackage, deleteFoodPackage } = useFoodPackages();
   const { navigate, goBack } = useAppNavigation();
   const { showAlert } = useUI();
@@ -660,7 +660,7 @@ export function FoodPackageScreen() {
           }
           ListFooterComponent={
             <View style={styles.footer}>
-              <Text style={styles.footerText}>{UI_TEXT.footerCopyright}</Text>
+              <Text style={styles.footerText}>{footerText || ""}</Text>
             </View>
           }
         />
