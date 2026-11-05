@@ -20,6 +20,8 @@ import { UI_TEXT } from "../strings";
 import {
   getActiveDays,
   isSeasonDone,
+  isMealDone,
+  isMealInPast,
   getDayLabel,
   getDayAbbr,
   isMealEnabled,
@@ -271,7 +273,31 @@ export function DetailsScreen() {
     dayList.some(t => t.breakfast || t.lunch || t.dinner || t.breakfastParcel || t.lunchParcel || t.dinnerParcel)
   );
 
-  const canDeletePass = !hasAnyMealTaken && !seasonCompleted;
+  const hasSubscribedPassedMeal = React.useMemo(() => {
+    const activeDays = getActiveDays(dayConfig);
+    return activeDays.some((dayId) => {
+      const dayConf = (dayConfig || []).find((d) => d.id === dayId);
+      if (!dayConf || !dayConf.enabled) return false;
+
+      const slots = subscription.mealSlots[dayId] || [];
+      if (slots.length === 0) return false;
+
+      return [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].some((mType) => {
+        if (!isMealEnabled(dayId, mType, dayConfig)) return false;
+        const isPassed = isMealDone(dayId, mType, dayConfig) || isMealInPast(dayId, mType, dayConfig);
+        if (!isPassed) return false;
+
+        return slots.some((slot) => {
+          const choice = slot[mType];
+          if (!choice) return false;
+          const normalized = String(choice).trim().toUpperCase();
+          return normalized !== "" && normalized !== "X" && normalized !== "N" && normalized !== "0" && normalized !== "NONE";
+        });
+      });
+    });
+  }, [dayConfig, subscription]);
+
+  const canDeletePass = !hasAnyMealTaken && !hasSubscribedPassedMeal && !seasonCompleted;
 
   const onDelete = () => {
     const passLabel = getPassDisplayLabel(subscription);
