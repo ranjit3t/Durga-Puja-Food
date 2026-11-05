@@ -1457,6 +1457,7 @@ export function createFirebaseRepository(): SubscriptionRepository {
 
     onAppVersionChange(callback) {
       let unsubVersion: (() => void) | null = null;
+      let unsubVersionAlt: (() => void) | null = null;
       let unsubDep: (() => void) | null = null;
       let unsubAndroid: (() => void) | null = null;
       let unsubIos: (() => void) | null = null;
@@ -1503,7 +1504,15 @@ export function createFirebaseRepository(): SubscriptionRepository {
       ensureFirebaseAuth().then((services) => {
         if (!services?.db) return;
         unsubVersion = onValue(ref(services.db, appVersionPath), (snapshot) => {
-          latestVersionVal = snapshot.exists() ? snapshot.val() : null;
+          if (snapshot.exists()) {
+            latestVersionVal = snapshot.val();
+          }
+          notify();
+        });
+        unsubVersionAlt = onValue(ref(services.db, "version"), (snapshot) => {
+          if (snapshot.exists()) {
+            latestVersionVal = snapshot.val();
+          }
           notify();
         });
         unsubDep = onValue(ref(services.db, "deprecatedVersion"), (snapshot) => {
@@ -1522,6 +1531,7 @@ export function createFirebaseRepository(): SubscriptionRepository {
 
       return () => {
         if (unsubVersion) unsubVersion();
+        if (unsubVersionAlt) unsubVersionAlt();
         if (unsubDep) unsubDep();
         if (unsubAndroid) unsubAndroid();
         if (unsubIos) unsubIos();

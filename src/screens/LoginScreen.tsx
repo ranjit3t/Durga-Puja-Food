@@ -62,9 +62,18 @@ export function LoginScreen() {
   const [iosAppLocation, setIosAppLocation] = useState<string | undefined>();
 
   useEffect(() => {
+    repository.getAppVersion().then((info) => {
+      if (info) {
+        setRemoteAppVersion(info.version || null);
+        setDeprecatedVersion(info.deprecatedVersion || null);
+        setAndroidAppLocation(info.androidAppLocation);
+        setIosAppLocation(info.iosAppLocation);
+      }
+    }).catch(() => {});
+
     const unsubVersion = repository.onAppVersionChange((info) => {
       if (info) {
-        setRemoteAppVersion(info.version);
+        setRemoteAppVersion(info.version || null);
         setDeprecatedVersion(info.deprecatedVersion || null);
         setAndroidAppLocation(info.androidAppLocation);
         setIosAppLocation(info.iosAppLocation);
