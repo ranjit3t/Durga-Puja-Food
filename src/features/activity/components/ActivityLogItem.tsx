@@ -121,16 +121,16 @@ export const ActivityLogItem = memo(({
               <Ionicons name="time-outline" size={s(12)} color={theme.colors.textMuted} />
               <Text style={{ fontSize: s(11), color: theme.colors.textMuted, fontWeight: '700' }}>{formatTimestamp(item.timestamp)}</Text>
             </View>
-            {item.appVersion && (
+            {item.appVersion ? (
               <View style={{ backgroundColor: theme.colors.surfaceDark, paddingHorizontal: s(6), paddingVertical: s(2), borderRadius: s(4), borderWidth: 1, borderColor: theme.colors.border }}>
                 <Text style={{ fontSize: s(9), fontWeight: '800', color: theme.colors.textMuted }}>v{item.appVersion}</Text>
               </View>
-            )}
-            {item.seasonCode && (
+            ) : null}
+            {item.seasonCode ? (
               <View style={{ backgroundColor: theme.colors.success + "20", paddingHorizontal: s(6), paddingVertical: s(2), borderRadius: s(4), borderWidth: 1, borderColor: theme.colors.success + "40" }}>
                 <Text style={{ fontSize: s(9), fontWeight: '900', color: theme.colors.success }}>{item.seasonCode}</Text>
               </View>
-            )}
+            ) : null}
           </View>
 
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(8), marginBottom: s(12), flexWrap: 'wrap' }}>
@@ -139,7 +139,7 @@ export const ActivityLogItem = memo(({
              </View>
              <Ionicons name="chevron-forward" size={s(14)} color={theme.colors.border} />
              <Text style={{ fontSize: s(15), fontWeight: '800', color: isError ? theme.colors.error : theme.colors.textPrimary }}>{item.action}</Text>
-             {item.targetId && (() => {
+             {item.targetId ? (() => {
                const matchedSub = (subscriptions || []).find(s => s.id === item.targetId);
                const displayTargetId = matchedSub ? getPassDisplayLabel(matchedSub) : item.targetId;
 
@@ -152,34 +152,34 @@ export const ActivityLogItem = memo(({
                    <Text style={{ fontSize: s(11), fontWeight: '900', color: theme.colors.secondary }}>{displayTargetId}</Text>
                  </View>
                );
-             })()}
-             {checkoutSource && (
+             })() : null}
+             {checkoutSource ? (
                <View style={{ backgroundColor: theme.colors.primary + "18", paddingHorizontal: s(8), paddingVertical: s(4), borderRadius: s(6), borderWidth: 1, borderColor: theme.colors.primary + "40", flexDirection: 'row', alignItems: 'center', gap: s(4) }}>
                  <Ionicons name={checkoutSource.icon as any} size={s(12)} color={theme.colors.primary} />
                  <Text style={{ fontSize: s(10), fontWeight: '900', color: theme.colors.primary, textTransform: 'uppercase' }}>{checkoutSource.label}</Text>
                </View>
-             )}
-             {freeMealSource && (
+             ) : null}
+             {freeMealSource ? (
                <View style={{ backgroundColor: theme.cardColors[2].accent + "18", paddingHorizontal: s(8), paddingVertical: s(4), borderRadius: s(6), borderWidth: 1, borderColor: theme.cardColors[2].accent + "40", flexDirection: 'row', alignItems: 'center', gap: s(4) }}>
                  <Ionicons name={freeMealSource.icon as any} size={s(12)} color={theme.cardColors[2].accent} />
                  <Text style={{ fontSize: s(10), fontWeight: '900', color: theme.cardColors[2].accent, textTransform: 'uppercase' }}>{freeMealSource.label}</Text>
                </View>
-             )}
-             {isClickable && (
+             ) : null}
+             {isClickable ? (
                <Ionicons name="open-outline" size={s(14)} color={theme.colors.primary} />
-             )}
+             ) : null}
           </View>
 
           <View style={{ backgroundColor: theme.colors.surfaceDark, padding: s(12), borderRadius: s(12), marginBottom: s(12) }}>
             <Text style={{ fontSize: s(14), color: isError ? theme.colors.error : theme.colors.textPrimary, lineHeight: s(20), fontWeight: '600' }}>{formattedDescription}</Text>
           </View>
 
-          {item.os && (
+          {item.os ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: s(6), opacity: 0.6 }}>
               <Ionicons name={item.os.toLowerCase() === 'ios' ? 'logo-apple' : item.os.toLowerCase() === 'android' ? 'logo-android' : 'globe-outline'} size={s(14)} color={theme.colors.textMuted} />
               <Text style={{ fontSize: s(11), color: theme.colors.textMuted, fontWeight: '800', textTransform: 'uppercase' }}>{item.os} {item.device}</Text>
             </View>
-          )}
+          ) : null}
         </View>
 
         <View style={{ backgroundColor: isError ? theme.colors.error + "10" : theme.colors.surfaceDark, padding: s(10), borderRadius: s(14), borderWidth: 1, borderColor: isError ? theme.colors.error + "20" : theme.colors.border }}>

@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useStyles } from "../styles";
 import { useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
-import { getDayLabel, isMealEnabled, isMealDone, getSortedMealKeys, isDietaryEnabled, isMealCurrent, getMealLabel, isMealInFuture, getMealVarieties, getMealFreeMealCounts, isSpecialMeal, isSeasonDone } from "../constants";
+import { getDayLabel, isMealEnabled, isMealDone, getSortedMealKeys, isDietaryEnabled, isMealCurrent, getMealLabel, isMealInFuture, getMealVarieties, getMealFreeMealCounts, isSpecialMeal, isSeasonDone, isParcelEnabled } from "../constants";
 import { MealMenu, ConfigDay, MealType, DietType, AppThemeMode, ActivityModule, ActivityAction, AppScreen, UserRole, FreeMealCheckoutSource } from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
@@ -44,7 +44,7 @@ const FreeMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, isCat
 
   const dayConf = config.find((d) => d.id === dayId);
   const mConf = dayConf ? dayConf[type] : undefined;
-  const varieties = getMealVarieties(mConf);
+  const varieties = getMealVarieties(mConf, dayConf?.vegOnly);
 
   const isDone = isMealDone(dayId, type, config);
   const isCurrent = isMealCurrent(dayId, type, config);
@@ -179,10 +179,12 @@ const FreeMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, isCat
                     <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.textSecondary }}>{UI_TEXT.dineIn.toUpperCase()}</Text>
                     <Text style={{ fontSize: 18, fontWeight: '900', color: theme.colors.veg, marginTop: 2 }}>{dineInCount}</Text>
                   </View>
-                  <View style={{ flex: 1, backgroundColor: theme.colors.surfaceDark, padding: 10, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.border }}>
-                    <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.textSecondary }}>{UI_TEXT.parcel.toUpperCase()}</Text>
-                    <Text style={{ fontSize: 18, fontWeight: '900', color: theme.colors.primary, marginTop: 2 }}>{parcelCount}</Text>
-                  </View>
+                  {isParcelEnabled(dayId, type, config) && (
+                    <View style={{ flex: 1, backgroundColor: theme.colors.surfaceDark, padding: 10, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.border }}>
+                      <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.textSecondary }}>{UI_TEXT.parcel.toUpperCase()}</Text>
+                      <Text style={{ fontSize: 18, fontWeight: '900', color: theme.colors.primary, marginTop: 2 }}>{parcelCount}</Text>
+                    </View>
+                  )}
                 </View>
               ) : (
                 <View style={{ gap: 8 }}>
@@ -201,14 +203,16 @@ const FreeMealCard = memo(({ dayId, type, menu, config, disabled, isAdmin, isCat
                     onChange={(val) => onUpdate(dayId, type, dineInField, val)}
                     disabled={isCaterer || !isMealEditableForAdmin}
                   />
-                  <CounterInput
-                    label={UI_TEXT.parcel}
-                    value={parcelCount}
-                    min={0}
-                    max={Math.max(0, pCount - dineInCount)}
-                    onChange={(val) => onUpdate(dayId, type, parcelField, val)}
-                    disabled={isCaterer || !isMealEditableForAdmin}
-                  />
+                  {isParcelEnabled(dayId, type, config) && (
+                    <CounterInput
+                      label={UI_TEXT.parcel}
+                      value={parcelCount}
+                      min={0}
+                      max={Math.max(0, pCount - dineInCount)}
+                      onChange={(val) => onUpdate(dayId, type, parcelField, val)}
+                      disabled={isCaterer || !isMealEditableForAdmin}
+                    />
+                  )}
                 </View>
               )}
             </View>

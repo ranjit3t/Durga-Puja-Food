@@ -29,15 +29,15 @@ export default function App() {
     <ErrorBoundary>
       <ThemeProvider>
         <AuthProvider>
-          <DatabaseProvider>
-            <UIProvider>
+          <UIProvider>
+            <DatabaseProvider>
               <ChatProvider>
                 <NavigationProvider>
                   <AppRoot />
                 </NavigationProvider>
               </ChatProvider>
-            </UIProvider>
-          </DatabaseProvider>
+            </DatabaseProvider>
+          </UIProvider>
         </AuthProvider>
       </ThemeProvider>
     </ErrorBoundary>

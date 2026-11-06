@@ -215,6 +215,16 @@ export function SuperAdminHomeScreen() {
           >
             <ActionLabel icon="time-outline" label={UI_TEXT.activityLog || "Audit Logs"} color={theme.colors.white} size={iconSize} vertical />
           </Pressable>
+
+          <Pressable
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={UI_TEXT.notes || "Operational Notes"}
+            onPress={() => navigate(AppScreen.NOTES)}
+            style={[styles.compactSecondary, { backgroundColor: theme.cardColors[0].accent || theme.colors.primary, borderColor: theme.cardColors[0].accent || theme.colors.primary, flex: 1, height: 60 }]}
+          >
+            <ActionLabel icon="document-text-outline" label={UI_TEXT.notes || "Operational Notes"} color={theme.colors.white} size={iconSize} vertical />
+          </Pressable>
         </View>
 
         {/* Version Management Modal */}
@@ -223,7 +233,7 @@ export function SuperAdminHomeScreen() {
             <View style={{ backgroundColor: theme.colors.surface, borderRadius: 20, padding: 20, width: "100%", maxWidth: 500, gap: 16, borderWidth: 1.5, borderColor: theme.colors.border }}>
               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
                 <Text style={{ fontSize: 18, fontWeight: '900', color: theme.colors.textPrimary }}>
-                  {UI_TEXT.versionManagementSection || "Global App Version Management"}
+                  {UI_TEXT.versionManagementSection}
                 </Text>
                 <Pressable onPress={() => setIsVersionManagementModalOpen(false)} accessible={true} accessibilityRole="button">
                   <Ionicons name="close-circle-outline" size={24} color={theme.colors.textMuted} />

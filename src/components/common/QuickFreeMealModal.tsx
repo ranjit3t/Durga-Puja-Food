@@ -37,6 +37,7 @@ import {
   getMealVarieties,
   isDietaryEnabled,
   isSpecialMeal,
+  isParcelEnabled,
 } from "../../constants";
 import { CounterInput } from "./CounterInput";
 
@@ -114,7 +115,7 @@ export function QuickFreeMealModal({
 
   const dayConf = dayConfig.find((d) => d.id === dayId);
   const mConf = dayConf ? dayConf[mealType] : undefined;
-  const varieties = getMealVarieties(mConf);
+  const varieties = getMealVarieties(mConf, dayConf?.vegOnly);
 
   const getFreeMealCount = (vId: string, kind: "planned" | "dineIn" | "parcel"): number => {
     if (kind === "planned") {
@@ -362,14 +363,16 @@ export function QuickFreeMealModal({
                         disabled={isServedDisabled}
                         onChange={(val) => updateFreeMealCountDebounced(dayId, mealType, dineInField, val, FreeMealCheckoutSource.FREE_MEAL_MODAL)}
                       />
-                      <CounterInput
-                        label={UI_TEXT.parcel}
-                        value={parcelCount}
-                        min={0}
-                        max={Math.max(0, pCount - dineInCount)}
-                        disabled={isServedDisabled}
-                        onChange={(val) => updateFreeMealCountDebounced(dayId, mealType, parcelField, val, FreeMealCheckoutSource.FREE_MEAL_MODAL)}
-                      />
+                      {isParcelEnabled(dayId, mealType, dayConfig) && (
+                        <CounterInput
+                          label={UI_TEXT.parcel}
+                          value={parcelCount}
+                          min={0}
+                          max={Math.max(0, pCount - dineInCount)}
+                          disabled={isServedDisabled}
+                          onChange={(val) => updateFreeMealCountDebounced(dayId, mealType, parcelField, val, FreeMealCheckoutSource.FREE_MEAL_MODAL)}
+                        />
+                      )}
                     </View>
                   </View>
                 );

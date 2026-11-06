@@ -27,6 +27,10 @@
       ".write": true,
       ".indexOn": ["timestamp"]
     },
+    "notes": {
+      ".read": true,
+      ".write": true
+    },
     "presence": {
       ".read": true,
       ".write": true,

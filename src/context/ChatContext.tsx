@@ -9,7 +9,7 @@ import React, {
 } from "react";
 import { createFirebaseRepository } from "../repository";
 import { useAuth } from "./AuthContext";
-import { ChatMessage, ChatUser, UserPresence } from "../types";
+import { ChatMessage, ChatUser, UserPresence, UserRole } from "../types";
 
 const repository = createFirebaseRepository();
 
@@ -202,10 +202,16 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       systemUsernames.add(cleanU);
       if (cleanU === currentClean) return;
 
-      // Strict Tenant Boundary: Only allow chat between users of the same tenant
+      const lastMsg = lastMsgMap[cleanU];
+
+      // Strict Tenant Boundary & Exclude SuperAdmins for tenant users unless a message thread exists
       const userTenant = (u.tenantId || "").trim().toLowerCase();
       const currentTenant = (tenantId || "").trim().toLowerCase();
-      if (currentTenant && userTenant && userTenant !== currentTenant) return;
+      const isSuperAdminUser = (u.role || "").toLowerCase() === UserRole.SUPER_ADMIN || (u.role || "").toLowerCase() === "super_admin" || (u.role || "").toLowerCase() === "superadmin";
+      const isCurrentSuperAdmin = userRole === UserRole.SUPER_ADMIN;
+
+      if (!isCurrentSuperAdmin && isSuperAdminUser && !lastMsg) return;
+      if (!isCurrentSuperAdmin && !isSuperAdminUser && currentTenant && userTenant && userTenant !== currentTenant) return;
 
       const isDisabled =
         u.disabled === true ||
@@ -228,7 +234,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       const isOnline = p ? p.online : false;
       const lastSeen = p ? p.lastSeen : 0;
       const unread = unreadMap[cleanU] || 0;
-      const lastMsg = lastMsgMap[cleanU];
 
       // Exclude blocked (disabled/deleted/locked) users from new chat initiation (show only if historical chat exists)
       if (isBlocked && !lastMsg) return;
@@ -236,7 +241,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       usersMap.set(cleanU, {
         username: u.username,
         displayName: u.name || u.username,
-        role: u.role || "User",
+        role: u.role || "",
         online: isOnline,
         lastSeen: lastSeen,
         unreadCount: unread,
@@ -270,7 +275,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       usersMap.set(cleanU, {
         username: p?.username || cleanU,
         displayName: p?.displayName || p?.username || cleanU,
-        role: p?.role || "User",
+        role: p?.role || "",
         online: isDeleted ? false : p ? p.online : false,
         lastSeen: p ? p.lastSeen : 0,
         unreadCount: unread,

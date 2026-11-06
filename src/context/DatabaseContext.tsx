@@ -49,8 +49,10 @@ import {
   isGuestsParcelEnabled,
   isMealSlotAbsent,
   isVersionLessOrEqual,
-  blockOptions
+  blockOptions,
+  isSeasonDone
 } from "../constants";
+import { isNoteSharedWithUser } from "../utils/noteEncryption";
 import { useUI } from "./UIContext";
 import { SeasonConfig } from "../domain";
 
@@ -153,6 +155,16 @@ const ActivityLogsContext = createContext<ActivityLogsContextType | undefined>(u
 const NotesContext = createContext<NotesContextType | undefined>(undefined);
 const FoodPackagesContext = createContext<FoodPackagesContextType | undefined>(undefined);
 const CatererFinanceContext = createContext<CatererFinanceContextType | undefined>(undefined);
+
+function deduplicateNotes(notesList: Note[]): Note[] {
+  const map = new Map<string, Note>();
+  (notesList || []).forEach(n => {
+    if (n && n.id) {
+      map.set(n.id, n);
+    }
+  });
+  return Array.from(map.values()).sort((a, b) => b.timestamp - a.timestamp);
+}
 
 export function DatabaseProvider({ children }: { children: React.ReactNode }) {
   const { userRole, userName, userAccountName, tenantId, handleLogout } = useAuth();
@@ -325,34 +337,33 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
         setFirebaseError(firebaseMissingConfig.join(", "));
         return;
       }
+      const [appVer, logsData, notesData] = await Promise.all([
+        repository.getAppVersion(),
+        repository.getActivityLogs(100, tenantId || undefined, isSuperAdmin),
+        repository.getNotes(),
+      ]);
+      if (appVer) {
+        setRemoteAppVersion(appVer.version);
+        setAndroidAppLocation(appVer.androidAppLocation);
+        setIosAppLocation(appVer.iosAppLocation);
+      } else {
+        void repository.updateAppVersion(UI_TEXT.appVersion);
+        setRemoteAppVersion(UI_TEXT.appVersion);
+      }
+      setActivityLogs(logsData || []);
+      setNotes(deduplicateNotes(notesData || []));
       if (isSuperAdmin) {
-        const [appVer, logsData] = await Promise.all([
-          repository.getAppVersion(),
-          repository.getActivityLogs(100, undefined, true),
-        ]);
-        if (appVer) {
-          setRemoteAppVersion(appVer.version);
-          setAndroidAppLocation(appVer.androidAppLocation);
-          setIosAppLocation(appVer.iosAppLocation);
-        } else {
-          void repository.updateAppVersion(UI_TEXT.appVersion);
-          setRemoteAppVersion(UI_TEXT.appVersion);
-        }
-        setActivityLogs(logsData || []);
         setFirebaseError("");
         if (!silent) setLoading(false);
         return;
       }
 
-      const [subs, config, menu, notesData, packagesData, catererData, appVer, logsData, metricsData, hasPasses] = await Promise.all([
+      const [subs, config, menu, packagesData, catererData, metricsData, hasPasses] = await Promise.all([
         repository.list(tenantId || undefined),
         repository.getConfig(tenantId || undefined),
         repository.getMenu(tenantId || undefined),
-        repository.getNotes(tenantId || undefined),
         repository.getFoodPackages(tenantId || undefined),
         repository.getCatererTransactions(tenantId || undefined),
-        repository.getAppVersion(),
-        repository.getActivityLogs(100, tenantId || undefined, false),
         repository.getMetrics(),
         repository.hasAnyPassesAcrossSeasons(tenantId || undefined),
       ]);
@@ -398,7 +409,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       setIdentity2Name(config.identity2Name || "Flat No");
       setPasscodeDigitCount(config.passcodeDigitCount !== undefined ? Number(config.passcodeDigitCount) : 4);
       setFoodMenu(menu);
-      setNotes(notesData);
+      setNotes(deduplicateNotes(notesData || []));
       setFoodPackages(packagesData);
       setCatererTransactions(catererData || []);
       setActivityLogs(logsData);
@@ -456,7 +467,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
     Promise.all([
       repository.getConfig(tenantId || undefined),
       repository.getMenu(tenantId || undefined),
-      repository.getNotes(tenantId || undefined),
+      repository.getNotes(),
       repository.getFoodPackages(tenantId || undefined),
       repository.getCatererTransactions(tenantId || undefined),
       repository.getAppVersion(),
@@ -579,15 +590,10 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
 
     const unsubNotes = repository.onNotesDelta(
       (newNote) => {
-        setNotes((prev) => {
-          if (prev.some((n) => n.id === newNote.id)) {
-            return prev.map((n) => (n.id === newNote.id ? newNote : n)).sort((a, b) => b.timestamp - a.timestamp);
-          }
-          return [newNote, ...prev].sort((a, b) => b.timestamp - a.timestamp);
-        });
+        setNotes((prev) => deduplicateNotes([newNote, ...prev]));
       },
       (updatedNote) => {
-        setNotes((prev) => prev.map((n) => (n.id === updatedNote.id ? updatedNote : n)).sort((a, b) => b.timestamp - a.timestamp));
+        setNotes((prev) => deduplicateNotes(prev.map((n) => (n.id === updatedNote.id ? updatedNote : n))));
       },
       (removedId) => {
         setNotes((prev) => prev.filter((n) => n.id !== removedId));
@@ -1380,7 +1386,11 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
   const upsertNote = useCallback(async (note: Note) => {
     try {
       const isEdit = !!note.id;
-      await repository.upsertNote(note);
+      const noteToSave = {
+        ...note,
+        tenantId: isSuperAdmin ? (note.tenantId || undefined) : (tenantId || undefined)
+      };
+      await repository.upsertNote(noteToSave);
       addActivityLog({
         module: ActivityModule.NOTE,
         action: isEdit ? ActivityAction.UPDATE : ActivityAction.CREATE,
@@ -1396,7 +1406,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       });
       throw err;
     }
-  }, [addActivityLog]);
+  }, [tenantId, isSuperAdmin, addActivityLog]);
 
   const deleteNote = useCallback(async (id: string) => {
     try {
@@ -1420,7 +1430,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       });
       throw err;
     }
-  }, [notes, addActivityLog]);
+  }, [notes, tenantId, isSuperAdmin, addActivityLog]);
 
   const upsertFoodPackage = useCallback(async (pkg: FoodPackage) => {
     try {
@@ -1946,6 +1956,14 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
     const targetSeason = currentSeasons.find(s => (s.seasonCode || s.id || "").toUpperCase() === targetCode);
     if (!targetSeason) return;
 
+    if (!seasonCompleted || !isSeasonDone(dayConfig)) {
+      showAlert(
+        UI_TEXT.error,
+        UI_TEXT.switchSeasonIncompleteError
+      );
+      return;
+    }
+
     const updatedSeasons = currentSeasons.map((s) => {
       const match = (s.seasonCode || s.id || "").toUpperCase() === targetCode;
       return {
@@ -1980,7 +1998,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
     setCheatCodeEnabled(targetCheatCode);
     await updateConfig(fullConfig);
     await refreshAllData(true);
-  }, [seasons, identity1Enabled, identity1Name, identity1Options, identity2Enabled, identity2Name, updateConfig, refreshAllData]);
+  }, [seasons, seasonCompleted, dayConfig, identity1Enabled, identity1Name, identity1Options, identity2Enabled, identity2Name, updateConfig, refreshAllData, showAlert]);
 
   const coreValue = useMemo(() => ({
     loading, firebaseError, refreshAllData,

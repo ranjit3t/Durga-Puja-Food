@@ -22,8 +22,10 @@ export function HomeScreen() {
   const { theme, themeType } = useAppTheme();
   const { userRole, handleLogout, versionAlertShown, markVersionAlertShown } = useAuth();
   const {
-    subscriptions, dayConfig, seasonName, seasonEnabled, freeMealEnabled, totalPeople, firebaseError, paymentConfig, collections, kidsEnabled, guestsEnabled, foodMenu, remoteAppVersion, androidAppLocation, iosAppLocation, loading, vendorSettledCost, dashboardData, footerText
+    subscriptions, dayConfig, seasonName, seasonEnabled, freeMealEnabled, totalPeople, firebaseError, paymentConfig, collections, kidsEnabled, guestsEnabled, foodMenu, remoteAppVersion, androidAppLocation, iosAppLocation, loading, vendorSettledCost, dashboardData, footerText, seasonCompleted
   } = useCoreDatabase();
+
+  const areAllMealsComplete = seasonCompleted || isSeasonDone(dayConfig);
   const { navigate, startNew, setIsQuickCheckout, setIsParcelCheckout, setIsQuickFreeMealMode } = useAppNavigation();
   const { showAlert, showGlobalError } = useUI();
   const { width } = useWindowDimensions();
@@ -709,38 +711,40 @@ export function HomeScreen() {
               </View>
 
               {/* Total Plates Served */}
-              <View style={{ flexDirection: "row", alignItems: "center", gap: s(6), flexWrap: 'wrap' }}>
-                <Text style={[styles.summaryLabel, { opacity: 0.8, fontSize: labelFontSize }]}>{UI_TEXT.totalPlatesServed.toUpperCase()}:</Text>
-                <Text style={[styles.summaryNumber, { fontSize: secondaryFontSize, marginTop: 0, lineHeight: secondaryFontSize + 2 }]}>
-                  {servedSummaryCounts.totalServed}
-                </Text>
-                {(kidsEnabled || guestsEnabled) && (
-                  <Text style={{ fontSize: isNarrow ? 9 : s(11), color: theme.colors.white, opacity: 0.8, fontWeight: '700', flexShrink: 1 }} numberOfLines={2}>
-                    {UI_TEXT.openParen}
-                    {servedSummaryCounts.adultsServed}{UI_TEXT.space}{servedSummaryCounts.adultsServed === 1 ? UI_TEXT.adult : UI_TEXT.adults}
-                    {kidsEnabled && servedSummaryCounts.kidsServed > 0 ? `${UI_TEXT.comma}${UI_TEXT.space}${servedSummaryCounts.kidsServed}${UI_TEXT.space}${servedSummaryCounts.kidsServed === 1 ? UI_TEXT.kid : UI_TEXT.kids}` : ""}
-                    {guestsEnabled && servedSummaryCounts.guestsServed > 0 ? `${UI_TEXT.comma}${UI_TEXT.space}${servedSummaryCounts.guestsServed}${UI_TEXT.space}${servedSummaryCounts.guestsServed === 1 ? UI_TEXT.guest : UI_TEXT.guests}` : ""}
-                    {UI_TEXT.closeParen}
+              {areAllMealsComplete && (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: s(6), flexWrap: 'wrap' }}>
+                  <Text style={[styles.summaryLabel, { opacity: 0.8, fontSize: labelFontSize }]}>{UI_TEXT.totalPlatesServed.toUpperCase()}:</Text>
+                  <Text style={[styles.summaryNumber, { fontSize: secondaryFontSize, marginTop: 0, lineHeight: secondaryFontSize + 2 }]}>
+                    {servedSummaryCounts.totalServed}
                   </Text>
-                )}
-                {isVegEnabledGlobally && isNonVegEnabledGlobally && (
-                  <Text style={{ fontSize: labelFontSize, color: theme.colors.white, opacity: 0.8, fontWeight: '700', flexShrink: 1 }}>
-                    {UI_TEXT.openParen}
-                    {servedSummaryCounts.vegServed}{UI_TEXT.space}{UI_TEXT.vegLabel}
-                    {UI_TEXT.pipe}
-                    {servedSummaryCounts.nonVegServed}{UI_TEXT.space}{UI_TEXT.nonVegLabel}
-                    {UI_TEXT.closeParen}
-                  </Text>
-                )}
-                {servedSummaryCounts.parcelServedTotal >= 0 && (
-                  <Text style={{ fontSize: labelFontSize, color: theme.colors.white, opacity: 0.8, fontWeight: '700', flexShrink: 1 }}>
-                    {UI_TEXT.openParen}
-                    {servedSummaryCounts.dineInServedTotal} {UI_TEXT.dineIn}
-                    {servedSummaryCounts.parcelServedTotal > 0 ? ` ${UI_TEXT.pipe} ${servedSummaryCounts.parcelServedTotal} ${UI_TEXT.parcel}` : ""}
-                    {UI_TEXT.closeParen}
-                  </Text>
-                )}
-              </View>
+                  {(kidsEnabled || guestsEnabled) && (
+                    <Text style={{ fontSize: isNarrow ? 9 : s(11), color: theme.colors.white, opacity: 0.8, fontWeight: '700', flexShrink: 1 }} numberOfLines={2}>
+                      {UI_TEXT.openParen}
+                      {servedSummaryCounts.adultsServed}{UI_TEXT.space}{servedSummaryCounts.adultsServed === 1 ? UI_TEXT.adult : UI_TEXT.adults}
+                      {kidsEnabled && servedSummaryCounts.kidsServed > 0 ? `${UI_TEXT.comma}${UI_TEXT.space}${servedSummaryCounts.kidsServed}${UI_TEXT.space}${servedSummaryCounts.kidsServed === 1 ? UI_TEXT.kid : UI_TEXT.kids}` : ""}
+                      {guestsEnabled && servedSummaryCounts.guestsServed > 0 ? `${UI_TEXT.comma}${UI_TEXT.space}${servedSummaryCounts.guestsServed}${UI_TEXT.space}${servedSummaryCounts.guestsServed === 1 ? UI_TEXT.guest : UI_TEXT.guests}` : ""}
+                      {UI_TEXT.closeParen}
+                    </Text>
+                  )}
+                  {isVegEnabledGlobally && isNonVegEnabledGlobally && (
+                    <Text style={{ fontSize: labelFontSize, color: theme.colors.white, opacity: 0.8, fontWeight: '700', flexShrink: 1 }}>
+                      {UI_TEXT.openParen}
+                      {servedSummaryCounts.vegServed}{UI_TEXT.space}{UI_TEXT.vegLabel}
+                      {UI_TEXT.pipe}
+                      {servedSummaryCounts.nonVegServed}{UI_TEXT.space}{UI_TEXT.nonVegLabel}
+                      {UI_TEXT.closeParen}
+                    </Text>
+                  )}
+                  {servedSummaryCounts.parcelServedTotal >= 0 && (
+                    <Text style={{ fontSize: labelFontSize, color: theme.colors.white, opacity: 0.8, fontWeight: '700', flexShrink: 1 }}>
+                      {UI_TEXT.openParen}
+                      {servedSummaryCounts.dineInServedTotal} {UI_TEXT.dineIn}
+                      {servedSummaryCounts.parcelServedTotal > 0 ? ` ${UI_TEXT.pipe} ${servedSummaryCounts.parcelServedTotal} ${UI_TEXT.parcel}` : ""}
+                      {UI_TEXT.closeParen}
+                    </Text>
+                  )}
+                </View>
+              )}
 
               {isSpecialMealConfigured && specialMealSummaryCounts.totalPlates > 0 && (
                 <View style={{ flexDirection: "row", alignItems: "center", gap: s(6), flexWrap: 'wrap' }}>
@@ -768,7 +772,7 @@ export function HomeScreen() {
               )}
 
               {/* Special Meal Served */}
-              {isSpecialMealConfigured && (
+              {areAllMealsComplete && isSpecialMealConfigured && (
                 <View style={{ flexDirection: "row", alignItems: "center", gap: s(6), flexWrap: 'wrap' }}>
                   <Text style={[styles.summaryLabel, { opacity: 0.8, fontSize: labelFontSize }]}>{UI_TEXT.specialMealServed}:</Text>
                   <Text style={[styles.summaryNumber, { fontSize: secondaryFontSize, marginTop: 0, lineHeight: secondaryFontSize + 2 }]}>
@@ -828,7 +832,7 @@ export function HomeScreen() {
               )}
 
               {/* Total Free Meal Served */}
-              {freeMealEnabled && freeMealServedSummary.seasonTotal > 0 && (
+              {areAllMealsComplete && freeMealEnabled && freeMealServedSummary.seasonTotal > 0 && (
                 <View style={{ flexDirection: "row", alignItems: "center", gap: s(6), flexWrap: 'wrap' }}>
                   <Text style={[styles.summaryLabel, { opacity: 0.8, fontSize: labelFontSize }]}>{UI_TEXT.totalfreeMealsServed.toUpperCase()}:</Text>
                   <Text style={[styles.summaryNumber, { fontSize: secondaryFontSize, marginTop: 0, lineHeight: secondaryFontSize + 2 }]}>
@@ -860,7 +864,7 @@ export function HomeScreen() {
                 </View>
               )}
 
-              {userRole === UserRole.ADMIN && vendorSettledCost !== undefined && vendorSettledCost !== null && String(vendorSettledCost).trim() !== "" && !isNaN(parseFloat(String(vendorSettledCost))) && (
+              {userRole === UserRole.ADMIN && areAllMealsComplete && vendorSettledCost !== undefined && vendorSettledCost !== null && String(vendorSettledCost).trim() !== "" && !isNaN(parseFloat(String(vendorSettledCost))) && (
                 <View style={{ flexDirection: "row", alignItems: "center", gap: s(8), flexWrap: 'nowrap' }}>
                   <Text style={[styles.summaryLabel, { opacity: 0.8, fontSize: labelFontSize }]}>{UI_TEXT.totalVendorPayment}{UI_TEXT.colon}</Text>
                   <Text style={[styles.summaryNumber, { fontSize: secondaryFontSize, marginTop: 0, lineHeight: secondaryFontSize + 2 }]}>{parseFloat(String(vendorSettledCost)).toLocaleString()}</Text>

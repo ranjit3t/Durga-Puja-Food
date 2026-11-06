@@ -21,7 +21,7 @@ import { useAppNavigation } from "../../context/NavigationContext";
 import { useUI } from "../../context/UIContext";
 import { useAppTheme } from "../../theme";
 import { UI_TEXT } from "../../strings";
-import { AppScreen, ChatMessage, ChatUser } from "../../types";
+import { AppScreen, ChatMessage, ChatUser, UserRole } from "../../types";
 
 function formatTimestamp(ts: number): string {
   if (!ts) return "";
@@ -204,6 +204,15 @@ export function ChatWidget() {
   const currentClean = userAccountName?.toLowerCase() || "";
   const filteredUsers = availableUsers.filter((u) => {
     if (u.username.toLowerCase() === currentClean) return false;
+    const isSuperAdminUser = (u.role || "").toLowerCase() === UserRole.SUPER_ADMIN || (u.role || "").toLowerCase() === "super_admin" || (u.role || "").toLowerCase() === "superadmin";
+    const isCurrentSuperAdmin = userRole === UserRole.SUPER_ADMIN;
+
+    // SuperAdmins are NEVER searchable via search bar for tenant users
+    if (!isCurrentSuperAdmin && isSuperAdminUser && query.length >= 3) return false;
+
+    // For tenant users, SuperAdmins are shown only if an active conversation exists
+    if (!isCurrentSuperAdmin && isSuperAdminUser && !(Boolean(u.lastMessage) || (u.unreadCount || 0) > 0)) return false;
+
     if (query.length < 3) {
       return Boolean(u.lastMessage) || (u.unreadCount || 0) > 0;
     }

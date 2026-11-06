@@ -251,7 +251,7 @@ const NoteItem = memo(({
 });
 
 export function NotesScreen() {
-  const { userRole, userName, userAccountName, handleLogout } = useAuth();
+  const { userRole, userName, userAccountName, tenantId, handleLogout } = useAuth();
   const { loading, refreshAllData, getAuthConfig, footerText } = useCoreDatabase();
   const { notes, deleteNote, upsertNote } = useNotes();
   const { addActivityLog } = useActivityLogs();
@@ -284,9 +284,10 @@ export function NotesScreen() {
   const [isSharingSaving, setIsSharingSaving] = useState(false);
 
   const [nonAdminUsers, setNonAdminUsers] = useState<string[]>([]);
-  const [systemUsers, setSystemUsers] = useState<Array<{ username: string; name?: string; role?: string }>>([]);
+  const [systemUsers, setSystemUsers] = useState<Array<{ username: string; name?: string; role?: string; tenantId?: string }>>([]);
 
   const isAdmin = userRole === UserRole.ADMIN;
+  const isSuperAdmin = userRole === UserRole.SUPER_ADMIN;
   const currentUsername = (userAccountName || userName || "").toLowerCase();
 
   useEffect(() => {
@@ -294,12 +295,24 @@ export function NotesScreen() {
       if (cfg && Array.isArray(cfg.users)) {
         setSystemUsers(cfg.users);
         const list = cfg.users
-          .filter((u: any) => u.role?.toLowerCase() !== UserRole.ADMIN && u.username.toLowerCase() !== currentUsername)
+          .filter((u: any) => {
+            const r = (u.role || "").toLowerCase();
+            const uName = (u.username || "").toLowerCase();
+            if (uName === currentUsername) return false;
+
+            if (isSuperAdmin) {
+              return r === UserRole.SUPER_ADMIN || r === "super_admin" || r === "superadmin";
+            } else {
+              const isSameTenant = u.tenantId && tenantId && u.tenantId.toLowerCase() === tenantId.toLowerCase();
+              const isSuper = r === UserRole.SUPER_ADMIN || r === "super_admin" || r === "superadmin";
+              return isSameTenant || isSuper;
+            }
+          })
           .map((u: any) => u.username);
         setNonAdminUsers(list);
       }
     }).catch(err => console.error("Error loading auth users for note sharing:", err));
-  }, [getAuthConfig, currentUsername]);
+  }, [getAuthConfig, currentUsername, isSuperAdmin, tenantId]);
 
   const getDisplayUsername = useCallback((rawName: string) => {
     if (!rawName) return "";
@@ -330,19 +343,29 @@ export function NotesScreen() {
     users.add(UI_TEXT.all);
     notes.forEach(note => {
       const owner = getDisplayUsername(note.userName);
-      if (isAdmin || owner.toLowerCase() === currentUsername || isNoteSharedWithUser(note, currentUsername) || isNoteSharedWithUser(note, userName)) {
+      if (isAdmin || isSuperAdmin || owner.toLowerCase() === currentUsername || isNoteSharedWithUser(note, currentUsername) || isNoteSharedWithUser(note, userName)) {
         users.add(owner);
       }
     });
     return Array.from(users).sort();
-  }, [notes, isAdmin, currentUsername, userName, getDisplayUsername]);
+  }, [notes, isAdmin, isSuperAdmin, currentUsername, userName, getDisplayUsername]);
 
   const filteredNotes = useMemo(() => {
     let result = notes.filter(note => {
       const ownerUsername = getDisplayUsername(note.userName);
-      const isOwner = ownerUsername.toLowerCase() === currentUsername;
+      const isOwner = ownerUsername.toLowerCase() === currentUsername || note.userName?.toLowerCase() === currentUsername;
       const isSharedWithMe = isNoteSharedWithUser(note, currentUsername) || isNoteSharedWithUser(note, userName);
-      if (!isAdmin && !isOwner && !isSharedWithMe) return false;
+      const isSharedToAll = note.sharedWith === "all";
+
+      let canAccess = false;
+      if (isSuperAdmin) {
+        canAccess = isOwner || isSharedWithMe || isSharedToAll || true;
+      } else {
+        const isSameTenant = !note.tenantId || (tenantId && note.tenantId.toLowerCase() === tenantId.toLowerCase());
+        canAccess = Boolean(isSameTenant && (isOwner || isSharedWithMe || isSharedToAll));
+      }
+
+      if (!canAccess) return false;
       if (selectedUser !== UI_TEXT.all && ownerUsername.toLowerCase() !== selectedUser.toLowerCase() && note.userName !== selectedUser) return false;
       if (searchText && !(note.subject?.toLowerCase().includes(searchText.toLowerCase()) || note.content?.toLowerCase().includes(searchText.toLowerCase()))) return false;
       return true;
@@ -355,7 +378,7 @@ export function NotesScreen() {
     }
 
     return result.slice(0, limit);
-  }, [notes, selectedUser, searchText, limit, isAscending, isAdmin, currentUsername, userName, getDisplayUsername]);
+  }, [notes, selectedUser, searchText, limit, isAscending, currentUsername, userName, getDisplayUsername]);
 
   const handleViewNote = (note: Note) => {
     setEditingNote(note);
@@ -508,21 +531,29 @@ export function NotesScreen() {
         for (const recipientUser of recipientsToMessage) {
           const cleanRecipient = recipientUser.trim().toLowerCase();
           if (cleanRecipient && cleanRecipient !== senderUsername) {
-            const uMode = (finalUserShareModes && finalUserShareModes[recipientUser]) || finalShareMode || NoteShareMode.READ_ONLY;
-            const modeLabel = uMode === NoteShareMode.READ_WRITE ? UI_TEXT.readWrite : UI_TEXT.readOnly;
-            const shareMsgText = UI_TEXT.noteShareMessage
-              .replace("{sender}", senderDisplayName)
-              .replace("{mode}", modeLabel)
-              .replace("{subject}", updatedNote.subject);
+            const matchedUser = systemUsers.find(
+              (u) => (u.username && u.username.toLowerCase() === cleanRecipient)
+            );
+            const recipientRole = (matchedUser?.role || "").toLowerCase();
+            const isRecipientSuperAdmin = recipientRole === UserRole.SUPER_ADMIN || recipientRole === "super_admin" || recipientRole === "superadmin";
 
-            const chatId = getChatId(senderUsername, cleanRecipient);
-            await repository.sendChatMessage(chatId, {
-              chatId,
-              sender: senderUsername,
-              senderName: senderDisplayName,
-              recipient: cleanRecipient,
-              text: shareMsgText,
-            });
+            if (!isSuperAdmin && !isRecipientSuperAdmin) {
+              const uMode = (finalUserShareModes && finalUserShareModes[recipientUser]) || finalShareMode || NoteShareMode.READ_ONLY;
+              const modeLabel = uMode === NoteShareMode.READ_WRITE ? UI_TEXT.readWrite : UI_TEXT.readOnly;
+              const shareMsgText = UI_TEXT.noteShareMessage
+                .replace("{sender}", senderDisplayName)
+                .replace("{mode}", modeLabel)
+                .replace("{subject}", updatedNote.subject);
+
+              const chatId = getChatId(senderUsername, cleanRecipient);
+              await repository.sendChatMessage(chatId, {
+                chatId,
+                sender: senderUsername,
+                senderName: senderDisplayName,
+                recipient: cleanRecipient,
+                text: shareMsgText,
+              });
+            }
           }
         }
 
@@ -888,7 +919,7 @@ export function NotesScreen() {
                   accessible={true}
                   accessibilityRole="checkbox"
                   accessibilityState={{ checked: isShareAll }}
-                  accessibilityLabel={UI_TEXT.sharedToAll}
+                  accessibilityLabel={isSuperAdmin ? UI_TEXT.allUsers : UI_TEXT.sharedToAll}
                   style={({ pressed }) => [
                     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
                     pressed && { opacity: 0.8 }
@@ -901,7 +932,7 @@ export function NotesScreen() {
                       color={isShareAll ? theme.colors.primary : theme.colors.textMuted}
                     />
                     <Text style={{ fontSize: 14, fontWeight: '800', color: isShareAll ? theme.colors.primary : theme.colors.textPrimary }}>
-                      {UI_TEXT.sharedToAll}
+                      {isSuperAdmin ? UI_TEXT.allUsers : UI_TEXT.sharedToAll}
                     </Text>
                   </View>
                   <Ionicons name="people-outline" size={18} color={theme.colors.textMuted} />

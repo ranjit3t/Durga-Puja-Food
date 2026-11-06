@@ -53,6 +53,7 @@ import {
 } from "./domain";
 import { ConfigDay, AppConfig } from "./types";
 import { blockOptions, generatePasscode, generateUniquePasscode, getDietTypeForChoice, getMealVarieties } from "./constants";
+import { encryptNote, decryptNote } from "./utils/noteEncryption";
 
 // --- Repository Interface ---
 
@@ -76,9 +77,9 @@ export interface SubscriptionRepository {
   updateAuthConfig(config: any): Promise<void>;
   addActivityLog(log: Omit<ActivityLog, "id">, tenantId?: string, isSuperAdmin?: boolean): Promise<void>;
   getActivityLogs(limit?: number, tenantId?: string, isSuperAdmin?: boolean): Promise<ActivityLog[]>;
-  getNotes(tenantId?: string): Promise<Note[]>;
-  upsertNote(note: Note, tenantId?: string): Promise<Note>;
-  removeNote(id: string, tenantId?: string): Promise<void>;
+  getNotes(): Promise<Note[]>;
+  upsertNote(note: Note): Promise<Note>;
+  removeNote(id: string): Promise<void>;
   getFoodPackages(tenantId?: string): Promise<FoodPackage[]>;
   upsertFoodPackage(pkg: FoodPackage, tenantId?: string): Promise<FoodPackage>;
   removeFoodPackage(id: string, tenantId?: string): Promise<void>;
@@ -108,7 +109,14 @@ export interface SubscriptionRepository {
     onAdded: (note: Note) => void,
     onChanged: (note: Note) => void,
     onRemoved: (id: string) => void,
-    tenantId?: string
+    tenantId?: string,
+    isSuperAdmin?: boolean
+  ): () => void;
+  onSharedNotesDelta(
+    username: string,
+    onAdded: (note: Note) => void,
+    onChanged: (note: Note) => void,
+    onRemoved: (id: string) => void
   ): () => void;
   onFoodPackagesDelta(
     onAdded: (pkg: FoodPackage) => void,
@@ -147,6 +155,7 @@ const configPath = "config";
 const authConfigPath = "auth_config";
 const logsPath = "logs";
 const notesPath = "notes";
+const sharedNotesPath = "shared_notes";
 const foodPackagesPath = "food_packages";
 const catererFinancePath = "caterer_finance";
 const appVersionPath = "appVersion";
@@ -1045,30 +1054,30 @@ export function createFirebaseRepository(): SubscriptionRepository {
     async getNotes() {
       const services = await ensureFirebaseAuth();
       if (!services) return [];
-      const nPath = await resolveSeasonDataPath(services, notesPath);
-      const snapshot = await get(ref(services.db, nPath));
+      const snapshot = await get(ref(services.db, notesPath));
       const data = snapshot.val() as Record<string, Note> | null;
       if (!data) return [];
-      return Object.values(data).sort((a, b) => b.timestamp - a.timestamp);
+      return Object.values(data)
+        .map((n) => decryptNote(n, undefined))
+        .sort((a, b) => b.timestamp - a.timestamp);
     },
     async upsertNote(note) {
       const services = await ensureFirebaseAuth();
       if (!services) return note;
       let targetId = note.id;
-      const nPath = await resolveSeasonDataPath(services, notesPath);
       if (!targetId) {
-        const newRef = push(ref(services.db, nPath));
+        const newRef = push(ref(services.db, notesPath));
         targetId = newRef.key as string;
       }
-      const data = cleanUndefined({ ...note, id: targetId });
-      await set(ref(services.db, `${nPath}/${targetId}`), data);
+      const noteToSave = encryptNote({ ...note, id: targetId }, undefined);
+      const data = cleanUndefined(noteToSave);
+      await set(ref(services.db, `${notesPath}/${targetId}`), data);
       return { ...note, id: targetId };
     },
     async removeNote(id) {
       const services = await ensureFirebaseAuth();
       if (!services) return;
-      const nPath = await resolveSeasonDataPath(services, notesPath);
-      await remove(ref(services.db, `${nPath}/${id}`));
+      await remove(ref(services.db, `${notesPath}/${id}`));
     },
     async getFoodPackages() {
       const services = await ensureFirebaseAuth();
@@ -1215,39 +1224,109 @@ export function createFirebaseRepository(): SubscriptionRepository {
       };
     },
 
-    onNotesDelta(onAdded, onChanged, onRemoved, tenantId) {
+    onNotesDelta(onAdded, onChanged, onRemoved, tenantId, isSuperAdmin) {
+      let unsubs: (() => void)[] = [];
+
+      ensureFirebaseAuth().then(async (services) => {
+        if (!services?.db) return;
+
+        const attachListenersForPath = (nPath: string, tKey?: string) => {
+          if (!nPath) return;
+          const nRef = ref(services.db, nPath);
+
+          const u1 = onChildAdded(nRef, (snapshot) => {
+            if (snapshot.exists()) {
+              const val = snapshot.val();
+              const rawNote = (typeof val === "object" && val !== null) ? { ...val, id: val.id || snapshot.key } : val;
+              const decNote = decryptNote(rawNote as Note, tKey);
+              onAdded(decNote);
+            }
+          });
+
+          const u2 = onChildChanged(nRef, (snapshot) => {
+            if (snapshot.exists()) {
+              const val = snapshot.val();
+              const rawNote = (typeof val === "object" && val !== null) ? { ...val, id: val.id || snapshot.key } : val;
+              const decNote = decryptNote(rawNote as Note, tKey);
+              onChanged(decNote);
+            }
+          });
+
+          const u3 = onChildRemoved(nRef, (snapshot) => {
+            if (snapshot.key) {
+              onRemoved(snapshot.key);
+            }
+          });
+
+          unsubs.push(u1, u2, u3);
+        };
+
+        if (isSuperAdmin) {
+          attachListenersForPath(notesPath, undefined);
+          const tenantsSnap = await get(ref(services.db, "tenants"));
+          if (tenantsSnap.exists()) {
+            const tenantsVal = tenantsSnap.val();
+            for (const tId of Object.keys(tenantsVal)) {
+              const seasonsData = tenantsVal[tId]?.seasons_data;
+              if (seasonsData) {
+                for (const sCode of Object.keys(seasonsData)) {
+                  attachListenersForPath(`tenants/${tId}/seasons_data/${sCode}/notes`, tId);
+                }
+              }
+            }
+          }
+        } else {
+          const tPath = await resolveSeasonDataPath(services, notesPath, tenantId);
+          attachListenersForPath(tPath, tenantId);
+          attachListenersForPath(notesPath, undefined);
+        }
+      }).catch(err => console.error("Notes listener error:", err));
+
+      return () => {
+        unsubs.forEach(u => u());
+      };
+    },
+
+    onSharedNotesDelta(
+      username: string,
+      onAdded: (note: Note) => void,
+      onChanged: (note: Note) => void,
+      onRemoved: (id: string) => void
+    ) {
       let unsubAdded: (() => void) | null = null;
       let unsubChanged: (() => void) | null = null;
       let unsubRemoved: (() => void) | null = null;
 
-      ensureFirebaseAuth().then(async (services) => {
+      ensureFirebaseAuth().then((services) => {
         if (!services?.db) return;
-        const nPath = await resolveSeasonDataPath(services, notesPath, tenantId);
-        if (!nPath) return;
-        const nRef = ref(services.db, nPath);
+        const cleanUser = username.trim().toLowerCase();
+        if (!cleanUser) return;
+        const sRef = ref(services.db, `${sharedNotesPath}/${cleanUser}`);
 
-        unsubAdded = onChildAdded(nRef, (snapshot) => {
+        unsubAdded = onChildAdded(sRef, (snapshot) => {
           if (snapshot.exists()) {
             const val = snapshot.val();
-            const note = (typeof val === "object" && val !== null) ? { ...val, id: val.id || snapshot.key } : val;
-            onAdded(note as Note);
+            const rawNote = (typeof val === "object" && val !== null) ? { ...val, id: val.id || snapshot.key } : val;
+            const decNote = decryptNote(rawNote as Note, rawNote._tenantId);
+            onAdded(decNote);
           }
         });
 
-        unsubChanged = onChildChanged(nRef, (snapshot) => {
+        unsubChanged = onChildChanged(sRef, (snapshot) => {
           if (snapshot.exists()) {
             const val = snapshot.val();
-            const note = (typeof val === "object" && val !== null) ? { ...val, id: val.id || snapshot.key } : val;
-            onChanged(note as Note);
+            const rawNote = (typeof val === "object" && val !== null) ? { ...val, id: val.id || snapshot.key } : val;
+            const decNote = decryptNote(rawNote as Note, rawNote._tenantId);
+            onChanged(decNote);
           }
         });
 
-        unsubRemoved = onChildRemoved(nRef, (snapshot) => {
+        unsubRemoved = onChildRemoved(sRef, (snapshot) => {
           if (snapshot.key) {
             onRemoved(snapshot.key);
           }
         });
-      }).catch(err => console.error("Notes listener error:", err));
+      }).catch(err => console.error("Shared notes listener error:", err));
 
       return () => {
         if (unsubAdded) unsubAdded();
@@ -1687,13 +1766,19 @@ export function createFirebaseRepository(): SubscriptionRepository {
                     return (a.id || "").localeCompare(b.id || "");
                   });
 
+                const parts = cId.split("__");
+                const otherUser = parts[0] === cleanUser ? parts[1] : parts[0];
+
                 if (msgs.length > 0) {
                   const lastMsg = msgs[msgs.length - 1];
-                  const otherUser = lastMsg.sender.toLowerCase() === cleanUser ? lastMsg.recipient.toLowerCase() : lastMsg.sender.toLowerCase();
-                  lastMsgMap[otherUser] = lastMsg;
+                  const actualOther = lastMsg.sender.toLowerCase() === cleanUser ? lastMsg.recipient.toLowerCase() : lastMsg.sender.toLowerCase();
+                  lastMsgMap[actualOther] = lastMsg;
 
                   const unreadCount = msgs.filter(m => m.recipient.toLowerCase() === cleanUser && m.status !== "read").length;
-                  unreadMap[otherUser] = unreadCount;
+                  unreadMap[actualOther] = unreadCount;
+                } else if (otherUser) {
+                  delete lastMsgMap[otherUser];
+                  delete unreadMap[otherUser];
                 }
               }
             });
@@ -1767,7 +1852,22 @@ export function createFirebaseRepository(): SubscriptionRepository {
       const services = await ensureFirebaseAuth();
       if (!services?.db) return;
       const cleanUser = username.trim().toLowerCase();
-      await set(ref(services.db, `${chatsPath}/${chatId}/clearedAt/${cleanUser}`), Date.now());
+      const updates: Record<string, any> = {};
+      updates[`${chatsPath}/${chatId}/clearedAt/${cleanUser}`] = Date.now();
+
+      const snap = await get(ref(services.db, `${chatsPath}/${chatId}/messages`));
+      if (snap.exists()) {
+        const msgs = snap.val() || {};
+        const now = Date.now();
+        Object.keys(msgs).forEach(msgId => {
+          const msg = msgs[msgId];
+          if (msg && msg.recipient && msg.recipient.toLowerCase() === cleanUser && msg.status !== "read") {
+            updates[`${chatsPath}/${chatId}/messages/${msgId}/status`] = "read";
+            updates[`${chatsPath}/${chatId}/messages/${msgId}/readAt`] = now;
+          }
+        });
+      }
+      await update(ref(services.db), updates);
     },
     async listTenants() {
       const services = await ensureFirebaseAuth();
@@ -1881,7 +1981,7 @@ function wrapRepositoryWithTimeout(repo: SubscriptionRepository): SubscriptionRe
   for (const key of Object.keys(repo) as (keyof SubscriptionRepository)[]) {
     const fn = (repo as any)[key];
     if (typeof fn === "function") {
-      if (key.startsWith("on") || key === "updateUserPresence") {
+      if (key.startsWith("on") || key === "updateUserPresence" || key === "markChatMessagesAsRead" || key === "clearChatForUser") {
         wrapped[key] = fn.bind(repo);
       } else {
         wrapped[key] = (...args: any[]) => {

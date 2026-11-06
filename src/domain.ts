@@ -518,6 +518,7 @@ export type Note = {
   userName: string;
   subject: string;
   content: string;
+  tenantId?: string;
   sharedWith?: string[] | string; // "all", array of usernames, or single username
   shareMode?: NoteShareMode | string; // default mode or "all" mode
   userShareModes?: Record<string, NoteShareMode | string>; // per-user share modes

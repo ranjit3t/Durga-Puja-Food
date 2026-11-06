@@ -169,6 +169,11 @@ graph TD
 - **Complete View vs. Planned View Switcher (`DayWiseReport.tsx`)**: Renders an interactive `[ Complete View ]` / `[ Planned View ]` toggle bar.
 - **Active Current Meal Auto-Focus & Smooth Scroll**: On screen navigation or tab selection, `ReportScreen` automatically detects if any meal is currently active and enabled (`isMealCurrent` & `isMealEnabled`). It focuses `selectedDayId` and `selectedMealType` on the current active meal and smoothly scrolls the horizontal day selector to highlight the active day card.
 
+### P. End-to-End Encrypted Operational Notes & SuperAdmin Integration (`NotesScreen.tsx`, `noteEncryption.ts`, `DatabaseContext.tsx`)
+- **End-to-End Database Encryption**: Notes subjects and contents are encrypted using a Base64 XOR cipher before storing in Firebase Realtime Database and decrypted in memory upon fetching. Zero plaintext note data is exposed in database export dumps or Firebase console.
+- **Root-Level SuperAdmin Notes (`notes`)**: SuperAdmin users manage operational notes stored at the root level (`notes`). Notes are private to the creator unless shared with other SuperAdmin users in `readonly` or `read-write` mode.
+- **Tenant-Level Notes Isolation (`tenants/{tenantId}/seasons_data/{seasonCode}/notes`)**: Tenant users manage notes strictly isolated within their tenant and season path, supporting targeted per-user sharing and permissions.
+
 ---
 
 ## 4. Core Architecture & Layers
