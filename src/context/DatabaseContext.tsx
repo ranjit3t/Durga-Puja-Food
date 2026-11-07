@@ -90,6 +90,7 @@ export interface CoreDatabaseContextType {
   cheatCodeEnabled: boolean;
   passcodeDigitCount: number;
   seasonCompleted: boolean;
+  hasLoadedOnce: boolean;
   identity1Enabled: boolean;
   identity1Name: string;
   identity1Options: string[];
@@ -167,7 +168,7 @@ function deduplicateNotes(notesList: Note[]): Note[] {
 }
 
 export function DatabaseProvider({ children }: { children: React.ReactNode }) {
-  const { userRole, userName, userAccountName, tenantId, handleLogout } = useAuth();
+  const { userRole, userName, userAccountName, tenantId, authSessionId, handleLogout, markSessionReady } = useAuth();
   const isSuperAdmin = userRole === UserRole.SUPER_ADMIN;
   const { showAlert } = useUI();
   const lastKnownAuthRef = useRef<{ password?: string; name?: string } | null>(null);
@@ -184,7 +185,13 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
     }
   }, [userAccountName]);
 
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<boolean>(() => Boolean(userRole));
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+  const finishLoading = useCallback((sessionId: number) => {
+    setLoading(false);
+    setHasLoadedOnce(true);
+    markSessionReady(sessionId);
+  }, [markSessionReady]);
   const [firebaseError, setFirebaseError] = useState("");
 
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
@@ -217,10 +224,10 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
   const [vendorAddress, setVendorAddress] = useState("");
   const [vendorSettledCost, setVendorSettledCost] = useState("");
   const [identity1Enabled, setIdentity1Enabled] = useState(true);
-  const [identity1Name, setIdentity1Name] = useState("Block No");
+  const [identity1Name, setIdentity1Name] = useState(UI_TEXT.blockNo);
   const [identity1Options, setIdentity1Options] = useState<string[]>(blockOptions);
   const [identity2Enabled, setIdentity2Enabled] = useState(true);
-  const [identity2Name, setIdentity2Name] = useState("Flat No");
+  const [identity2Name, setIdentity2Name] = useState(UI_TEXT.flatNo);
   const [hasAnyPassesAcrossSeasons, setHasAnyPassesAcrossSeasons] = useState<boolean>(false);
   const [footerText, setFooterText] = useState<string>("");
   const [remoteAppVersion, setRemoteAppVersion] = useState<string | null>(null);
@@ -329,8 +336,17 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
 
   // Fast Full Refresh (Fallback or Manual Health-Check)
   const refreshAllData = useCallback(async (silent = false) => {
-    if (!userRole) return;
-    if (!isSuperAdmin && !tenantId) return;
+    if (!userRole) {
+      setLoading(false);
+      setHasLoadedOnce(false);
+      return;
+    }
+    if (!isSuperAdmin && !tenantId) {
+      setLoading(false);
+      setHasLoadedOnce(false);
+      markSessionReady(authSessionId);
+      return;
+    }
     if (!silent) setLoading(true);
     try {
       if (!firebaseRepositoryConfigured) {
@@ -354,7 +370,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       setNotes(deduplicateNotes(notesData || []));
       if (isSuperAdmin) {
         setFirebaseError("");
-        if (!silent) setLoading(false);
+        if (!silent) finishLoading(authSessionId);
         return;
       }
 
@@ -420,16 +436,26 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       const defaultError = UI_TEXT.syncError;
       setFirebaseError(err.message || defaultError);
     } finally {
-      if (!silent) setLoading(false);
+      if (!silent) finishLoading(authSessionId);
     }
-  }, [sortSubscriptions, tenantId, isSuperAdmin]);
+  }, [sortSubscriptions, tenantId, isSuperAdmin, authSessionId, finishLoading, markSessionReady]);
 
   // Progressive Tiered Hydration & Real-Time Universal Listeners Engine
   useEffect(() => {
-    if (!userRole) return;
-    if (!isSuperAdmin && !tenantId) return;
+    if (!userRole) {
+      setLoading(false);
+      setHasLoadedOnce(false);
+      return;
+    }
+    if (!isSuperAdmin && !tenantId) {
+      setLoading(false);
+      setHasLoadedOnce(false);
+      markSessionReady(authSessionId);
+      return;
+    }
 
     let isMounted = true;
+    setHasLoadedOnce(false);
     setLoading(true);
 
     if (isSuperAdmin) {
@@ -444,10 +470,10 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
           setIosAppLocation(appVer.iosAppLocation);
         }
         setActivityLogs(logsData || []);
-        setLoading(false);
+        finishLoading(authSessionId);
       }).catch(err => {
         console.error("SuperAdmin hydration error:", err);
-        if (isMounted) setLoading(false);
+        if (isMounted) finishLoading(authSessionId);
       });
 
       const unsubLogs = repository.onLogsDelta((newLog) => {
@@ -521,7 +547,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       setKitchenMetrics(metricsData);
 
       // Fast Release UI: App is usable NOW in <300ms!
-      setLoading(false);
+      finishLoading(authSessionId);
 
       // Progressive Tier 2: Initial Subscriptions Fetch
       repository.list(tenantId || undefined).then((subs) => {
@@ -531,7 +557,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
 
     }).catch(err => {
       console.error("Progressive load error:", err);
-      if (isMounted) setLoading(false);
+      if (isMounted) finishLoading(authSessionId);
     });
 
     const activeDays = getActiveDays(dayConfig);
@@ -851,7 +877,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       unsubAuthConfig();
       if (unsubTenant) unsubTenant();
     };
-  }, [userRole, tenantId, activeSeasonCode, sortSubscriptions]);
+  }, [userRole, tenantId, sortSubscriptions]);
 
   // Lifecycle Reconnection Handlers (Mobile AppState & Web Visibility)
   useEffect(() => {
@@ -879,7 +905,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       });
       return () => subscription.remove();
     }
-  }, [userRole, refreshAllData]);
+  }, [userRole, tenantId, isSuperAdmin, authSessionId, finishLoading, markSessionReady, refreshAllData]);
 
   const upsertSubscription = useCallback(async (sub: Subscription) => {
     try {
@@ -2001,7 +2027,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
   }, [seasons, seasonCompleted, dayConfig, identity1Enabled, identity1Name, identity1Options, identity2Enabled, identity2Name, updateConfig, refreshAllData, showAlert]);
 
   const coreValue = useMemo(() => ({
-    loading, firebaseError, refreshAllData,
+    loading, firebaseError, refreshAllData, hasLoadedOnce,
     subscriptions, foodMenu, dayConfig, seasonName, seasonCode, seasonEnabled, paymentConfig,
     seasons, activeSeasonCode, createNewSeason, switchActiveSeason,
     freeMealEnabled, mobileEnabled, foodPriceEnabled,
@@ -2012,7 +2038,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
     checkInPassAtomic, getByPasscode,
     getAuthConfig, markSelfUpdate, updateFreeMealCountDebounced
   }), [
-    loading, firebaseError, refreshAllData,
+    loading, firebaseError, refreshAllData, hasLoadedOnce,
     subscriptions, foodMenu, dayConfig, seasonName, seasonCode, seasonEnabled, paymentConfig,
     seasons, activeSeasonCode, createNewSeason, switchActiveSeason,
     freeMealEnabled, mobileEnabled, foodPriceEnabled,

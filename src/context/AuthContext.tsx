@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useMemo, useCallback, useEffect } from "react";
+import React, { createContext, useContext, useState, useMemo, useCallback, useRef } from "react";
 import { UserRole } from "../types";
 import { createFirebaseRepository } from "../repository";
 
@@ -9,8 +9,11 @@ interface AuthContextType {
   userName: string | null;
   userAccountName: string | null;
   tenantId: string | null;
+  authSessionId: number;
+  isSessionReady: boolean;
   handleLogin: (role: UserRole, name: string, username?: string, tenantId?: string) => void;
   handleLogout: (silent?: boolean) => void;
+  markSessionReady: (sessionId: number) => void;
   isAuthenticated: boolean;
   versionAlertShown: boolean;
   markVersionAlertShown: () => void;
@@ -24,20 +27,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [userAccountName, setUserAccountName] = useState<string | null>(null);
   const [tenantId, setTenantId] = useState<string | null>(null);
   const [versionAlertShown, setVersionAlertShown] = useState(false);
+  const [authSessionId, setAuthSessionId] = useState(0);
+  const [isSessionReady, setIsSessionReady] = useState(true);
+  const authSessionIdRef = useRef(0);
 
   const handleLogin = useCallback((role: UserRole, name: string, username?: string, tenant?: string) => {
+    const sessionId = authSessionIdRef.current + 1;
+    authSessionIdRef.current = sessionId;
+    setAuthSessionId(sessionId);
+    setIsSessionReady(false);
     setUserRole(role);
     setUserName(name);
     setUserAccountName(username || name);
     setTenantId(tenant || null);
   }, []);
 
-  const handleLogout = useCallback(() => {
+  const handleLogout = useCallback((_silent?: boolean) => {
+    const sessionId = authSessionIdRef.current + 1;
+    authSessionIdRef.current = sessionId;
+    setAuthSessionId(sessionId);
+    setIsSessionReady(true);
     setUserRole(null);
     setUserName(null);
     setUserAccountName(null);
     setTenantId(null);
     setVersionAlertShown(false);
+  }, []);
+
+  const markSessionReady = useCallback((sessionId: number) => {
+    if (authSessionIdRef.current === sessionId) {
+      setIsSessionReady(true);
+    }
   }, []);
 
   const markVersionAlertShown = useCallback(() => {
@@ -49,12 +69,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     userName,
     userAccountName,
     tenantId,
+    authSessionId,
+    isSessionReady,
     handleLogin,
     handleLogout,
+    markSessionReady,
     isAuthenticated: !!userRole,
     versionAlertShown,
     markVersionAlertShown,
-  }), [userRole, userName, userAccountName, tenantId, handleLogin, handleLogout, versionAlertShown, markVersionAlertShown]);
+  }), [userRole, userName, userAccountName, tenantId, authSessionId, isSessionReady, handleLogin, handleLogout, markSessionReady, versionAlertShown, markVersionAlertShown]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
@@ -67,8 +90,11 @@ export function useAuth() {
       userName: null,
       userAccountName: null,
       tenantId: null,
+      authSessionId: 0,
+      isSessionReady: true,
       handleLogin: () => {},
       handleLogout: () => {},
+      markSessionReady: () => {},
       isAuthenticated: false,
       versionAlertShown: false,
       markVersionAlertShown: () => {},

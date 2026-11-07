@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, ScrollView, Pressable, StatusBar, useWindowDimensions, Platform } from "react-native";
+import { View, Text, ScrollView, Pressable, StatusBar, useWindowDimensions, Platform, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useStyles, useScaling } from "../styles";
 import { useAppTheme } from "../theme";
@@ -29,6 +29,15 @@ export function HomeScreen() {
   const { navigate, startNew, setIsQuickCheckout, setIsParcelCheckout, setIsQuickFreeMealMode } = useAppNavigation();
   const { showAlert, showGlobalError } = useUI();
   const { width } = useWindowDimensions();
+
+  if (loading && subscriptions.length === 0) {
+    return (
+      <View style={[styles.root, { justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.background }]}>
+        <StatusBar barStyle={themeType === AppThemeMode.DARK ? "light-content" : "dark-content"} />
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
+    );
+  }
 
   const isNarrow = width < 400;
   const cardPadding = isWeb ? s(12) : (isNarrow ? 14 : s(16));

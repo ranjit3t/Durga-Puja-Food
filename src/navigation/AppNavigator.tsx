@@ -43,21 +43,20 @@ export function AppNavigator() {
   const styles = useStyles();
   const { theme } = useAppTheme();
 
-  const { userRole } = useAuth();
-  const { loading } = useDatabase();
+  const { userRole, tenantId, isSessionReady } = useAuth();
+  const { loading, hasLoadedOnce } = useDatabase();
   const { screen } = useAppNavigation();
 
-  if (loading) {
+  const waitingForInitialData = Boolean(
+    userRole &&
+    (!isSessionReady || ((userRole === UserRole.SUPER_ADMIN || tenantId) && !hasLoadedOnce))
+  );
+
+  if (loading || waitingForInitialData) {
     return (
-      <View style={styles.root}>
-        <Image
-          source={{ uri: "https://picsum.photos/id/1080/1200/1800" }}
-          style={[styles.backgroundImage, { position: "absolute", width: "100%", height: "100%" }]}
-        />
-        <View style={[styles.rootOverlay, styles.center]}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
-          <Text style={styles.loadingText}>{UI_TEXT.loading}</Text>
-        </View>
+      <View style={[styles.root, { backgroundColor: theme.colors.background, justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <Text style={[styles.loadingText, { color: theme.colors.textPrimary, marginTop: 12 }]}>{UI_TEXT.loading}</Text>
       </View>
     );
   }

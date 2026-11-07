@@ -1489,7 +1489,7 @@ export function SettingsScreen() {
                   {UI_TEXT.seasonCodeLabel || "Season Code"} ({UI_TEXT.seasonCodeHelper})
                 </Text>
                 <TextInput
-                  style={[styles.input, { height: 38, fontSize: 13, marginBottom: 0, width: '100%' }, localSeasonCompleted && { backgroundColor: theme.colors.surfaceDark }]}
+                  style={[styles.input, { height: 46, paddingVertical: 6, paddingHorizontal: 12, fontSize: 14, marginBottom: 0, width: '100%' }, localSeasonCompleted && { backgroundColor: theme.colors.surfaceDark }]}
                   value={localSeasonCode}
                   onChangeText={setLocalSeasonCode}
                   editable={!localSeasonCompleted}
