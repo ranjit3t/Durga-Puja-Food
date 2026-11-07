@@ -952,7 +952,8 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
 
   const updateConfig = useCallback(async (config: AppConfig) => {
     try {
-      // Immediate local state update (Optimistic)
+      await repository.updateConfig(config, tenantId || undefined);
+
       if (config.days) setDayConfig(config.days);
       if (config.seasonName !== undefined) setSeasonName(config.seasonName);
       if (config.seasonCode !== undefined) setSeasonCode(config.seasonCode);
@@ -977,7 +978,6 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       if (config.vendorSettledCost !== undefined) setVendorSettledCost(config.vendorSettledCost);
       if (config.footerText !== undefined) setFooterText(config.footerText);
 
-      await repository.updateConfig(config, tenantId || undefined);
       await refreshAllData(true);
     } catch (err: any) {
       addActivityLog({

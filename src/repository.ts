@@ -24,6 +24,7 @@ import {
 import { ensureFirebaseAuth, firebaseConfigured } from "./firebase";
 import { encryptChatMessage, decryptChatMessage } from "./utils/chatEncryption";
 import { getChatSummaries } from "./utils/chatSummaries";
+import { hasPassesInTenantSeasonData } from "./utils/tenantPasses";
 import { withServerTimeout } from "./utils/asyncUtils";
 import {
   SubscriptionRecord,
@@ -664,6 +665,21 @@ export function createFirebaseRepository(): SubscriptionRepository {
     return "";
   }
 
+  async function tenantHasPassesAcrossSeasons(services: any, tenantId: string): Promise<boolean> {
+    const [rootSubscriptionsSnap, seasonsSnap] = await Promise.all([
+      get(ref(services.db, `tenants/${tenantId}/subscriptions`)),
+      get(ref(services.db, `tenants/${tenantId}/seasons_data`)),
+    ]);
+
+    const seasonsData = seasonsSnap.exists()
+      ? seasonsSnap.val() as Record<string, { subscriptions?: unknown }>
+      : {};
+    return hasPassesInTenantSeasonData(
+      rootSubscriptionsSnap.exists() ? rootSubscriptionsSnap.val() : null,
+      seasonsData,
+    );
+  }
+
   /**
    * Helper to get active day IDs from database config.
    */
@@ -906,6 +922,36 @@ export function createFirebaseRepository(): SubscriptionRepository {
       }
       if (!activeCode) {
         throw new Error("Active season code is required");
+      }
+
+      const tenantConfigSnap = await get(ref(services.db, `tenants/${tenantId}/config`));
+      const currentTenantConfig = tenantConfigSnap.exists() ? tenantConfigSnap.val() || {} : {};
+      const nextIdentityConfig = {
+        identity1Enabled: config.identity1Enabled !== false,
+        identity1Name: config.identity1Name || "Block No",
+        identity1Options: config.identity1Options || blockOptions,
+        identity2Enabled: config.identity2Enabled !== false,
+        identity2Name: config.identity2Name || "Flat No",
+      };
+      const currentIdentityConfig = {
+        identity1Enabled: currentTenantConfig.identity1Enabled !== false,
+        identity1Name: currentTenantConfig.identity1Name || "Block No",
+        identity1Options: currentTenantConfig.identity1Options || blockOptions,
+        identity2Enabled: currentTenantConfig.identity2Enabled !== false,
+        identity2Name: currentTenantConfig.identity2Name || "Flat No",
+      };
+      const identityConfigChanged =
+        nextIdentityConfig.identity1Enabled !== currentIdentityConfig.identity1Enabled ||
+        nextIdentityConfig.identity1Name !== currentIdentityConfig.identity1Name ||
+        JSON.stringify(nextIdentityConfig.identity1Options) !== JSON.stringify(currentIdentityConfig.identity1Options) ||
+        nextIdentityConfig.identity2Enabled !== currentIdentityConfig.identity2Enabled ||
+        nextIdentityConfig.identity2Name !== currentIdentityConfig.identity2Name;
+
+      if (
+        identityConfigChanged &&
+        await tenantHasPassesAcrossSeasons(services, tenantId)
+      ) {
+        throw new Error("Pass identities cannot be changed while passes exist in any season.");
       }
 
       const isCompleted = config.seasonCompleted === true;
@@ -1930,18 +1976,7 @@ export function createFirebaseRepository(): SubscriptionRepository {
       if (!services) return false;
       const tCode = await getActiveTenantId(services, tenantId);
       if (!tCode) return false;
-
-      const seasonsSnap = await get(ref(services.db, `tenants/${tCode}/seasons_data`));
-      if (!seasonsSnap.exists()) return false;
-
-      const seasonsVal = seasonsSnap.val();
-      for (const sCode of Object.keys(seasonsVal)) {
-        const subsSnap = await get(ref(services.db, `tenants/${tCode}/seasons_data/${sCode}/subscriptions`));
-        if (subsSnap.exists() && Object.keys(subsSnap.val() || {}).length > 0) {
-          return true;
-        }
-      }
-      return false;
+      return tenantHasPassesAcrossSeasons(services, tCode);
     },
   };
 

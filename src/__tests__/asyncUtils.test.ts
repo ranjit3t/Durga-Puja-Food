@@ -22,7 +22,7 @@ describe("Server Timeout Watcher Utility", () => {
   });
 
   it("uses UI_TEXT.serverTimeoutMs from strings.ts as default timeout configuration", () => {
-    expect(UI_TEXT.serverTimeoutMs).toBe(15000);
+    expect(UI_TEXT.serverTimeoutMs).toBe(30000);
     expect(typeof UI_TEXT.serverTimeoutMs).toBe("number");
     expect(UI_TEXT.serverTimeoutError).toContain("timed out");
   });

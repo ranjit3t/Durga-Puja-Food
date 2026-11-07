@@ -297,6 +297,7 @@ SeasonListItem.displayName = "SeasonListItem";
 export function SettingsScreen() {
   const { handleLogout } = useAuth();
   const {
+    loading, hasLoadedOnce,
     dayConfig: config, seasonName, seasonCode, seasonEnabled, paymentConfig: payment, freeMealEnabled, mobileEnabled, foodPriceEnabled,
     whatsappCountryCode, updateConfig, kidsEnabled, guestsEnabled, vendorKidsMealChargingEnabled, subscriptions, foodMenu, quickCheckoutAutoCloseMs, soundEnabled,
     vendorName, vendorAddress, vendorSettledCost, nonAdminCheckoutEnabled, cheatCodeEnabled, passcodeDigitCount, seasonCompleted,
@@ -307,6 +308,9 @@ export function SettingsScreen() {
   const { showAlert } = useUI();
   const { navigate, goBack } = useAppNavigation();
   const { userRole } = useAuth();
+
+  const identitySettingsLocked =
+    hasAnyPassesAcrossSeasons || loading || !hasLoadedOnce;
 
   const styles = useStyles();
   const { s } = useScaling();
@@ -1058,23 +1062,29 @@ export function SettingsScreen() {
   const handleSave = async () => {
     setSaving(true);
     try {
+      const optionsArray = localIdentity1OptionsText
+        .split(/[,|\n]/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const finalIdentity1Options = optionsArray.length > 0 ? optionsArray : blockOptions;
+
       if (!localIdentity1Enabled && !localIdentity2Enabled) {
         showAlert("Error", "At least one pass identity (Identity 1 or Identity 2) must be enabled.");
         setSaving(false);
         return;
       }
 
-      if (subscriptions && subscriptions.length > 0 && (!localIdentity1Enabled || !localIdentity2Enabled)) {
-        showAlert("Error", "Pass identities cannot be disabled while passes are already registered in the system.");
+      const identityConfigChanged =
+        localIdentity1Enabled !== identity1Enabled ||
+        localIdentity1Name.trim() !== identity1Name ||
+        JSON.stringify(finalIdentity1Options) !== JSON.stringify(identity1Options || blockOptions) ||
+        localIdentity2Enabled !== identity2Enabled ||
+        localIdentity2Name.trim() !== identity2Name;
+      if (hasAnyPassesAcrossSeasons && identityConfigChanged) {
+        showAlert(UI_TEXT.error, UI_TEXT.passIdentityLockedNote);
         setSaving(false);
         return;
       }
-
-      const optionsArray = localIdentity1OptionsText
-        .split(/[,|\n]/)
-        .map((s) => s.trim())
-        .filter(Boolean);
-      const finalIdentity1Options = optionsArray.length > 0 ? optionsArray : blockOptions;
 
       const changeLog = getSettingsChangeLog();
 
@@ -1151,7 +1161,12 @@ export function SettingsScreen() {
       ]);
     } catch (err) {
       console.error("Save settings error:", err);
-      showAlert(UI_TEXT.error, UI_TEXT.saveConfigError);
+      showAlert(
+        UI_TEXT.error,
+        err instanceof Error && err.message.includes("Pass identities cannot be changed")
+          ? UI_TEXT.passIdentityLockedNote
+          : UI_TEXT.saveConfigError,
+      );
     } finally {
       setSaving(false);
     }
@@ -1281,7 +1296,7 @@ export function SettingsScreen() {
           <Text style={{ fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600', marginBottom: 12 }}>
             {UI_TEXT.passIdentityCommonSubtitle}
           </Text>
-          {subscriptions.length > 0 && (
+          {hasAnyPassesAcrossSeasons && (
             <View style={{ backgroundColor: theme.colors.errorLight || "#fee2e2", padding: 10, borderRadius: 8, marginBottom: 12 }}>
               <Text style={{ fontSize: 11, color: theme.colors.error || "#ef4444", fontWeight: '800' }}>
                 {UI_TEXT.passIdentityLockedNote}
@@ -1298,31 +1313,31 @@ export function SettingsScreen() {
             <Switch
               value={localIdentity1Enabled}
               onValueChange={setLocalIdentity1Enabled}
-              disabled={subscriptions.length > 0}
+              disabled={identitySettingsLocked}
               trackColor={{ true: theme.colors.primary }}
             />
           </View>
           {localIdentity1Enabled && (
-            <View pointerEvents={subscriptions.length > 0 ? "none" : "auto"} style={[{ gap: 10, marginBottom: 16, backgroundColor: theme.colors.surface, borderRadius: 12, padding: 12 }, subscriptions.length > 0 && { opacity: 0.6, backgroundColor: theme.colors.surfaceDark }]}>
+            <View pointerEvents={identitySettingsLocked ? "none" : "auto"} style={[{ gap: 10, marginBottom: 16, backgroundColor: theme.colors.surface, borderRadius: 12, padding: 12 }, identitySettingsLocked && { opacity: 0.6, backgroundColor: theme.colors.surfaceDark }]}>
               <Text style={{ fontSize: 12, fontWeight: '700', color: theme.colors.textPrimary }}>{UI_TEXT.identity1NameLabel}</Text>
               <TextInput
-                style={[styles.input, subscriptions.length > 0 && { backgroundColor: theme.colors.surfaceDark, color: theme.colors.textMuted }]}
+                style={[styles.input, identitySettingsLocked && { backgroundColor: theme.colors.surfaceDark, color: theme.colors.textMuted }]}
                 value={localIdentity1Name}
                 onChangeText={(text) => {
-                  if (subscriptions.length === 0) setLocalIdentity1Name(text);
+                  if (!identitySettingsLocked) setLocalIdentity1Name(text);
                 }}
-                editable={subscriptions.length === 0}
+                editable={!identitySettingsLocked}
                 placeholder={UI_TEXT.blockPlaceholder}
                 placeholderTextColor={theme.colors.textMuted}
               />
               <Text style={{ fontSize: 12, fontWeight: '700', color: theme.colors.textPrimary, marginTop: 4 }}>{UI_TEXT.identity1OptionsLabel}</Text>
               <TextInput
-                style={[styles.input, subscriptions.length > 0 && { backgroundColor: theme.colors.surfaceDark, color: theme.colors.textMuted }]}
+                style={[styles.input, identitySettingsLocked && { backgroundColor: theme.colors.surfaceDark, color: theme.colors.textMuted }]}
                 value={localIdentity1OptionsText}
                 onChangeText={(text) => {
-                  if (subscriptions.length === 0) setLocalIdentity1OptionsText(text);
+                  if (!identitySettingsLocked) setLocalIdentity1OptionsText(text);
                 }}
-                editable={subscriptions.length === 0}
+                editable={!identitySettingsLocked}
                 placeholder="0, 1, 2, 3, 4, 5, ..."
                 placeholderTextColor={theme.colors.textMuted}
               />
@@ -1340,20 +1355,20 @@ export function SettingsScreen() {
             <Switch
               value={localIdentity2Enabled}
               onValueChange={setLocalIdentity2Enabled}
-              disabled={subscriptions.length > 0}
+              disabled={identitySettingsLocked}
               trackColor={{ true: theme.colors.primary }}
             />
           </View>
           {localIdentity2Enabled && (
-            <View pointerEvents={subscriptions.length > 0 ? "none" : "auto"} style={[{ gap: 10, backgroundColor: theme.colors.surface, borderRadius: 12, padding: 12 }, subscriptions.length > 0 && { opacity: 0.6, backgroundColor: theme.colors.surfaceDark }]}>
+            <View pointerEvents={identitySettingsLocked ? "none" : "auto"} style={[{ gap: 10, backgroundColor: theme.colors.surface, borderRadius: 12, padding: 12 }, identitySettingsLocked && { opacity: 0.6, backgroundColor: theme.colors.surfaceDark }]}>
               <Text style={{ fontSize: 12, fontWeight: '700', color: theme.colors.textPrimary }}>{UI_TEXT.identity2NameLabel}</Text>
               <TextInput
-                style={[styles.input, subscriptions.length > 0 && { backgroundColor: theme.colors.surfaceDark, color: theme.colors.textMuted }]}
+                style={[styles.input, identitySettingsLocked && { backgroundColor: theme.colors.surfaceDark, color: theme.colors.textMuted }]}
                 value={localIdentity2Name}
                 onChangeText={(text) => {
-                  if (subscriptions.length === 0) setLocalIdentity2Name(text);
+                  if (!identitySettingsLocked) setLocalIdentity2Name(text);
                 }}
-                editable={subscriptions.length === 0}
+                editable={!identitySettingsLocked}
                 placeholder={UI_TEXT.flatPlaceholder}
                 placeholderTextColor={theme.colors.textMuted}
               />
