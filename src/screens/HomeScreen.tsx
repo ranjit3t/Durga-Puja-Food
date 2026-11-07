@@ -22,10 +22,11 @@ export function HomeScreen() {
   const { theme, themeType } = useAppTheme();
   const { userRole, handleLogout, versionAlertShown, markVersionAlertShown } = useAuth();
   const {
-    subscriptions, dayConfig, seasonName, seasonEnabled, freeMealEnabled, totalPeople, firebaseError, paymentConfig, collections, kidsEnabled, guestsEnabled, foodMenu, remoteAppVersion, androidAppLocation, iosAppLocation, loading, vendorSettledCost, dashboardData, footerText, seasonCompleted
+    subscriptions, dayConfig, seasonName, seasonCode, seasonEnabled, freeMealEnabled, totalPeople, firebaseError, paymentConfig, collections, kidsEnabled, guestsEnabled, foodMenu, remoteAppVersion, androidAppLocation, iosAppLocation, loading, vendorSettledCost, dashboardData, footerText, seasonCompleted
   } = useCoreDatabase();
 
-  const areAllMealsComplete = seasonCompleted || isSeasonDone(dayConfig);
+  const hasSeason = Boolean(seasonCode || seasonName || dayConfig.length > 0);
+  const areAllMealsComplete = hasSeason && dayConfig.length > 0 && (seasonCompleted || isSeasonDone(dayConfig));
   const { navigate, startNew, setIsQuickCheckout, setIsParcelCheckout, setIsQuickFreeMealMode } = useAppNavigation();
   const { showAlert, showGlobalError } = useUI();
   const { width } = useWindowDimensions();

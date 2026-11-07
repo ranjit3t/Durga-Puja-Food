@@ -97,6 +97,7 @@ export interface CoreDatabaseContextType {
   identity2Enabled: boolean;
   identity2Name: string;
   hasAnyPassesAcrossSeasons: boolean;
+  loadSettingsData: () => Promise<void>;
   footerText: string;
   remoteAppVersion: string | null;
   androidAppLocation?: string;
@@ -240,6 +241,14 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
   const [kitchenMetrics, setKitchenMetrics] = useState<KitchenMetrics | null>(null);
 
   const getAuthConfig = useCallback(() => repository.getAuthConfig(), []);
+  const loadSettingsData = useCallback(async () => {
+    const [config, hasPasses] = await Promise.all([
+      repository.getConfig(tenantId || undefined),
+      repository.hasAnyPassesAcrossSeasons(tenantId || undefined),
+    ]);
+    setSeasons(config.seasons || []);
+    setHasAnyPassesAcrossSeasons(hasPasses);
+  }, [tenantId]);
 
   const addActivityLog = useCallback((
     log: Omit<ActivityLog, "id" | "timestamp" | "userName" | "userRole" | "device" | "os">,
@@ -274,7 +283,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
   const upsertCatererTransaction = useCallback(async (tx: CatererTransaction) => {
     try {
       const isEdit = !!tx.id;
-      const saved = await repository.upsertCatererTransaction(tx);
+      const saved = await repository.upsertCatererTransaction(tx, tenantId || undefined, activeSeasonCode || undefined);
       setCatererTransactions((prev) => {
         if (prev.some((t) => t.id === saved.id)) {
           return prev.map((t) => (t.id === saved.id ? saved : t)).sort((a, b) => b.date - a.date);
@@ -290,12 +299,12 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
     } catch (err: any) {
       console.error("Upsert caterer transaction error:", err);
     }
-  }, [addActivityLog]);
+  }, [addActivityLog, tenantId, activeSeasonCode]);
 
   const deleteCatererTransaction = useCallback(async (id: string) => {
     try {
       setCatererTransactions(prev => prev.filter(t => t.id !== id));
-      await repository.removeCatererTransaction(id);
+      await repository.removeCatererTransaction(id, tenantId || undefined, activeSeasonCode || undefined);
       addActivityLog({
         module: ActivityModule.REPORT,
         action: ActivityAction.DELETE,
@@ -304,7 +313,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
     } catch (err: any) {
       console.error("Delete caterer transaction error:", err);
     }
-  }, [addActivityLog]);
+  }, [addActivityLog, tenantId, activeSeasonCode]);
 
   const getActivityLogs = useCallback((limitCount?: number) => {
     const isSuperAdmin = userRole === UserRole.SUPER_ADMIN;
@@ -322,8 +331,8 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
   }, [tenantId, userRole]);
 
   const getByPasscode = useCallback((passcode: string) => {
-    return repository.getByPasscode(passcode);
-  }, []);
+    return repository.getByPasscode(passcode, tenantId || undefined);
+  }, [tenantId]);
 
   // Helper for natural block/flat sorting
   const sortSubscriptions = useCallback((list: Subscription[]) => {
@@ -442,12 +451,14 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
 
   // Progressive Tiered Hydration & Real-Time Universal Listeners Engine
   useEffect(() => {
+    const currentTenantId = tenantId;
+    repository.setTenantId(isSuperAdmin ? "" : (currentTenantId || ""));
     if (!userRole) {
       setLoading(false);
       setHasLoadedOnce(false);
       return;
     }
-    if (!isSuperAdmin && !tenantId) {
+    if (!isSuperAdmin && !currentTenantId) {
       setLoading(false);
       setHasLoadedOnce(false);
       markSessionReady(authSessionId);
@@ -476,6 +487,12 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
         if (isMounted) finishLoading(authSessionId);
       });
 
+      void repository.getNotes()
+        .then((notesData) => {
+          if (isMounted) setNotes(deduplicateNotes(notesData || []));
+        })
+        .catch((err) => console.error("SuperAdmin notes load error:", err));
+
       const unsubLogs = repository.onLogsDelta((newLog) => {
         setActivityLogs((prev) => {
           if (prev.some((l) => l.id === newLog.id)) return prev;
@@ -483,27 +500,31 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
         });
       }, undefined, true);
 
+      const unsubNotes = repository.onNotesDelta(
+        (newNote) => setNotes((prev) => deduplicateNotes([newNote, ...prev])),
+        (updatedNote) => setNotes((prev) => deduplicateNotes(
+          prev.map((note) => note.id === updatedNote.id ? updatedNote : note)
+        )),
+        (removedId) => setNotes((prev) => prev.filter((note) => note.id !== removedId)),
+      );
+
       return () => {
         isMounted = false;
         unsubLogs();
+        unsubNotes();
       };
     }
 
-    // Progressive Tier 1: Fast Parallel Metadata Load (<300ms)
-    Promise.all([
-      repository.getConfig(tenantId || undefined),
-      repository.getMenu(tenantId || undefined),
-      repository.getNotes(),
-      repository.getFoodPackages(tenantId || undefined),
-      repository.getCatererTransactions(tenantId || undefined),
-      repository.getAppVersion(),
-      repository.getActivityLogs(100, tenantId || undefined, false),
-      repository.getMetrics(),
-      repository.hasAnyPassesAcrossSeasons(tenantId || undefined),
-    ]).then(([config, menu, notesData, packagesData, catererData, appVer, logsData, metricsData, hasPasses]) => {
-      if (!isMounted) return;
-      setHasAnyPassesAcrossSeasons(hasPasses);
+    if (!currentTenantId) {
+      setLoading(false);
+      setHasLoadedOnce(false);
+      markSessionReady(authSessionId);
+      return;
+    }
+    const homeDataPromise = repository.getHomeData(currentTenantId);
 
+    homeDataPromise.then(({ config, menu, subscriptions: subs }) => {
+      if (!isMounted) return;
       setDayConfig(config.days || []);
       setSeasonName(config.seasonName || "");
       setSeasonCode(config.seasonCode || "");
@@ -535,84 +556,34 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       setPasscodeDigitCount(config.passcodeDigitCount !== undefined ? Number(config.passcodeDigitCount) : 4);
       setFooterText(config.footerText || "");
       setFoodMenu(menu);
-      setNotes(notesData || []);
-      setFoodPackages(packagesData || []);
-      setCatererTransactions(catererData || []);
-      setActivityLogs(logsData || []);
-      if (appVer) {
-        setRemoteAppVersion(appVer.version);
-        setAndroidAppLocation(appVer.androidAppLocation);
-        setIosAppLocation(appVer.iosAppLocation);
-      }
-      setKitchenMetrics(metricsData);
-
-      // Fast Release UI: App is usable NOW in <300ms!
+      setSubscriptions(sortSubscriptions(subs));
+      setFirebaseError("");
       finishLoading(authSessionId);
 
-      // Progressive Tier 2: Initial Subscriptions Fetch
-      repository.list(tenantId || undefined).then((subs) => {
-        if (!isMounted) return;
-        setSubscriptions(sortSubscriptions(subs));
-      }).catch(err => console.error("Subscriptions list error:", err));
-
-    }).catch(err => {
-      console.error("Progressive load error:", err);
-      if (isMounted) finishLoading(authSessionId);
+      void repository.getNotes()
+        .then((data) => { if (isMounted) setNotes(deduplicateNotes(data || [])); })
+        .catch((error) => console.error("Initial notes load error:", error));
+      void repository.getAppVersion()
+        .then((info) => {
+          if (!isMounted || !info) return;
+          setRemoteAppVersion(info.version);
+          setAndroidAppLocation(info.androidAppLocation);
+          setIosAppLocation(info.iosAppLocation);
+        })
+        .catch((error) => console.error("Initial app version load error:", error));
+      void repository.getActivityLogs(100, tenantId || undefined, false)
+        .then((data) => { if (isMounted) setActivityLogs(data || []); })
+        .catch((error) => console.error("Initial activity logs load error:", error));
+      void repository.getMetrics()
+        .then((data) => { if (isMounted) setKitchenMetrics(data); })
+        .catch((error) => console.error("Initial metrics load error:", error));
+    }).catch((error) => {
+      console.error("Initial Home data load error:", error);
+      if (isMounted) {
+        setFirebaseError(error instanceof Error ? error.message : String(error));
+        finishLoading(authSessionId);
+      }
     });
-
-    const activeDays = getActiveDays(dayConfig);
-    let subBuffer: { type: "add" | "update" | "remove"; record?: Subscription; id?: string }[] = [];
-    let subBatchTimer: any = null;
-
-    const flushSubsBuffer = () => {
-      if (!isMounted || subBuffer.length === 0) return;
-      const currentBatch = [...subBuffer];
-      subBuffer = [];
-      subBatchTimer = null;
-
-      setSubscriptions((prev) => {
-        let list = [...prev];
-        let changed = false;
-        for (const op of currentBatch) {
-          if (op.type === "add" && op.record) {
-            if (!list.some((s) => s.id === op.record!.id)) {
-              list.push(op.record);
-              changed = true;
-            }
-          } else if (op.type === "update" && op.record) {
-            const idx = list.findIndex((s) => s.id === op.record!.id);
-            if (idx !== -1) {
-              list[idx] = op.record;
-              changed = true;
-            }
-          } else if (op.type === "remove" && op.id) {
-            const filtered = list.filter((s) => s.id !== op.id);
-            if (filtered.length !== list.length) {
-              list = filtered;
-              changed = true;
-            }
-          }
-        }
-        if (!changed) return prev;
-        return sortSubscriptions(list);
-      });
-    };
-
-    const unsubSubs = repository.onSubscriptionsDelta(
-      (newRecord) => {
-        subBuffer.push({ type: "add", record: newRecord });
-        if (!subBatchTimer) subBatchTimer = setTimeout(flushSubsBuffer, 100);
-      },
-      (updatedRecord) => {
-        subBuffer.push({ type: "update", record: updatedRecord });
-        if (!subBatchTimer) subBatchTimer = setTimeout(flushSubsBuffer, 100);
-      },
-      (removedId) => {
-        subBuffer.push({ type: "remove", id: removedId });
-        if (!subBatchTimer) subBatchTimer = setTimeout(flushSubsBuffer, 100);
-      },
-      activeDays
-    );
 
     const unsubNotes = repository.onNotesDelta(
       (newNote) => {
@@ -623,41 +594,9 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       },
       (removedId) => {
         setNotes((prev) => prev.filter((n) => n.id !== removedId));
-      }
-    );
-
-    const unsubFoodPackages = repository.onFoodPackagesDelta(
-      (newPkg) => {
-        setFoodPackages((prev) => {
-          if (prev.some((p) => p.id === newPkg.id)) {
-            return prev.map((p) => (p.id === newPkg.id ? newPkg : p)).sort((a, b) => b.timestamp - a.timestamp);
-          }
-          return [newPkg, ...prev].sort((a, b) => b.timestamp - a.timestamp);
-        });
       },
-      (updatedPkg) => {
-        setFoodPackages((prev) => prev.map((p) => (p.id === updatedPkg.id ? updatedPkg : p)).sort((a, b) => b.timestamp - a.timestamp));
-      },
-      (removedId) => {
-        setFoodPackages((prev) => prev.filter((p) => p.id !== removedId));
-      }
-    );
-
-    const unsubCaterer = repository.onCatererTransactionsDelta(
-      (newTx) => {
-        setCatererTransactions((prev) => {
-          if (prev.some((t) => t.id === newTx.id)) {
-            return prev.map((t) => (t.id === newTx.id ? newTx : t)).sort((a, b) => b.date - a.date);
-          }
-          return [newTx, ...prev].sort((a, b) => b.date - a.date);
-        });
-      },
-      (updatedTx) => {
-        setCatererTransactions((prev) => prev.map((t) => (t.id === updatedTx.id ? updatedTx : t)).sort((a, b) => b.date - a.date));
-      },
-      (removedId) => {
-        setCatererTransactions((prev) => prev.filter((t) => t.id !== removedId));
-      }
+      tenantId || undefined,
+      false
     );
 
     let logBuffer: ActivityLog[] = [];
@@ -693,15 +632,25 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       }
     }, effectiveTenantId, isSuperAdmin);
 
-    const unsubMenu = repository.onMenuChange((menu) => {
-      setFoodMenu(menu);
-    });
-
     const unsubConfig = repository.onConfigChange((config) => {
       setDayConfig(config.days || []);
       setSeasonName(config.seasonName || "");
       setSeasonCode(config.seasonCode || "");
-      setSeasons(config.seasons || []);
+      const incomingSeasons = config.seasons;
+      if (incomingSeasons?.length) {
+        setSeasons((previous) => {
+          const seasonsByCode = new Map(
+            previous
+              .filter((season) => season.seasonCode || season.id)
+              .map((season) => [season.seasonCode || season.id, season])
+          );
+          incomingSeasons.forEach((season) => {
+            const code = season.seasonCode || season.id;
+            if (code) seasonsByCode.set(code, season);
+          });
+          return Array.from(seasonsByCode.values());
+        });
+      }
       setActiveSeasonCode(config.activeSeasonCode || config.seasonCode || "");
       setSeasonEnabled(config.seasonEnabled !== false);
       if (config.payment) setPaymentConfig(config.payment);
@@ -727,7 +676,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       setIdentity2Name(config.identity2Name || "Flat No");
       setPasscodeDigitCount(config.passcodeDigitCount !== undefined ? Number(config.passcodeDigitCount) : 4);
       setFooterText(config.footerText || "");
-    });
+    }, tenantId || undefined);
 
     const unsubMetrics = repository.onMetricsChange((metrics) => {
       setKitchenMetrics(metrics);
@@ -863,21 +812,159 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       isMounted = false;
-      if (subBatchTimer) clearTimeout(subBatchTimer);
       if (logBatchTimer) clearTimeout(logBatchTimer);
-      unsubSubs();
       unsubNotes();
-      unsubFoodPackages();
-      unsubCaterer();
       unsubLogs();
-      unsubMenu();
       unsubConfig();
       unsubMetrics();
       unsubAppVersion();
       unsubAuthConfig();
       if (unsubTenant) unsubTenant();
     };
-  }, [userRole, tenantId, sortSubscriptions]);
+  }, [userRole, userAccountName, tenantId, sortSubscriptions]);
+
+  useEffect(() => {
+    if (!hasLoadedOnce || !userRole || isSuperAdmin || !tenantId) return;
+
+    let isMounted = true;
+    const seasonCode = activeSeasonCode || undefined;
+    let subBuffer: { type: "add" | "update" | "remove"; record?: Subscription; id?: string }[] = [];
+    let subBatchTimer: ReturnType<typeof setTimeout> | null = null;
+    const flushSubsBuffer = () => {
+      if (!isMounted || subBuffer.length === 0) return;
+      const currentBatch = [...subBuffer];
+      subBuffer = [];
+      subBatchTimer = null;
+
+      setSubscriptions((prev) => {
+        let list = [...prev];
+        let changed = false;
+        for (const op of currentBatch) {
+          if (op.type === "add" && op.record) {
+            const existingIndex = list.findIndex((item) => item.id === op.record!.id);
+            if (existingIndex === -1) {
+              list.push(op.record);
+            } else {
+              list[existingIndex] = op.record;
+            }
+            changed = true;
+          } else if (op.type === "update" && op.record) {
+            const index = list.findIndex((item) => item.id === op.record!.id);
+            if (index !== -1) {
+              list[index] = op.record;
+              changed = true;
+            }
+          } else if (op.type === "remove" && op.id) {
+            const filtered = list.filter((item) => item.id !== op.id);
+            if (filtered.length !== list.length) {
+              list = filtered;
+              changed = true;
+            }
+          }
+        }
+        return changed ? sortSubscriptions(list) : prev;
+      });
+    };
+
+    const unsubSubs = repository.onSubscriptionsDelta(
+      (record) => {
+        if (!isMounted) return;
+        subBuffer.push({ type: "add", record });
+        if (!subBatchTimer) subBatchTimer = setTimeout(flushSubsBuffer, 100);
+      },
+      (record) => {
+        if (!isMounted) return;
+        subBuffer.push({ type: "update", record });
+        if (!subBatchTimer) subBatchTimer = setTimeout(flushSubsBuffer, 100);
+      },
+      (id) => {
+        if (!isMounted) return;
+        subBuffer.push({ type: "remove", id });
+        if (!subBatchTimer) subBatchTimer = setTimeout(flushSubsBuffer, 100);
+      },
+      getActiveDays(dayConfig),
+      tenantId,
+      seasonCode
+    );
+    const unsubMenu = repository.onMenuChange(
+      (menu) => {
+        if (isMounted) setFoodMenu(menu);
+      },
+      tenantId,
+      seasonCode
+    );
+
+    return () => {
+      isMounted = false;
+      if (subBatchTimer) clearTimeout(subBatchTimer);
+      unsubSubs();
+      unsubMenu();
+    };
+  }, [hasLoadedOnce, userRole, isSuperAdmin, tenantId, activeSeasonCode, dayConfig, sortSubscriptions]);
+
+  useEffect(() => {
+    if (!hasLoadedOnce || !userRole || isSuperAdmin || !tenantId) return;
+
+    let isMounted = true;
+    const seasonCode = activeSeasonCode || undefined;
+    setFoodPackages([]);
+    setCatererTransactions([]);
+
+    void repository.getFoodPackages(tenantId, seasonCode)
+      .then((data) => { if (isMounted) setFoodPackages(data || []); })
+      .catch((error) => console.error("Food packages load error:", error));
+    void repository.getCatererTransactions(tenantId, seasonCode)
+      .then((data) => { if (isMounted) setCatererTransactions(data || []); })
+      .catch((error) => console.error("Caterer transactions load error:", error));
+
+    const unsubFoodPackages = repository.onFoodPackagesDelta(
+      (newPkg) => {
+        if (!isMounted) return;
+        setFoodPackages((prev) => {
+          if (prev.some((p) => p.id === newPkg.id)) {
+            return prev.map((p) => (p.id === newPkg.id ? newPkg : p)).sort((a, b) => b.timestamp - a.timestamp);
+          }
+          return [newPkg, ...prev].sort((a, b) => b.timestamp - a.timestamp);
+        });
+      },
+      (updatedPkg) => {
+        if (!isMounted) return;
+        setFoodPackages((prev) => prev.map((p) => (p.id === updatedPkg.id ? updatedPkg : p)).sort((a, b) => b.timestamp - a.timestamp));
+      },
+      (removedId) => {
+        if (isMounted) setFoodPackages((prev) => prev.filter((p) => p.id !== removedId));
+      },
+      tenantId,
+      seasonCode
+    );
+
+    const unsubCaterer = repository.onCatererTransactionsDelta(
+      (newTx) => {
+        if (!isMounted) return;
+        setCatererTransactions((prev) => {
+          if (prev.some((t) => t.id === newTx.id)) {
+            return prev.map((t) => (t.id === newTx.id ? newTx : t)).sort((a, b) => b.date - a.date);
+          }
+          return [newTx, ...prev].sort((a, b) => b.date - a.date);
+        });
+      },
+      (updatedTx) => {
+        if (!isMounted) return;
+        setCatererTransactions((prev) => prev.map((t) => (t.id === updatedTx.id ? updatedTx : t)).sort((a, b) => b.date - a.date));
+      },
+      (removedId) => {
+        if (isMounted) setCatererTransactions((prev) => prev.filter((t) => t.id !== removedId));
+      },
+      tenantId,
+      seasonCode
+    );
+
+    return () => {
+      isMounted = false;
+      unsubFoodPackages();
+      unsubCaterer();
+    };
+  }, [hasLoadedOnce, userRole, isSuperAdmin, tenantId, activeSeasonCode]);
 
   // Lifecycle Reconnection Handlers (Mobile AppState & Web Visibility)
   useEffect(() => {
@@ -918,7 +1005,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
         return sortSubscriptions([...prev, sub]);
       });
 
-      await repository.upsert(sub);
+      await repository.upsert(sub, tenantId || undefined);
       return true;
     } catch (err: any) {
       addActivityLog({
@@ -930,13 +1017,13 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       });
       throw err;
     }
-  }, [addActivityLog, sortSubscriptions]);
+  }, [addActivityLog, sortSubscriptions, tenantId]);
 
   const deleteSubscription = useCallback(async (id: string) => {
     try {
       // Optimistic Update: Remove from local state first
       setSubscriptions(prev => prev.filter(sub => sub.id !== id));
-      await repository.remove(id);
+      await repository.remove(id, tenantId || undefined);
     } catch (err: any) {
       await refreshAllData(true);
       addActivityLog({
@@ -948,7 +1035,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       });
       throw err;
     }
-  }, [refreshAllData, addActivityLog]);
+  }, [refreshAllData, addActivityLog, tenantId]);
 
   const updateConfig = useCallback(async (config: AppConfig) => {
     try {
@@ -992,7 +1079,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
 
   const updateMenu = useCallback(async (menu: FoodMenu) => {
     try {
-      await repository.updateMenu(menu);
+      await repository.updateMenu(menu, tenantId || undefined);
       setFoodMenu(menu);
     } catch (err: any) {
       addActivityLog({
@@ -1003,7 +1090,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       });
       throw err;
     }
-  }, [addActivityLog]);
+  }, [addActivityLog, tenantId]);
 
   const applyFreeMealCountUpdate = (mealMenu: MealMenu, field: string, value: number): MealMenu => {
     const updatedMeal: MealMenu = { ...mealMenu };
@@ -1181,7 +1268,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
         const updatedMeal = applyFreeMealCountUpdate(currentMeal, field, value);
         const payload = buildFreeMealUpdatePayload(field, value, updatedMeal);
 
-        repository.updateFreeMealCounts(dayId, mealKey, payload);
+        repository.updateFreeMealCounts(dayId, mealKey, payload, tenantId || undefined);
         return currentMenu;
       });
     } catch (err: any) {
@@ -1194,11 +1281,11 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       });
       throw err;
     }
-  }, [addActivityLog]);
+  }, [addActivityLog, tenantId]);
 
   const updateMealMenu = useCallback(async (dayId: string, mealKey: MealType, menu: MealMenu) => {
     try {
-      await repository.updateMealMenu(dayId, mealKey, menu);
+      await repository.updateMealMenu(dayId, mealKey, menu, tenantId || undefined);
       setFoodMenu(prev => ({
         ...prev,
         [dayId]: { ...prev[dayId], [mealKey]: menu }
@@ -1213,7 +1300,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       });
       throw err;
     }
-  }, [addActivityLog]);
+  }, [addActivityLog, tenantId]);
 
   const updateSubscriptionStatus = useCallback(async (flatId: string, dayId: string, personIndex: number, slot: string, taken: boolean) => {
      try {
@@ -1233,13 +1320,13 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
        const stampTime = taken ? (existingTime || nowTime) : undefined;
        const stampUser = taken ? (existingUser || currentUser) : undefined;
 
-       await repository.updateSubscriptionStatus(flatId, dayId, personIndex, slot, taken, stampTime, stampUser);
+       await repository.updateSubscriptionStatus(flatId, dayId, personIndex, slot, taken, stampTime, stampUser, tenantId || undefined, activeSeasonCode || undefined);
 
        if (!isParcel && !taken) {
-         await repository.updateSubscriptionStatus(flatId, dayId, personIndex, parcelKey, false);
+         await repository.updateSubscriptionStatus(flatId, dayId, personIndex, parcelKey, false, undefined, undefined, tenantId || undefined, activeSeasonCode || undefined);
        }
        if (isParcel && taken) {
-         await repository.updateSubscriptionStatus(flatId, dayId, personIndex, mealKey, true, stampTime, stampUser);
+         await repository.updateSubscriptionStatus(flatId, dayId, personIndex, mealKey, true, stampTime, stampUser, tenantId || undefined, activeSeasonCode || undefined);
        }
 
        setSubscriptions(prev => prev.map(s => {
@@ -1309,7 +1396,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
        });
        throw err;
      }
-  }, [addActivityLog, subscriptions]);
+  }, [addActivityLog, subscriptions, tenantId, activeSeasonCode]);
 
   const updateMealAbsent = useCallback(async (flatId: string, dayId: string, personIndex: number, mealSlot: MealType | string, absent: boolean) => {
     try {
@@ -1339,10 +1426,10 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       const stampTime = absent ? nowTime : undefined;
       const stampUser = absent ? currentUser : undefined;
 
-      await repository.updateSubscriptionStatus(flatId, dayId, personIndex, absentKey, absent, stampTime, stampUser);
+      await repository.updateSubscriptionStatus(flatId, dayId, personIndex, absentKey, absent, stampTime, stampUser, tenantId || undefined, activeSeasonCode || undefined);
       if (absent) {
-        await repository.updateSubscriptionStatus(flatId, dayId, personIndex, mealKey, false);
-        await repository.updateSubscriptionStatus(flatId, dayId, personIndex, parcelKey, false);
+        await repository.updateSubscriptionStatus(flatId, dayId, personIndex, mealKey, false, undefined, undefined, tenantId || undefined, activeSeasonCode || undefined);
+        await repository.updateSubscriptionStatus(flatId, dayId, personIndex, parcelKey, false, undefined, undefined, tenantId || undefined, activeSeasonCode || undefined);
       }
 
       setSubscriptions(prev => prev.map(s => {
@@ -1392,11 +1479,11 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       });
       throw err;
     }
-  }, [addActivityLog, subscriptions, userAccountName, userName, userRole]);
+  }, [addActivityLog, subscriptions, userAccountName, userName, userRole, tenantId, activeSeasonCode]);
 
   const checkInPassAtomic = useCallback(async (flatId: string, updatesMap: Record<string, boolean>, metricsIncrements?: Record<string, number>) => {
     try {
-      await repository.checkInPassAtomic(flatId, updatesMap, metricsIncrements);
+      await repository.checkInPassAtomic(flatId, updatesMap, metricsIncrements, tenantId || undefined, activeSeasonCode || undefined);
     } catch (err: any) {
       addActivityLog({
         module: ActivityModule.SCANNER,
@@ -1407,7 +1494,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       });
       throw err;
     }
-  }, [addActivityLog]);
+  }, [addActivityLog, tenantId, activeSeasonCode]);
 
   const upsertNote = useCallback(async (note: Note) => {
     try {
@@ -1461,7 +1548,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
   const upsertFoodPackage = useCallback(async (pkg: FoodPackage) => {
     try {
       const isEdit = !!pkg.id;
-      await repository.upsertFoodPackage(pkg);
+      await repository.upsertFoodPackage(pkg, tenantId || undefined, activeSeasonCode || undefined);
       addActivityLog({
         module: ActivityModule.PACKAGE,
         action: isEdit ? ActivityAction.UPDATE : ActivityAction.CREATE,
@@ -1477,14 +1564,14 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       });
       throw err;
     }
-  }, [addActivityLog]);
+  }, [addActivityLog, tenantId, activeSeasonCode]);
 
   const deleteFoodPackage = useCallback(async (id: string) => {
     try {
       const pkgToDelete = foodPackages.find(p => p.id === id);
       const pkgName = pkgToDelete?.name || id;
       setFoodPackages(prev => prev.filter(p => p.id !== id));
-      await repository.removeFoodPackage(id);
+      await repository.removeFoodPackage(id, tenantId || undefined, activeSeasonCode || undefined);
       addActivityLog({
         module: ActivityModule.PACKAGE,
         action: ActivityAction.DELETE,
@@ -1501,7 +1588,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       });
       throw err;
     }
-  }, [foodPackages, addActivityLog]);
+  }, [foodPackages, addActivityLog, tenantId, activeSeasonCode]);
 
   const freeMealUpdateTimers = useRef<Record<string, any>>({});
 
@@ -1529,7 +1616,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
              const updatedMeal = applyFreeMealCountUpdate(currentMeal, field, value);
              const payload = buildFreeMealUpdatePayload(field, value, updatedMeal);
 
-             repository.updateFreeMealCounts(dayId, mealKey, payload);
+             repository.updateFreeMealCounts(dayId, mealKey, payload, tenantId || undefined);
              return currentMenu;
           });
 
@@ -1555,7 +1642,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
         }
         delete freeMealUpdateTimers.current[timerKey];
      }, 1000);
-  }, [addActivityLog, dayConfig]);
+  }, [addActivityLog, dayConfig, tenantId]);
 
   const dashboardData = useMemo(() => {
     const uniqueSubscriptions = Array.from(new Map(subscriptions.map((s) => [s.id, s])).values());
@@ -1912,7 +1999,9 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    const currentSeasons = seasons || [];
+    const currentSeasons = (seasons || []).filter((season) =>
+      Boolean((season.seasonCode || season.id || "").trim())
+    );
     const anyIncomplete = currentSeasons.some((s) => s.seasonEnabled || !s.seasonCompleted);
     if (anyIncomplete) {
       showAlert(
@@ -1972,9 +2061,8 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
     };
 
     await updateConfig(fullConfig);
-    await refreshAllData(true);
     showAlert(UI_TEXT.success, UI_TEXT.seasonCreatedSuccess);
-  }, [seasons, whatsappCountryCode, identity1Enabled, identity1Name, identity1Options, identity2Enabled, identity2Name, passcodeDigitCount, updateConfig, refreshAllData, showAlert]);
+  }, [seasons, whatsappCountryCode, identity1Enabled, identity1Name, identity1Options, identity2Enabled, identity2Name, passcodeDigitCount, updateConfig, showAlert]);
 
   const switchActiveSeason = useCallback(async (targetSeasonCode: string) => {
     const targetCode = targetSeasonCode.trim().toUpperCase();
@@ -2023,13 +2111,12 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
     setPasscodeDigitCount(targetDigitCount);
     setCheatCodeEnabled(targetCheatCode);
     await updateConfig(fullConfig);
-    await refreshAllData(true);
-  }, [seasons, seasonCompleted, dayConfig, identity1Enabled, identity1Name, identity1Options, identity2Enabled, identity2Name, updateConfig, refreshAllData, showAlert]);
+  }, [seasons, seasonCompleted, dayConfig, identity1Enabled, identity1Name, identity1Options, identity2Enabled, identity2Name, updateConfig, showAlert]);
 
   const coreValue = useMemo(() => ({
     loading, firebaseError, refreshAllData, hasLoadedOnce,
     subscriptions, foodMenu, dayConfig, seasonName, seasonCode, seasonEnabled, paymentConfig,
-    seasons, activeSeasonCode, createNewSeason, switchActiveSeason,
+    seasons, activeSeasonCode, createNewSeason, switchActiveSeason, loadSettingsData,
     freeMealEnabled, mobileEnabled, foodPriceEnabled,
     kidsEnabled, guestsEnabled, vendorKidsMealChargingEnabled, whatsappCountryCode, quickCheckoutAutoCloseMs, soundEnabled, nonAdminCheckoutEnabled, cheatCodeEnabled, passcodeDigitCount, seasonCompleted, identity1Enabled, identity1Name, identity1Options, identity2Enabled, identity2Name, hasAnyPassesAcrossSeasons, footerText, vendorName, vendorAddress, vendorSettledCost, remoteAppVersion, androidAppLocation, iosAppLocation, kitchenMetrics,
     dashboardData, collections, totalPeople,
@@ -2040,7 +2127,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
   }), [
     loading, firebaseError, refreshAllData, hasLoadedOnce,
     subscriptions, foodMenu, dayConfig, seasonName, seasonCode, seasonEnabled, paymentConfig,
-    seasons, activeSeasonCode, createNewSeason, switchActiveSeason,
+    seasons, activeSeasonCode, createNewSeason, switchActiveSeason, loadSettingsData,
     freeMealEnabled, mobileEnabled, foodPriceEnabled,
     kidsEnabled, guestsEnabled, vendorKidsMealChargingEnabled, whatsappCountryCode, quickCheckoutAutoCloseMs, soundEnabled, nonAdminCheckoutEnabled, cheatCodeEnabled, passcodeDigitCount, seasonCompleted, identity1Enabled, identity1Name, identity1Options, identity2Enabled, identity2Name, hasAnyPassesAcrossSeasons, footerText, vendorName, vendorAddress, vendorSettledCost, remoteAppVersion, androidAppLocation, iosAppLocation, kitchenMetrics,
     dashboardData, collections, totalPeople,

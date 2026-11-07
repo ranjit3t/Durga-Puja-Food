@@ -302,23 +302,35 @@ export function SettingsScreen() {
     whatsappCountryCode, updateConfig, kidsEnabled, guestsEnabled, vendorKidsMealChargingEnabled, subscriptions, foodMenu, quickCheckoutAutoCloseMs, soundEnabled,
     vendorName, vendorAddress, vendorSettledCost, nonAdminCheckoutEnabled, cheatCodeEnabled, passcodeDigitCount, seasonCompleted,
     identity1Enabled, identity1Name, identity1Options, identity2Enabled, identity2Name, hasAnyPassesAcrossSeasons,
-    seasons, activeSeasonCode, createNewSeason, switchActiveSeason, footerText
+    seasons, activeSeasonCode, createNewSeason, switchActiveSeason, loadSettingsData, footerText
   } = useCoreDatabase();
   const { addActivityLog } = useActivityLogs();
   const { showAlert } = useUI();
   const { navigate, goBack } = useAppNavigation();
   const { userRole } = useAuth();
+  const [settingsDataLoaded, setSettingsDataLoaded] = React.useState(false);
+
+  React.useEffect(() => {
+    loadSettingsData()
+      .then(() => setSettingsDataLoaded(true))
+      .catch((error) => console.error("Settings data load error:", error));
+  }, [loadSettingsData]);
 
   const identitySettingsLocked =
-    hasAnyPassesAcrossSeasons || loading || !hasLoadedOnce;
+    hasAnyPassesAcrossSeasons || loading || !hasLoadedOnce || !settingsDataLoaded;
 
   const styles = useStyles();
   const { s } = useScaling();
   const { theme, themeType } = useAppTheme();
 
   const seasonsData = useMemo(() => {
-    return seasons && seasons.length > 0 ? seasons : [{ id: seasonCode || "DP2026", seasonName: seasonName || UI_TEXT.headerTitle, seasonCode: seasonCode || "DP2026", seasonEnabled, seasonCompleted, days: [] }];
-  }, [seasons, seasonCode, seasonName, seasonEnabled, seasonCompleted]);
+    const configuredSeasons = (seasons || []).filter((season) =>
+      Boolean((season.seasonCode || season.id || "").trim())
+    );
+    if (configuredSeasons.length > 0) return configuredSeasons;
+    if (!seasonCode && !seasonName && config.length === 0) return [];
+    return [{ id: seasonCode || "DP2026", seasonName: seasonName || UI_TEXT.headerTitle, seasonCode: seasonCode || "DP2026", seasonEnabled, seasonCompleted, days: [] }];
+  }, [seasons, seasonCode, seasonName, seasonEnabled, seasonCompleted, config]);
 
   const renderSeasonItem = useCallback(({ item }: { item: SeasonConfig }) => (
     <SeasonListItem
@@ -550,8 +562,9 @@ export function SettingsScreen() {
   }, [localConfig]);
 
   const hasActiveSeason = useMemo(() => {
-    return (seasons || []).some((s) => s.seasonEnabled || !s.seasonCompleted);
-  }, [seasons]);
+    const hasSeason = Boolean(seasonCode || seasonName || config.length > 0);
+    return hasSeason && (seasons || []).some((s) => s.seasonEnabled || !s.seasonCompleted);
+  }, [seasons, seasonCode, seasonName, config]);
 
   // Sync saved baseline & local state when database config is loaded
   useLayoutEffect(() => {

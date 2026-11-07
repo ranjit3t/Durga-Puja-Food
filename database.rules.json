@@ -57,10 +57,6 @@
           ".read": true,
           ".write": true
         },
-        "notes": {
-          ".read": true,
-          ".write": true
-        },
         "logs": {
           ".read": true,
           ".write": true,

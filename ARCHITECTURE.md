@@ -62,6 +62,13 @@ graph TD
 - **Debounced Batching**: Flushes 50+ rapid startup `onChildAdded` events in a single state update, preventing startup UI freezing.
 - **99.99% Bandwidth Reduction**: Transfers 1.5 KB per event instead of re-downloading 25 MB database payloads, saving 360 GB of network data during a 2-hour meal window.
 
+### A1. Home-First Hydration & Active-Season Rebinding
+- **Initial-load impact**: Login checks the authenticated tenant's status rather than downloading the full tenant list. Tenant Home waits for lean active-season config, menu, and subscriptions only; it no longer waits for the full season-data subtree or secondary reads for notes, logs, metrics, app version, packages, and caterer finance. Secondary data still loads after Home is available, and Settings loads deferred season history and cross-season pass checks. Super-admin startup remains separate.
+- **Data/realtime behavior retained**: Tenant operations pass tenant IDs explicitly. Pass, menu, food-package, and caterer-finance data are scoped to the active season; their listeners are disposed and rebound when the active season changes. Pass writes (including check-in and parcel status), package/finance mutations, and menu updates continue to persist through the repository.
+- **Other shared/live streams**: Config, authentication/user, app-version, metrics, and audit-log listeners remain in place. Tenant audit logs use `tenants/{tenantId}/logs`; SuperAdmin logs remain at root.
+- **Verification boundary**: TypeScript and focused Home/repository tests pass; the Firebase tests are mocked. The last full Jest run reported 199 passing tests and one unresolved Notes test failure (`Lunch counter` not found). No live Firebase project or physical mobile-device performance run was used, so neither production path rules nor measured device speed are certified by these tests.
+- **Notes storage model**: Root `notes` is the sole collection used by note reads, writes, deletes, and realtime listeners. Sharing updates recipient/permission fields on those root records and sends chat notifications.
+
 ### B. Dual OCR Engine Strategy (`ocrScanner.ts`)
 - On **Native Android / iOS**, uses `@react-native-ml-kit/text-recognition` directly (~1MB RAM footprint, sub-15ms execution).
 - On **Web Browsers** and environments with Web Worker support (`hasWorkerSupport`), `tesseract.js` is dynamically loaded for 100% Web OCR parity without Hermes runtime `Worker` errors.
@@ -172,7 +179,7 @@ graph TD
 ### P. End-to-End Encrypted Operational Notes & SuperAdmin Integration (`NotesScreen.tsx`, `noteEncryption.ts`, `DatabaseContext.tsx`)
 - **End-to-End Database Encryption**: Notes subjects and contents are encrypted using a Base64 XOR cipher before storing in Firebase Realtime Database and decrypted in memory upon fetching. Zero plaintext note data is exposed in database export dumps or Firebase console.
 - **Root-Level SuperAdmin Notes (`notes`)**: SuperAdmin users manage operational notes stored at the root level (`notes`). Notes are private to the creator unless shared with other SuperAdmin users in `readonly` or `read-write` mode.
-- **Tenant-Level Notes Isolation (`tenants/{tenantId}/seasons_data/{seasonCode}/notes`)**: Tenant users manage notes strictly isolated within their tenant and season path, supporting targeted per-user sharing and permissions.
+- **Shared Notes & Realtime Sharing**: Note reads, writes, deletes, and realtime listeners use the shared root `notes` collection. Sharing updates recipient and permission fields on those records, while chat notifies recipients.
 
 ---
 
@@ -318,7 +325,7 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
 - **SuperAdmin Portal Architecture**: When logged in as a SuperAdmin (`UserRole.SUPER_ADMIN`), `HomeScreen` renders an uncluttered management dashboard featuring a Top Red Summary Card (Total Tenants, Seasons, Users, Active Users) and 2 dedicated action buttons (**Tenant Management** & **Version Management**).
 - **Tenant & User Management**: SuperAdmins can create new tenants (validating unique Tenant IDs to prevent re-use), edit tenant names (with Tenant ID locked as read-only once created), toggle tenant Active/Inactive status, and manage tenant user accounts (supporting Admin, Caterer, Vendor roles, Change Password, Lock/Unlock, Disable/Enable, Soft-Delete).
 - **Cascading Account Disables & Real-Time Eviction**: Marking a tenant inactive automatically disables all system user accounts belonging to that tenant (`disabled: true`). Real-time WebSocket listeners (`onTenantStatusChange`) monitor `tenants/${tenantId}`; deactivating or deleting a tenant in Firebase RTDB instantly evicts active user sessions app-wide in sub-50ms with localized error alerts.
-- **Strict Tenant Boundaries**: Peer-to-peer chat (`ChatContext.tsx`) and team notes (`tenants/${tenantId}/notes`) enforce strict tenant filtering, preventing cross-tenant user discovery or communication.
+- **Tenant Boundaries**: Peer-to-peer chat (`ChatContext.tsx`) enforces user filtering, and tenant operational data and audit logs are tenant-scoped. Notes use the shared root collection with per-note tenant metadata and sharing fields.
 
 ### Z. Detailed Meal-Wise & Day-Wise Payment Reports Engine ([`MealWisePaymentReport.tsx`](src/components/report/MealWisePaymentReport.tsx), [`DayWisePaymentReport.tsx`](src/components/report/DayWisePaymentReport.tsx), [`ReportSummaryCard.tsx`](src/components/report/ReportSummaryCard.tsx), [`MealReportItemCard.tsx`](src/components/report/MealReportItemCard.tsx), [`paymentUtils.ts`](src/utils/paymentUtils.ts))
 - **Modularized Report Architecture**: Reusable shared report card components (`ReportSummaryCard` and `MealReportItemCard`) cleanly modularize the presentation layer across both Meal-Wise and Day-Wise payment reports.
@@ -520,19 +527,20 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
 - **Global Tool Exemption**: Non-season-dependent administration tools (**System Settings**, **Audit Log**, and **Notes**) remain fully visible and accessible at all times to allow operators to manage system configuration and audit records.
 
 ### BH. Multi-Season Architecture & Season Creation (`repository.ts`, `DatabaseContext.tsx`, `SettingsScreen.tsx`)
-- **Season-Scoped Collections**: `subscriptions`, `menu`, `caterer_finance`, and `food_packages` are dynamically scoped by `seasonCode` (`seasons_data/${seasonCode}/${collection}`). Legacy `DP2026` root paths remain supported for 100% backward compatibility.
+- **Tenant- and Season-Scoped Collections**: `subscriptions`, `menu`, `caterer_finance`, and `food_packages` are scoped by tenant and active `seasonCode` (`tenants/${tenantId}/seasons_data/${seasonCode}/${collection}`). When no season code is available, repository path resolution retains the tenant-root collection fallback for legacy data.
+- **Listener Lifecycle**: Active-season listeners for passes, menu, packages, and caterer-finance transactions are disposed and reattached on season changes so updates continue to follow the selected season.
 - **Season Creation & Single Active Invariant**: Administrators can create new seasons via `createNewSeason` modal in Settings. Activating or creating a season deactivates all other seasons, enforcing the single active season rule.
 
 ### BI. Multi-Tenant Data Isolation Architecture (`AuthContext.tsx`, `repository.ts`, `database.rules.json`)
 - **Common Auth Level**: User credentials and roles are managed at the common level (`auth_config`), with each user entry containing a `tenantId` property (e.g. `"fooddesk"`).
-- **Tenant Data Isolation**: Upon login, the user's `tenantId` dynamically scopes all tenant-specific data (`config`, `notes`, `logs`, `seasons_data/${seasonCode}/...`) under `tenants/${tenantId}/...`, enforcing strict data segregation across tenants.
+- **Tenant Data Isolation**: Upon login, the user's `tenantId` scopes tenant config, audit logs, and season data beneath `tenants/${tenantId}/...`. Notes remain in the shared root collection and use per-note metadata for sharing.
 
 ### BJ. Passcode Digit Count Configuration (`SettingsScreen.tsx`, `constants.ts`, `repository.ts`)
 - **Configurable Passcode Length**: Season settings support a numeric stepper (min 4, max 8 digits, default 4) controlling auto-generated passcodes. Once passes are issued (`subscriptions.length > 0`), the digit count setting is locked to preserve system integrity.
 - **Variable-Length Cheat Codes**: Cheat codes automatically scale with `passcodeDigitCount`, padding shorter flat IDs with leading zeros (e.g., `0143s` for 5-digit passcodes).
 
 ### BK. Strict Root vs. Tenant Audit Log Segregation (`repository.ts`, `DatabaseContext.tsx`, `database.rules.json`)
-- **Complete Log Segregation**: SuperAdmin actions are posted exclusively to the root-level logs node (`logs`) and viewed via the SuperAdmin audit log screen. Tenant-level users post and view logs strictly within their respective tenant-level logs node (`tenants/{tenantId}/seasons_data/{seasonCode}/logs`), with zero cross-contamination.
+- **Complete Log Segregation**: SuperAdmin actions are posted exclusively to the root-level logs node (`logs`) and viewed via the SuperAdmin audit log screen. Tenant-level users post and view logs within their tenant-root logs node (`tenants/{tenantId}/logs`), with zero cross-contamination.
 
 ## 6. Quality Assurance & UI Catalog
 

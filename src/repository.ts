@@ -3,6 +3,7 @@
  * Handles data persistence, retrieval, and schema normalization.
  */
 import {
+  type DataSnapshot,
   get,
   ref,
   remove,
@@ -71,10 +72,11 @@ export interface SubscriptionRepository {
   updateMealMenu(dayId: string, mealKey: MealType, menu: MealMenu, tenantId?: string): Promise<void>;
   updateFreeMealCount(dayId: string, mealKey: MealType, field: string, value: number, tenantId?: string): Promise<void>;
   updateFreeMealCounts(dayId: string, mealKey: MealType, data: Record<string, any>, tenantId?: string): Promise<void>;
-  getConfig(tenantId?: string): Promise<AppConfig>;
+  getConfig(tenantId?: string, includeAllSeasons?: boolean): Promise<AppConfig>;
+  getHomeData(tenantId: string): Promise<{ config: AppConfig; menu: FoodMenu; subscriptions: SubscriptionRecord[] }>;
   updateConfig(config: AppConfig, tenantIdOverride?: string): Promise<void>;
-  updateSubscriptionStatus(flatId: string, dayId: string, personIndex: number, slot: string, taken: boolean, timeStr?: string, userStr?: string, tenantId?: string): Promise<void>;
-  checkInPassAtomic(flatId: string, updatesMap: Record<string, boolean>, metricsIncrements?: Record<string, number>, tenantId?: string): Promise<void>;
+  updateSubscriptionStatus(flatId: string, dayId: string, personIndex: number, slot: string, taken: boolean, timeStr?: string, userStr?: string, tenantId?: string, seasonCode?: string): Promise<void>;
+  checkInPassAtomic(flatId: string, updatesMap: Record<string, boolean>, metricsIncrements?: Record<string, number>, tenantId?: string, seasonCode?: string): Promise<void>;
   getAuthConfig(): Promise<any>;
   updateAuthConfig(config: any): Promise<void>;
   addActivityLog(log: Omit<ActivityLog, "id">, tenantId?: string, isSuperAdmin?: boolean): Promise<void>;
@@ -82,15 +84,16 @@ export interface SubscriptionRepository {
   getNotes(): Promise<Note[]>;
   upsertNote(note: Note): Promise<Note>;
   removeNote(id: string): Promise<void>;
-  getFoodPackages(tenantId?: string): Promise<FoodPackage[]>;
-  upsertFoodPackage(pkg: FoodPackage, tenantId?: string): Promise<FoodPackage>;
-  removeFoodPackage(id: string, tenantId?: string): Promise<void>;
-  getCatererTransactions(tenantId?: string): Promise<CatererTransaction[]>;
-  upsertCatererTransaction(tx: CatererTransaction, tenantId?: string): Promise<CatererTransaction>;
-  removeCatererTransaction(id: string, tenantId?: string): Promise<void>;
+  getFoodPackages(tenantId?: string, seasonCode?: string): Promise<FoodPackage[]>;
+  upsertFoodPackage(pkg: FoodPackage, tenantId?: string, seasonCode?: string): Promise<FoodPackage>;
+  removeFoodPackage(id: string, tenantId?: string, seasonCode?: string): Promise<void>;
+  getCatererTransactions(tenantId?: string, seasonCode?: string): Promise<CatererTransaction[]>;
+  upsertCatererTransaction(tx: CatererTransaction, tenantId?: string, seasonCode?: string): Promise<CatererTransaction>;
+  removeCatererTransaction(id: string, tenantId?: string, seasonCode?: string): Promise<void>;
   getAppVersion(): Promise<AppVersionInfo | null>;
   updateAppVersion(version: string): Promise<void>;
   listTenants(): Promise<Record<string, { name?: string; tenantName?: string; enabled?: boolean }>>;
+  getTenantStatus(tenantId: string): Promise<{ exists: boolean; enabled: boolean }>;
   createTenant(tenantId: string, tenantName: string): Promise<void>;
   updateTenantName(tenantId: string, tenantName: string): Promise<void>;
   setTenantStatus(tenantId: string, enabled: boolean): Promise<void>;
@@ -105,7 +108,8 @@ export interface SubscriptionRepository {
     onChanged: (record: SubscriptionRecord) => void,
     onRemoved: (id: string) => void,
     activeDays: string[],
-    tenantId?: string
+  tenantId?: string,
+  seasonCode?: string
   ): () => void;
   onNotesDelta(
     onAdded: (note: Note) => void,
@@ -124,16 +128,18 @@ export interface SubscriptionRepository {
     onAdded: (pkg: FoodPackage) => void,
     onChanged: (pkg: FoodPackage) => void,
     onRemoved: (id: string) => void,
-    tenantId?: string
+    tenantId?: string,
+    seasonCode?: string
   ): () => void;
   onCatererTransactionsDelta(
     onAdded: (tx: CatererTransaction) => void,
     onChanged: (tx: CatererTransaction) => void,
     onRemoved: (id: string) => void,
-    tenantId?: string
+    tenantId?: string,
+    seasonCode?: string
   ): () => void;
   onLogsDelta(onAdded: (log: ActivityLog) => void, tenantId?: string, isSuperAdmin?: boolean): () => void;
-  onMenuChange(callback: (menu: FoodMenu) => void, tenantId?: string): () => void;
+  onMenuChange(callback: (menu: FoodMenu) => void, tenantId?: string, seasonCode?: string): () => void;
   onConfigChange(callback: (config: AppConfig) => void, tenantId?: string): () => void;
   onAuthConfigChange(callback: (config: any) => void): () => void;
   onMetricsChange(callback: (metrics: KitchenMetrics | null) => void): () => void;
@@ -656,13 +662,8 @@ function normalizeConfig(val: any): AppConfig {
 export function createFirebaseRepository(): SubscriptionRepository {
   let activeTenantId = "";
 
-  async function getActiveTenantId(services: any, tenantIdOverride?: string): Promise<string> {
-    const candidate = (tenantIdOverride || activeTenantId || "").trim();
-    if (candidate) {
-      activeTenantId = candidate;
-      return candidate;
-    }
-    return "";
+  async function getActiveTenantId(_services: any, tenantIdOverride?: string): Promise<string> {
+    return (tenantIdOverride || activeTenantId || "").trim();
   }
 
   async function tenantHasPassesAcrossSeasons(services: any, tenantId: string): Promise<boolean> {
@@ -683,8 +684,8 @@ export function createFirebaseRepository(): SubscriptionRepository {
   /**
    * Helper to get active day IDs from database config.
    */
-  async function getActiveDays(services: any): Promise<string[]> {
-    const configVal = await baseRepo.getConfig();
+  async function getActiveDays(services: any, tenantId?: string): Promise<string[]> {
+    const configVal = await baseRepo.getConfig(tenantId, false);
     let days = configVal.days || [];
     return (days || [])
       .filter((d) => d && typeof d === 'object' && d.id && d.enabled)
@@ -719,19 +720,15 @@ export function createFirebaseRepository(): SubscriptionRepository {
     setTenantId(tenantId: string) {
       activeTenantId = (tenantId || "").trim();
     },
-    async list() {
+    async list(tenantId) {
       const services = await ensureFirebaseAuth();
       if (!services) return [];
-      const eventDays = await getActiveDays(services);
-      const subsPath = await resolveSeasonDataPath(services, subscriptionsPath);
+      const eventDays = await getActiveDays(services, tenantId);
+      const subsPath = await resolveSeasonDataPath(services, subscriptionsPath, undefined, tenantId);
       if (!subsPath || !subsPath.trim()) return [];
       const snapshot = await get(ref(services.db, subsPath));
       const records = snapshot.val() as Record<string, SubscriptionRecord> | null;
       if (!records) return [];
-
-      const configVal = await baseRepo.getConfig();
-      const seasonCode = configVal.seasonCode || configVal.activeSeasonCode || "";
-      const tCode = await getActiveTenantId(services);
 
       const updates: Record<string, any> = {};
       const result: SubscriptionRecord[] = [];
@@ -754,11 +751,11 @@ export function createFirebaseRepository(): SubscriptionRepository {
 
       return result;
     },
-    async getByFlatId(flatId) {
+    async getByFlatId(flatId, tenantId) {
       const services = await ensureFirebaseAuth();
       if (!services) return undefined;
-      const eventDays = await getActiveDays(services);
-      const subsPath = await resolveSeasonDataPath(services, subscriptionsPath);
+      const eventDays = await getActiveDays(services, tenantId);
+      const subsPath = await resolveSeasonDataPath(services, subscriptionsPath, undefined, tenantId);
       if (!subsPath || !subsPath.trim()) return undefined;
       const snapshot = await get(
         ref(services.db, `${subsPath}/${flatId}`)
@@ -775,11 +772,11 @@ export function createFirebaseRepository(): SubscriptionRepository {
       }
       return norm;
     },
-    async getByPasscode(passcode) {
+    async getByPasscode(passcode, tenantId) {
       const services = await ensureFirebaseAuth();
       if (!services) return undefined;
-      const eventDays = await getActiveDays(services);
-      const subsPath = await resolveSeasonDataPath(services, subscriptionsPath);
+      const eventDays = await getActiveDays(services, tenantId);
+      const subsPath = await resolveSeasonDataPath(services, subscriptionsPath, undefined, tenantId);
       if (!subsPath || !subsPath.trim()) return undefined;
       const passcodeQuery = query(
         ref(services.db, subsPath),
@@ -792,64 +789,64 @@ export function createFirebaseRepository(): SubscriptionRepository {
       const firstRecord = Object.values(val)[0] as Record<string, unknown>;
       return normalizeRecord(firstRecord, eventDays);
     },
-    async upsert(record) {
+    async upsert(record, tenantId) {
       const services = await ensureFirebaseAuth();
       if (!services) return record;
 
       if (!record.passcode) {
-        const configVal = await baseRepo.getConfig();
+        const configVal = await baseRepo.getConfig(tenantId);
         const seasonCode = configVal.seasonCode || configVal.activeSeasonCode || "";
-        const tCode = await getActiveTenantId(services);
+        const tCode = await getActiveTenantId(services, tenantId);
         record.passcode = generateUniquePasscode([], record.id, record.id, tCode, seasonCode, configVal.passcodeDigitCount || 4);
       }
 
       const cleaned = cleanUndefined(record);
-      const subsPath = await resolveSeasonDataPath(services, subscriptionsPath);
+      const subsPath = await resolveSeasonDataPath(services, subscriptionsPath, undefined, tenantId);
       if (!subsPath || !subsPath.trim()) return record;
       await set(ref(services.db, `${subsPath}/${record.id}`), cleaned);
       return record;
     },
-    async remove(flatId) {
+    async remove(flatId, tenantId) {
       const services = await ensureFirebaseAuth();
       if (!services) return;
-      const subsPath = await resolveSeasonDataPath(services, subscriptionsPath);
+      const subsPath = await resolveSeasonDataPath(services, subscriptionsPath, undefined, tenantId);
       await remove(ref(services.db, `${subsPath}/${flatId}`));
     },
-    async getMenu() {
+    async getMenu(tenantId) {
       const services = await ensureFirebaseAuth();
       if (!services) return {};
-      const eventDays = await getActiveDays(services);
-      const mPath = await resolveSeasonDataPath(services, menuPath);
+      const eventDays = await getActiveDays(services, tenantId);
+      const mPath = await resolveSeasonDataPath(services, menuPath, undefined, tenantId);
       const snapshot = await get(ref(services.db, mPath));
       return snapshot.exists()
         ? cleanCircularFields(snapshot.val() as FoodMenu)
         : emptyMenu(eventDays);
     },
-    async updateMenu(menu) {
+    async updateMenu(menu, tenantId) {
       const services = await ensureFirebaseAuth();
       if (!services) return;
-      const mPath = await resolveSeasonDataPath(services, menuPath);
+      const mPath = await resolveSeasonDataPath(services, menuPath, undefined, tenantId);
       await set(ref(services.db, mPath), cleanUndefined(menu));
     },
-    async updateMealMenu(dayId, mealKey, menu) {
+    async updateMealMenu(dayId, mealKey, menu, tenantId) {
       const services = await ensureFirebaseAuth();
       if (!services) return;
-      const mPath = await resolveSeasonDataPath(services, menuPath);
+      const mPath = await resolveSeasonDataPath(services, menuPath, undefined, tenantId);
       await set(ref(services.db, `${mPath}/${dayId}/${mealKey}`), cleanUndefined(menu));
     },
-    async updateFreeMealCount(dayId, mealKey, field, value) {
+    async updateFreeMealCount(dayId, mealKey, field, value, tenantId) {
       const services = await ensureFirebaseAuth();
       if (!services) return;
-      const mPath = await resolveSeasonDataPath(services, menuPath);
+      const mPath = await resolveSeasonDataPath(services, menuPath, undefined, tenantId);
       await set(ref(services.db, `${mPath}/${dayId}/${mealKey}/${field}`), value);
     },
-    async updateFreeMealCounts(dayId, mealKey, data) {
+    async updateFreeMealCounts(dayId, mealKey, data, tenantId) {
       const services = await ensureFirebaseAuth();
       if (!services) return;
-      const mPath = await resolveSeasonDataPath(services, menuPath);
+      const mPath = await resolveSeasonDataPath(services, menuPath, undefined, tenantId);
       await update(ref(services.db, `${mPath}/${dayId}/${mealKey}`), cleanUndefined(data));
     },
-    async getConfig(tenantIdOverride) {
+    async getConfig(tenantIdOverride, includeAllSeasons = true) {
       const services = await ensureFirebaseAuth();
       if (!services) return normalizeConfig(null);
       const tCode = await getActiveTenantId(services, tenantIdOverride);
@@ -864,25 +861,23 @@ export function createFirebaseRepository(): SubscriptionRepository {
         const activeCode = tenantVal.activeSeasonCode || tenantVal.seasonCode || "";
 
         let seasonsList: SeasonConfig[] = [];
-        try {
-          const seasonsDataSnap = await get(ref(services.db, `tenants/${tCode}/seasons_data`));
-          if (seasonsDataSnap.exists()) {
-            const seasonsDataVal = seasonsDataSnap.val();
-            if (seasonsDataVal && typeof seasonsDataVal === "object") {
-              Object.keys(seasonsDataVal).forEach((sCode) => {
-                const sConfig = seasonsDataVal[sCode]?.config;
-                if (sConfig) {
-                  seasonsList.push(normalizeSeasonItem({ ...sConfig, seasonCode: sCode }));
-                }
-              });
+        if (includeAllSeasons) {
+          try {
+            const seasonsDataSnap = await get(ref(services.db, `tenants/${tCode}/seasons_data`));
+            if (seasonsDataSnap.exists()) {
+              const seasonsDataVal = seasonsDataSnap.val();
+              if (seasonsDataVal && typeof seasonsDataVal === "object") {
+                Object.keys(seasonsDataVal).forEach((sCode) => {
+                  const sConfig = seasonsDataVal[sCode]?.config;
+                  if (sConfig) {
+                    seasonsList.push(normalizeSeasonItem({ ...sConfig, seasonCode: sCode }));
+                  }
+                });
+              }
             }
+          } catch (error) {
+            console.error("Season list load error:", error);
           }
-        } catch {
-          // ignore
-        }
-
-        if (seasonsList.length === 0) {
-          seasonsList = [normalizeSeasonItem({ ...tenantVal, seasonCode: activeCode })];
         }
 
         const seasonConfigPath = tCode && activeCode ? `tenants/${tCode}/seasons_data/${activeCode}/config` : (activeCode ? `seasons_data/${activeCode}/config` : "");
@@ -893,6 +888,9 @@ export function createFirebaseRepository(): SubscriptionRepository {
           if (seasonConfigSnap.exists()) {
             seasonVal = seasonConfigSnap.val();
           }
+        }
+        if (seasonsList.length === 0) {
+          seasonsList = [normalizeSeasonItem({ ...tenantVal, ...seasonVal, seasonCode: activeCode })];
         }
 
         return normalizeConfig({
@@ -910,6 +908,48 @@ export function createFirebaseRepository(): SubscriptionRepository {
       }
 
       return normalizeConfig(null);
+    },
+    async getHomeData(tenantId) {
+      const services = await ensureFirebaseAuth();
+      if (!services) {
+        return { config: normalizeConfig(null), menu: {}, subscriptions: [] };
+      }
+
+      const config = await baseRepo.getConfig(tenantId, false);
+      const tCode = await getActiveTenantId(services, tenantId);
+      const seasonCode = config.seasonCode || config.activeSeasonCode || "";
+      const activeDays = (config.days || [])
+        .filter((day) => day && typeof day === "object" && day.id && day.enabled)
+        .map((day) => day.id);
+      const subscriptionsPath = getSeasonPath("subscriptions", seasonCode, tCode);
+      const menuPath = getSeasonPath("menu", seasonCode, tCode);
+      const [subscriptionsSnap, menuSnap] = await Promise.all([
+        get(ref(services.db, subscriptionsPath)),
+        get(ref(services.db, menuPath)),
+      ]);
+
+      const rawSubscriptions = subscriptionsSnap.val() as Record<string, SubscriptionRecord> | null;
+      const subscriptions: SubscriptionRecord[] = [];
+      const passcodeUpdates: Record<string, any> = {};
+      if (rawSubscriptions) {
+        Object.values(rawSubscriptions).forEach((rawRecord) => {
+          const normalized = normalizeRecord(rawRecord as Record<string, unknown>, activeDays);
+          if (!rawRecord.passcode && normalized.passcode) {
+            passcodeUpdates[`${subscriptionsPath}/${normalized.id}/passcode`] = normalized.passcode;
+          }
+          subscriptions.push(normalized);
+        });
+      }
+
+      if (Object.keys(passcodeUpdates).length > 0) {
+        void update(ref(services.db), passcodeUpdates)
+          .catch((error) => console.error("Initial passcode migration error:", error));
+      }
+
+      const menu = menuSnap.exists()
+        ? cleanCircularFields(menuSnap.val() as FoodMenu)
+        : emptyMenu(activeDays);
+      return { config, menu, subscriptions };
     },
     async updateConfig(config, tenantIdOverride) {
       const services = await ensureFirebaseAuth();
@@ -1015,21 +1055,21 @@ export function createFirebaseRepository(): SubscriptionRepository {
 
       await update(ref(services.db), updates);
     },
-    async updateSubscriptionStatus(flatId, dayId, personIndex, slot, taken, timeStr, userStr) {
+    async updateSubscriptionStatus(flatId, dayId, personIndex, slot, taken, timeStr, userStr, tenantId, seasonCode) {
       const services = await ensureFirebaseAuth();
       if (!services) return;
-      const subsPath = await resolveSeasonDataPath(services, subscriptionsPath);
+      const subsPath = await resolveSeasonDataPath(services, subscriptionsPath, seasonCode, tenantId);
       const updates: Record<string, any> = {};
       updates[`${subsPath}/${flatId}/takenByPerson/${dayId}/${personIndex}/${slot}`] = taken;
       updates[`${subsPath}/${flatId}/takenByPerson/${dayId}/${personIndex}/${slot}Time`] = taken ? (timeStr || "") : null;
       updates[`${subsPath}/${flatId}/takenByPerson/${dayId}/${personIndex}/${slot}User`] = taken ? (userStr || "") : null;
       await update(ref(services.db), updates);
     },
-    async checkInPassAtomic(flatId, updatesMap, metricsIncrements) {
+    async checkInPassAtomic(flatId, updatesMap, metricsIncrements, tenantId, seasonCode) {
       const services = await ensureFirebaseAuth();
       if (!services) return;
 
-      const subsPath = await resolveSeasonDataPath(services, subscriptionsPath);
+      const subsPath = await resolveSeasonDataPath(services, subscriptionsPath, seasonCode, tenantId);
       const multiPathUpdates: Record<string, any> = {};
 
       Object.entries(updatesMap).forEach(([slotPath, val]) => {
@@ -1077,7 +1117,7 @@ export function createFirebaseRepository(): SubscriptionRepository {
       let lPath = "logs";
       if (!isSuperAdmin) {
         if (!tenantId) return;
-        lPath = await resolveSeasonDataPath(services, logsPath, tenantId);
+        lPath = await resolveSeasonDataPath(services, logsPath, undefined, tenantId);
         if (!lPath || !lPath.trim()) return;
       }
       const newLogRef = push(ref(services.db, lPath));
@@ -1089,7 +1129,7 @@ export function createFirebaseRepository(): SubscriptionRepository {
       let lPath = "logs";
       if (!isSuperAdmin) {
         if (!tenantId) return [];
-        lPath = await resolveSeasonDataPath(services, logsPath, tenantId);
+        lPath = await resolveSeasonDataPath(services, logsPath, undefined, tenantId);
         if (!lPath || !lPath.trim()) return [];
       }
       const logsRef = limitCount > 0 ? query(ref(services.db, lPath), limitToLast(limitCount)) : ref(services.db, lPath);
@@ -1126,20 +1166,20 @@ export function createFirebaseRepository(): SubscriptionRepository {
       if (!services) return;
       await remove(ref(services.db, `${notesPath}/${id}`));
     },
-    async getFoodPackages() {
+    async getFoodPackages(tenantId, seasonCode) {
       const services = await ensureFirebaseAuth();
       if (!services) return [];
-      const pkgPath = await resolveSeasonDataPath(services, foodPackagesPath);
+      const pkgPath = await resolveSeasonDataPath(services, foodPackagesPath, seasonCode, tenantId);
       const snapshot = await get(ref(services.db, pkgPath));
       const data = snapshot.val() as Record<string, FoodPackage> | null;
       if (!data) return [];
       return Object.values(data).sort((a, b) => b.timestamp - a.timestamp);
     },
-    async upsertFoodPackage(pkg) {
+    async upsertFoodPackage(pkg, tenantId, seasonCode) {
       const services = await ensureFirebaseAuth();
       if (!services) return pkg;
       let targetId = pkg.id;
-      const pkgPath = await resolveSeasonDataPath(services, foodPackagesPath);
+      const pkgPath = await resolveSeasonDataPath(services, foodPackagesPath, seasonCode, tenantId);
       if (!targetId) {
         const newRef = push(ref(services.db, pkgPath));
         targetId = newRef.key as string;
@@ -1148,26 +1188,26 @@ export function createFirebaseRepository(): SubscriptionRepository {
       await set(ref(services.db, `${pkgPath}/${targetId}`), data);
       return { ...pkg, id: targetId };
     },
-    async removeFoodPackage(id) {
+    async removeFoodPackage(id, tenantId, seasonCode) {
       const services = await ensureFirebaseAuth();
       if (!services) return;
-      const pkgPath = await resolveSeasonDataPath(services, foodPackagesPath);
+      const pkgPath = await resolveSeasonDataPath(services, foodPackagesPath, seasonCode, tenantId);
       await remove(ref(services.db, `${pkgPath}/${id}`));
     },
-    async getCatererTransactions() {
+    async getCatererTransactions(tenantId, seasonCode) {
       const services = await ensureFirebaseAuth();
       if (!services) return [];
-      const cPath = await resolveSeasonDataPath(services, catererFinancePath);
+      const cPath = await resolveSeasonDataPath(services, catererFinancePath, seasonCode, tenantId);
       const snapshot = await get(ref(services.db, cPath));
       const data = snapshot.val() as Record<string, CatererTransaction> | null;
       if (!data) return [];
       return Object.values(data).sort((a, b) => b.date - a.date);
     },
-    async upsertCatererTransaction(tx) {
+    async upsertCatererTransaction(tx, tenantId, seasonCode) {
       const services = await ensureFirebaseAuth();
       if (!services) return tx;
       let targetId = tx.id;
-      const cPath = await resolveSeasonDataPath(services, catererFinancePath);
+      const cPath = await resolveSeasonDataPath(services, catererFinancePath, seasonCode, tenantId);
       if (!targetId) {
         const newRef = push(ref(services.db, cPath));
         targetId = newRef.key as string;
@@ -1176,10 +1216,10 @@ export function createFirebaseRepository(): SubscriptionRepository {
       await set(ref(services.db, `${cPath}/${targetId}`), data);
       return { ...tx, id: targetId };
     },
-    async removeCatererTransaction(id, tenantId) {
+    async removeCatererTransaction(id, tenantId, seasonCode) {
       const services = await ensureFirebaseAuth();
       if (!services) return;
-      const cPath = await resolveSeasonDataPath(services, catererFinancePath, tenantId);
+      const cPath = await resolveSeasonDataPath(services, catererFinancePath, seasonCode, tenantId);
       await remove(ref(services.db, `${cPath}/${id}`));
     },
     async getAppVersion() {
@@ -1234,15 +1274,16 @@ export function createFirebaseRepository(): SubscriptionRepository {
 
     // --- Real-time WebSocket Delta Listeners ---
 
-    onSubscriptionsDelta(onAdded, onChanged, onRemoved, activeDays, tenantId) {
+    onSubscriptionsDelta(onAdded, onChanged, onRemoved, activeDays, tenantId, seasonCode) {
       let unsubAdded: (() => void) | null = null;
       let unsubChanged: (() => void) | null = null;
       let unsubRemoved: (() => void) | null = null;
+      let cancelled = false;
 
       ensureFirebaseAuth().then(async (services) => {
-        if (!services?.db) return;
-        const subsPath = await resolveSeasonDataPath(services, subscriptionsPath, tenantId);
-        if (!subsPath) return;
+        if (cancelled || !services?.db) return;
+        const subsPath = await resolveSeasonDataPath(services, subscriptionsPath, seasonCode, tenantId);
+        if (cancelled || !subsPath) return;
         const subsRef = ref(services.db, subsPath);
 
         unsubAdded = onChildAdded(subsRef, (snapshot) => {
@@ -1265,72 +1306,46 @@ export function createFirebaseRepository(): SubscriptionRepository {
       }).catch(err => console.error("Subscriptions listener error:", err));
 
       return () => {
+        cancelled = true;
         if (unsubAdded) unsubAdded();
         if (unsubChanged) unsubChanged();
         if (unsubRemoved) unsubRemoved();
       };
     },
 
-    onNotesDelta(onAdded, onChanged, onRemoved, tenantId, isSuperAdmin) {
-      let unsubs: (() => void)[] = [];
+    onNotesDelta(onAdded, onChanged, onRemoved) {
+      let unsubAdded: (() => void) | null = null;
+      let unsubChanged: (() => void) | null = null;
+      let unsubRemoved: (() => void) | null = null;
+      let cancelled = false;
 
-      ensureFirebaseAuth().then(async (services) => {
-        if (!services?.db) return;
-
-        const attachListenersForPath = (nPath: string, tKey?: string) => {
-          if (!nPath) return;
-          const nRef = ref(services.db, nPath);
-
-          const u1 = onChildAdded(nRef, (snapshot) => {
-            if (snapshot.exists()) {
-              const val = snapshot.val();
-              const rawNote = (typeof val === "object" && val !== null) ? { ...val, id: val.id || snapshot.key } : val;
-              const decNote = decryptNote(rawNote as Note, tKey);
-              onAdded(decNote);
-            }
-          });
-
-          const u2 = onChildChanged(nRef, (snapshot) => {
-            if (snapshot.exists()) {
-              const val = snapshot.val();
-              const rawNote = (typeof val === "object" && val !== null) ? { ...val, id: val.id || snapshot.key } : val;
-              const decNote = decryptNote(rawNote as Note, tKey);
-              onChanged(decNote);
-            }
-          });
-
-          const u3 = onChildRemoved(nRef, (snapshot) => {
-            if (snapshot.key) {
-              onRemoved(snapshot.key);
-            }
-          });
-
-          unsubs.push(u1, u2, u3);
+      ensureFirebaseAuth().then((services) => {
+        if (cancelled || !services?.db) return;
+        const notesRef = ref(services.db, notesPath);
+        const decryptSnapshot = (snapshot: DataSnapshot) => {
+          const value = snapshot.val();
+          const rawNote = (typeof value === "object" && value !== null)
+            ? { ...value, id: value.id || snapshot.key }
+            : value;
+          return decryptNote(rawNote as Note, undefined);
         };
 
-        if (isSuperAdmin) {
-          attachListenersForPath(notesPath, undefined);
-          const tenantsSnap = await get(ref(services.db, "tenants"));
-          if (tenantsSnap.exists()) {
-            const tenantsVal = tenantsSnap.val();
-            for (const tId of Object.keys(tenantsVal)) {
-              const seasonsData = tenantsVal[tId]?.seasons_data;
-              if (seasonsData) {
-                for (const sCode of Object.keys(seasonsData)) {
-                  attachListenersForPath(`tenants/${tId}/seasons_data/${sCode}/notes`, tId);
-                }
-              }
-            }
-          }
-        } else {
-          const tPath = await resolveSeasonDataPath(services, notesPath, tenantId);
-          attachListenersForPath(tPath, tenantId);
-          attachListenersForPath(notesPath, undefined);
-        }
+        unsubAdded = onChildAdded(notesRef, (snapshot) => {
+          if (!cancelled && snapshot.exists()) onAdded(decryptSnapshot(snapshot));
+        });
+        unsubChanged = onChildChanged(notesRef, (snapshot) => {
+          if (!cancelled && snapshot.exists()) onChanged(decryptSnapshot(snapshot));
+        });
+        unsubRemoved = onChildRemoved(notesRef, (snapshot) => {
+          if (!cancelled && snapshot.key) onRemoved(snapshot.key);
+        });
       }).catch(err => console.error("Notes listener error:", err));
 
       return () => {
-        unsubs.forEach(u => u());
+        cancelled = true;
+        if (unsubAdded) unsubAdded();
+        if (unsubChanged) unsubChanged();
+        if (unsubRemoved) unsubRemoved();
       };
     },
 
@@ -1382,19 +1397,20 @@ export function createFirebaseRepository(): SubscriptionRepository {
       };
     },
 
-    onFoodPackagesDelta(onAdded, onChanged, onRemoved, tenantId) {
+    onFoodPackagesDelta(onAdded, onChanged, onRemoved, tenantId, seasonCode) {
       let unsubAdded: (() => void) | null = null;
       let unsubChanged: (() => void) | null = null;
       let unsubRemoved: (() => void) | null = null;
+      let cancelled = false;
 
       ensureFirebaseAuth().then(async (services) => {
-        if (!services?.db) return;
-        const pkgPath = await resolveSeasonDataPath(services, foodPackagesPath, tenantId);
-        if (!pkgPath) return;
+        if (cancelled || !services?.db) return;
+        const pkgPath = await resolveSeasonDataPath(services, foodPackagesPath, seasonCode, tenantId);
+        if (cancelled || !pkgPath) return;
         const pkgRef = ref(services.db, pkgPath);
 
         unsubAdded = onChildAdded(pkgRef, (snapshot) => {
-          if (snapshot.exists()) {
+          if (!cancelled && snapshot.exists()) {
             const val = snapshot.val();
             const pkg = (typeof val === "object" && val !== null) ? { ...val, id: val.id || snapshot.key } : val;
             onAdded(pkg as FoodPackage);
@@ -1402,7 +1418,7 @@ export function createFirebaseRepository(): SubscriptionRepository {
         });
 
         unsubChanged = onChildChanged(pkgRef, (snapshot) => {
-          if (snapshot.exists()) {
+          if (!cancelled && snapshot.exists()) {
             const val = snapshot.val();
             const pkg = (typeof val === "object" && val !== null) ? { ...val, id: val.id || snapshot.key } : val;
             onChanged(pkg as FoodPackage);
@@ -1410,32 +1426,34 @@ export function createFirebaseRepository(): SubscriptionRepository {
         });
 
         unsubRemoved = onChildRemoved(pkgRef, (snapshot) => {
-          if (snapshot.key) {
+          if (!cancelled && snapshot.key) {
             onRemoved(snapshot.key);
           }
         });
       }).catch(err => console.error("Food packages listener error:", err));
 
       return () => {
+        cancelled = true;
         if (unsubAdded) unsubAdded();
         if (unsubChanged) unsubChanged();
         if (unsubRemoved) unsubRemoved();
       };
     },
 
-    onCatererTransactionsDelta(onAdded, onChanged, onRemoved, tenantId) {
+    onCatererTransactionsDelta(onAdded, onChanged, onRemoved, tenantId, seasonCode) {
       let unsubAdded: (() => void) | null = null;
       let unsubChanged: (() => void) | null = null;
       let unsubRemoved: (() => void) | null = null;
+      let cancelled = false;
 
       ensureFirebaseAuth().then(async (services) => {
-        if (!services?.db) return;
-        const cPath = await resolveSeasonDataPath(services, catererFinancePath, tenantId);
-        if (!cPath) return;
+        if (cancelled || !services?.db) return;
+        const cPath = await resolveSeasonDataPath(services, catererFinancePath, seasonCode, tenantId);
+        if (cancelled || !cPath) return;
         const cRef = ref(services.db, cPath);
 
         unsubAdded = onChildAdded(cRef, (snapshot) => {
-          if (snapshot.exists()) {
+          if (!cancelled && snapshot.exists()) {
             const val = snapshot.val();
             const tx = (typeof val === "object" && val !== null) ? { ...val, id: val.id || snapshot.key } : val;
             onAdded(tx as CatererTransaction);
@@ -1443,7 +1461,7 @@ export function createFirebaseRepository(): SubscriptionRepository {
         });
 
         unsubChanged = onChildChanged(cRef, (snapshot) => {
-          if (snapshot.exists()) {
+          if (!cancelled && snapshot.exists()) {
             const val = snapshot.val();
             const tx = (typeof val === "object" && val !== null) ? { ...val, id: val.id || snapshot.key } : val;
             onChanged(tx as CatererTransaction);
@@ -1451,13 +1469,14 @@ export function createFirebaseRepository(): SubscriptionRepository {
         });
 
         unsubRemoved = onChildRemoved(cRef, (snapshot) => {
-          if (snapshot.key) {
+          if (!cancelled && snapshot.key) {
             onRemoved(snapshot.key);
           }
         });
       }).catch(err => console.error("Caterer finance listener error:", err));
 
       return () => {
+        cancelled = true;
         if (unsubAdded) unsubAdded();
         if (unsubChanged) unsubChanged();
         if (unsubRemoved) unsubRemoved();
@@ -1466,19 +1485,20 @@ export function createFirebaseRepository(): SubscriptionRepository {
 
     onLogsDelta(onAdded, tenantId, isSuperAdmin) {
       let unsubAdded: (() => void) | null = null;
+      let cancelled = false;
 
       ensureFirebaseAuth().then(async (services) => {
-        if (!services?.db) return;
+        if (cancelled || !services?.db) return;
         let lPath = "logs";
         if (!isSuperAdmin) {
           if (!tenantId) return;
-          lPath = await resolveSeasonDataPath(services, logsPath, tenantId);
-          if (!lPath || !lPath.trim()) return;
+          lPath = await resolveSeasonDataPath(services, logsPath, undefined, tenantId);
+          if (cancelled || !lPath || !lPath.trim()) return;
         }
         const logsQuery = query(ref(services.db, lPath), limitToLast(50));
 
         unsubAdded = onChildAdded(logsQuery, (snapshot) => {
-          if (snapshot.exists()) {
+          if (!cancelled && snapshot.exists()) {
             const val = snapshot.val();
             const log = (typeof val === "object" && val !== null) ? { ...val, id: val.id || snapshot.key } : val;
             onAdded(log as ActivityLog);
@@ -1487,36 +1507,42 @@ export function createFirebaseRepository(): SubscriptionRepository {
       }).catch(err => console.error("Logs listener error:", err));
 
       return () => {
+        cancelled = true;
         if (unsubAdded) unsubAdded();
       };
     },
 
-    onMenuChange(callback, tenantId) {
+    onMenuChange(callback, tenantId, seasonCode) {
       let unsub: (() => void) | null = null;
+      let cancelled = false;
       ensureFirebaseAuth().then(async (services) => {
-        if (!services?.db) return;
-        const mPath = await resolveSeasonDataPath(services, menuPath, tenantId);
-        if (!mPath) return;
+        if (cancelled || !services?.db) return;
+        const mPath = await resolveSeasonDataPath(services, menuPath, seasonCode, tenantId);
+        if (cancelled || !mPath) return;
         unsub = onValue(ref(services.db, mPath), (snapshot) => {
           callback(snapshot.exists() ? cleanCircularFields(snapshot.val() as FoodMenu) : {});
         });
       }).catch(err => console.error("Menu listener error:", err));
 
       return () => {
+        cancelled = true;
         if (unsub) unsub();
       };
     },
 
     onAuthConfigChange(callback: (config: any) => void) {
       let unsub: (() => void) | null = null;
+      let cancelled = false;
       ensureFirebaseAuth().then((services) => {
-        if (!services?.db) return;
+        if (cancelled || !services?.db) return;
         unsub = onValue(ref(services.db, authConfigPath), (snapshot) => {
+          if (cancelled) return;
           callback(snapshot.exists() ? snapshot.val() : undefined);
         });
       }).catch(err => console.error("Auth config listener error:", err));
 
       return () => {
+        cancelled = true;
         if (unsub) unsub();
       };
     },
@@ -1538,30 +1564,43 @@ export function createFirebaseRepository(): SubscriptionRepository {
     onConfigChange(callback, tenantId) {
       let unsub1: (() => void) | null = null;
       let unsub2: (() => void) | null = null;
+      let cancelled = false;
+      let currentSeasonCode = "";
+      let updateGeneration = 0;
 
       ensureFirebaseAuth().then(async (services) => {
-        if (!services?.db) return;
+        if (cancelled || !services?.db) return;
         const tCode = await getActiveTenantId(services, tenantId);
-        if (!tCode) return;
+        if (cancelled || !tCode) return;
 
-        const handleUpdate = () => {
-          baseRepo.getConfig(tCode).then(cfg => callback(cfg)).catch(() => {});
+        const handleUpdate = async () => {
+          const generation = ++updateGeneration;
+          try {
+            const config = await baseRepo.getConfig(tCode, false);
+            if (cancelled || generation !== updateGeneration) return;
+            callback(config);
+
+            const nextSeasonCode = config.activeSeasonCode || config.seasonCode || "";
+            if (nextSeasonCode === currentSeasonCode) return;
+            currentSeasonCode = nextSeasonCode;
+            if (unsub2) unsub2();
+            unsub2 = nextSeasonCode
+              ? onValue(
+                  ref(services.db, `tenants/${tCode}/seasons_data/${nextSeasonCode}/config`),
+                  () => { void handleUpdate(); }
+                )
+              : null;
+          } catch (error) {
+            console.error("Config listener update error:", error);
+          }
         };
 
-        unsub1 = onValue(ref(services.db, `tenants/${tCode}/config`), handleUpdate);
-
-        try {
-          const currentCfg = await baseRepo.getConfig(tCode);
-          const seasonCode = currentCfg.seasonCode || currentCfg.activeSeasonCode || "";
-          if (seasonCode) {
-            unsub2 = onValue(ref(services.db, `tenants/${tCode}/seasons_data/${seasonCode}/config`), handleUpdate);
-          }
-        } catch {
-          // ignore
-        }
+        unsub1 = onValue(ref(services.db, `tenants/${tCode}/config`), () => { void handleUpdate(); });
       }).catch(err => console.error("Config listener error:", err));
 
       return () => {
+        cancelled = true;
+        updateGeneration += 1;
         if (unsub1) unsub1();
         if (unsub2) unsub2();
       };
@@ -1587,6 +1626,7 @@ export function createFirebaseRepository(): SubscriptionRepository {
       let unsubDep: (() => void) | null = null;
       let unsubAndroid: (() => void) | null = null;
       let unsubIos: (() => void) | null = null;
+      let cancelled = false;
 
       let latestVersionVal: any = null;
       let latestDepVal: any = null;
@@ -1594,6 +1634,7 @@ export function createFirebaseRepository(): SubscriptionRepository {
       let iosAppLocation: string | undefined = undefined;
 
       const notify = () => {
+        if (cancelled) return;
         let versionStr = "";
         let finalAndroidLoc = androidAppLocation;
         let finalIosLoc = iosAppLocation;
@@ -1628,17 +1669,13 @@ export function createFirebaseRepository(): SubscriptionRepository {
       };
 
       ensureFirebaseAuth().then((services) => {
-        if (!services?.db) return;
+        if (cancelled || !services?.db) return;
         unsubVersion = onValue(ref(services.db, appVersionPath), (snapshot) => {
-          if (snapshot.exists()) {
-            latestVersionVal = snapshot.val();
-          }
+          latestVersionVal = snapshot.exists() ? snapshot.val() : null;
           notify();
         });
         unsubVersionAlt = onValue(ref(services.db, "version"), (snapshot) => {
-          if (snapshot.exists()) {
-            latestVersionVal = snapshot.val();
-          }
+          latestVersionVal = snapshot.exists() ? snapshot.val() : null;
           notify();
         });
         unsubDep = onValue(ref(services.db, "deprecatedVersion"), (snapshot) => {
@@ -1656,6 +1693,7 @@ export function createFirebaseRepository(): SubscriptionRepository {
       }).catch(err => console.error("App version listener error:", err));
 
       return () => {
+        cancelled = true;
         if (unsubVersion) unsubVersion();
         if (unsubVersionAlt) unsubVersionAlt();
         if (unsubDep) unsubDep();
@@ -1893,6 +1931,19 @@ export function createFirebaseRepository(): SubscriptionRepository {
       const snap = await get(ref(services.db, "tenants"));
       return snap.exists() ? (snap.val() || {}) : {};
     },
+    async getTenantStatus(tenantId) {
+      const services = await ensureFirebaseAuth();
+      if (!services || !tenantId) return { exists: false, enabled: false };
+      const [nameSnap, tenantNameSnap, enabledSnap] = await Promise.all([
+        get(ref(services.db, `tenants/${tenantId}/name`)),
+        get(ref(services.db, `tenants/${tenantId}/tenantName`)),
+        get(ref(services.db, `tenants/${tenantId}/enabled`)),
+      ]);
+      return {
+        exists: nameSnap.exists() || tenantNameSnap.exists(),
+        enabled: !enabledSnap.exists() || enabledSnap.val() !== false,
+      };
+    },
     async createTenant(tenantId: string, tenantName: string) {
       const services = await ensureFirebaseAuth();
       if (!services) return;
@@ -1955,20 +2006,45 @@ export function createFirebaseRepository(): SubscriptionRepository {
       await update(ref(services.db), updates);
     },
     onTenantStatusChange(tenantId: string, callback: (status: { exists: boolean; enabled: boolean }) => void) {
-      let unsub: (() => void) | null = null;
+      let unsubName: (() => void) | null = null;
+      let unsubTenantName: (() => void) | null = null;
+      let unsubEnabled: (() => void) | null = null;
+      let cancelled = false;
+      let nameLoaded = false;
+      let tenantNameLoaded = false;
+      let enabledLoaded = false;
+      let nameExists = false;
+      let tenantNameExists = false;
+      let enabled = true;
+      const notify = () => {
+        if (!cancelled && nameLoaded && tenantNameLoaded && enabledLoaded) {
+          const exists = nameExists || tenantNameExists;
+          callback({ exists, enabled: exists && enabled });
+        }
+      };
       ensureFirebaseAuth().then((services) => {
-        if (!services?.db || !tenantId) return;
-        unsub = onValue(ref(services.db, `tenants/${tenantId}`), (snapshot) => {
-          if (!snapshot.exists()) {
-            callback({ exists: false, enabled: false });
-          } else {
-            const val = snapshot.val();
-            callback({ exists: true, enabled: val?.enabled !== false });
-          }
+        if (cancelled || !services?.db || !tenantId) return;
+        unsubName = onValue(ref(services.db, `tenants/${tenantId}/name`), (snapshot) => {
+          nameExists = snapshot.exists();
+          nameLoaded = true;
+          notify();
         });
-      }).catch(() => {});
+        unsubTenantName = onValue(ref(services.db, `tenants/${tenantId}/tenantName`), (snapshot) => {
+          tenantNameExists = snapshot.exists();
+          tenantNameLoaded = true;
+          notify();
+        });
+        unsubEnabled = onValue(ref(services.db, `tenants/${tenantId}/enabled`), (snapshot) => {
+          enabled = !snapshot.exists() || snapshot.val() !== false;
+          enabledLoaded = true;
+          notify();
+        });
+      }).catch(err => console.error("Tenant status listener error:", err));
       return () => {
-        if (unsub) unsub();
+        cancelled = true;
+        if (unsubName) unsubName();
+        if (unsubTenantName) unsubTenantName();
+        if (unsubEnabled) unsubEnabled();
       };
     },
     async hasAnyPassesAcrossSeasons(tenantId) {
@@ -1988,7 +2064,7 @@ function wrapRepositoryWithTimeout(repo: SubscriptionRepository): SubscriptionRe
   for (const key of Object.keys(repo) as (keyof SubscriptionRepository)[]) {
     const fn = (repo as any)[key];
     if (typeof fn === "function") {
-      if (key.startsWith("on") || key === "updateUserPresence" || key === "markChatMessagesAsRead" || key === "clearChatForUser") {
+      if (key.startsWith("on") || key === "setTenantId" || key === "updateUserPresence" || key === "markChatMessagesAsRead" || key === "clearChatForUser") {
         wrapped[key] = fn.bind(repo);
       } else {
         wrapped[key] = (...args: any[]) => {

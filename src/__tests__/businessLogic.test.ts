@@ -359,6 +359,19 @@ describe("QR Code Encryption & Decryption Lookup", () => {
     expect(match?.id).toBe("14-3S");
   });
 
+  it("finds legacy encrypted QR payloads without tenant or season metadata in tenant mode", () => {
+    const legacyEncryptedQr = encryptQrPayload("14-3S");
+    const match = findSubscriptionByPassCodeOrCheatCode(
+      `https://durga-puja-food.app/pass/enc:${legacyEncryptedQr.slice("DPF_ENC_".length)}`,
+      mockSubs,
+      false,
+      "fooddesk",
+      "DP2026"
+    );
+
+    expect(match?.id).toBe("14-3S");
+  });
+
   it("accepts unencrypted legacy flat URLs as fallback", () => {
     const legacyUrl = "https://durga-puja-food.app/flat/14-3S";
     const match = findSubscriptionByPassCodeOrCheatCode(legacyUrl, mockSubs, false, "fooddesk", "DP2026");

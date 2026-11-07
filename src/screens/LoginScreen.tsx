@@ -195,14 +195,13 @@ export function LoginScreen() {
         }
 
         if (user.tenantId && user.role?.toLowerCase() !== UserRole.SUPER_ADMIN) {
-          const tenantsList = await repository.listTenants();
-          const tInfo = tenantsList[user.tenantId];
-          if (!tInfo) {
+          const tenantStatus = await repository.getTenantStatus(user.tenantId);
+          if (!tenantStatus.exists) {
             setVerifying(false);
             showAlert(UI_TEXT.error, UI_TEXT.tenantDeletedError);
             return;
           }
-          if (tInfo.enabled === false) {
+          if (!tenantStatus.enabled) {
             setVerifying(false);
             showAlert(UI_TEXT.error, UI_TEXT.tenantInactiveError);
             return;

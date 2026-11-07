@@ -16,18 +16,18 @@ import { AppScreen, AppThemeMode, ActivityModule, ActivityAction, Subscription, 
 import { getActiveDays, isMealCurrent, isMealEnabled, getDayLabel, getMealLabel, qrValueFor, isParcelEnabled, findSubscriptionByPassCodeOrCheatCode, isMealSlotAbsent } from "../constants";
 import { decryptQrPayload } from "../utils/qrEncryption";
 
-// Memoized Camera View to prevent UI/WebSocket re-renders from dropping camera FPS
-const MemoizedCamera = memo(({ onScan }: { onScan: (data: string) => void }) => {
+// Memoized Camera View to prevent UI/WebSocket re-renders from dropping camera FPS.
+const MemoizedCamera = memo(({ onScan }: { onScan?: (data: string) => void }) => {
   return (
     <CameraView
       key="camera-view"
       style={StyleSheet.absoluteFill}
       facing="back"
       barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
-      onBarcodeScanned={async ({ data }) => onScan(data)}
+      onBarcodeScanned={onScan ? ({ data }) => onScan(data) : undefined}
     />
   );
-}, () => true); // Never re-render camera view unless unmounted
+});
 
 export function ScannerScreen() {
   const styles = useStyles();
@@ -45,6 +45,8 @@ export function ScannerScreen() {
   const [error, setError] = useState("");
   const [passCode, setPassCode] = useState("");
   const isScanning = useRef(false);
+  const scanHandlerRef = useRef<(data: string) => void>(() => {});
+  const handleCameraScan = React.useCallback((data: string) => scanHandlerRef.current(data), []);
 
   // Quick Checkout State
   const [selectedPass, setSelectedPass] = useState<Subscription | null>(null);
@@ -359,6 +361,7 @@ export function ScannerScreen() {
   const handleScan = (data: string) => {
     processCodeOrData(data, false);
   };
+  scanHandlerRef.current = handleScan;
 
   const handlePassCode = (code: string) => {
     const digitCount = passcodeDigitCount || 4;
@@ -408,8 +411,8 @@ export function ScannerScreen() {
     <View style={{ flex: 1, backgroundColor: theme.colors.shadow }}>
       <StatusBar barStyle={themeType === AppThemeMode.DARK ? "light-content" : "dark-content"} />
 
-      {/* 1. Camera fills the screen (Isolated in memoized component) */}
-      <MemoizedCamera onScan={handleScan} />
+      {/* Keep QR scanning and passcode entry together in the in-app camera view. */}
+      <MemoizedCamera onScan={handleCameraScan} />
 
       {/* 2. UI Overlay on top of camera */}
       <View style={[StyleSheet.absoluteFill, { pointerEvents: "box-none" }]}>
@@ -531,7 +534,6 @@ export function ScannerScreen() {
             </Text>
           ) : null}
         </View>
-
       </View>
 
       {/* Quick / Parcel Checkout Modal */}

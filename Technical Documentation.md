@@ -10,10 +10,12 @@ The application follows a **Serverless Layered Architecture** built on the **Exp
 ### High-Level Flow
 1. **Bootstrapping**: `App.tsx` initializes the `ThemeProvider` (loading local preferences), global state, navigation history stack, and checks for session validity.
 2. **Authentication**: `LoginScreen` verifies credentials against the `auth_config` DB node using a two-phase transition logic.
-3. **Progressive Hydration (<300ms App Boot)**:
-   - **Tier 1 (<200ms)**: App shell and user session render instantly from local disk storage.
-   - **Tier 2 (<300ms)**: Fetches `/config` and `/metrics` (~2 KB payload) in parallel. Home screen dashboard summary cards populate immediately.
-   - **Tier 3 (<500ms)**: Volunteer scanners perform indexed single-pass lookups in **20ms**. Pass directory loads in pages of 50 items (~75 KB).
+3. **Home-First Hydration**:
+   - Login checks only the authenticated tenant's status rather than downloading the full tenant list. Home waits only for that tenant's lean active-season configuration, menu, and subscriptions; it no longer waits for full season history or secondary data.
+   - Notes, active-season packages and caterer transactions, logs, metrics, and app-version metadata continue loading after Home is available. Full season details and cross-season pass checks are deferred until Settings is opened.
+   - Tenant-scoped repository operations use the signed-in tenant explicitly. Active-season subscriptions, menu, packages, and caterer transactions rebind when the season changes. Tenant audit logs use `tenants/{tenantId}/logs`; global app/auth settings and metrics remain at shared database paths. Notes continue to use the shared root `notes` collection, with recipient/permission metadata stored on each root note. Tenants with no season configuration show an empty Home state and can create their first season in Settings.
+   - This is a progressive-loading change, not a feature removal: existing pass, scan/check-in, meal/parcel, menu, config, package, finance, and realtime workflows remain enabled. The last full Jest run reported 199 passing tests and one unresolved Notes-screen failure (`Lunch counter` not found); focused Home and repository tests and TypeScript validation passed. Tests use Firebase mocks; no live Firebase rules or physical mobile-device performance run was performed.
+   - The super-admin path remains separate and loads its global management data when the super-admin home opens.
 4. **Universal Real-Time WebSocket Streaming & Listener Batching**:
    - 7 native WebSocket delta listeners (`onChildAdded`, `onChildChanged`, `onChildRemoved`, `onValue`).
    - `onLogsDelta` (150ms debounce) and `onSubscriptionsDelta` (100ms debounce) batch rapid initial delta bursts into a single state update, eliminating 50+ startup re-renders.
@@ -534,14 +536,15 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
 
 36. **Multi-Season Architecture & Season Creation ([`domain.ts`](src/domain.ts), [`repository.ts`](src/repository.ts), [`DatabaseContext.tsx`](src/context/DatabaseContext.tsx), [`SettingsScreen.tsx`](src/screens/SettingsScreen.tsx))**:
     - **Multi-Season Management**: Supports creating and managing multiple festival seasons with 100% data isolation.
-    - **Season-Scoped Database Isolation**: Season-bound collections (`subscriptions`, `menu`, `caterer_finance`, `food_packages`) are dynamically scoped by `seasonCode` (`seasons_data/${seasonCode}/${collection}` or root fallback for legacy `DP2026` data).
+    - **Tenant- and Season-Scoped Database Isolation**: Season-bound collections (`subscriptions`, `menu`, `caterer_finance`, `food_packages`) are scoped by the explicit tenant and active `seasonCode` (`tenants/${tenantId}/seasons_data/${seasonCode}/${collection}`). If no season code is available, repository path resolution retains the tenant-root collection fallback for legacy data. Active-season listeners rebind when the season changes.
     - **Create New Season**: Administrators can create new seasons (`createNewSeason`) via an accessible modal with custom Season Name and Season Code inputs, automatically deactivating other seasons to enforce the single-active-season rule.
     - **WCAG 2.1 AA & Localization Compliance**: Fully accessible with zero hardcoded strings (`UI_TEXT`).
 
 37. **Multi-Tenant Architecture & Data Isolation ([`domain.ts`](src/domain.ts), [`repository.ts`](src/repository.ts), [`AuthContext.tsx`](src/context/AuthContext.tsx), [`DatabaseContext.tsx`](src/context/DatabaseContext.tsx))**:
     - **Multi-Tenancy**: Application data is scoped under tenant namespaces (`tenants/${tenantId}/...`).
     - **Common Authentication**: User credentials and roles are managed at the common level (`auth_config`), with each user entry assigned a `tenantId` property (e.g. `"eternia"`).
-    - **Tenant Data Isolation**: Upon login, the user's `tenantId` dynamically scopes all tenant-specific data (`config`, `notes`, `logs`, `seasons_data/${seasonCode}/...`), preventing cross-tenant data leakage.
+    - **Tenant Data Isolation**: Upon login, the user's `tenantId` scopes tenant config, audit logs, and season-bound data under `tenants/${tenantId}/...`; season data uses `tenants/${tenantId}/seasons_data/${seasonCode}/...`.
+    - **Shared Notes Storage**: Repository note reads, writes, deletes, and realtime listeners use the shared root `notes` node. Sharing updates the recipient and permission fields on that root note; chat sends recipients a notification.
     - **WCAG 2.1 AA & Localization Compliance**: Fully accessible with zero hardcoded strings (`UI_TEXT`).
 
 38. **Secure Multi-Tenant & Multi-Season QR Code Validation ([`qrEncryption.ts`](src/utils/qrEncryption.ts), [`constants.ts`](src/constants.ts), [`ScannerScreen.tsx`](src/screens/ScannerScreen.tsx))**:
@@ -569,7 +572,7 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
     - **SuperAdmin Role & Portal**: Superadmins (`UserRole.SUPER_ADMIN`) access a streamlined management portal on `HomeScreen` featuring a top red summary card (Total Tenants, Seasons, Users, Active Users) and 2 action buttons (**Tenant Management** & **Version Management**).
     - **Tenant & User Management**: Enables tenant creation (validating non-re-usable Tenant IDs), tenant name editing (with read-only Tenant ID display), active/inactive status toggling, and full tenant user administration modeling `UserManagementScreen` (supporting Admin, Caterer, Vendor roles, Change Password, Lock/Unlock, Disable/Enable, Soft-Delete).
     - **Real-Time Tenant Deletion & Inactivity Eviction**: Real-time WebSocket listeners (`onTenantStatusChange`) monitor `tenants/${tenantId}`. Deactivating or deleting a tenant in Firebase RTDB instantly evicts active user sessions app-wide in sub-50ms with localized error alerts.
-    - **Strict Tenant Boundaries**: Peer-to-peer chat (`ChatContext.tsx`) and team notes (`tenants/${tenantId}/notes`) enforce strict tenant filtering, preventing cross-tenant user discovery or communication.
+    - **Tenant Boundaries**: Peer-to-peer chat (`ChatContext.tsx`) enforces user filtering. Tenant audit logs use `tenants/${tenantId}/logs`, while SuperAdmin logs remain at root. Notes use the shared root collection with per-note tenant metadata and sharing fields.
     - **WCAG 2.1 AA & Localization Compliance**: Fully accessible with zero hardcoded strings (`UI_TEXT`).
 
 ---

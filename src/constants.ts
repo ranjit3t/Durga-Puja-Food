@@ -1474,15 +1474,13 @@ export function findSubscriptionByPassCodeOrCheatCode(
   // 1. Try decrypting encrypted QR code payload first
   const decodedQr = decryptQrPayloadDetails(trimmed);
   if (decodedQr) {
-    if (activeTenantId && (!decodedQr.tenantId || !decodedQr.seasonCode)) {
-      return undefined;
-    }
     if (activeTenantId && decodedQr.tenantId && decodedQr.tenantId.toLowerCase() !== activeTenantId.toLowerCase()) {
       return undefined;
     }
     if (activeSeasonCode && decodedQr.seasonCode && decodedQr.seasonCode.toLowerCase() !== activeSeasonCode.toLowerCase()) {
       return undefined;
     }
+    // Older encrypted QR payloads omit tenant/season metadata; resolve them only within the supplied active-season list.
     const match = subscriptions.find((s) => s.id === decodedQr.passId);
     if (match) return match;
     return undefined;
@@ -1571,6 +1569,4 @@ export function findSubscriptionByPassCodeOrCheatCode(
 
   return undefined;
 }
-
-
 
