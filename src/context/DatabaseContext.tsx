@@ -741,7 +741,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
         setIosAppLocation(info.iosAppLocation);
 
         if (
-          Platform.OS !== "web" &&
+          (Platform.OS === "android" || Platform.OS === "ios") &&
           userRole &&
           info.deprecatedVersion &&
           isVersionLessOrEqual(UI_TEXT.appVersion, info.deprecatedVersion) &&

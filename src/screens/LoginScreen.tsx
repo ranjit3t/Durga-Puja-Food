@@ -55,11 +55,13 @@ export function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loadingUpdateInfo, setLoadingUpdateInfo] = useState(false);
 
   const [remoteAppVersion, setRemoteAppVersion] = useState<string | null>(null);
   const [deprecatedVersion, setDeprecatedVersion] = useState<string | null>(null);
   const [androidAppLocation, setAndroidAppLocation] = useState<string | undefined>();
   const [iosAppLocation, setIosAppLocation] = useState<string | undefined>();
+  const [appVersionInfoLoaded, setAppVersionInfoLoaded] = useState(false);
 
   useEffect(() => {
     repository.getAppVersion().then((info) => {
@@ -69,7 +71,11 @@ export function LoginScreen() {
         setAndroidAppLocation(info.androidAppLocation);
         setIosAppLocation(info.iosAppLocation);
       }
-    }).catch(() => {});
+      setAppVersionInfoLoaded(true);
+    }).catch((error) => {
+      console.error("Failed to load app update information:", error);
+      setAppVersionInfoLoaded(true);
+    });
 
     const unsubVersion = repository.onAppVersionChange((info) => {
       if (info) {
@@ -84,14 +90,15 @@ export function LoginScreen() {
     };
   }, []);
 
-  const isDeprecated = Boolean(
+  const isMobilePlatform = Platform.OS === "android" || Platform.OS === "ios";
+  const isDeprecated = isMobilePlatform && Boolean(
     deprecatedVersion && isVersionLessOrEqual(UI_TEXT.appVersion, deprecatedVersion)
   );
 
   const lastAlertedVersionRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (Platform.OS !== "web" && remoteAppVersion && !isDeprecated) {
+    if (appVersionInfoLoaded && isMobilePlatform && remoteAppVersion && !isDeprecated) {
       if (
         isVersionBehind(UI_TEXT.appVersion, remoteAppVersion) &&
         lastAlertedVersionRef.current !== remoteAppVersion
@@ -110,7 +117,38 @@ export function LoginScreen() {
         );
       }
     }
-  }, [remoteAppVersion, isDeprecated, androidAppLocation, iosAppLocation, markVersionAlertShown, showAlert]);
+  }, [appVersionInfoLoaded, isMobilePlatform, remoteAppVersion, isDeprecated, androidAppLocation, iosAppLocation, markVersionAlertShown, showAlert]);
+
+  const showDeprecationAlert = async () => {
+    setLoadingUpdateInfo(true);
+    try {
+      const info = await repository.getAppVersion();
+      const latestVersion = info?.version || info?.deprecatedVersion || "";
+      const appLocation = Platform.OS === "android"
+        ? info?.androidAppLocation
+        : Platform.OS === "ios"
+          ? info?.iosAppLocation
+          : undefined;
+      if (!latestVersion || !appLocation) {
+        throw new Error("The latest version or platform download link is not configured.");
+      }
+      const message = UI_TEXT.appDeprecationMessage
+        .replace("{current}", UI_TEXT.appVersion)
+        .replace("{remote}", latestVersion);
+
+      showAlert(
+        UI_TEXT.appDeprecationTitle,
+        message,
+        [{ text: UI_TEXT.ok, style: "default" }],
+        appLocation
+      );
+    } catch (error) {
+      console.error("Failed to load deprecated app update information:", error);
+      showAlert(UI_TEXT.error, error instanceof Error ? error.message : String(error));
+    } finally {
+      setLoadingUpdateInfo(false);
+    }
+  };
 
   const onLoginSubmit = async () => {
     setVerifying(true);
@@ -347,19 +385,13 @@ export function LoginScreen() {
               </View>
 
               <Pressable
-                style={[styles.primary, (!username || !password || loading || verifying || isDeprecated) && { opacity: 0.5 }, { marginTop: 40 }]}
-                onPress={isDeprecated ? () => {
-                  const appLocation = Platform.OS === "android" ? androidAppLocation : (Platform.OS === "ios" ? iosAppLocation : undefined);
-                  const message = UI_TEXT.appDeprecationMessage
-                    .replace("{current}", UI_TEXT.appVersion)
-                    .replace("{remote}", remoteAppVersion || deprecatedVersion || "");
-                  showAlert(UI_TEXT.appDeprecationTitle, message, [{ text: UI_TEXT.ok, style: "default" }], appLocation);
-                } : onLoginSubmit}
-                disabled={!username || !password || loading || verifying || isDeprecated}
+                style={[styles.primary, ((!isDeprecated && (!username || !password)) || loading || verifying || loadingUpdateInfo) && { opacity: 0.5 }, { marginTop: 40 }]}
+                onPress={isDeprecated ? showDeprecationAlert : onLoginSubmit}
+                disabled={(!isDeprecated && (!username || !password)) || loading || verifying || loadingUpdateInfo}
                 accessible={true}
                 accessibilityRole="button"
                 accessibilityLabel={verifying ? UI_TEXT.verifying : loading ? UI_TEXT.loading : UI_TEXT.loginButton}
-                accessibilityState={{ disabled: !username || !password || loading || verifying || isDeprecated }}
+                accessibilityState={{ disabled: (!isDeprecated && (!username || !password)) || loading || verifying || loadingUpdateInfo }}
               >
                 <Text style={styles.primaryText}>
                   {verifying ? UI_TEXT.verifying : loading ? UI_TEXT.loading : UI_TEXT.loginButton}
