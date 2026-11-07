@@ -23,6 +23,7 @@ import {
 } from "firebase/database";
 import { ensureFirebaseAuth, firebaseConfigured } from "./firebase";
 import { encryptChatMessage, decryptChatMessage } from "./utils/chatEncryption";
+import { getChatSummaries } from "./utils/chatSummaries";
 import { withServerTimeout } from "./utils/asyncUtils";
 import {
   SubscriptionRecord,
@@ -1693,11 +1694,13 @@ export function createFirebaseRepository(): SubscriptionRepository {
 
     onChatMessagesChange(chatId, currentUsername, callback) {
       let unsub: (() => void) | null = null;
+      let cancelled = false;
       const cleanUser = currentUsername ? currentUsername.trim().toLowerCase() : "";
       ensureFirebaseAuth().then((services) => {
-        if (!services?.db) return;
+        if (cancelled || !services?.db) return;
         const chatRef = ref(services.db, `${chatsPath}/${chatId}`);
         unsub = onValue(chatRef, (snapshot) => {
+          if (cancelled) return;
           if (!snapshot.exists()) {
             callback([]);
             return;
@@ -1730,64 +1733,30 @@ export function createFirebaseRepository(): SubscriptionRepository {
       }).catch(err => console.error("Chat messages listener error:", err));
 
       return () => {
+        cancelled = true;
         if (unsub) unsub();
       };
     },
 
     onAllChatsSummaryChange(currentUsername, callback) {
       let unsub: (() => void) | null = null;
+      let cancelled = false;
       const cleanUser = currentUsername.trim().toLowerCase();
       ensureFirebaseAuth().then((services) => {
-        if (!services?.db) return;
+        if (cancelled || !services?.db) return;
         const allChatsRef = ref(services.db, chatsPath);
         unsub = onValue(allChatsRef, (snapshot) => {
-          const unreadMap: Record<string, number> = {};
-          const lastMsgMap: Record<string, ChatMessage> = {};
-
-          if (snapshot.exists()) {
-            const chatsData = snapshot.val() as Record<string, { messages?: Record<string, ChatMessage>; clearedAt?: Record<string, number> }>;
-            const getMsgTime = (m: any) => {
-              if (typeof m.timestamp === "number" && m.timestamp > 0) return m.timestamp;
-              return m.localTimestamp || 0;
-            };
-            Object.entries(chatsData).forEach(([cId, cData]) => {
-              if (cId.includes(cleanUser) && cData.messages) {
-                const userClearedAt = cData.clearedAt?.[cleanUser] || 0;
-                const msgs = Object.values(cData.messages)
-                  .filter((m) => getMsgTime(m) > userClearedAt)
-                  .map((m) => ({
-                    ...m,
-                    text: decryptChatMessage(m.text, m.sender, m.recipient),
-                  }))
-                  .sort((a, b) => {
-                    const timeA = getMsgTime(a);
-                    const timeB = getMsgTime(b);
-                    if (timeA !== timeB) return timeA - timeB;
-                    return (a.id || "").localeCompare(b.id || "");
-                  });
-
-                const parts = cId.split("__");
-                const otherUser = parts[0] === cleanUser ? parts[1] : parts[0];
-
-                if (msgs.length > 0) {
-                  const lastMsg = msgs[msgs.length - 1];
-                  const actualOther = lastMsg.sender.toLowerCase() === cleanUser ? lastMsg.recipient.toLowerCase() : lastMsg.sender.toLowerCase();
-                  lastMsgMap[actualOther] = lastMsg;
-
-                  const unreadCount = msgs.filter(m => m.recipient.toLowerCase() === cleanUser && m.status !== "read").length;
-                  unreadMap[actualOther] = unreadCount;
-                } else if (otherUser) {
-                  delete lastMsgMap[otherUser];
-                  delete unreadMap[otherUser];
-                }
-              }
-            });
-          }
-          callback(unreadMap, lastMsgMap);
+          if (cancelled) return;
+          const chatsData = snapshot.exists()
+            ? snapshot.val() as Record<string, { messages?: Record<string, ChatMessage>; clearedAt?: Record<string, number> }>
+            : {};
+          const summaries = getChatSummaries(chatsData, cleanUser);
+          callback(summaries.unreadMap, summaries.lastMsgMap);
         });
       }).catch(err => console.error("All chats summary listener error:", err));
 
       return () => {
+        cancelled = true;
         if (unsub) unsub();
       };
     },
@@ -1807,10 +1776,12 @@ export function createFirebaseRepository(): SubscriptionRepository {
 
     onTypingStatusChange(chatId, callback) {
       let unsub: (() => void) | null = null;
+      let cancelled = false;
       ensureFirebaseAuth().then((services) => {
-        if (!services?.db) return;
+        if (cancelled || !services?.db) return;
         const typingRef = ref(services.db, `${chatsPath}/${chatId}/typing`);
         unsub = onValue(typingRef, (snapshot) => {
+          if (cancelled) return;
           if (!snapshot.exists()) {
             callback({});
             return;
@@ -1820,6 +1791,7 @@ export function createFirebaseRepository(): SubscriptionRepository {
       }).catch(err => console.error("Typing status listener error:", err));
 
       return () => {
+        cancelled = true;
         if (unsub) unsub();
       };
     },
@@ -1853,7 +1825,7 @@ export function createFirebaseRepository(): SubscriptionRepository {
       if (!services?.db) return;
       const cleanUser = username.trim().toLowerCase();
       const updates: Record<string, any> = {};
-      updates[`${chatsPath}/${chatId}/clearedAt/${cleanUser}`] = Date.now();
+      updates[`${chatsPath}/${chatId}/clearedAt/${cleanUser}`] = serverTimestamp();
 
       const snap = await get(ref(services.db, `${chatsPath}/${chatId}/messages`));
       if (snap.exists()) {

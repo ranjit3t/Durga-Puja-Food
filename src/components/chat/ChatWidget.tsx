@@ -201,9 +201,9 @@ export function ChatWidget() {
   // - If search query has fewer than 3 characters (< 3), show ONLY users with active conversations.
   // - If search query has 3 or more characters (>= 3), search across available users by username or name (case-insensitive substring match).
   const query = searchQuery.trim().toLowerCase();
-  const currentClean = userAccountName?.toLowerCase() || "";
+  const currentClean = userAccountName?.trim().toLowerCase() || "";
   const filteredUsers = availableUsers.filter((u) => {
-    if (u.username.toLowerCase() === currentClean) return false;
+    if (u.username.trim().toLowerCase() === currentClean) return false;
     const isSuperAdminUser = (u.role || "").toLowerCase() === UserRole.SUPER_ADMIN || (u.role || "").toLowerCase() === "super_admin" || (u.role || "").toLowerCase() === "superadmin";
     const isCurrentSuperAdmin = userRole === UserRole.SUPER_ADMIN;
 
@@ -558,7 +558,7 @@ export function ChatWidget() {
                   </View>
                 ) : (
                   visibleMessages.map((msg) => {
-                    const isMine = msg.sender.toLowerCase() === userAccountName?.toLowerCase();
+                    const isMine = msg.sender.trim().toLowerCase() === userAccountName?.trim().toLowerCase();
                     return (
                       <View
                         key={msg.id}

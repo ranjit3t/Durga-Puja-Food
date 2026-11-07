@@ -101,4 +101,20 @@ describe("ChatWidget", () => {
 
     expect(screen.queryByRole("button", { name: /Chat/ })).toBeNull();
   });
+
+  it("does not show the current user in search results", () => {
+    renderChat({
+      isExpanded: true,
+      availableUsers: [{
+        ...recipient,
+        username: " admin ",
+        displayName: "My own account",
+        lastMessage: { text: "Old self chat" },
+      }],
+    });
+
+    fireEvent.changeText(screen.getByPlaceholderText(/search users/i), "admin");
+
+    expect(screen.queryByText("My own account")).toBeNull();
+  });
 });

@@ -190,7 +190,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   // Build combined availableUsers list
   const availableUsers = useMemo<ChatUser[]>(() => {
     if (!userAccountName) return [];
-    const currentClean = userAccountName.toLowerCase();
+    const currentClean = userAccountName.trim().toLowerCase();
 
     const systemUsernames = new Set<string>();
 
@@ -198,7 +198,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     const usersMap = new Map<string, ChatUser>();
 
     systemUsers.forEach((u) => {
-      const cleanU = u.username.toLowerCase();
+      const cleanU = u.username.trim().toLowerCase();
       systemUsernames.add(cleanU);
       if (cleanU === currentClean) return;
 
@@ -298,9 +298,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   // Sync active recipient details dynamically (online status, last seen, unread, disabled/deleted)
   useEffect(() => {
     if (!activeRecipient) return;
-    const cleanU = activeRecipient.username.toLowerCase();
+    const cleanU = activeRecipient.username.trim().toLowerCase();
     const liveUser = availableUsers.find(
-      (u) => u.username.toLowerCase() === cleanU,
+      (u) => u.username.trim().toLowerCase() === cleanU,
     );
     if (liveUser) {
       setActiveRecipient((prev) => {
@@ -327,13 +327,17 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   // Active ChatId
   const activeChatId = useMemo(() => {
     if (!userAccountName || !activeRecipient) return null;
+    if (
+      userAccountName.trim().toLowerCase() ===
+      activeRecipient.username.trim().toLowerCase()
+    ) return null;
     return getChatId(userAccountName, activeRecipient.username);
   }, [userAccountName, activeRecipient]);
 
   // Listen to messages for active chat
   useEffect(() => {
+    setMessages([]);
     if (!activeChatId || !userAccountName) {
-      setMessages([]);
       return;
     }
 
@@ -394,6 +398,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         !activeChatId ||
         !userAccountName ||
         !activeRecipient ||
+        userAccountName.trim().toLowerCase() ===
+          activeRecipient.username.trim().toLowerCase() ||
         activeRecipient.disabled ||
         activeRecipient.deleted
       )
