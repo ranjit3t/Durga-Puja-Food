@@ -297,6 +297,7 @@ export type ActivityLog = {
   timestamp: number;
   userName: string;
   userRole?: UserRole | string;
+  tenantId?: string;
   module: ActivityModule;
   action: ActivityAction;
   targetId?: string;
@@ -516,6 +517,7 @@ export type Note = {
   id: string;
   timestamp: number;
   userName: string;
+  userRole?: UserRole | string;
   subject: string;
   content: string;
   tenantId?: string;

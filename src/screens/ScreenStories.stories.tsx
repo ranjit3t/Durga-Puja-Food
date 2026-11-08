@@ -20,6 +20,7 @@ import { CatererIncomeExpenseScreen } from "./CatererIncomeExpenseScreen";
 import { UserManagementScreen } from "./UserManagementScreen";
 import { AppNavigator } from "../navigation/AppNavigator";
 import { STORY_FIXTURES, StoryMockProvider } from "../../.storybook/storyMocks";
+import { UserRole } from "../domain";
 
 function ListScreenScenario({ children, empty = false }: { children: React.ReactNode; empty?: boolean }) {
   return (
@@ -74,7 +75,7 @@ export const NotesScreenVendorStory = {
   name: "NotesScreen/TeamNotesVendor",
   render: () => (
     <StoryMockProvider
-      auth={{ userRole: "vendor", userName: "Kitchen Vendor", userAccountName: "vendor" }}
+      auth={{ userRole: UserRole.VENDOR, userName: "Kitchen Vendor", userAccountName: "vendor" }}
       lists={{ notes: STORY_FIXTURES.notes }}
     >
       <NotesScreen />

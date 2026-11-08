@@ -301,10 +301,10 @@ export function NotesScreen() {
             if (uName === currentUsername) return false;
 
             if (isSuperAdmin) {
-              return r === UserRole.SUPER_ADMIN || r === "super_admin" || r === "superadmin";
+              return r === UserRole.SUPER_ADMIN;
             } else {
               const isSameTenant = u.tenantId && tenantId && u.tenantId.toLowerCase() === tenantId.toLowerCase();
-              const isSuper = r === UserRole.SUPER_ADMIN || r === "super_admin" || r === "superadmin";
+              const isSuper = r === UserRole.SUPER_ADMIN;
               return isSameTenant || isSuper;
             }
           })
@@ -330,13 +330,19 @@ export function NotesScreen() {
 
   useEffect(() => {
     if (isReadOnly && editingNote) {
-      addActivityLog({
-        module: ActivityModule.NOTE,
-        action: ActivityAction.VIEW,
-        description: UI_TEXT.logViewNote.replace("{subject}", editingNote.subject)
-      });
+      const isSuperNote = isSuperAdmin || !editingNote.tenantId || (editingNote.userRole || "").toLowerCase() === UserRole.SUPER_ADMIN;
+      addActivityLog(
+        {
+          module: ActivityModule.NOTE,
+          action: ActivityAction.VIEW,
+          description: UI_TEXT.logViewNote.replace("{subject}", editingNote.subject)
+        },
+        undefined,
+        isSuperNote ? UserRole.SUPER_ADMIN : undefined,
+        isSuperNote ? undefined : (tenantId || undefined)
+      );
     }
-  }, [isReadOnly, editingNote, addActivityLog]);
+  }, [isReadOnly, editingNote, addActivityLog, isSuperAdmin, tenantId]);
 
   const userOptions = useMemo(() => {
     const users = new Set<string>();
@@ -535,7 +541,7 @@ export function NotesScreen() {
               (u) => (u.username && u.username.toLowerCase() === cleanRecipient)
             );
             const recipientRole = (matchedUser?.role || "").toLowerCase();
-            const isRecipientSuperAdmin = recipientRole === UserRole.SUPER_ADMIN || recipientRole === "super_admin" || recipientRole === "superadmin";
+            const isRecipientSuperAdmin = recipientRole === UserRole.SUPER_ADMIN;
 
             if (!isSuperAdmin && !isRecipientSuperAdmin) {
               const uMode = (finalUserShareModes && finalUserShareModes[recipientUser]) || finalShareMode || NoteShareMode.READ_ONLY;
@@ -561,23 +567,37 @@ export function NotesScreen() {
           ? UI_TEXT.sharedToAll
           : selectedUserRecipients.join(", ");
 
-        addActivityLog({
-          module: ActivityModule.NOTE,
-          action: ActivityAction.SHARE,
-          targetId: updatedNote.subject,
-          description: UI_TEXT.logShareNote.replace("{subject}", updatedNote.subject).replace("{recipient}", recipientSummary),
-          newData: { subject: updatedNote.subject, sharedWith: finalSharedWith, shareMode: finalShareMode, userShareModes: finalUserShareModes }
-        });
+        const isSuperNote = isSuperAdmin || !updatedNote.tenantId || (updatedNote.userRole || "").toLowerCase() === UserRole.SUPER_ADMIN;
+
+        addActivityLog(
+          {
+            module: ActivityModule.NOTE,
+            action: ActivityAction.SHARE,
+            targetId: updatedNote.subject,
+            description: UI_TEXT.logShareNote.replace("{subject}", updatedNote.subject).replace("{recipient}", recipientSummary),
+            newData: { subject: updatedNote.subject, sharedWith: finalSharedWith, shareMode: finalShareMode, userShareModes: finalUserShareModes }
+          },
+          undefined,
+          isSuperNote ? UserRole.SUPER_ADMIN : undefined,
+          isSuperNote ? undefined : (tenantId || undefined)
+        );
 
         showAlert(UI_TEXT.ok, UI_TEXT.noteUnsharedTargetSuccess);
       } else {
-        addActivityLog({
-          module: ActivityModule.NOTE,
-          action: ActivityAction.UPDATE,
-          targetId: updatedNote.subject,
-          description: UI_TEXT.logUnshareNote.replace("{subject}", updatedNote.subject),
-          newData: { subject: updatedNote.subject, unshared: true }
-        });
+        const isSuperNote = isSuperAdmin || !updatedNote.tenantId || (updatedNote.userRole || "").toLowerCase() === UserRole.SUPER_ADMIN;
+
+        addActivityLog(
+          {
+            module: ActivityModule.NOTE,
+            action: ActivityAction.UPDATE,
+            targetId: updatedNote.subject,
+            description: UI_TEXT.logUnshareNote.replace("{subject}", updatedNote.subject),
+            newData: { subject: updatedNote.subject, unshared: true }
+          },
+          undefined,
+          isSuperNote ? UserRole.SUPER_ADMIN : undefined,
+          isSuperNote ? undefined : (tenantId || undefined)
+        );
         showAlert(UI_TEXT.ok, UI_TEXT.noteUnsharedSuccess);
       }
 

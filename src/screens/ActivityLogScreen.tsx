@@ -21,7 +21,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useStyles, useScaling } from "../styles";
 import { useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
-import { ActivityLog, ActivityModule, ActivityAction, AppThemeMode, AppScreen } from "../domain";
+import { ActivityLog, ActivityModule, ActivityAction, AppThemeMode, AppScreen, UserRole } from "../domain";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
@@ -38,7 +38,8 @@ import { ActivityLogItem } from "../features/activity/components/ActivityLogItem
 import { ActivityLogFilterBar } from "../features/activity/components/ActivityLogFilterBar";
 
 export function ActivityLogScreen() {
-  const { handleLogout } = useAuth();
+  const { handleLogout, userRole, tenantId } = useAuth();
+  const isSuperAdmin = userRole === UserRole.SUPER_ADMIN;
   const { loading, refreshAllData, subscriptions, footerText } = useCoreDatabase();
   const { activityLogs, fetchMoreLogs } = useActivityLogs();
   const { navigate, goBack, setSelectedId, setSelectedRecord } = useAppNavigation();
@@ -137,6 +138,20 @@ export function ActivityLogScreen() {
 
   const filteredLogs = useMemo(() => {
     let result = logs.filter(log => {
+      const logRole = String(log.userRole || "").toLowerCase();
+      if (isSuperAdmin) {
+        if (logRole !== UserRole.SUPER_ADMIN && log.tenantId) {
+          return false;
+        }
+      } else {
+        if (logRole === UserRole.SUPER_ADMIN) {
+          return false;
+        }
+        if (log.tenantId && tenantId && log.tenantId.toLowerCase() !== tenantId.toLowerCase()) {
+          return false;
+        }
+      }
+
       if (selectedUser !== UI_TEXT.all) {
         const formattedUser = log.userRole ? `${log.userName} (${log.userRole})` : log.userName;
         if (selectedUser !== log.userName && selectedUser !== log.userRole && selectedUser !== formattedUser) {

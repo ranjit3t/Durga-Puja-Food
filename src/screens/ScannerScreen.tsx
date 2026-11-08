@@ -69,9 +69,9 @@ export function ScannerScreen() {
 
   const alertShownRef = useRef(false);
 
-  // Auto-alert & Redirect to Home Screen ONLY when in Quick Checkout mode and current meal closes mid-service
+  // Auto-alert and return home when the current meal closes during checkout.
   React.useEffect(() => {
-    if (!isQuickCheckout) {
+    if (!isQuickCheckout && !isParcelCheckout) {
       alertShownRef.current = false;
       return;
     }
@@ -89,7 +89,7 @@ export function ScannerScreen() {
     } else if (activeCurrentMeal) {
       alertShownRef.current = false;
     }
-  }, [isQuickCheckout, activeCurrentMeal, navigate, showAlert]);
+  }, [isQuickCheckout, isParcelCheckout, activeCurrentMeal, navigate, showAlert]);
 
   const processCodeOrData = (dataOrCode: string, isPassCode: boolean) => {
     if (isScanning.current) return;
@@ -119,13 +119,9 @@ export function ScannerScreen() {
           {
             text: UI_TEXT.ok,
             onPress: () => {
-              if (isPassCode) {
-                setPassCode("");
-                setError("");
-                isScanning.current = false;
-              } else {
-                navigate(AppScreen.SUBSCRIPTION_LIST);
-              }
+              setPassCode("");
+              setError("");
+              isScanning.current = false;
             },
           },
         ]);

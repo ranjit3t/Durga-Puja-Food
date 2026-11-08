@@ -8,6 +8,7 @@ import { useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
 import { qrValueFor, generateUniquePasscode } from "../constants";
 import { AppScreen, AppThemeMode, ActivityModule, ActivityAction, getPassDisplayLabel } from "../types";
+import { UserRole } from "../domain";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
@@ -39,7 +40,7 @@ export function QrScreen() {
   const qrCodeOnlyRef = useRef<any>(null);
 
   const qrSize = width > 768 ? 220 : Math.min(width * 0.5, 180);
-  const canShare = seasonEnabled && userRole === "admin";
+  const canShare = seasonEnabled && userRole === UserRole.ADMIN;
 
   const shareImage = async () => {
     if (qrRef.current && canShare) {

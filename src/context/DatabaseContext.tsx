@@ -273,6 +273,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       timestamp: Date.now(),
       userName: user,
       userRole: role || undefined,
+      tenantId: isSuperAdmin ? undefined : (effectiveTenantId || undefined),
       seasonCode: effectiveSeasonCode,
       os: Platform.OS,
       device: Platform.Version ? String(Platform.Version) : undefined,
@@ -1504,12 +1505,18 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
         tenantId: isSuperAdmin ? (note.tenantId || undefined) : (tenantId || undefined)
       };
       await repository.upsertNote(noteToSave);
-      addActivityLog({
-        module: ActivityModule.NOTE,
-        action: isEdit ? ActivityAction.UPDATE : ActivityAction.CREATE,
-        targetId: note.subject,
-        description: (isEdit ? UI_TEXT.logEditNote : UI_TEXT.logAddNote).replace("{subject}", note.subject)
-      });
+      const isSuperNote = isSuperAdmin || !noteToSave.tenantId || (noteToSave.userRole || "").toLowerCase() === UserRole.SUPER_ADMIN;
+      addActivityLog(
+        {
+          module: ActivityModule.NOTE,
+          action: isEdit ? ActivityAction.UPDATE : ActivityAction.CREATE,
+          targetId: note.subject,
+          description: (isEdit ? UI_TEXT.logEditNote : UI_TEXT.logAddNote).replace("{subject}", note.subject)
+        },
+        undefined,
+        isSuperNote ? UserRole.SUPER_ADMIN : undefined,
+        isSuperNote ? undefined : (tenantId || undefined)
+      );
     } catch (err: any) {
       addActivityLog({
         module: ActivityModule.NOTE,
@@ -1527,12 +1534,18 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       const noteSubject = noteToDelete?.subject || id;
       setNotes(prev => prev.filter(n => n.id !== id));
       await repository.removeNote(id);
-      addActivityLog({
-        module: ActivityModule.NOTE,
-        action: ActivityAction.DELETE,
-        targetId: noteSubject,
-        description: UI_TEXT.logDeleteNote.replace("{subject}", noteSubject)
-      });
+      const isSuperNote = isSuperAdmin || !noteToDelete?.tenantId || (noteToDelete?.userRole || "").toLowerCase() === UserRole.SUPER_ADMIN;
+      addActivityLog(
+        {
+          module: ActivityModule.NOTE,
+          action: ActivityAction.DELETE,
+          targetId: noteSubject,
+          description: UI_TEXT.logDeleteNote.replace("{subject}", noteSubject)
+        },
+        undefined,
+        isSuperNote ? UserRole.SUPER_ADMIN : undefined,
+        isSuperNote ? undefined : (tenantId || undefined)
+      );
     } catch (err: any) {
       addActivityLog({
         module: ActivityModule.NOTE,

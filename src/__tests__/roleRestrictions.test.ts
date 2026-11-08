@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-import { UserRole, PaymentMode, DietaryOption, MealType } from "../domain";
+import { UserRole, PaymentMode, DietaryOption, MealType, ActivityLog } from "../domain";
 import { Subscription } from "../types";
 
 describe("Non-Admin Role Restrictions and Field Preservation", () => {
@@ -91,5 +91,69 @@ describe("Non-Admin Role Restrictions and Field Preservation", () => {
     // Assert that non-admin's edited meal slots were saved
     expect(savedSubscription.mealSlots.day1[0][MealType.BREAKFAST]).toBe(DietaryOption.NON_VEG);
     expect(savedSubscription.mealSlots.day1[0].breakfastParcel).toBe(true);
+  });
+
+  it("ensures total audit separation between superadmin and tenant admins for note and activity logs", () => {
+    const superAdminLog: ActivityLog = {
+      id: "log-1",
+      timestamp: Date.now(),
+      userName: "Ranjit (superadmin)",
+      userRole: UserRole.SUPER_ADMIN,
+      module: "Note" as any,
+      action: "Created" as any,
+      description: "Added note: Superadmin Note",
+    };
+
+    const tenantALog: ActivityLog = {
+      id: "log-2",
+      timestamp: Date.now(),
+      userName: "Ranjit (admin)",
+      userRole: UserRole.ADMIN,
+      tenantId: "tenant-a",
+      module: "Note" as any,
+      action: "Created" as any,
+      description: "Added note: Tenant A Note",
+    };
+
+    const tenantBLog: ActivityLog = {
+      id: "log-3",
+      timestamp: Date.now(),
+      userName: "Sam (admin)",
+      userRole: UserRole.ADMIN,
+      tenantId: "tenant-b",
+      module: "Note" as any,
+      action: "Created" as any,
+      description: "Added note: Tenant B Note",
+    };
+
+    const allLogs = [superAdminLog, tenantALog, tenantBLog];
+
+    // Superadmin audit log view filter
+    const superAdminVisibleLogs = allLogs.filter(log => {
+      const role = String(log.userRole || "").toLowerCase();
+      return role === "superadmin" || role === UserRole.SUPER_ADMIN || !log.tenantId;
+    });
+
+    expect(superAdminVisibleLogs).toEqual([superAdminLog]);
+
+    // Tenant A admin audit log view filter
+    const tenantAVisibleLogs = allLogs.filter(log => {
+      const role = String(log.userRole || "").toLowerCase();
+      if (role === "superadmin" || role === UserRole.SUPER_ADMIN) return false;
+      if (log.tenantId && log.tenantId !== "tenant-a") return false;
+      return true;
+    });
+
+    expect(tenantAVisibleLogs).toEqual([tenantALog]);
+
+    // Tenant B admin audit log view filter
+    const tenantBVisibleLogs = allLogs.filter(log => {
+      const role = String(log.userRole || "").toLowerCase();
+      if (role === "superadmin" || role === UserRole.SUPER_ADMIN) return false;
+      if (log.tenantId && log.tenantId !== "tenant-b") return false;
+      return true;
+    });
+
+    expect(tenantBVisibleLogs).toEqual([tenantBLog]);
   });
 });

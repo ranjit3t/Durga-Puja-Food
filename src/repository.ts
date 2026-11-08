@@ -1113,12 +1113,17 @@ export function createFirebaseRepository(): SubscriptionRepository {
     async addActivityLog(log, tenantId, isSuperAdmin) {
       const services = await ensureFirebaseAuth();
       if (!services) return;
-      const cleanLog = cleanUndefined(log);
+      const cleanTenantId = (tenantId || log.tenantId || "").trim();
+      const cleanLog = cleanUndefined({
+        ...log,
+        tenantId: cleanTenantId || undefined,
+      });
       let lPath = "logs";
-      if (!isSuperAdmin) {
-        if (!tenantId) return;
-        lPath = await resolveSeasonDataPath(services, logsPath, undefined, tenantId);
-        if (!lPath || !lPath.trim()) return;
+      if (cleanTenantId) {
+        lPath = await resolveSeasonDataPath(services, logsPath, undefined, cleanTenantId);
+        if (!lPath || !lPath.trim()) {
+          lPath = `tenants/${cleanTenantId}/logs`;
+        }
       }
       const newLogRef = push(ref(services.db, lPath));
       await set(newLogRef, { ...cleanLog, id: newLogRef.key });
@@ -1126,17 +1131,34 @@ export function createFirebaseRepository(): SubscriptionRepository {
     async getActivityLogs(limitCount = 50, tenantId, isSuperAdmin) {
       const services = await ensureFirebaseAuth();
       if (!services) return [];
+      const cleanTenantId = (tenantId || "").trim();
       let lPath = "logs";
-      if (!isSuperAdmin) {
-        if (!tenantId) return [];
-        lPath = await resolveSeasonDataPath(services, logsPath, undefined, tenantId);
-        if (!lPath || !lPath.trim()) return [];
+      if (cleanTenantId) {
+        lPath = await resolveSeasonDataPath(services, logsPath, undefined, cleanTenantId);
+        if (!lPath || !lPath.trim()) {
+          lPath = `tenants/${cleanTenantId}/logs`;
+        }
       }
       const logsRef = limitCount > 0 ? query(ref(services.db, lPath), limitToLast(limitCount)) : ref(services.db, lPath);
       const snapshot = await get(logsRef);
       const data = snapshot.val() as Record<string, ActivityLog> | null;
       if (!data) return [];
-      return Object.values(data).sort((a, b) => b.timestamp - a.timestamp);
+
+      let logsList = Object.values(data);
+      if (!cleanTenantId) {
+        logsList = logsList.filter(l => {
+          const role = String(l.userRole || "").toLowerCase();
+          return role === UserRole.SUPER_ADMIN || !l.tenantId;
+        });
+      } else {
+        logsList = logsList.filter(l => {
+          const role = String(l.userRole || "").toLowerCase();
+          if (role === UserRole.SUPER_ADMIN) return false;
+          if (l.tenantId && l.tenantId.toLowerCase() !== cleanTenantId.toLowerCase()) return false;
+          return true;
+        });
+      }
+      return logsList.sort((a, b) => b.timestamp - a.timestamp);
     },
     async getNotes() {
       const services = await ensureFirebaseAuth();
@@ -1489,19 +1511,34 @@ export function createFirebaseRepository(): SubscriptionRepository {
 
       ensureFirebaseAuth().then(async (services) => {
         if (cancelled || !services?.db) return;
+        const cleanTenantId = (tenantId || "").trim();
         let lPath = "logs";
-        if (!isSuperAdmin) {
-          if (!tenantId) return;
-          lPath = await resolveSeasonDataPath(services, logsPath, undefined, tenantId);
-          if (cancelled || !lPath || !lPath.trim()) return;
+        if (cleanTenantId) {
+          lPath = await resolveSeasonDataPath(services, logsPath, undefined, cleanTenantId);
+          if (!lPath || !lPath.trim()) {
+            lPath = `tenants/${cleanTenantId}/logs`;
+          }
         }
+        if (cancelled || !lPath || !lPath.trim()) return;
         const logsQuery = query(ref(services.db, lPath), limitToLast(50));
 
         unsubAdded = onChildAdded(logsQuery, (snapshot) => {
           if (!cancelled && snapshot.exists()) {
             const val = snapshot.val();
             const log = (typeof val === "object" && val !== null) ? { ...val, id: val.id || snapshot.key } : val;
-            onAdded(log as ActivityLog);
+            const logObj = log as ActivityLog;
+            const role = String(logObj.userRole || "").toLowerCase();
+            if (!cleanTenantId) {
+              if (role === UserRole.SUPER_ADMIN || !logObj.tenantId) {
+                onAdded(logObj);
+              }
+            } else {
+              if (role !== UserRole.SUPER_ADMIN) {
+                if (!logObj.tenantId || logObj.tenantId.toLowerCase() === cleanTenantId.toLowerCase()) {
+                  onAdded(logObj);
+                }
+              }
+            }
           }
         });
       }).catch(err => console.error("Logs listener error:", err));
