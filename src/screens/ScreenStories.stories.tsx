@@ -75,7 +75,7 @@ export const NotesScreenVendorStory = {
   name: "NotesScreen/TeamNotesVendor",
   render: () => (
     <StoryMockProvider
-      auth={{ userRole: UserRole.VENDOR, userName: "Kitchen Vendor", userAccountName: "vendor" }}
+      auth={{ userRole: UserRole.VENDOR, userName: "KitchenVendor", userAccountName: "vendor" }}
       lists={{ notes: STORY_FIXTURES.notes }}
     >
       <NotesScreen />

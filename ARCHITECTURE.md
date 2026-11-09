@@ -543,6 +543,9 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
 ### BK. Strict Root vs. Tenant Audit Log Segregation (`repository.ts`, `DatabaseContext.tsx`, `database.rules.json`)
 - **Complete Log Segregation**: SuperAdmin actions are posted exclusively to the root-level logs node (`logs`) and viewed via the SuperAdmin audit log screen. Tenant-level users post and view logs within their tenant-root logs node (`tenants/{tenantId}/logs`), with zero cross-contamination.
 
+### BL. Edit Pass Top Quick-Save Shortcut & Change Tracking (`SubscriptionForm.tsx`)
+- **Top Header Quick-Save & Change Tracking**: Renders a synchronized quick-save button in the top header row of the Edit Pass screen. Automatically mirrors visibility and role-based access (`canEdit && canSave`) with the primary lower save button. When editing an existing pass (`lockIdentity === true`), `hasUserEdited` state tracking prevents the button from appearing or enabling until actual form modifications occur, avoiding empty or accidental saves.
+
 ## 6. Quality Assurance & UI Catalog
 
 ### Jest Test Boundary

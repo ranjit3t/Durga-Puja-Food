@@ -491,7 +491,7 @@ export function DetailsScreen() {
                   >
                     <Ionicons name="flash" size={18} color={theme.colors.white} />
                   </Pressable>
-                  {canQuickCheckout && hasUnservedParcelForCurrentMeal && (
+                  {canQuickCheckout && hasUnservedParcelForCurrentMeal && currentMealInfo && isParcelEnabled(currentMealInfo.dayId, currentMealInfo.mealType, dayConfig) && (
                     <Pressable
                       accessibilityLabel={UI_TEXT.parcelCheckout}
                       onPress={handleParcelCheckoutClick}
@@ -1106,7 +1106,7 @@ export function DetailsScreen() {
                   <ActionLabel icon="flash-outline" label={UI_TEXT.quickCheckout} color={theme.colors.white} />
                 </Pressable>
               )}
-              {hasUnservedParcelForCurrentMeal && (
+              {hasUnservedParcelForCurrentMeal && currentMealInfo && isParcelEnabled(currentMealInfo.dayId, currentMealInfo.mealType, dayConfig) && (
                 <Pressable
                   onPress={handleParcelCheckoutClick}
                   accessible={true}

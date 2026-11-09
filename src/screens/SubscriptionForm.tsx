@@ -105,7 +105,7 @@ import {
 export function SubscriptionForm() {
   const { userRole, userName, userAccountName, tenantId, handleLogout } = useAuth();
   const {
-    dayConfig, paymentConfig, seasonEnabled, foodPriceEnabled, foodMenu, mobileEnabled,
+    dayConfig, paymentConfig, seasonEnabled, seasonCompleted, foodPriceEnabled, foodMenu, mobileEnabled,
     upsertSubscription, deleteSubscription, kidsEnabled, guestsEnabled, subscriptions,
     identity1Enabled, identity1Name, identity1Options, identity2Enabled, identity2Name, seasonCode, passcodeDigitCount, footerText
   } = useCoreDatabase();
@@ -143,6 +143,7 @@ export function SubscriptionForm() {
   const canEdit = isAdmin || seasonEnabled;
   const activeDays = getActiveDays(dayConfig);
   const isSeasonCompleted = isSeasonDone(dayConfig) || !seasonEnabled;
+  const isSeasonCompletedOrDone = seasonCompleted || isSeasonDone(dayConfig);
   const hasAnyCurrentMeal = activeDays.some(day =>
     [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER].some(m => isMealCurrent(day, m, dayConfig))
   );
@@ -248,6 +249,12 @@ export function SubscriptionForm() {
   const [selectedPerson, setSelectedPerson] = useState(0);
   const [selectedDay, setSelectedDay] = useState<Day>(currentDayId || activeDays[0]);
   const [isManualAmount, setIsManualAmount] = useState(false);
+  const [hasUserEdited, setHasUserEdited] = useState(false);
+
+  const handleMobileChange = (digits: string) => {
+    setHasUserEdited(true);
+    setMobileInput(digits);
+  };
 
   const liveRecord = useMemo(() => {
     if (!value?.id) return null;
@@ -563,7 +570,7 @@ export function SubscriptionForm() {
   }, [selectedDay, s]);
 
   // Payment State (supporting up to maxPayments payments)
-  const [payments, setPayments] = useState<PaymentEntry[]>(() => {
+  const [payments, _setPayments] = useState<PaymentEntry[]>(() => {
     if (form.payments && form.payments.length > 0) {
       return form.payments.map((p) => ({
         ...p,
@@ -582,6 +589,11 @@ export function SubscriptionForm() {
     }];
     return fallback;
   });
+
+  const setPayments = (next: PaymentEntry[] | ((prev: PaymentEntry[]) => PaymentEntry[])) => {
+    setHasUserEdited(true);
+    _setPayments(next);
+  };
 
   const initialLoadedAmount = useMemo(() => {
     return value ? calculatePaidAmount(value) : 0;
@@ -764,15 +776,15 @@ export function SubscriptionForm() {
 
   const canSave = useMemo(() => {
     const hasFlat = !!form.flat.trim();
-    // If adding a new pass, we don't strictly require "hasChanged" because it's a new record.
-    // If editing, we want to prevent saving if nothing changed.
-    return hasFlat && hasAnyMealSelected && (!lockIdentity || hasChanged);
-  }, [form.flat, hasAnyMealSelected, hasChanged, lockIdentity]);
+    return hasFlat && hasAnyMealSelected && (!lockIdentity || hasUserEdited);
+  }, [form.flat, hasAnyMealSelected, lockIdentity, hasUserEdited]);
 
   const totalAmount = payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
 
-  const set = <K extends keyof Subscription>(key: K, next: Subscription[K]) =>
+  const set = <K extends keyof Subscription>(key: K, next: Subscription[K]) => {
+    setHasUserEdited(true);
     setForm({ ...form, [key]: next });
+  };
 
   /**
    * Opens the device contact picker and populates the mobile field using Expo SDK 57 Contact class API.
@@ -969,6 +981,7 @@ export function SubscriptionForm() {
     slot: MealType,
     choice: MealChoice
   ) => {
+    setHasUserEdited(true);
     const currentSlots = getEnsureSlots(selectedDay);
     const isNone = choice === DietaryOption.NONE;
     const parcelKey = `${slot}Parcel` as keyof MealSlot;
@@ -995,6 +1008,7 @@ export function SubscriptionForm() {
    * Domain Invariant: Parcel option CAN ONLY be enabled if a meal is selected (not DietaryOption.NONE).
    */
   const setMealParcel = (slot: MealType, enabled: boolean) => {
+    setHasUserEdited(true);
     const isSelectedPersonKid = kidsEnabled && selectedPerson >= form.peopleCount;
     if (isSelectedPersonKid && !isKidsParcelEnabled(selectedDay, slot, dayConfig, kidsEnabled)) {
       return;
@@ -1439,6 +1453,26 @@ export function SubscriptionForm() {
             <HomeButton onPress={onHome} />
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+            {canEdit && canSave && (
+              <Pressable
+                onPress={() => handleSaveWithValidation(onSave)}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={UI_TEXT.save}
+                style={{
+                  backgroundColor: theme.colors.primary,
+                  paddingHorizontal: 10,
+                  paddingVertical: 5,
+                  borderRadius: 6,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 4,
+                }}
+              >
+                <Ionicons name="checkmark-circle-outline" size={14} color={theme.colors.white} />
+                <Text style={{ color: theme.colors.white, fontSize: 12, fontWeight: "700" }}>{UI_TEXT.save}</Text>
+              </Pressable>
+            )}
             <ThemeToggleButton />
             <LogoutButton onLogout={handleLogout} />
           </View>
@@ -1569,7 +1603,7 @@ export function SubscriptionForm() {
           flat={form.flat}
           setFlat={(flat) => set("flat", flat.toUpperCase())}
           phone={mobileInput}
-          setPhone={setMobileInput}
+          setPhone={handleMobileChange}
           identity1Enabled={identity1Enabled}
           identity1Name={identity1Name}
           identity1Options={identity1Options}
@@ -1577,6 +1611,7 @@ export function SubscriptionForm() {
           identity2Name={identity2Name}
           peopleCount={form.peopleCount}
           setPeopleCount={(count) => {
+            setHasUserEdited(true);
             const oldPeople = form.peopleCount;
             const kids = form.kidsCount || 0;
             const guests = form.guestsCount || 0;
@@ -1593,6 +1628,7 @@ export function SubscriptionForm() {
           }}
           kidsCount={form.kidsCount || 0}
           setKidsCount={(count) => {
+            setHasUserEdited(true);
             const adults = form.peopleCount;
             const oldKids = form.kidsCount || 0;
             const guests = form.guestsCount || 0;
@@ -1609,6 +1645,7 @@ export function SubscriptionForm() {
           }}
           guestsCount={form.guestsCount || 0}
           setGuestsCount={(count) => {
+            setHasUserEdited(true);
             const adults = form.peopleCount;
             const kids = form.kidsCount || 0;
             const oldGuests = form.guestsCount || 0;
@@ -1725,7 +1762,7 @@ export function SubscriptionForm() {
                 const isDone = isMealDone(selectedDay, slot, dayConfig);
                 const isPast = isMealInPast(selectedDay, slot, dayConfig);
                 const isInactive = isDone || isPast;
-                const isLocked = isInactive && !isAdmin;
+                const isLocked = isInactive && (!isSeasonCompletedOrDone || !isAdmin);
                 const isSpecial = isSpecialMeal(selectedDay, slot, dayConfig);
 
                 const dayConf = findDayConfig(dayConfig, selectedDay);
@@ -1859,7 +1896,7 @@ export function SubscriptionForm() {
                     const isDone = isMealDone(selectedDay, slot, dayConfig);
                     const isPast = isMealInPast(selectedDay, slot, dayConfig);
                     const isInactive = isDone || isPast;
-                    const isLocked = lockIdentity && isInactive && !isAdmin;
+                    const isLocked = lockIdentity && isInactive && (!isSeasonCompletedOrDone || !isAdmin);
                     const isSpecial = isSpecialMeal(selectedDay, slot, dayConfig);
 
                     const dayConf = findDayConfig(dayConfig, selectedDay);
@@ -1947,7 +1984,7 @@ export function SubscriptionForm() {
                     const isCurrent = isMealCurrent(selectedDay, slot, dayConfig);
                     const isFuture = isMealInFuture(selectedDay, slot, dayConfig);
                     const isPast = !isCurrent && !isFuture;
-                    const forceLock = !isSeasonCompleted && (isDone || isPast);
+                    const forceLock = !isSeasonCompletedOrDone && (isDone || isPast);
                     const isDisabled = forceLock || ((isDone || isFuture || isAbsent) && !isAdmin);
 
                     return (
@@ -2089,7 +2126,7 @@ export function SubscriptionForm() {
                           const isCurrent = isMealCurrent(selectedDay, slot, dayConfig);
                           const isFuture = isMealInFuture(selectedDay, slot, dayConfig);
                           const isPast = !isCurrent && !isFuture;
-                          const forceLock = !isSeasonCompleted && (isDone || isPast);
+                          const forceLock = !isSeasonCompletedOrDone && (isDone || isPast);
                           const isDisabled = forceLock || ((isDone || isFuture) && !isAdmin);
 
                           return (

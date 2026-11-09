@@ -581,6 +581,10 @@ To prevent monolithic God components and ensure maximum maintainability, testabi
     - **Strict Cross-Tenant & SuperAdmin Isolation**: Tenant admins are strictly isolated to their own tenant logs with cross-tenant and superadmin log separation fully enforced at both the database query level and UI filter level.
     - **WCAG 2.1 AA & Localization Compliance**: Fully accessible with zero hardcoded strings (`UI_TEXT`).
 
+44. **Edit Pass Top Quick-Save Shortcut & Change Tracking ([`SubscriptionForm.tsx`](src/screens/SubscriptionForm.tsx))**:
+    - **Top Header Quick-Save & Change Tracking**: Renders a compact, synchronized quick-save button in the top header row of the Edit Pass screen. Automatically mirrors visibility and role-based access (`canEdit && canSave`) with the primary lower save button. When editing an existing pass (`lockIdentity === true`), `hasUserEdited` state tracking prevents the button from appearing or enabling until actual form modifications occur, avoiding empty or accidental saves.
+    - **WCAG 2.1 AA & Localization Compliance**: Fully accessible with zero hardcoded strings (`UI_TEXT`).
+
 ---
 
 ## 6. Automated Testing & Storybook

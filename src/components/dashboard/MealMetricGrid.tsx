@@ -74,13 +74,18 @@ export function MealMetricGrid(props: MealMetricProps) {
     totalVegTaken, totalNonVegTaken, freeMealVeg, freeMealNonVeg,
     freeMealVegTaken, freeMealNonVegTaken, totalMealTaken,
     kidsTotal, kidsTaken, kidsVeg, kidsNonVeg, kidsVegTaken, kidsNonVegTaken,
-    freeMealEnabled, kidsEnabled, isParcelEnabled: isParcelEnabledProp, isBothEnabled,
+    freeMealEnabled, kidsEnabled, isParcelEnabled: isParcelEnabledProp,
     showPlannedOnly = false
   } = props;
 
   const { subscriptions, foodMenu, dayConfig } = useCoreDatabase();
   const dayConf = (dayConfig || []).find((d) => d.id === day);
+  const isVegOnlyDay = dayConf?.vegOnly || false;
   const mConf = dayConf ? dayConf[type] : undefined;
+  const isVegEnabled = isVegOnlyDay || (mConf ? mConf.veg !== false : true);
+  const isNonVegEnabled = !isVegOnlyDay && (mConf ? mConf.nonVeg !== false : true);
+  const isBothEnabled = isVegEnabled && isNonVegEnabled;
+
   const varieties = props.varieties || getMealVarieties(mConf, dayConf?.vegOnly);
   const vegVarieties = varieties.filter((v) => v.type === DietType.VEG);
   const nonVegVarieties = varieties.filter((v) => v.type === DietType.NON_VEG);
@@ -381,21 +386,18 @@ export function MealMetricGrid(props: MealMetricProps) {
                     <Metric icon="checkmark-done-outline" label={UI_TEXT.served} value={adultNonVegTaken} color={theme.colors.nonVeg} />
                   )}
                 </>
+              ) : isVegEnabled ? (
+                <>
+                  <Metric icon="leaf-outline" label={vegLabel} value={veg} color={theme.colors.veg} />
+                  {!showPlannedOnly && (
+                    <Metric icon="checkmark-done-outline" label={UI_TEXT.served} value={adultVegTaken} color={theme.colors.veg} />
+                  )}
+                </>
               ) : (
                 <>
-                  <Metric
-                    icon={veg > 0 ? "leaf-outline" : "flame-outline"}
-                    label={showPlannedOnly ? UI_TEXT.total : UI_TEXT.planned}
-                    value={adultTotalPlanned}
-                    color={theme.colors.primary}
-                  />
+                  <Metric icon="flame-outline" label={nonVegLabel} value={nonVeg} color={theme.colors.nonVeg} />
                   {!showPlannedOnly && (
-                    <Metric
-                      icon="checkmark-done-outline"
-                      label={UI_TEXT.served}
-                      value={adultTotalTaken}
-                      color={theme.colors.veg}
-                    />
+                    <Metric icon="checkmark-done-outline" label={UI_TEXT.served} value={adultNonVegTaken} color={theme.colors.nonVeg} />
                   )}
                 </>
               )}
@@ -422,11 +424,18 @@ export function MealMetricGrid(props: MealMetricProps) {
                       <Metric icon="happy-outline" label={UI_TEXT.served} value={kidsNonVegTaken} color={theme.colors.nonVeg} />
                     )}
                   </>
+                ) : isVegEnabled ? (
+                  <>
+                    <Metric icon="leaf-outline" label={vegLabel} value={kidsVeg} color={theme.colors.veg} />
+                    {!showPlannedOnly && (
+                      <Metric icon="happy-outline" label={UI_TEXT.served} value={kidsVegTaken} color={theme.colors.veg} />
+                    )}
+                  </>
                 ) : (
                   <>
-                    <Metric icon="happy-outline" label={showPlannedOnly ? UI_TEXT.total : UI_TEXT.planned} value={kidsTotal} color={theme.colors.primary} />
+                    <Metric icon="flame-outline" label={nonVegLabel} value={kidsNonVeg} color={theme.colors.nonVeg} />
                     {!showPlannedOnly && (
-                      <Metric icon="checkmark-done-outline" label={UI_TEXT.served} value={kidsTaken} color={theme.colors.veg} />
+                      <Metric icon="happy-outline" label={UI_TEXT.served} value={kidsNonVegTaken} color={theme.colors.nonVeg} />
                     )}
                   </>
                 )}
@@ -454,11 +463,18 @@ export function MealMetricGrid(props: MealMetricProps) {
                       <Metric icon="checkmark-done-outline" label={UI_TEXT.served} value={gNonVegTaken} color={theme.colors.nonVeg} />
                     )}
                   </>
+                ) : isVegEnabled ? (
+                  <>
+                    <Metric icon="leaf-outline" label={vegLabel} value={gVeg} color={theme.colors.veg} />
+                    {!showPlannedOnly && (
+                      <Metric icon="checkmark-done-outline" label={UI_TEXT.served} value={gVegTaken} color={theme.colors.veg} />
+                    )}
+                  </>
                 ) : (
                   <>
-                    <Metric icon="people-outline" label={showPlannedOnly ? UI_TEXT.total : UI_TEXT.planned} value={gTotal} color={theme.colors.primary} />
+                    <Metric icon="flame-outline" label={nonVegLabel} value={gNonVeg} color={theme.colors.nonVeg} />
                     {!showPlannedOnly && (
-                      <Metric icon="checkmark-done-outline" label={UI_TEXT.served} value={gTaken} color={theme.colors.veg} />
+                      <Metric icon="checkmark-done-outline" label={UI_TEXT.served} value={gNonVegTaken} color={theme.colors.nonVeg} />
                     )}
                   </>
                 )}
@@ -486,11 +502,18 @@ export function MealMetricGrid(props: MealMetricProps) {
                       <Metric icon="checkmark-done-outline" label={UI_TEXT.served} value={freeMealNonVegTaken} color={theme.colors.nonVeg} />
                     )}
                   </>
+                ) : isVegEnabled ? (
+                  <>
+                    <Metric icon="leaf-outline" label={vegLabel} value={freeMealVeg} color={theme.colors.veg} />
+                    {!showPlannedOnly && (
+                      <Metric icon="checkmark-done-outline" label={UI_TEXT.served} value={freeMealVegTaken} color={theme.colors.veg} />
+                    )}
+                  </>
                 ) : (
                   <>
-                    <Metric icon="people-circle-outline" label={showPlannedOnly ? UI_TEXT.total : UI_TEXT.planned} value={freeMealTotal} color={theme.colors.secondary} />
+                    <Metric icon="flame-outline" label={nonVegLabel} value={freeMealNonVeg} color={theme.colors.nonVeg} />
                     {!showPlannedOnly && (
-                      <Metric icon="checkmark-done-outline" label={UI_TEXT.served} value={freeMealTakenTotal} color={theme.colors.veg} />
+                      <Metric icon="checkmark-done-outline" label={UI_TEXT.served} value={freeMealNonVegTaken} color={theme.colors.nonVeg} />
                     )}
                   </>
                 )}
@@ -590,14 +613,24 @@ export function MealMetricGrid(props: MealMetricProps) {
                   <Metric icon="restaurant-outline" label={`${nonVegLabel} (${UI_TEXT.optedDineIn})`} value={parcelOptedDineInStats.nonVeg} color={theme.colors.nonVeg} />
                 )}
               </>
+            ) : isVegEnabled ? (
+              <>
+                <Metric icon="leaf-outline" label={vegLabel} value={props.parcelVeg || 0} color={theme.colors.veg} />
+                {!showPlannedOnly && (
+                  <Metric icon="checkmark-done-outline" label={UI_TEXT.served} value={props.parcelVegTaken || 0} color={theme.colors.veg} />
+                )}
+                {!showPlannedOnly && parcelOptedDineInStats.veg > 0 && (
+                  <Metric icon="restaurant-outline" label={`${vegLabel} (${UI_TEXT.optedDineIn})`} value={parcelOptedDineInStats.veg} color={theme.colors.veg} />
+                )}
+              </>
             ) : (
               <>
-                <Metric icon="cube-outline" label={showPlannedOnly ? UI_TEXT.total : UI_TEXT.planned} value={parcel} color={theme.colors.primary} />
+                <Metric icon="flame-outline" label={nonVegLabel} value={props.parcelNonVeg || 0} color={theme.colors.nonVeg} />
                 {!showPlannedOnly && (
-                  <Metric icon="checkmark-circle-outline" label={UI_TEXT.served} value={parcelTaken} color={theme.colors.veg} />
+                  <Metric icon="checkmark-done-outline" label={UI_TEXT.served} value={props.parcelNonVegTaken || 0} color={theme.colors.nonVeg} />
                 )}
-                {!showPlannedOnly && parcelOptedDineInStats.total > 0 && (
-                  <Metric icon="restaurant-outline" label={UI_TEXT.optedDineIn} value={parcelOptedDineInStats.total} color={theme.colors.primary} />
+                {!showPlannedOnly && parcelOptedDineInStats.nonVeg > 0 && (
+                  <Metric icon="restaurant-outline" label={`${nonVegLabel} (${UI_TEXT.optedDineIn})`} value={parcelOptedDineInStats.nonVeg} color={theme.colors.nonVeg} />
                 )}
               </>
             )}

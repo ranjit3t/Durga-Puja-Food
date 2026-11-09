@@ -1036,23 +1036,6 @@ export function createFirebaseRepository(): SubscriptionRepository {
       updates[`tenants/${tenantId}/config`] = cleanUndefined(tenantCommonConfig);
       updates[`tenants/${tenantId}/seasons_data/${activeCode}/config`] = cleanUndefined(seasonSpecificConfig);
 
-      if (config.seasons && config.seasons.length > 0) {
-        config.seasons.forEach((s) => {
-          if (s && s.seasonCode) {
-            const isMatch = s.seasonCode === activeCode;
-            const updatedS = {
-              ...s,
-              seasonEnabled: isMatch ? isEnabled : false,
-              seasonCompleted: isMatch ? isCompleted : true,
-            };
-            if (isMatch) {
-              Object.assign(updatedS, seasonSpecificConfig);
-            }
-            updates[`tenants/${tenantId}/seasons_data/${s.seasonCode}/config`] = cleanUndefined(updatedS);
-          }
-        });
-      }
-
       await update(ref(services.db), updates);
     },
     async updateSubscriptionStatus(flatId, dayId, personIndex, slot, taken, timeStr, userStr, tenantId, seasonCode) {

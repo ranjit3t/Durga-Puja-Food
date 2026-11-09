@@ -267,7 +267,7 @@ const SubscriptionCard = React.memo(({
                <Text style={{ color: theme.colors.white, fontSize: s(12), fontWeight: '900' }}>{missedCount}</Text>
             </Pressable>
           ) : null}
-          {hasCurrentMeal && canQuickCheckout && parcelCheckoutInfo?.hasParcelSubscribed && parcelCheckoutInfo?.remParcels > 0 ? (
+          {hasCurrentMeal && canQuickCheckout && (currentMealInfo ? isParcelEnabled(currentMealInfo.dayId, currentMealInfo.type, dayConfig || []) : false) && parcelCheckoutInfo?.hasParcelSubscribed && parcelCheckoutInfo?.remParcels > 0 ? (
             <Pressable
               onPress={(e) => {
                 e.stopPropagation();

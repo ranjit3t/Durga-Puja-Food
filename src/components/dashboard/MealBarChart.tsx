@@ -4,7 +4,8 @@ import { useAppTheme } from "../../theme";
 import { UI_TEXT } from "../../strings";
 import { MealMetricProps } from "./MealMetricGrid";
 import { useCoreDatabase } from "../../context/DatabaseContext";
-import { isSpecialMeal } from "../../constants";
+import { isSpecialMeal, isDietaryEnabled } from "../../constants";
+import { DietType } from "../../domain";
 import { Ionicons } from "@expo/vector-icons";
 
 /**
@@ -14,11 +15,19 @@ export function MealBarChart(props: MealMetricProps) {
   const { theme } = useAppTheme();
   const {
     total, veg, nonVeg, parcel, parcelTaken, totalVegTaken, totalNonVegTaken,
-    freeMealVeg, freeMealNonVeg, freeMealVegTaken, freeMealNonVegTaken, kidsEnabled, guestsEnabled, freeMealEnabled, isBothEnabled,
+    freeMealVeg, freeMealNonVeg, freeMealVegTaken, freeMealNonVegTaken, kidsEnabled, guestsEnabled, freeMealEnabled,
     kidsTotal, kidsTaken, kidsVegTaken, kidsNonVegTaken,
     guestsTotal = 0, guestsTaken = 0, guestsVegTaken = 0, guestsNonVegTaken = 0,
     totalMealTaken
   } = props;
+
+  const { dayConfig } = useCoreDatabase();
+  const dayConf = (dayConfig || []).find((d) => d.id === props.day);
+  const isVegOnlyDay = dayConf?.vegOnly || false;
+  const mConf = dayConf ? dayConf[props.type] : undefined;
+  const isVegEnabled = isVegOnlyDay || (mConf ? mConf.veg !== false : true);
+  const isNonVegEnabled = !isVegOnlyDay && (mConf ? mConf.nonVeg !== false : true);
+  const isBothEnabled = isVegEnabled && isNonVegEnabled;
 
   const chartHeight = 160;
   const barContainerHeight = chartHeight - 40;
@@ -72,7 +81,6 @@ export function MealBarChart(props: MealMetricProps) {
   const adultsTotal = total - kidsTotal - guestsTotal - freeMealTotal;
   const adultsTaken = totalMealTaken - kidsTaken - guestsTaken - freeMealTaken;
 
-  const { dayConfig } = useCoreDatabase();
   const isSpecial = isSpecialMeal(props.day, props.type, dayConfig);
 
   return (
@@ -97,9 +105,19 @@ export function MealBarChart(props: MealMetricProps) {
                <Bar label={guestsTotal === 1 ? UI_TEXT.guest : UI_TEXT.guests} value={guestsTotal} color={theme.colors.primary} secondaryValue={guestsTaken} />
             )}
           </>
+        ) : isVegEnabled ? (
+          <>
+            <Bar label={(kidsEnabled || guestsEnabled) ? `${UI_TEXT.adultsAbbr}${UI_TEXT.space}${UI_TEXT.veg}` : UI_TEXT.veg} value={veg} color={theme.colors.veg} secondaryValue={totalVegTaken - kidsVegTaken - guestsVegTaken - freeMealVegTaken} />
+            {hasKids && (
+               <Bar label={kidsTotal === 1 ? UI_TEXT.kid : UI_TEXT.kids} value={kidsTotal} color={theme.colors.primary} secondaryValue={kidsTaken} />
+            )}
+            {hasGuests && (
+               <Bar label={guestsTotal === 1 ? UI_TEXT.guest : UI_TEXT.guests} value={guestsTotal} color={theme.colors.primary} secondaryValue={guestsTaken} />
+            )}
+          </>
         ) : (
           <>
-            <Bar label={(hasKids || hasGuests) ? (adultsTotal === 1 ? UI_TEXT.adult : UI_TEXT.adults) : UI_TEXT.total} value={adultsTotal} color={theme.colors.veg} secondaryValue={adultsTaken} />
+            <Bar label={(kidsEnabled || guestsEnabled) ? `${UI_TEXT.adultsAbbr}${UI_TEXT.space}${UI_TEXT.nonVeg}` : UI_TEXT.nonVeg} value={nonVeg} color={theme.colors.nonVeg} secondaryValue={totalNonVegTaken - kidsNonVegTaken - guestsNonVegTaken - freeMealNonVegTaken} />
             {hasKids && (
                <Bar label={kidsTotal === 1 ? UI_TEXT.kid : UI_TEXT.kids} value={kidsTotal} color={theme.colors.primary} secondaryValue={kidsTaken} />
             )}

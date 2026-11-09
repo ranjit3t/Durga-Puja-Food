@@ -621,6 +621,18 @@ export function HomeScreen() {
     return null;
   }, [dayConfig]);
 
+  const currentMealSlot = React.useMemo(() => {
+    const active = getActiveDays(dayConfig);
+    for (const dId of active) {
+      for (const mType of [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER]) {
+        if (isMealCurrent(dId, mType, dayConfig) && isMealEnabled(dId, mType, dayConfig)) {
+          return { dayId: dId, type: mType };
+        }
+      }
+    }
+    return null;
+  }, [dayConfig]);
+
   return (
     <View style={styles.root}>
       <StatusBar barStyle={themeType === AppThemeMode.DARK ? "light-content" : "dark-content"} />
@@ -962,19 +974,21 @@ export function HomeScreen() {
               >
                 <ActionLabel icon="flash-outline" label={UI_TEXT.quickCheckout} color={theme.colors.white} size={iconSize} vertical />
               </Pressable>
-              <Pressable
-                accessible={true}
-                accessibilityRole="button"
-                accessibilityLabel={UI_TEXT.parcelCheckout}
-                onPress={() => {
-                  setIsQuickCheckout(true);
-                  setIsParcelCheckout(true);
-                  navigate(AppScreen.SCANNER);
-                }}
-                style={[styles.compactSecondary, { backgroundColor: theme.cardColors[2].accent || theme.colors.secondary, borderColor: theme.cardColors[2].accent || theme.colors.secondary }]}
-              >
-                <ActionLabel icon="cube-outline" label={UI_TEXT.parcelCheckout} color={theme.colors.white} size={iconSize} vertical />
-              </Pressable>
+              {currentMealSlot && isParcelEnabled(currentMealSlot.dayId, currentMealSlot.type, dayConfig) && (
+                <Pressable
+                  accessible={true}
+                  accessibilityRole="button"
+                  accessibilityLabel={UI_TEXT.parcelCheckout}
+                  onPress={() => {
+                    setIsQuickCheckout(true);
+                    setIsParcelCheckout(true);
+                    navigate(AppScreen.SCANNER);
+                  }}
+                  style={[styles.compactSecondary, { backgroundColor: theme.cardColors[2].accent || theme.colors.secondary, borderColor: theme.cardColors[2].accent || theme.colors.secondary }]}
+                >
+                  <ActionLabel icon="cube-outline" label={UI_TEXT.parcelCheckout} color={theme.colors.white} size={iconSize} vertical />
+                </Pressable>
+              )}
             </>
           )}
           <Pressable
