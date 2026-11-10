@@ -65,8 +65,8 @@ export function CatererIncomeExpenseScreen() {
   const { s } = useScaling();
   const { theme, themeType } = useAppTheme();
 
-  // Role check: Only Caterer and Admin allowed
-  const isAuthorized = userRole === UserRole.CATERER || userRole === UserRole.ADMIN;
+  // Role check: Only Caterer allowed
+  const isAuthorized = userRole === UserRole.CATERER;
 
   // Database-persisted caterer transactions with real-time websocket sync
   const { catererTransactions: transactions, upsertCatererTransaction, deleteCatererTransaction } = useCatererFinance();

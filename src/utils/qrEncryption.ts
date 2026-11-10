@@ -109,11 +109,11 @@ export function decryptQrPayloadDetails(scannedData: string): DecodedQrPayload |
   let cipherToken = "";
   if (trimmed.startsWith(DPF_ENC_PREFIX)) {
     cipherToken = trimmed.substring(DPF_ENC_PREFIX.length);
-  } else if (trimmed.includes("/pass/enc:")) {
+  } /* else if (trimmed.includes("/pass/enc:")) {
     cipherToken = trimmed.split("/pass/enc:")[1] || "";
   } else if (trimmed.startsWith("enc:")) {
     cipherToken = trimmed.substring(4);
-  } else {
+  } */ else {
     return null;
   }
 

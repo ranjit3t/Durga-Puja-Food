@@ -1469,21 +1469,23 @@ export function findSubscriptionByPassCodeOrCheatCode(
   const trimmed = code.trim();
   if (trimmed.length === 0) return undefined;
 
-  const isQrScan = trimmed.startsWith("DPF_ENC_") || trimmed.includes("http") || trimmed.includes("durga-puja-food") || trimmed.length > 12;
-
-  // 1. Try decrypting encrypted QR code payload first
-  const decodedQr = decryptQrPayloadDetails(trimmed);
-  if (decodedQr) {
-    if (activeTenantId && decodedQr.tenantId && decodedQr.tenantId.toLowerCase() !== activeTenantId.toLowerCase()) {
-      return undefined;
-    }
-    if (activeSeasonCode && decodedQr.seasonCode && decodedQr.seasonCode.toLowerCase() !== activeSeasonCode.toLowerCase()) {
-      return undefined;
-    }
-    // Older encrypted QR payloads omit tenant/season metadata; resolve them only within the supplied active-season list.
-    const match = subscriptions.find((s) => s.id === decodedQr.passId);
-    if (match) return match;
+  const isLegacyUrlOrFlatLink = trimmed.includes("http://") || trimmed.includes("https://") || trimmed.includes("durga-puja-food") || trimmed.includes("/flat/") || trimmed.includes("/pass/");
+  if (isLegacyUrlOrFlatLink && !trimmed.startsWith("DPF_ENC_")) {
     return undefined;
+  }
+
+  const isQrScan = trimmed.startsWith("DPF_ENC_") || trimmed.includes("DPF_ENC_");
+
+  if (isQrScan) {
+    const decodedQr = decryptQrPayloadDetails(trimmed);
+    if (!decodedQr) return undefined;
+    if (activeTenantId && (!decodedQr.tenantId || decodedQr.tenantId.toLowerCase() !== activeTenantId.toLowerCase())) {
+      return undefined;
+    }
+    if (activeSeasonCode && (!decodedQr.seasonCode || decodedQr.seasonCode.toLowerCase() !== activeSeasonCode.toLowerCase())) {
+      return undefined;
+    }
+    return subscriptions.find((s) => s.id === decodedQr.passId);
   }
 
   // 2. Fallback for unencrypted QR code / Legacy URL / Pass ID / Passcode match

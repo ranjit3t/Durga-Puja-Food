@@ -21,7 +21,7 @@ export function BackButton({ onPress }: { onPress: () => void }) {
       onPress={onPress}
       style={styles.backButton}
     >
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 2 }}>
+      <View pointerEvents="none" style={{ flexDirection: "row", alignItems: "center", gap: 2 }}>
         <Ionicons name="chevron-back-outline" size={20} color={theme.colors.secondary} />
         <Text
           style={[

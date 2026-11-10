@@ -335,7 +335,8 @@ export function NotesScreen() {
         {
           module: ActivityModule.NOTE,
           action: ActivityAction.VIEW,
-          description: UI_TEXT.logViewNote.replace("{subject}", editingNote.subject)
+          targetId: undefined,
+          description: UI_TEXT.logViewNote
         },
         undefined,
         isSuperNote ? UserRole.SUPER_ADMIN : undefined,
@@ -349,12 +350,15 @@ export function NotesScreen() {
     users.add(UI_TEXT.all);
     notes.forEach(note => {
       const owner = getDisplayUsername(note.userName);
-      if (isAdmin || isSuperAdmin || owner.toLowerCase() === currentUsername || isNoteSharedWithUser(note, currentUsername) || isNoteSharedWithUser(note, userName)) {
-        users.add(owner);
+      const isOwner = owner.toLowerCase() === currentUsername || note.userName?.toLowerCase() === currentUsername;
+      const isSharedWithMe = isNoteSharedWithUser(note, currentUsername) || isNoteSharedWithUser(note, userName);
+      const isSharedToAll = note.sharedWith === "all";
+      if (isOwner || isSharedWithMe || isSharedToAll) {
+        if (owner) users.add(owner);
       }
     });
     return Array.from(users).sort();
-  }, [notes, isAdmin, isSuperAdmin, currentUsername, userName, getDisplayUsername]);
+  }, [notes, currentUsername, userName, getDisplayUsername]);
 
   const filteredNotes = useMemo(() => {
     let result = notes.filter(note => {
@@ -363,13 +367,16 @@ export function NotesScreen() {
       const isSharedWithMe = isNoteSharedWithUser(note, currentUsername) || isNoteSharedWithUser(note, userName);
       const isSharedToAll = note.sharedWith === "all";
 
-      let canAccess = false;
-      if (isSuperAdmin) {
-        canAccess = isOwner || isSharedWithMe || isSharedToAll || true;
-      } else {
-        const isSameTenant = !note.tenantId || (tenantId && note.tenantId.toLowerCase() === tenantId.toLowerCase());
-        canAccess = Boolean(isSameTenant && (isOwner || isSharedWithMe || isSharedToAll));
+      if (!isSuperAdmin) {
+        const noteTenant = (note.tenantId || "").toLowerCase();
+        const activeTenant = (tenantId || "").toLowerCase();
+        const isOtherTenantNote = noteTenant && activeTenant && noteTenant !== activeTenant;
+        if (isOtherTenantNote && !isSharedWithMe && !isSharedToAll) {
+          return false;
+        }
       }
+
+      const canAccess = isOwner || isSharedWithMe || isSharedToAll;
 
       if (!canAccess) return false;
       if (selectedUser !== UI_TEXT.all && ownerUsername.toLowerCase() !== selectedUser.toLowerCase() && note.userName !== selectedUser) return false;
@@ -573,9 +580,9 @@ export function NotesScreen() {
           {
             module: ActivityModule.NOTE,
             action: ActivityAction.SHARE,
-            targetId: updatedNote.subject,
-            description: UI_TEXT.logShareNote.replace("{subject}", updatedNote.subject).replace("{recipient}", recipientSummary),
-            newData: { subject: updatedNote.subject, sharedWith: finalSharedWith, shareMode: finalShareMode, userShareModes: finalUserShareModes }
+            targetId: undefined,
+            description: UI_TEXT.logShareNote.replace("{recipient}", recipientSummary),
+            newData: { sharedWith: finalSharedWith, shareMode: finalShareMode, userShareModes: finalUserShareModes }
           },
           undefined,
           isSuperNote ? UserRole.SUPER_ADMIN : undefined,
@@ -590,9 +597,9 @@ export function NotesScreen() {
           {
             module: ActivityModule.NOTE,
             action: ActivityAction.UPDATE,
-            targetId: updatedNote.subject,
-            description: UI_TEXT.logUnshareNote.replace("{subject}", updatedNote.subject),
-            newData: { subject: updatedNote.subject, unshared: true }
+            targetId: undefined,
+            description: UI_TEXT.logUnshareNote,
+            newData: { unshared: true }
           },
           undefined,
           isSuperNote ? UserRole.SUPER_ADMIN : undefined,

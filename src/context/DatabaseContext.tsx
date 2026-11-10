@@ -1510,8 +1510,8 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
         {
           module: ActivityModule.NOTE,
           action: isEdit ? ActivityAction.UPDATE : ActivityAction.CREATE,
-          targetId: note.subject,
-          description: (isEdit ? UI_TEXT.logEditNote : UI_TEXT.logAddNote).replace("{subject}", note.subject)
+          targetId: undefined,
+          description: isEdit ? UI_TEXT.logEditNote : UI_TEXT.logAddNote
         },
         undefined,
         isSuperNote ? UserRole.SUPER_ADMIN : undefined,
@@ -1539,8 +1539,8 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
         {
           module: ActivityModule.NOTE,
           action: ActivityAction.DELETE,
-          targetId: noteSubject,
-          description: UI_TEXT.logDeleteNote.replace("{subject}", noteSubject)
+          targetId: undefined,
+          description: UI_TEXT.logDeleteNote
         },
         undefined,
         isSuperNote ? UserRole.SUPER_ADMIN : undefined,

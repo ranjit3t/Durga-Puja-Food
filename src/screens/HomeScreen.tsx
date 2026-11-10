@@ -1011,7 +1011,7 @@ export function HomeScreen() {
               <ActionLabel icon="document-text-outline" label={UI_TEXT.report} color={theme.colors.white} size={iconSize} vertical />
             </Pressable>
           )}
-          {(userRole === UserRole.CATERER || userRole === UserRole.ADMIN) && (
+          {userRole === UserRole.CATERER && (
             <Pressable
               accessible={true}
               accessibilityRole="button"

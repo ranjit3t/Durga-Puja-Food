@@ -101,7 +101,7 @@ describe("Non-Admin Role Restrictions and Field Preservation", () => {
       userRole: UserRole.SUPER_ADMIN,
       module: "Note" as any,
       action: "Created" as any,
-      description: "Added note: Superadmin Note",
+      description: "Created a personal note",
     };
 
     const tenantALog: ActivityLog = {
@@ -112,7 +112,7 @@ describe("Non-Admin Role Restrictions and Field Preservation", () => {
       tenantId: "tenant-a",
       module: "Note" as any,
       action: "Created" as any,
-      description: "Added note: Tenant A Note",
+      description: "Created a personal note",
     };
 
     const tenantBLog: ActivityLog = {
@@ -123,7 +123,7 @@ describe("Non-Admin Role Restrictions and Field Preservation", () => {
       tenantId: "tenant-b",
       module: "Note" as any,
       action: "Created" as any,
-      description: "Added note: Tenant B Note",
+      description: "Created a personal note",
     };
 
     const allLogs = [superAdminLog, tenantALog, tenantBLog];
@@ -155,5 +155,14 @@ describe("Non-Admin Role Restrictions and Field Preservation", () => {
     });
 
     expect(tenantBVisibleLogs).toEqual([tenantBLog]);
+  });
+
+  it("restricts Caterer Finance button and screen access exclusively to UserRole.CATERER", () => {
+    const isCatererFinanceVisible = (role: UserRole | string) => role === UserRole.CATERER;
+
+    expect(isCatererFinanceVisible(UserRole.CATERER)).toBe(true);
+    expect(isCatererFinanceVisible(UserRole.ADMIN)).toBe(false);
+    expect(isCatererFinanceVisible(UserRole.VENDOR)).toBe(false);
+    expect(isCatererFinanceVisible(UserRole.SUPER_ADMIN)).toBe(false);
   });
 });

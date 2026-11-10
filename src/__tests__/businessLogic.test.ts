@@ -359,6 +359,7 @@ describe("QR Code Encryption & Decryption Lookup", () => {
     expect(match?.id).toBe("14-3S");
   });
 
+  /*
   it("finds legacy encrypted QR payloads without tenant or season metadata in tenant mode", () => {
     const legacyEncryptedQr = encryptQrPayload("14-3S");
     const match = findSubscriptionByPassCodeOrCheatCode(
@@ -376,6 +377,13 @@ describe("QR Code Encryption & Decryption Lookup", () => {
     const legacyUrl = "https://durga-puja-food.app/flat/14-3S";
     const match = findSubscriptionByPassCodeOrCheatCode(legacyUrl, mockSubs, false, "fooddesk", "DP2026");
     expect(match?.id).toBe("14-3S");
+  });
+  */
+
+  it("strictly rejects unencrypted legacy flat URLs", () => {
+    const legacyUrl = "https://durga-puja-food.app/flat/14-3S";
+    const match = findSubscriptionByPassCodeOrCheatCode(legacyUrl, mockSubs, false, "fooddesk", "DP2026");
+    expect(match).toBeUndefined();
   });
 
   it("strictly rejects QR codes belonging to a different tenant or season", () => {

@@ -159,7 +159,7 @@ const sampleActivityLogs = [
 ];
 
 const sampleNotes = [
-  { id: "preview-note-1", timestamp: Date.now() - 60_000, userName: "vendor", subject: "Lunch counter", content: "Keep one parcel counter open until 1:30 PM." },
+  { id: "preview-note-1", timestamp: Date.now() - 60_000, userName: "vendor", subject: "Lunch counter", content: "Keep one parcel counter open until 1:30 PM.", sharedWith: ["admin"] },
   { id: "preview-note-2", timestamp: Date.now() - 120_000, userName: "admin", subject: "Menu update", content: "The Shashthi lunch menu is ready for service.", sharedWith: ["vendor", "caterer"], shareMode: "read-write", userShareModes: { vendor: "read-write", caterer: "read-only" } },
   { id: "preview-note-3", timestamp: Date.now() - 180_000, userName: "caterer", subject: "Stock check", content: "Confirm plates and takeaway boxes before dinner.", sharedWith: "all", shareMode: "read-only" },
 ];

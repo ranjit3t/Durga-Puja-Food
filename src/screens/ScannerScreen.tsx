@@ -429,8 +429,10 @@ export function ScannerScreen() {
             justifyContent: 'space-between'
           }}
         >
-          <BackButton onPress={goBack} />
-          <View style={{ flex: 1, alignItems: 'center', marginLeft: -40 }}>
+          <View style={{ zIndex: 1000, pointerEvents: "auto" }}>
+            <BackButton onPress={goBack} />
+          </View>
+          <View pointerEvents="box-none" style={{ flex: 1, alignItems: 'center', marginLeft: -40 }}>
             {(() => {
               const digitCount = passcodeDigitCount || 4;
               const hintText = (UI_TEXT.passCodeEntryHintDynamic || "Enter {count}-Digit Pass Code").replace("{count}", String(digitCount));
