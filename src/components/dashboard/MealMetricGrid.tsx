@@ -178,14 +178,9 @@ export function MealMetricGrid(props: MealMetricProps) {
 
   return (
     <View style={{ gap: 10 }}>
-      {isSpecial && (
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: theme.colors.specialMealBg, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: theme.colors.specialMealBorder, borderStyle: "dashed" }}>
-          <Ionicons name="star" size={14} color={theme.colors.specialMealBorder} />
-          <Text style={{ fontSize: 11, fontWeight: "900", color: theme.colors.specialMealText, letterSpacing: 0.5 }}>
-            {UI_TEXT.specialMealBadge}
-          </Text>
-        </View>
-      )}
+
+
+
 
       {/* 1. TOP SUMMARY ROW */}
       <View style={styles.metricGrid}>

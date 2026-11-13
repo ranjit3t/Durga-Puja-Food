@@ -172,8 +172,11 @@ const DashboardMealSection = memo(
     const vegItems = menu?.veg || [];
     const nonVegItems = menu?.nonVeg || [];
 
-    const isVegEnabled = isDietaryEnabled(day, type, DietType.VEG, config);
-    const isNonVegEnabled = isDietaryEnabled(day, type, DietType.NON_VEG, config);
+    const dayConf = (config || []).find((d) => d.id === day);
+    const isVegOnlyDay = dayConf?.vegOnly || false;
+    const mConf = dayConf ? dayConf[type] : undefined;
+    const isVegEnabled = isVegOnlyDay || (mConf ? mConf.veg !== false : true);
+    const isNonVegEnabled = !isVegOnlyDay && (mConf ? mConf.nonVeg !== false : true);
     const isBothEnabled = isVegEnabled && isNonVegEnabled;
 
     const gVegTaken = guestsVegTaken || 0;
@@ -837,8 +840,9 @@ export function DashboardScreen() {
           }
 
           const mConf = d[mType];
-          const isVeg = d.vegOnly || mConf.veg;
-          const isNonVeg = !d.vegOnly && mConf.nonVeg;
+          const isVegOnlyDay = d.vegOnly || false;
+          const isVeg = isVegOnlyDay || (mConf ? mConf.veg !== false : true);
+          const isNonVeg = !isVegOnlyDay && (mConf ? mConf.nonVeg !== false : true);
 
           return {
             dayLabel: getDayLabel(d.id, dayConfig),

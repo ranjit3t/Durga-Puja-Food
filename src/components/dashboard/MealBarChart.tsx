@@ -85,14 +85,9 @@ export function MealBarChart(props: MealMetricProps) {
 
   return (
     <View style={{ paddingVertical: 10 }}>
-      {isSpecial && (
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: theme.colors.specialMealBg, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: theme.colors.specialMealBorder, borderStyle: "dashed", alignSelf: "flex-start", marginBottom: 8 }}>
-          <Ionicons name="star" size={12} color={theme.colors.specialMealBorder} />
-          <Text style={{ fontSize: 10, fontWeight: "900", color: theme.colors.specialMealText }}>
-            {UI_TEXT.specialMealBadge}
-          </Text>
-        </View>
-      )}
+
+
+
       <View style={{ flexDirection: 'row', height: chartHeight, alignItems: 'flex-end', gap: 8 }}>
         {isBothEnabled ? (
           <>
