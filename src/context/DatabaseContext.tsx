@@ -97,7 +97,6 @@ export interface CoreDatabaseContextType {
   identity2Enabled: boolean;
   identity2Name: string;
   hasAnyPassesAcrossSeasons: boolean;
-  loadSettingsData: () => Promise<void>;
   footerText: string;
   remoteAppVersion: string | null;
   androidAppLocation?: string;
@@ -112,7 +111,7 @@ export interface CoreDatabaseContextType {
   // Data Operations
   upsertSubscription: (sub: Subscription) => Promise<boolean>;
   deleteSubscription: (id: string) => Promise<void>;
-  updateConfig: (config: AppConfig) => Promise<void>;
+  updateConfig: (config: Partial<AppConfig>) => Promise<void>;
   updateMenu: (menu: FoodMenu) => Promise<void>;
   updateFreeMealCount: (dayId: string, mealKey: MealType, field: string, value: number) => Promise<void>;
   updateMealMenu: (dayId: string, mealKey: MealType, menu: MealMenu) => Promise<void>;
@@ -241,14 +240,6 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
   const [kitchenMetrics, setKitchenMetrics] = useState<KitchenMetrics | null>(null);
 
   const getAuthConfig = useCallback(() => repository.getAuthConfig(), []);
-  const loadSettingsData = useCallback(async () => {
-    const [config, hasPasses] = await Promise.all([
-      repository.getConfig(tenantId || undefined),
-      repository.hasAnyPassesAcrossSeasons(tenantId || undefined),
-    ]);
-    setSeasons(config.seasons || []);
-    setHasAnyPassesAcrossSeasons(hasPasses);
-  }, [tenantId]);
 
   const addActivityLog = useCallback((
     log: Omit<ActivityLog, "id" | "timestamp" | "userName" | "userRole" | "device" | "os">,
@@ -1038,7 +1029,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
     }
   }, [refreshAllData, addActivityLog, tenantId]);
 
-  const updateConfig = useCallback(async (config: AppConfig) => {
+  const updateConfig = useCallback(async (config: Partial<AppConfig>) => {
     try {
       await repository.updateConfig(config, tenantId || undefined);
 
@@ -1064,9 +1055,13 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       if (config.vendorName !== undefined) setVendorName(config.vendorName);
       if (config.vendorAddress !== undefined) setVendorAddress(config.vendorAddress);
       if (config.vendorSettledCost !== undefined) setVendorSettledCost(config.vendorSettledCost);
+      if (config.passcodeDigitCount !== undefined) setPasscodeDigitCount(Number(config.passcodeDigitCount));
+      if (config.identity1Enabled !== undefined) setIdentity1Enabled(config.identity1Enabled);
+      if (config.identity1Name !== undefined) setIdentity1Name(config.identity1Name);
+      if (config.identity1Options !== undefined) setIdentity1Options(config.identity1Options);
+      if (config.identity2Enabled !== undefined) setIdentity2Enabled(config.identity2Enabled);
+      if (config.identity2Name !== undefined) setIdentity2Name(config.identity2Name);
       if (config.footerText !== undefined) setFooterText(config.footerText);
-
-      await refreshAllData(true);
     } catch (err: any) {
       addActivityLog({
         module: ActivityModule.CONFIG,
@@ -1076,7 +1071,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       });
       throw err;
     }
-  }, [tenantId, refreshAllData, addActivityLog]);
+  }, [tenantId, addActivityLog]);
 
   const updateMenu = useCallback(async (menu: FoodMenu) => {
     try {
@@ -2129,7 +2124,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
   const coreValue = useMemo(() => ({
     loading, firebaseError, refreshAllData, hasLoadedOnce,
     subscriptions, foodMenu, dayConfig, seasonName, seasonCode, seasonEnabled, paymentConfig,
-    seasons, activeSeasonCode, createNewSeason, switchActiveSeason, loadSettingsData,
+    seasons, activeSeasonCode, createNewSeason, switchActiveSeason,
     freeMealEnabled, mobileEnabled, foodPriceEnabled,
     kidsEnabled, guestsEnabled, vendorKidsMealChargingEnabled, whatsappCountryCode, quickCheckoutAutoCloseMs, soundEnabled, nonAdminCheckoutEnabled, cheatCodeEnabled, passcodeDigitCount, seasonCompleted, identity1Enabled, identity1Name, identity1Options, identity2Enabled, identity2Name, hasAnyPassesAcrossSeasons, footerText, vendorName, vendorAddress, vendorSettledCost, remoteAppVersion, androidAppLocation, iosAppLocation, kitchenMetrics,
     dashboardData, collections, totalPeople,
@@ -2140,7 +2135,7 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
   }), [
     loading, firebaseError, refreshAllData, hasLoadedOnce,
     subscriptions, foodMenu, dayConfig, seasonName, seasonCode, seasonEnabled, paymentConfig,
-    seasons, activeSeasonCode, createNewSeason, switchActiveSeason, loadSettingsData,
+    seasons, activeSeasonCode, createNewSeason, switchActiveSeason,
     freeMealEnabled, mobileEnabled, foodPriceEnabled,
     kidsEnabled, guestsEnabled, vendorKidsMealChargingEnabled, whatsappCountryCode, quickCheckoutAutoCloseMs, soundEnabled, nonAdminCheckoutEnabled, cheatCodeEnabled, passcodeDigitCount, seasonCompleted, identity1Enabled, identity1Name, identity1Options, identity2Enabled, identity2Name, hasAnyPassesAcrossSeasons, footerText, vendorName, vendorAddress, vendorSettledCost, remoteAppVersion, androidAppLocation, iosAppLocation, kitchenMetrics,
     dashboardData, collections, totalPeople,

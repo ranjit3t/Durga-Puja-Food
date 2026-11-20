@@ -74,7 +74,7 @@ export interface SubscriptionRepository {
   updateFreeMealCounts(dayId: string, mealKey: MealType, data: Record<string, any>, tenantId?: string): Promise<void>;
   getConfig(tenantId?: string, includeAllSeasons?: boolean): Promise<AppConfig>;
   getHomeData(tenantId: string): Promise<{ config: AppConfig; menu: FoodMenu; subscriptions: SubscriptionRecord[] }>;
-  updateConfig(config: AppConfig, tenantIdOverride?: string): Promise<void>;
+  updateConfig(config: Partial<AppConfig>, tenantIdOverride?: string): Promise<void>;
   updateSubscriptionStatus(flatId: string, dayId: string, personIndex: number, slot: string, taken: boolean, timeStr?: string, userStr?: string, tenantId?: string, seasonCode?: string): Promise<void>;
   checkInPassAtomic(flatId: string, updatesMap: Record<string, boolean>, metricsIncrements?: Record<string, number>, tenantId?: string, seasonCode?: string): Promise<void>;
   getAuthConfig(): Promise<any>;
@@ -964,77 +964,84 @@ export function createFirebaseRepository(): SubscriptionRepository {
         throw new Error("Active season code is required");
       }
 
-      const tenantConfigSnap = await get(ref(services.db, `tenants/${tenantId}/config`));
-      const currentTenantConfig = tenantConfigSnap.exists() ? tenantConfigSnap.val() || {} : {};
-      const nextIdentityConfig = {
-        identity1Enabled: config.identity1Enabled !== false,
-        identity1Name: config.identity1Name || "Block No",
-        identity1Options: config.identity1Options || blockOptions,
-        identity2Enabled: config.identity2Enabled !== false,
-        identity2Name: config.identity2Name || "Flat No",
-      };
-      const currentIdentityConfig = {
-        identity1Enabled: currentTenantConfig.identity1Enabled !== false,
-        identity1Name: currentTenantConfig.identity1Name || "Block No",
-        identity1Options: currentTenantConfig.identity1Options || blockOptions,
-        identity2Enabled: currentTenantConfig.identity2Enabled !== false,
-        identity2Name: currentTenantConfig.identity2Name || "Flat No",
-      };
-      const identityConfigChanged =
-        nextIdentityConfig.identity1Enabled !== currentIdentityConfig.identity1Enabled ||
-        nextIdentityConfig.identity1Name !== currentIdentityConfig.identity1Name ||
-        JSON.stringify(nextIdentityConfig.identity1Options) !== JSON.stringify(currentIdentityConfig.identity1Options) ||
-        nextIdentityConfig.identity2Enabled !== currentIdentityConfig.identity2Enabled ||
-        nextIdentityConfig.identity2Name !== currentIdentityConfig.identity2Name;
+      const identityConfigKeys = [
+        "identity1Enabled",
+        "identity1Name",
+        "identity1Options",
+        "identity2Enabled",
+        "identity2Name",
+      ] as const;
+      const hasIdentityConfigUpdate = identityConfigKeys.some((key) => config[key] !== undefined);
+      if (hasIdentityConfigUpdate) {
+        const tenantConfigSnap = await get(ref(services.db, `tenants/${tenantId}/config`));
+        const currentTenantConfig = tenantConfigSnap.exists() ? tenantConfigSnap.val() || {} : {};
+        const nextIdentityConfig = {
+          identity1Enabled: config.identity1Enabled !== undefined ? config.identity1Enabled : currentTenantConfig.identity1Enabled !== false,
+          identity1Name: config.identity1Name !== undefined ? config.identity1Name : (currentTenantConfig.identity1Name || "Block No"),
+          identity1Options: config.identity1Options !== undefined ? config.identity1Options : (currentTenantConfig.identity1Options || blockOptions),
+          identity2Enabled: config.identity2Enabled !== undefined ? config.identity2Enabled : (currentTenantConfig.identity2Enabled !== false),
+          identity2Name: config.identity2Name !== undefined ? config.identity2Name : (currentTenantConfig.identity2Name || "Flat No"),
+        };
+        const currentIdentityConfig = {
+          identity1Enabled: currentTenantConfig.identity1Enabled !== false,
+          identity1Name: currentTenantConfig.identity1Name || "Block No",
+          identity1Options: currentTenantConfig.identity1Options || blockOptions,
+          identity2Enabled: currentTenantConfig.identity2Enabled !== false,
+          identity2Name: currentTenantConfig.identity2Name || "Flat No",
+        };
+        const identityConfigChanged =
+          nextIdentityConfig.identity1Enabled !== currentIdentityConfig.identity1Enabled ||
+          nextIdentityConfig.identity1Name !== currentIdentityConfig.identity1Name ||
+          JSON.stringify(nextIdentityConfig.identity1Options) !== JSON.stringify(currentIdentityConfig.identity1Options) ||
+          nextIdentityConfig.identity2Enabled !== currentIdentityConfig.identity2Enabled ||
+          nextIdentityConfig.identity2Name !== currentIdentityConfig.identity2Name;
 
-      if (
-        identityConfigChanged &&
-        await tenantHasPassesAcrossSeasons(services, tenantId)
-      ) {
-        throw new Error("Pass identities cannot be changed while passes exist in any season.");
+        if (
+          identityConfigChanged &&
+          await tenantHasPassesAcrossSeasons(services, tenantId)
+        ) {
+          throw new Error("Pass identities cannot be changed while passes exist in any season.");
+        }
       }
 
       const isCompleted = config.seasonCompleted === true;
       const isEnabled = isCompleted ? false : (config.seasonEnabled !== false);
 
-      const tenantCommonConfig = {
-        tenantId,
-        activeSeasonCode: activeCode,
-        identity1Enabled: config.identity1Enabled !== false,
-        identity1Name: config.identity1Name || "Block No",
-        identity1Options: config.identity1Options || blockOptions,
-        identity2Enabled: config.identity2Enabled !== false,
-        identity2Name: config.identity2Name || "Flat No",
-      };
-
-      const seasonSpecificConfig = {
-        seasonCode: activeCode,
-        seasonName: config.seasonName || "",
-        seasonEnabled: isEnabled,
-        seasonCompleted: isCompleted,
-        days: config.days || [],
-        payment: config.payment,
-        freeMealEnabled: config.freeMealEnabled,
-        mobileEnabled: config.mobileEnabled,
-        foodPriceEnabled: config.foodPriceEnabled,
-        kidsEnabled: config.kidsEnabled,
-        guestsEnabled: config.guestsEnabled,
-        vendorKidsMealChargingEnabled: config.vendorKidsMealChargingEnabled,
-        whatsappCountryCode: config.whatsappCountryCode,
-        quickCheckoutAutoCloseMs: config.quickCheckoutAutoCloseMs,
-        soundEnabled: config.soundEnabled,
-        vendorName: config.vendorName,
-        vendorAddress: config.vendorAddress,
-        vendorSettledCost: config.vendorSettledCost,
-        nonAdminCheckoutEnabled: config.nonAdminCheckoutEnabled,
-        cheatCodeEnabled: config.cheatCodeEnabled,
-        passcodeDigitCount: config.passcodeDigitCount !== undefined ? Number(config.passcodeDigitCount) : 4,
-        footerText: config.footerText || "",
-      };
-
       const updates: Record<string, any> = {};
-      updates[`tenants/${tenantId}/config`] = cleanUndefined(tenantCommonConfig);
-      updates[`tenants/${tenantId}/seasons_data/${activeCode}/config`] = cleanUndefined(seasonSpecificConfig);
+      const tenantConfigPath = `tenants/${tenantId}/config`;
+      const seasonConfigPath = `tenants/${tenantId}/seasons_data/${activeCode}/config`;
+
+      if (config.activeSeasonCode !== undefined) {
+        updates[`${tenantConfigPath}/activeSeasonCode`] = activeCode;
+      }
+      if (config.identity1Enabled !== undefined) updates[`${tenantConfigPath}/identity1Enabled`] = config.identity1Enabled;
+      if (config.identity1Name !== undefined) updates[`${tenantConfigPath}/identity1Name`] = config.identity1Name;
+      if (config.identity1Options !== undefined) updates[`${tenantConfigPath}/identity1Options`] = config.identity1Options;
+      if (config.identity2Enabled !== undefined) updates[`${tenantConfigPath}/identity2Enabled`] = config.identity2Enabled;
+      if (config.identity2Name !== undefined) updates[`${tenantConfigPath}/identity2Name`] = config.identity2Name;
+
+      if (config.seasonCode !== undefined) updates[`${seasonConfigPath}/seasonCode`] = activeCode;
+      if (config.seasonName !== undefined) updates[`${seasonConfigPath}/seasonName`] = config.seasonName;
+      if (config.seasonEnabled !== undefined) updates[`${seasonConfigPath}/seasonEnabled`] = isEnabled;
+      if (config.seasonCompleted !== undefined) updates[`${seasonConfigPath}/seasonCompleted`] = isCompleted;
+      if (config.days !== undefined) updates[`${seasonConfigPath}/days`] = cleanUndefined(config.days);
+      if (config.payment !== undefined) updates[`${seasonConfigPath}/payment`] = cleanUndefined(config.payment);
+      if (config.freeMealEnabled !== undefined) updates[`${seasonConfigPath}/freeMealEnabled`] = config.freeMealEnabled;
+      if (config.mobileEnabled !== undefined) updates[`${seasonConfigPath}/mobileEnabled`] = config.mobileEnabled;
+      if (config.foodPriceEnabled !== undefined) updates[`${seasonConfigPath}/foodPriceEnabled`] = config.foodPriceEnabled;
+      if (config.kidsEnabled !== undefined) updates[`${seasonConfigPath}/kidsEnabled`] = config.kidsEnabled;
+      if (config.guestsEnabled !== undefined) updates[`${seasonConfigPath}/guestsEnabled`] = config.guestsEnabled;
+      if (config.vendorKidsMealChargingEnabled !== undefined) updates[`${seasonConfigPath}/vendorKidsMealChargingEnabled`] = config.vendorKidsMealChargingEnabled;
+      if (config.whatsappCountryCode !== undefined) updates[`${seasonConfigPath}/whatsappCountryCode`] = config.whatsappCountryCode;
+      if (config.quickCheckoutAutoCloseMs !== undefined) updates[`${seasonConfigPath}/quickCheckoutAutoCloseMs`] = config.quickCheckoutAutoCloseMs;
+      if (config.soundEnabled !== undefined) updates[`${seasonConfigPath}/soundEnabled`] = config.soundEnabled;
+      if (config.vendorName !== undefined) updates[`${seasonConfigPath}/vendorName`] = config.vendorName;
+      if (config.vendorAddress !== undefined) updates[`${seasonConfigPath}/vendorAddress`] = config.vendorAddress;
+      if (config.vendorSettledCost !== undefined) updates[`${seasonConfigPath}/vendorSettledCost`] = config.vendorSettledCost;
+      if (config.nonAdminCheckoutEnabled !== undefined) updates[`${seasonConfigPath}/nonAdminCheckoutEnabled`] = config.nonAdminCheckoutEnabled;
+      if (config.cheatCodeEnabled !== undefined) updates[`${seasonConfigPath}/cheatCodeEnabled`] = config.cheatCodeEnabled;
+      if (config.passcodeDigitCount !== undefined) updates[`${seasonConfigPath}/passcodeDigitCount`] = Number(config.passcodeDigitCount);
+      if (config.footerText !== undefined) updates[`${seasonConfigPath}/footerText`] = config.footerText;
 
       await update(ref(services.db), updates);
     },
@@ -1587,6 +1594,7 @@ export function createFirebaseRepository(): SubscriptionRepository {
       let cancelled = false;
       let currentSeasonCode = "";
       let updateGeneration = 0;
+      let tenantConfig: Record<string, any> = {};
 
       ensureFirebaseAuth().then(async (services) => {
         if (cancelled || !services?.db) return;
@@ -1596,11 +1604,35 @@ export function createFirebaseRepository(): SubscriptionRepository {
         const handleUpdate = async () => {
           const generation = ++updateGeneration;
           try {
-            const config = await baseRepo.getConfig(tCode, false);
+            const activeCode = tenantConfig.activeSeasonCode || tenantConfig.seasonCode || "";
+            let seasonConfig: Record<string, any> = {};
+            const seasonConfigPath = activeCode
+              ? `tenants/${tCode}/seasons_data/${activeCode}/config`
+              : "";
+            if (seasonConfigPath) {
+              const seasonSnap = await get(ref(services.db, seasonConfigPath));
+              if (seasonSnap.exists()) seasonConfig = seasonSnap.val() || {};
+            }
             if (cancelled || generation !== updateGeneration) return;
-            callback(config);
+            const season = normalizeSeasonItem({
+              ...tenantConfig,
+              ...seasonConfig,
+              seasonCode: activeCode,
+            });
+            callback(normalizeConfig({
+              activeSeasonCode: activeCode,
+              seasonCode: activeCode,
+              tenantId: tCode,
+              seasons: [season],
+              identity1Enabled: tenantConfig.identity1Enabled !== false,
+              identity1Name: tenantConfig.identity1Name || "Block No",
+              identity1Options: tenantConfig.identity1Options || blockOptions,
+              identity2Enabled: tenantConfig.identity2Enabled !== false,
+              identity2Name: tenantConfig.identity2Name || "Flat No",
+              ...seasonConfig,
+            }));
 
-            const nextSeasonCode = config.activeSeasonCode || config.seasonCode || "";
+            const nextSeasonCode = activeCode;
             if (nextSeasonCode === currentSeasonCode) return;
             currentSeasonCode = nextSeasonCode;
             if (unsub2) unsub2();
@@ -1615,7 +1647,19 @@ export function createFirebaseRepository(): SubscriptionRepository {
           }
         };
 
-        unsub1 = onValue(ref(services.db, `tenants/${tCode}/config`), () => { void handleUpdate(); });
+        unsub1 = onValue(ref(services.db, `tenants/${tCode}/config`), (snapshot) => {
+          if (snapshot.exists()) {
+            tenantConfig = snapshot.val() || {};
+            void handleUpdate();
+            return;
+          }
+          get(ref(services.db, configPath))
+            .then((legacySnapshot) => {
+              tenantConfig = legacySnapshot.exists() ? legacySnapshot.val() || {} : {};
+              void handleUpdate();
+            })
+            .catch((error) => console.error("Legacy config listener update error:", error));
+        });
       }).catch(err => console.error("Config listener error:", err));
 
       return () => {

@@ -314,3 +314,33 @@ describe("tenant realtime repository listeners", () => {
     expect(childListeners.size).toBe(0);
   });
 });
+
+describe("tenant settings repository updates", () => {
+  it("writes changed season settings without reading tenant-wide data", async () => {
+    const repository = createFirebaseRepository();
+    const database = require("firebase/database") as {
+      get: { mock: { calls: unknown[][] }; mockClear: () => void };
+      update: { mock: { calls: unknown[][] }; mockClear: () => void };
+    };
+    database.get.mockClear();
+    database.update.mockClear();
+
+    await repository.updateConfig({
+      seasonCode: "DP2026",
+      seasonEnabled: true,
+      seasonCompleted: false,
+      seasonName: "Festival 2026",
+    }, "tenant-a");
+
+    expect(database.get.mock.calls).toHaveLength(0);
+    expect(database.update.mock.calls).toEqual([[
+      { path: "" },
+      {
+        "tenants/tenant-a/seasons_data/DP2026/config/seasonCode": "DP2026",
+        "tenants/tenant-a/seasons_data/DP2026/config/seasonName": "Festival 2026",
+        "tenants/tenant-a/seasons_data/DP2026/config/seasonEnabled": true,
+        "tenants/tenant-a/seasons_data/DP2026/config/seasonCompleted": false,
+      },
+    ]]);
+  });
+});

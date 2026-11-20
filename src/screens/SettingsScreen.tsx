@@ -17,7 +17,7 @@ import {
 import { useStyles, useScaling } from "../styles";
 import { useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
-import { ConfigDay, PaymentConfig, AppScreen, PaymentMode, AppThemeMode, ActivityModule, ActivityAction, DietaryOption, MealSlot, DietaryVariety } from "../types";
+import { ConfigDay, PaymentConfig, AppScreen, PaymentMode, AppThemeMode, ActivityModule, ActivityAction, DietaryOption, MealSlot, DietaryVariety, AppConfig } from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
@@ -302,22 +302,14 @@ export function SettingsScreen() {
     whatsappCountryCode, updateConfig, kidsEnabled, guestsEnabled, vendorKidsMealChargingEnabled, subscriptions, foodMenu, quickCheckoutAutoCloseMs, soundEnabled,
     vendorName, vendorAddress, vendorSettledCost, nonAdminCheckoutEnabled, cheatCodeEnabled, passcodeDigitCount, seasonCompleted,
     identity1Enabled, identity1Name, identity1Options, identity2Enabled, identity2Name, hasAnyPassesAcrossSeasons,
-    seasons, activeSeasonCode, createNewSeason, switchActiveSeason, loadSettingsData, footerText
+    seasons, activeSeasonCode, createNewSeason, switchActiveSeason, footerText
   } = useCoreDatabase();
   const { addActivityLog } = useActivityLogs();
   const { showAlert } = useUI();
   const { navigate, goBack } = useAppNavigation();
   const { userRole } = useAuth();
-  const [settingsDataLoaded, setSettingsDataLoaded] = React.useState(false);
-
-  React.useEffect(() => {
-    loadSettingsData()
-      .then(() => setSettingsDataLoaded(true))
-      .catch((error) => console.error("Settings data load error:", error));
-  }, [loadSettingsData]);
-
   const identitySettingsLocked =
-    hasAnyPassesAcrossSeasons || loading || !hasLoadedOnce || !settingsDataLoaded;
+    hasAnyPassesAcrossSeasons || loading || !hasLoadedOnce;
 
   const styles = useStyles();
   const { s } = useScaling();
@@ -1131,35 +1123,37 @@ export function SettingsScreen() {
         footerText: localFooterText,
       };
 
-      await updateConfig({
-        seasonName: localSeasonName,
-        seasonCode: localSeasonCode,
-        seasonEnabled: localSeasonEnabled,
-        days: localConfig,
-        payment: localPayment,
-        freeMealEnabled: localFreeMealEnabled,
-        mobileEnabled: localMobileEnabled,
-        foodPriceEnabled: localFoodPriceEnabled,
-        kidsEnabled: localKidsEnabled,
-        guestsEnabled: localGuestsEnabled,
-        vendorKidsMealChargingEnabled: localVendorKidsMealChargingEnabled,
-        whatsappCountryCode: localWhatsappCountryCode,
-        quickCheckoutAutoCloseMs: localQuickCheckoutAutoCloseMs,
-        soundEnabled: localSoundEnabled,
-        nonAdminCheckoutEnabled: localNonAdminCheckoutEnabled,
-        cheatCodeEnabled: localCheatCodeEnabled,
-        passcodeDigitCount: localPasscodeDigitCount,
-        seasonCompleted: localSeasonCompleted,
-        vendorName: localVendorName,
-        vendorAddress: localVendorAddress,
-        vendorSettledCost: areAllMealsDone ? localVendorSettledCost : vendorSettledCost,
-        identity1Enabled: localIdentity1Enabled,
-        identity1Name: localIdentity1Name.trim() || "Block No",
-        identity1Options: finalIdentity1Options,
-        identity2Enabled: localIdentity2Enabled,
-        identity2Name: localIdentity2Name.trim() || "Flat No",
-        footerText: localFooterText,
-      });
+      const changedConfig: Partial<AppConfig> = { seasonCode: localSeasonCode };
+      if (JSON.stringify(savedBaseline?.config) !== JSON.stringify(localConfig)) changedConfig.days = localConfig;
+      if (savedBaseline?.seasonName !== localSeasonName) changedConfig.seasonName = localSeasonName;
+      if (savedBaseline?.seasonEnabled !== localSeasonEnabled || savedBaseline?.seasonCompleted !== localSeasonCompleted) {
+        changedConfig.seasonEnabled = localSeasonEnabled;
+        changedConfig.seasonCompleted = localSeasonCompleted;
+      }
+      if (JSON.stringify(savedBaseline?.payment) !== JSON.stringify(localPayment)) changedConfig.payment = localPayment;
+      if (savedBaseline?.freeMealEnabled !== localFreeMealEnabled) changedConfig.freeMealEnabled = localFreeMealEnabled;
+      if (savedBaseline?.mobileEnabled !== localMobileEnabled) changedConfig.mobileEnabled = localMobileEnabled;
+      if (savedBaseline?.foodPriceEnabled !== localFoodPriceEnabled) changedConfig.foodPriceEnabled = localFoodPriceEnabled;
+      if (savedBaseline?.kidsEnabled !== localKidsEnabled) changedConfig.kidsEnabled = localKidsEnabled;
+      if (savedBaseline?.guestsEnabled !== localGuestsEnabled) changedConfig.guestsEnabled = localGuestsEnabled;
+      if (savedBaseline?.vendorKidsMealChargingEnabled !== localVendorKidsMealChargingEnabled) changedConfig.vendorKidsMealChargingEnabled = localVendorKidsMealChargingEnabled;
+      if (savedBaseline?.whatsappCountryCode !== localWhatsappCountryCode) changedConfig.whatsappCountryCode = localWhatsappCountryCode;
+      if (savedBaseline?.quickCheckoutAutoCloseMs !== localQuickCheckoutAutoCloseMs) changedConfig.quickCheckoutAutoCloseMs = localQuickCheckoutAutoCloseMs;
+      if (savedBaseline?.soundEnabled !== localSoundEnabled) changedConfig.soundEnabled = localSoundEnabled;
+      if (savedBaseline?.nonAdminCheckoutEnabled !== localNonAdminCheckoutEnabled) changedConfig.nonAdminCheckoutEnabled = localNonAdminCheckoutEnabled;
+      if (savedBaseline?.cheatCodeEnabled !== localCheatCodeEnabled) changedConfig.cheatCodeEnabled = localCheatCodeEnabled;
+      if (savedBaseline?.passcodeDigitCount !== localPasscodeDigitCount) changedConfig.passcodeDigitCount = localPasscodeDigitCount;
+      if (savedBaseline?.vendorName !== localVendorName) changedConfig.vendorName = localVendorName;
+      if (savedBaseline?.vendorAddress !== localVendorAddress) changedConfig.vendorAddress = localVendorAddress;
+      if (savedBaseline && areAllMealsDone && savedBaseline.vendorSettledCost !== localVendorSettledCost) changedConfig.vendorSettledCost = localVendorSettledCost;
+      if (savedBaseline?.identity1Enabled !== localIdentity1Enabled) changedConfig.identity1Enabled = localIdentity1Enabled;
+      if (savedBaseline?.identity1Name !== (localIdentity1Name.trim() || "Block No")) changedConfig.identity1Name = localIdentity1Name.trim() || "Block No";
+      if (JSON.stringify(savedBaseline?.identity1Options) !== JSON.stringify(finalIdentity1Options)) changedConfig.identity1Options = finalIdentity1Options;
+      if (savedBaseline?.identity2Enabled !== localIdentity2Enabled) changedConfig.identity2Enabled = localIdentity2Enabled;
+      if (savedBaseline?.identity2Name !== (localIdentity2Name.trim() || "Flat No")) changedConfig.identity2Name = localIdentity2Name.trim() || "Flat No";
+      if (savedBaseline?.footerText !== localFooterText) changedConfig.footerText = localFooterText;
+
+      await updateConfig(changedConfig);
 
       setSavedBaseline(newBaseline);
 
