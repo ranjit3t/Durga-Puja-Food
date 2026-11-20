@@ -659,6 +659,31 @@ function normalizeConfig(val: any): AppConfig {
   };
 }
 
+function combineTenantSeasonConfig(
+  tenantId: string,
+  tenantConfig: Record<string, any>,
+  seasonConfig: Record<string, any>,
+  activeCode: string,
+  seasons: SeasonConfig[] = [],
+): AppConfig {
+  const resolvedSeasons = seasons.length
+    ? seasons
+    : [normalizeSeasonItem({ ...tenantConfig, ...seasonConfig, seasonCode: activeCode })];
+
+  return normalizeConfig({
+    activeSeasonCode: activeCode,
+    seasonCode: activeCode,
+    tenantId,
+    seasons: resolvedSeasons,
+    identity1Enabled: tenantConfig.identity1Enabled !== false,
+    identity1Name: tenantConfig.identity1Name || "Block No",
+    identity1Options: tenantConfig.identity1Options || blockOptions,
+    identity2Enabled: tenantConfig.identity2Enabled !== false,
+    identity2Name: tenantConfig.identity2Name || "Flat No",
+    ...seasonConfig,
+  });
+}
+
 export function createFirebaseRepository(): SubscriptionRepository {
   let activeTenantId = "";
 
@@ -889,22 +914,7 @@ export function createFirebaseRepository(): SubscriptionRepository {
             seasonVal = seasonConfigSnap.val();
           }
         }
-        if (seasonsList.length === 0) {
-          seasonsList = [normalizeSeasonItem({ ...tenantVal, ...seasonVal, seasonCode: activeCode })];
-        }
-
-        return normalizeConfig({
-          activeSeasonCode: activeCode,
-          seasonCode: activeCode,
-          tenantId: tCode,
-          seasons: seasonsList,
-          identity1Enabled: tenantVal.identity1Enabled !== false,
-          identity1Name: tenantVal.identity1Name || "Block No",
-          identity1Options: tenantVal.identity1Options || blockOptions,
-          identity2Enabled: tenantVal.identity2Enabled !== false,
-          identity2Name: tenantVal.identity2Name || "Flat No",
-          ...seasonVal,
-        });
+        return combineTenantSeasonConfig(tCode, tenantVal, seasonVal, activeCode, seasonsList);
       }
 
       return normalizeConfig(null);
@@ -1614,23 +1624,7 @@ export function createFirebaseRepository(): SubscriptionRepository {
               if (seasonSnap.exists()) seasonConfig = seasonSnap.val() || {};
             }
             if (cancelled || generation !== updateGeneration) return;
-            const season = normalizeSeasonItem({
-              ...tenantConfig,
-              ...seasonConfig,
-              seasonCode: activeCode,
-            });
-            callback(normalizeConfig({
-              activeSeasonCode: activeCode,
-              seasonCode: activeCode,
-              tenantId: tCode,
-              seasons: [season],
-              identity1Enabled: tenantConfig.identity1Enabled !== false,
-              identity1Name: tenantConfig.identity1Name || "Block No",
-              identity1Options: tenantConfig.identity1Options || blockOptions,
-              identity2Enabled: tenantConfig.identity2Enabled !== false,
-              identity2Name: tenantConfig.identity2Name || "Flat No",
-              ...seasonConfig,
-            }));
+            callback(combineTenantSeasonConfig(tCode, tenantConfig, seasonConfig, activeCode));
 
             const nextSeasonCode = activeCode;
             if (nextSeasonCode === currentSeasonCode) return;

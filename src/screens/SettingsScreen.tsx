@@ -17,7 +17,7 @@ import {
 import { useStyles, useScaling } from "../styles";
 import { useAppTheme } from "../theme";
 import { UI_TEXT } from "../strings";
-import { ConfigDay, PaymentConfig, AppScreen, PaymentMode, AppThemeMode, ActivityModule, ActivityAction, DietaryOption, MealSlot, DietaryVariety, AppConfig } from "../types";
+import { ConfigDay, PaymentConfig, AppScreen, PaymentMode, AppThemeMode, ActivityModule, ActivityAction, DietaryOption, MealSlot, DietaryVariety } from "../types";
 import { BackButton } from "../components/common/BackButton";
 import { HomeButton } from "../components/common/HomeButton";
 import { LogoutButton } from "../components/common/LogoutButton";
@@ -31,6 +31,8 @@ import { useUI } from "../context/UIContext";
 import { useAppNavigation } from "../context/NavigationContext";
 import { getPaymentModeLabel, getMealLabel, getMealVarieties, isMealEnabled, isMealDone, blockOptions } from "../constants";
 import { calculateSeasonVendorTotals, formatCurrencyAmount } from "../utils/paymentUtils";
+import { buildSettingsConfigPatch } from "../utils/settingsConfig";
+import type { SettingsBaseline } from "../utils/settingsConfig";
 import { MealConfig, MealType, DietType, UserRole, SeasonConfig } from "../domain";
 
 type PresetColor = {
@@ -375,35 +377,7 @@ export function SettingsScreen() {
   const [saving, setSaving] = useState(false);
 
   // Saved baseline state representing the current persisted configuration
-  const [savedBaseline, setSavedBaseline] = useState<{
-    config: ConfigDay[];
-    seasonName: string;
-    seasonCode: string;
-    seasonEnabled: boolean;
-    payment: PaymentConfig;
-    freeMealEnabled: boolean;
-    mobileEnabled: boolean;
-    foodPriceEnabled: boolean;
-    kidsEnabled: boolean;
-    guestsEnabled: boolean;
-    vendorKidsMealChargingEnabled: boolean;
-    whatsappCountryCode: string;
-    quickCheckoutAutoCloseMs: number;
-    soundEnabled: boolean;
-    nonAdminCheckoutEnabled: boolean;
-    cheatCodeEnabled: boolean;
-    passcodeDigitCount: number;
-    seasonCompleted: boolean;
-    vendorName: string;
-    vendorAddress: string;
-    vendorSettledCost: string;
-    identity1Enabled: boolean;
-    identity1Name: string;
-    identity1Options: string[];
-    identity2Enabled: boolean;
-    identity2Name: string;
-    footerText: string;
-  } | null>(null);
+  const [savedBaseline, setSavedBaseline] = useState<SettingsBaseline | null>(null);
 
   const [editingVarietyModal, setEditingVarietyModal] = useState<{
     dayId: string;
@@ -1123,35 +1097,7 @@ export function SettingsScreen() {
         footerText: localFooterText,
       };
 
-      const changedConfig: Partial<AppConfig> = { seasonCode: localSeasonCode };
-      if (JSON.stringify(savedBaseline?.config) !== JSON.stringify(localConfig)) changedConfig.days = localConfig;
-      if (savedBaseline?.seasonName !== localSeasonName) changedConfig.seasonName = localSeasonName;
-      if (savedBaseline?.seasonEnabled !== localSeasonEnabled || savedBaseline?.seasonCompleted !== localSeasonCompleted) {
-        changedConfig.seasonEnabled = localSeasonEnabled;
-        changedConfig.seasonCompleted = localSeasonCompleted;
-      }
-      if (JSON.stringify(savedBaseline?.payment) !== JSON.stringify(localPayment)) changedConfig.payment = localPayment;
-      if (savedBaseline?.freeMealEnabled !== localFreeMealEnabled) changedConfig.freeMealEnabled = localFreeMealEnabled;
-      if (savedBaseline?.mobileEnabled !== localMobileEnabled) changedConfig.mobileEnabled = localMobileEnabled;
-      if (savedBaseline?.foodPriceEnabled !== localFoodPriceEnabled) changedConfig.foodPriceEnabled = localFoodPriceEnabled;
-      if (savedBaseline?.kidsEnabled !== localKidsEnabled) changedConfig.kidsEnabled = localKidsEnabled;
-      if (savedBaseline?.guestsEnabled !== localGuestsEnabled) changedConfig.guestsEnabled = localGuestsEnabled;
-      if (savedBaseline?.vendorKidsMealChargingEnabled !== localVendorKidsMealChargingEnabled) changedConfig.vendorKidsMealChargingEnabled = localVendorKidsMealChargingEnabled;
-      if (savedBaseline?.whatsappCountryCode !== localWhatsappCountryCode) changedConfig.whatsappCountryCode = localWhatsappCountryCode;
-      if (savedBaseline?.quickCheckoutAutoCloseMs !== localQuickCheckoutAutoCloseMs) changedConfig.quickCheckoutAutoCloseMs = localQuickCheckoutAutoCloseMs;
-      if (savedBaseline?.soundEnabled !== localSoundEnabled) changedConfig.soundEnabled = localSoundEnabled;
-      if (savedBaseline?.nonAdminCheckoutEnabled !== localNonAdminCheckoutEnabled) changedConfig.nonAdminCheckoutEnabled = localNonAdminCheckoutEnabled;
-      if (savedBaseline?.cheatCodeEnabled !== localCheatCodeEnabled) changedConfig.cheatCodeEnabled = localCheatCodeEnabled;
-      if (savedBaseline?.passcodeDigitCount !== localPasscodeDigitCount) changedConfig.passcodeDigitCount = localPasscodeDigitCount;
-      if (savedBaseline?.vendorName !== localVendorName) changedConfig.vendorName = localVendorName;
-      if (savedBaseline?.vendorAddress !== localVendorAddress) changedConfig.vendorAddress = localVendorAddress;
-      if (savedBaseline && areAllMealsDone && savedBaseline.vendorSettledCost !== localVendorSettledCost) changedConfig.vendorSettledCost = localVendorSettledCost;
-      if (savedBaseline?.identity1Enabled !== localIdentity1Enabled) changedConfig.identity1Enabled = localIdentity1Enabled;
-      if (savedBaseline?.identity1Name !== (localIdentity1Name.trim() || "Block No")) changedConfig.identity1Name = localIdentity1Name.trim() || "Block No";
-      if (JSON.stringify(savedBaseline?.identity1Options) !== JSON.stringify(finalIdentity1Options)) changedConfig.identity1Options = finalIdentity1Options;
-      if (savedBaseline?.identity2Enabled !== localIdentity2Enabled) changedConfig.identity2Enabled = localIdentity2Enabled;
-      if (savedBaseline?.identity2Name !== (localIdentity2Name.trim() || "Flat No")) changedConfig.identity2Name = localIdentity2Name.trim() || "Flat No";
-      if (savedBaseline?.footerText !== localFooterText) changedConfig.footerText = localFooterText;
+      const changedConfig = buildSettingsConfigPatch(savedBaseline, newBaseline, areAllMealsDone);
 
       await updateConfig(changedConfig);
 
